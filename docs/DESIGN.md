@@ -33,7 +33,7 @@ light pollers (Cloudflare Worker cron): warnings, space weather, Starlink health
 ```
 
 - **Processing:** streams each day's tar without unpacking it, keeps version-2 `adsb_icao` reports only, samples each
-  aircraft every 30 s, and classifies aircraft per H3 hex. Spike: about 10 CPU-minutes per worldwide day on this PC (estimate).
+  aircraft every 30 s, and classifies aircraft per H3 hex. Spike estimate was about 10 CPU-minutes per worldwide day. **Measured (v1, 14 Oct 2026): 53–70 s per day** on this PC, reading the tar sequentially from the USB drive.
 - **Storage:** adsb.lol keeps the raw history on GitHub, so we keep only processed output (MBs per day, not GBs).
 - **Times:** stored in UTC; anything a person reads shows Central time with the zone named.
 

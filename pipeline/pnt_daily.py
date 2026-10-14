@@ -85,6 +85,7 @@ def score_trace(raw):
     first_t = last_used_t = None
     per_hex = defaultdict(lambda: [0, 0, 0])
     seen = used = bad = 0
+    sum_lat = sum_lon = 0.0
     for p in d.get("trace", []):
         seen += 1
         det = p[8] if len(p) > 8 else None
@@ -104,14 +105,19 @@ def score_trace(raw):
         c = per_hex[h3.latlng_to_cell(p[1], p[2], RES)]
         c[0] += 1; c[1] += nacp < NACP_BAD; c[2] += nic < NIC_BAD
         bad += nacp < NACP_BAD
+        sum_lat += p[1]; sum_lon += p[2]
     hours = ((last_used_t - first_t) / 3600) if used else 0
     suspect = used > 0 and hours >= MIN_SUSPECT_H and bad / used >= SUSPECT_BAD_FRAC
-    return dict(per_hex), (seen, used, suspect)
+    # where a suspect flew and its type designator (e.g. C172), to check the rule doesn't drop genuinely jammed
+    # flights. No hex address or registration is kept.
+    where = (round(sum_lat / used, 1), round(sum_lon / used, 1), round(hours, 1), d.get("t") or "") if suspect else None
+    return dict(per_hex), (seen, used, suspect, where)
 
 
 def work(batch):
     hexes = defaultdict(lambda: [0, 0, 0])  # hex -> [aircraft, bad_nacp aircraft, bad_nic aircraft]
     st = defaultdict(int)
+    st["suspect_where"] = []
     for raw in batch:
         st["files"] += 1
         try:
@@ -122,13 +128,14 @@ def work(batch):
         if r is None:
             st["non_icao"] += 1
             continue
-        per_hex, (seen, used, suspect) = r
+        per_hex, (seen, used, suspect, where) = r
         st["reports_seen"] += seen; st["reports_used"] += used
         if not used:
             continue
         st["aircraft"] += 1
         if suspect:
             st["avionics_suspects"] += 1
+            st["suspect_where"].append(where)
             continue
         for hx, (n, bn, bi) in per_hex.items():
             a = hexes[hx]
@@ -154,6 +161,7 @@ def run(day, raw_dir, out_dir, workers):
     stream = io.BufferedReader(Chain(parts), buffer_size=8 << 20)
     total = defaultdict(lambda: [0, 0, 0])
     st = defaultdict(int)
+    st["suspect_where"] = []
     with Pool(workers) as pool:
         for hexes, s in pool.imap_unordered(work, batches(stream), chunksize=1):
             for hx, (n, bn, bi) in hexes.items():
@@ -187,6 +195,7 @@ def run(day, raw_dir, out_dir, workers):
                    "aircraft_bad_if_frac_reports_bad_ge": 0.5, "suspect_bad_frac": SUSPECT_BAD_FRAC,
                    "suspect_min_hours": MIN_SUSPECT_H, "score": "100*max(bad-1,0)/(good+bad)"},
         "source": "adsb.lol globe_history (ODbL 1.0)",
+        "avionics_suspect_centroids": sorted(st["suspect_where"]),   # [mean lat, mean lon, hours, type]; no identifiers
     }
     json.dump(summary, open(os.path.join(out_dir, f"{day}.summary.json"), "w"), indent=1)
     return summary
