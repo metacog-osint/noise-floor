@@ -1,0 +1,20 @@
+# Private material: this repo is public (see CLAUDE.md)
+private/
+CLAUDE.local.md
+.env
+*.env
+
+# Written products stay out until Tom publishes them (then: git add -f products/<file>)
+products/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Data outputs. adsb.lol-derived data is ODbL: publish it deliberately, never by accident.
+data/
+out/
+spikes/*.csv
+*.tar
+*.parquet
