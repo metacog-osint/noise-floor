@@ -139,3 +139,9 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
 2. ~~Repo visibility~~ **Decided 14 Oct: public.** It gets free unlimited Actions minutes, and the repo and site are the showcase. Private config stays in D1, secrets and `private/`.
 3. Enable R2 in the Cloudflare dashboard (Tom; it isn't enabled yet).
 4. Permission requests (unchanged): RIPE NCC, Georgia Tech (IODA), adsb.lol, later 18 SDS.
+
+### Progress (14 Oct 2026)
+
+- **Phase 1, Phase 1.1 and Phase 1.2 are built and validated.** See `docs/validation/phase1.md` and `docs/method-card.md`.
+- **The Bluesky collector was pulled forward from the Phase 6 community lane.** It lives in `collectors/bluesky.py`, with the account list and keywords in `private/watch/` (never in the repo).
+- **The 22 Sep 2026 NOTAM couldn't be retrieved publicly.** Closing that case needs FAA NOTAM API access (decision 4).

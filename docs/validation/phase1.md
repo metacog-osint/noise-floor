@@ -101,3 +101,48 @@ Each run's `data/pnt/daily/<day>.summary.json` records the input files, their SH
   - [EGNOS Monthly Performance Report, October 2025](https://egnos.gsc-europa.eu/sites/default/files/documents/174%20-%20Monthly%20Performance%20Report%20-%20October%202025.pdf?v=1762523670) ("total loss of SiS occurring on October 13")
   - [LPPR NOTAM, EGNOS outage](https://notamify.com/notams/LPPR/c0b92b77-ed7b-4b00-974c-7544f05f6a5b) (13 Oct 11:14 to 17 Oct 10:10; time zone not stated)
 - Storm and Bay Area accounts: John Wiseman on Bluesky, 7 Oct 2026, [storm figure](https://bsky.app/profile/lemonodor.bsky.social/post/3mxcife7bw22t) and [Bay Area GPS loss](https://bsky.app/profile/lemonodor.bsky.social/post/3mxccciuhlk2z). His data is independent of ours, and we used his posts only as accounts of the events, never as data.
+
+---
+
+# Phase 1.2: SBAS flag, minute bursts, baselines (14 Oct 2026)
+
+**Generated tables and figures:** `phase1_2_results.md`. **Data:** 20 days (9–25 Oct 2025, 11–12 Nov 2025, 22 Sep 2026), processor v1.2, about 70 s per day.
+
+## Bottom line
+
+- **The SBAS flag reconstructs the October 2025 EGNOS outage from aircraft data alone.** It flags 13 Oct from 10Z, all of 14–16 Oct, and 17 Oct until 11Z. The documented window is 13 Oct 11:14 to 17 Oct 10:10.
+- **Storm hours are labelled "storm."** That covers Canada on both storm days, and Japan and Korea on 12 Nov.
+- **Minute bursts recover both Bay Area bursts of 22 Sep 2026,** at 18:00–18:08Z and 19:52–20:12Z.
+- **Baselines turn up leads on quiet days.** On 23 Oct the top major event is an expansion of interference over the southern and central Baltic. On 23 and 24 Oct there is 10 m degradation over New Mexico at 03–08Z.
+
+## Verdicts
+
+| # | Check | Result | Verdict |
+|---|---|---|---|
+| 14 | SBAS flag: EGNOS outage | Flagged 13 Oct 10–23Z (14 h), 14–16 Oct all day, 17 Oct 00–11Z (12 h). EGNOS service area only; no other day in 9–25 Oct flagged for EGNOS except one hour on 12 Oct. | **Pass** (within an hour at both ends) |
+| 15 | SBAS flag: false positives | With absolute thresholds, India (GAGAN) and Australia/NZ (SouthPAN) were flagged 7–14 h every day. Most airliners can't use those SBASs, so capable aircraft routinely lose 10 m there. Against each area's own same-hour baseline, and with the excess required to beat 4 × MAD, that falls to 1–6 stray hours a day. | **Partial pass.** Residual flags in those two areas are labelled as such. |
+| 16 | Storm labelling | 12 Nov: Canada 01–05Z, Japan 01–14Z, Korea 02–12Z, all labelled storm. 18 Oct: Canada 20–22Z labelled storm, once the label checks Kp within ±3 h (storm effects lag the 3-hourly index). | **Pass** |
+| 17 | Minute bursts, Bay Area 22 Sep 2026 | Burst events at **18:00–18:08Z (peak 13 aircraft)** and **19:52–20:12Z (peak 36)**, centred on the southern Central Valley. The early burst only shows when each region is summed with its neighbours, because it straddles res-2 cell edges. | **Pass.** Counts are lower than the source thread's (about 40 and 80 aircraft above 8,000 ft), reflecting adsb.lol coverage and our filters. |
+| 18 | Burst thresholds from earlier days | Within-day thresholds produced 53–66 burst events a day, mostly the same regions at the same hours (Hungary and Slovakia at 01:30–05:30Z, Southern California in the afternoons). Same-slot thresholds from earlier days cut this to 11–57. | **Pass** |
+| 19 | Same-hour baseline anomalies | Raw anomalous region-hours were 200–500 a day, mostly small-sample. A binomial z ≥ 4 test and grouping into events give 137–174 events a day: **9–22 major** (25+ points above baseline), 65–90 notable, the rest minor. | **Pass**, read majors first |
+
+## Leads from the quiet days (not verified)
+
+1. **Southern and central Baltic, 23 Oct 2025.**
+   - The 93 m share peaked at 51% over open sea around 55.6°N 17.9°E (between Bornholm, Gotland and the Polish coast), against a 14-day median near 15%.
+   - It spanned 04–19Z over 62 region-hours, with matching 10 m events beside it.
+   - This reads as a day-long expansion of the Baltic interference footprint. Check against Polish, Swedish and Lithuanian reporting for that date.
+2. **New Mexico, 03–08Z on 23 and 24 Oct 2025.**
+   - On the 10 m measure, 54–55% of capable aircraft were below 10 m, against a near-zero baseline. This is near White Sands, at night local time.
+   - It is likely the same pattern as the 93 m spikes over the southern US at 03–08Z noted in Phase 1.1. Check against NAVCEN GPS test notices.
+3. **Nightly bursts over central Europe, 01–06Z.**
+   - Hungary, Slovakia, Czechia, Germany, Romania, Serbia and Austria have burst events on most nights, even against same-slot thresholds.
+   - Hypothesis: overnight inbound flights cross jammed airspace (Iraq, the Caucasus, the Black Sea) and arrive with avionics still latched at degraded NACp (method card, "Latching").
+   - Testing it needs per-aircraft continuity: was the aircraft already bad before it entered the region?
+
+## Open items (next phase)
+
+1. **Per-aircraft latching tag.** Mark aircraft that degraded in a known hotspot and stayed degraded, so downstream "events" made of latched aircraft are labelled rather than counted as new interference. This tests lead 3.
+2. **Verify leads 1 and 2.** The Baltic one needs public reporting; New Mexico needs NAVCEN test notices.
+3. **FAA NOTAM API access** (Tom's request, decision 4). It closes the Bay Area case and enables automatic planned-test exclusion.
+4. **Backfill to the present.** About 365 days at roughly 3.5 GB of raw data a day (about 1.3 TB) is too much to keep locally. Run it in GitHub Actions on the public repo, downloading, processing and discarding each day, and keep only the outputs (about 2 MB a day).

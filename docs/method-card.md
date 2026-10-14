@@ -1,8 +1,11 @@
 # Method card: GNSS degradation from ADS-B (PNT processor v1.1)
 
-**Status:** v1.1, 14 Oct 2026. Validated on three days (`docs/validation/phase1.md`). **Code:** `pipeline/pnt_daily.py`.
+**Status:** v1.2, 14 Oct 2026. Validation is in `docs/validation/phase1.md`. **Code:** `pipeline/pnt_daily.py`, `pipeline/pnt_analysis.py`.
 **Data:** adsb.lol globe_history daily archive, ODbL 1.0. Derived hex data is published under ODbL with attribution.
-**Changes from v1:** a peer-based avionics-suspect rule, hourly output, and a second, finer accuracy threshold.
+**Changes:**
+
+- **v1.1:** a peer-based avionics-suspect rule, hourly output, and a capable-aircraft 10 m threshold.
+- **v1.2:** per-minute burst counts, plus post-processing (SBAS flag, baselines, bursts).
 
 ## What it measures
 
@@ -38,7 +41,14 @@ There are two thresholds, because they answer different questions:
 6. **Outputs:**
    - `YYYY-MM-DD.parquet`: daily per hex.
    - `YYYY-MM-DD.hourly.parquet`: per hex and UTC hour.
+   - `YYYY-MM-DD.minute.parquet` (v1.2): per hex and minute, the number of aircraft with at least one gross-bad report. It holds non-zero rows only and is used for timing short bursts, which the hourly majority rule dampens.
    - `YYYY-MM-DD.summary.json`: the input file names, their SHA-256 (hashed while streaming), counts and every method parameter.
+
+## Post-processing (`pipeline/pnt_analysis.py`, v1.2)
+
+- **SBAS service flag.** For each SBAS service area (approximate boxes) and UTC hour, an hour is flagged as an outage when 60% or more of 10 m-capable aircraft across the whole area are below 10 m, and as degraded at 35% or more. GFZ Kp of 5 or more labels the hour as storm; otherwise it is a probable service problem. Flagged hours don't count toward 10 m baselines.
+- **Baselines and anomalies.** Each H3 res-2 region and UTC hour is compared against the median of the same hour over up to 14 earlier days within 30 days, with at least 5 needed. An anomaly is a share above the median by more than the larger of a floor (2 points gross, 10 points capable) and 4 × MAD, with at least 30 aircraft-hex-hours.
+- **Bursts.** For each H3 res-2 region, a burst is a run of 3 or more minutes in which the count of aircraft with a gross-bad report reaches the larger of 5 aircraft and the day's median + 5 × MAD.
 
 ## What it can't tell you
 
