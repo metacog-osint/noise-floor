@@ -1,13 +1,21 @@
-# Method card: daily GNSS degradation from ADS-B (PNT processor v1)
+# Method card: GNSS degradation from ADS-B (PNT processor v1.1)
 
-**Status:** v1, 14 Oct 2026. Validated on three days with open items (`docs/validation/phase1.md`); the avionics-suspect rule changes in v1.1. **Code:** `pipeline/pnt_daily.py`.
+**Status:** v1.1, 14 Oct 2026. Validated on three days (`docs/validation/phase1.md`). **Code:** `pipeline/pnt_daily.py`.
 **Data:** adsb.lol globe_history daily archive, ODbL 1.0. Derived hex data is published under ODbL with attribution.
+**Changes from v1:** a peer-based avionics-suspect rule, hourly output, and a second, finer accuracy threshold.
 
 ## What it measures
 
 The share of aircraft in each H3 hex (resolution 4, about 1,770 km² on average) whose own GNSS position quality was
-degraded on a given UTC day. It is an **effect** measure: it shows where receivers on aircraft lost accuracy, not
-who caused it or why. On its own it is never evidence of deliberate jamming (see "What it can't tell you").
+degraded, per UTC day and per UTC hour. It is an **effect** measure: it shows where receivers on aircraft lost
+accuracy, not who caused it or why. On its own it is never evidence of deliberate jamming (see "What it can't tell you").
+
+There are two thresholds, because they answer different questions:
+
+| Measure | Threshold | What it is for |
+|---|---|---|
+| **Gross** (`bad_nacp`, `score`) | NACp < 8: estimated position uncertainty of 0.05 NM (about 93 m) or worse | Jamming-scale loss. Directly comparable with GPSJam's maps. NIC < 7 (`bad_nic`) is tracked alongside. |
+| **Accuracy** (`capable`, `cap_bad_acc10`) | NACp < 10 (uncertainty of 10 m or worse), counted **only for aircraft that reported NACp ≥ 10 at least once that day** | Finer degradation, including space weather. Storms degrade accuracy to tens of metres, rarely past 93 m (Phase 1.1 storm tests). Many aircraft without SBAS report NACp 9 all the time, so the raw NACp < 10 share (`bad_acc10`) mostly measures fleet equipage. Use the capable share. |
 
 ## How
 
@@ -16,24 +24,35 @@ who caused it or why. On its own it is never evidence of deliberate jamming (see
    - Position type **`adsb_icao`** only. MLAT, TIS-B and ADS-R positions are not the aircraft's own GNSS, and `~` addresses are non-ICAO.
    - **Airborne:** barometric altitude of 1,000 ft or more.
    - **Sampled at most once every 30 s** per aircraft, so slow and fast reporters weigh alike.
-2. **Bad report:** NACp < 8 (estimated position uncertainty of 0.05 NM, about 93 m, or worse). NIC < 7 (containment radius of 0.2 NM or more) is tracked alongside.
-3. **Bad aircraft in a hex:** 50% or more of its kept reports in that hex are bad.
-4. **Avionics suspects:**
-   - An aircraft that is bad in 95% or more of its reports, over 3 or more hours airborne, is dropped from every hex for that day.
-   - Persistently faulty avionics would otherwise paint whole routes. The daily count is published in the run summary.
-5. **Hex score:** `100 × max(bad − 1, 0) / (good + bad)`, the formula GPSJam publishes. Subtracting one bad aircraft keeps a single faulty aircraft from colouring a quiet hex.
-6. **Provenance:** each run records the input file names, their SHA-256 (hashed while streaming) and every method parameter in `YYYY-MM-DD.summary.json`.
+   - **Inside the UTC day** being processed.
+2. **Bad aircraft in a hex (or a hex-hour):** 50% or more of its kept reports there are bad on that measure.
+3. **Avionics suspects (peer test):**
+   - An aircraft is dropped from every hex for the day if **80% or more of its reports are gross-bad** and it is bad **where its peers are fine**.
+   - "Where its peers are fine" means this: of the hex-hours where it is bad and at least two other aircraft are present, 75% or more have fewer than 25% of those others bad. At least three such hex-hours are needed to judge.
+   - Faulty avionics are bad among healthy neighbours, while a jammed flight is bad among bad neighbours and stays in. (v1 dropped any aircraft bad for 95% of a 3-hour span, which also removed some genuinely jammed flights.)
+   - Each day's suspects are listed in the run summary by rough centre point, hours and type designator, with no identifiers.
+4. **Hex score:** `100 × max(bad − 1, 0) / (good + bad)`, the formula GPSJam publishes. Subtracting one bad aircraft keeps a single faulty aircraft from colouring a hex, including lone aircraft the peer test can't judge.
+5. **Public maps:**
+   - Colour only hexes with **5 or more aircraft**. Show 3–4 as low coverage, and leave out 1–2.
+   - On 16 Oct 2025, hexes with 3–4 aircraft scored red 2.0% of the time, against 1.3–1.4% for 5–49, because one extra bad aircraft is enough to tip them. 78% of hexes with data had 5 or more aircraft.
+6. **Outputs:**
+   - `YYYY-MM-DD.parquet`: daily per hex.
+   - `YYYY-MM-DD.hourly.parquet`: per hex and UTC hour.
+   - `YYYY-MM-DD.summary.json`: the input file names, their SHA-256 (hashed while streaming), counts and every method parameter.
 
 ## What it can't tell you
 
 - **Cause.** Jamming, spoofing, space weather, receiver faults and terrain masking can all lower NACp. Deliberate interference needs a separate corroborant, such as an official warning or operator or government reporting.
 - **Spoofing can look clean.** A spoofed receiver may report good NACp at a false position. Spoofing needs separate detectors (Phase 4).
+- **SBAS outages.** If EGNOS, WAAS or another SBAS goes down, capable aircraft drop to NACp 9 across its whole service area. The 10 m metric then reads high everywhere, as it did in Europe during EGNOS's 13–17 Oct 2025 loss of signal. Check SBAS service status before reading the 10 m metric. The 93 m metric is unaffected.
+- **Short bursts.** The hourly majority rule (50% of an aircraft's reports in the hour) dampens events of a few minutes. Use counts, not shares, for timing until a per-minute counter exists.
 - **Latching.** Some avionics hold NIC or NACp low until reset after landing, which smears an event downstream in time and space.
-- **Coverage.** adsb.lol depends on volunteer feeders. Sparse feeders mean few aircraft per hex and noisy scores, so read the `aircraft` column alongside `score`. No feeders means no data, not no interference.
+- **Coverage.** adsb.lol depends on volunteer feeders. Sparse feeders mean few aircraft per hex and noisy scores, so read `aircraft` alongside `score`. No feeders means no data, not no interference.
 - **Location.** A degraded aircraft is somewhere inside the jammer's reach, not at the jammer. Hex patterns along routes show where aircraft flew, not the transmitter.
-- **Time.** A daily figure hides when in the day the degradation happened. Hourly detail comes later.
-- **Space weather.** Geomagnetic storms can degrade GNSS widely, especially at high latitudes. Phase 1 validation includes a storm day (18 Oct 2025, max Kp 6.3) to measure this.
 
-## Validation (Phase 1)
+## Validation
 
-There are three test days, two quiet and one disturbed. They are compared against known, cited hotspots and, by eye only, against GPSJam's maps for the same dates. GPSJam is built on sources whose licences don't allow commercial use, so it is never an input. Results are in `docs/validation/phase1.md`.
+See `docs/validation/phase1.md`:
+
+- **Phase 1:** three test days compared against known, cited hotspots and, by eye only, against GPSJam's maps for the same dates. GPSJam is built on sources whose licences don't allow commercial use, so it is never an input.
+- **Phase 1.1:** v1 compared with v1.1, an hourly storm test at both thresholds, and coverage.

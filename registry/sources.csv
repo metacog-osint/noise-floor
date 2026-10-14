@@ -28,7 +28,7 @@ faa-ew-reports,FAA EW impact reports,declared,Pilot-report compilations by regio
 nasa-asrs,NASA ASRS,declared,Pilot narratives; long GPS-loss baseline,Public search,US gov,yes,cite-only,6,iw-guide-2026-10-13,
 marad-msci,MARAD MSCI advisories,declared,Maritime GNSS/AIS interference advisories,maritime.dot.gov,US gov,yes,ingest,2,iw-guide-2026-10-13,
 easa-czib,EASA CZIBs and SIB 2022-02,declared,Conflict-zone and standing GNSS interference bulletins,easa.europa.eu (HTML/PDF),Reuse terms UNVERIFIED,unverified,cite-only,2,tracker-2026-10-06 iw-guide-2026-10-13,
-ukmto,UKMTO warnings and advisories (incl. JMIC notes),declared,Maritime security warnings; JMIC notes carry the GNSS/AIS picture,sccd.royalnavy.mod.uk/api/ukmto/ (JSON; verified 2026-10-14),"Crown copyright (site footer); reuse terms UNVERIFIED",unverified,private-watch,2,live-2026-10-14,Courtesy: poll no more than every 30 min
+ukmto,UKMTO warnings and advisories (incl. JMIC notes),declared,Maritime security warnings; JMIC notes carry the GNSS/AIS picture,sccd.royalnavy.mod.uk/api/ukmto/ (JSON; verified 2026-10-14),Crown copyright (site footer); reuse terms UNVERIFIED,unverified,private-watch,2,live-2026-10-14,Courtesy: poll no more than every 30 min
 itu-rrb,ITU RRB summaries of decisions,declared,Formal satellite-jamming and GNSS-jamming cases,itu.int (PDF; three meetings a year),Reuse terms UNVERIFIED,unverified,cite-only,3,tracker-2026-10-06,Next meeting 26-30 Oct 2026; build the interference register from cited facts
 iarums,IARU Region 1 monitoring newsletters,declared,Monthly OTH radar/jammer/intruder logs,Public PDFs,Reuse terms UNVERIFIED,unverified,cite-only,6,iw-guide-2026-10-13,
 operator-disclosures,Satellite operator disclosures,declared,Operator-reported jamming (e.g. Eutelsat on Iran 2022),Press and filings,Per source,unverified,cite-only,3,tracker-2026-10-06,
@@ -64,7 +64,7 @@ arcticdem,ArcticDEM strips,emitters,2 m time-stamped DEMs 2007-present,AWS S3 + 
 rss-trade-press,RSS: GNSS and defense trade press,community,"Articles (RNTF, GPS World, Inside GNSS, Naval News, etc.)",Public RSS,Copyrighted articles,unverified,cite-only,6,iw-guide-2026-10-13,Extract facts with link; never republish text
 reddit-api,Reddit API (free tier),community,Posts in radio/aviation/defense subreddits,OAuth,Non-commercial free tier,no,exclude,,iw-guide-2026-10-13,
 reddit-dumps,Reddit history (Arctic Shift; Academic Torrents),community,Historical posts,Dumps,Reddit terms (non-commercial),no,exclude,,iw-guide-2026-10-13,
-bluesky-jetstream,Bluesky Jetstream,community,Public post stream,Jetstream,Terms UNVERIFIED,unverified,cite-only,6,iw-guide-2026-10-13,
+bluesky-jetstream,Bluesky (Jetstream and public AppView API),community,Public posts and threads incl. image alt text,Jetstream; public.api.bsky.app XRPC (no auth; verified 2026-10-14),Terms UNVERIFIED,unverified,cite-only,6,iw-guide-2026-10-13 live-2026-10-14,Accounts to follow are watch config: keep the list private
 mastodon,Mastodon,community,Public posts,Per-instance API,Per-instance terms (UNVERIFIED),unverified,cite-only,6,iw-guide-2026-10-13,
 telegram,Telegram public channels,community,Milblogger and unit channels,Official API via Telethon,Telegram API terms (UNVERIFIED),unverified,cite-only,6,iw-guide-2026-10-13,Store channel and post URL only; no usernames
 bawa-2025,Bawa et al. 2025 Telegram dataset,community,518 channels; ~5.2M posts Dec 2020-Apr 2023,Figshare,Dataset licence UNVERIFIED,unverified,later,6,iw-guide-2026-10-13,
@@ -81,3 +81,6 @@ opencellid,OpenCelliD,attribution,Cell tower locations,API,CC BY-SA 4.0 data; AP
 wigle,WiGLE,attribution,Wi-Fi/cell observations,API,Non-commercial,no,exclude,,iw-guide-2026-10-13,
 gdelt,GDELT,attribution,Conflict and event context,gdeltproject.org,Open with citation (UNVERIFIED),unverified,ingest-after-ok,6,iw-guide-2026-10-13,
 acled,ACLED,attribution,Conflict events,API (registration),Registration; commercial use restricted (UNVERIFIED),ask,ingest-after-ok,6,iw-guide-2026-10-13,
+egnos-status,"EGNOS service notices, historical status and monthly performance reports",context,SBAS service outages and degradations in Europe (e.g. total loss of SiS 13-17 Oct 2025),egnos.gsc-europa.eu (HTML/PDF),EU agency publication; reuse terms UNVERIFIED,unverified,cite-only,2,live-2026-10-14,Exclusion layer for the 10 m metric: capable aircraft drop to NACp 9 when EGNOS is down
+faa-waas-notam,FAA WAAS NOTAMs and status,context,WAAS outages and LPV unavailability in North America,FAA NOTAM system / WAAS status pages,US gov,yes,ingest,2,claude-2026-10-14,Exclusion layer for the 10 m metric in North America; access path UNVERIFIED
+gfz-kp,GFZ Potsdam Kp index,context,3-hourly planetary geomagnetic index,kp.gfz.de JSON API (no auth; verified 2026-10-14),CC BY 4.0,yes,ingest,1,live-2026-10-14,Used to pick and check storm test days

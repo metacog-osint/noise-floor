@@ -7,7 +7,7 @@ The registry merges two research passes:
 - `docs/research/2026-10-06-sources.md` (tag `tracker-2026-10-06`)
 - the Interference Watch planning guide of 13 Oct 2026 (tag `iw-guide-2026-10-13`). Its licence verdicts were **not** independently checked unless another tag says so.
 
-The live checks of 14 Oct 2026 are tagged `live-2026-10-14`.
+The live checks of 14 Oct 2026 are tagged `live-2026-10-14`. Rows tagged `claude-YYYY-MM-DD` were added from working knowledge without being fetched, so treat their access and licence fields as UNVERIFIED.
 
 ## Columns
 
