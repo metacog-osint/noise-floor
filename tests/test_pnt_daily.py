@@ -100,7 +100,12 @@ def test_day():
         jh = sorted(r["hour"] for r in h if r["h3"] == jm["h3"])
         assert jh == [0, 1, 2, 3] and all(r["bad_nacp"] == 4 for r in h if r["h3"] == jm["h3"]), jh
         assert max(r["hour"] for r in h) == 4 and min(r["hour"] for r in h) == 0, "300-min lone flight spans hours 0-4"
-        assert json.load(open(os.path.join(out, "2025-10-16.summary.json")))["method_version"] == "1.1"
+        m = pq.read_table(os.path.join(out, "2025-10-16.minute.parquet")).to_pylist()
+        jm_min = [r for r in m if r["h3"] == jm["h3"]]
+        assert len(jm_min) == 240 and all(r["bad_nacp"] == 4 for r in jm_min), "4 jammed aircraft every minute for 4 h"
+        q_cell = q["h3"]
+        assert not [r for r in m if r["h3"] == q_cell], "dropped suspect leaves no bad minutes"
+        assert json.load(open(os.path.join(out, "2025-10-16.summary.json")))["method_version"] == "1.2"
     finally:
         shutil.rmtree(tmp)
 

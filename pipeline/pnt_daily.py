@@ -20,6 +20,7 @@ bytes are SHA-256 hashed during the same pass, for provenance.
 Output (in --out, default data/pnt/daily):
   YYYY-MM-DD.parquet         h3, lat, lon, aircraft, bad_nacp, bad_nic, bad_acc10, score, score_acc10, capable, cap_bad_acc10
   YYYY-MM-DD.hourly.parquet  h3, hour, aircraft, bad_nacp, bad_nic, bad_acc10, capable, cap_bad_acc10
+  YYYY-MM-DD.minute.parquet  h3, minute (0-1439), bad_nacp (aircraft with a gross-bad report that minute; nonzero rows only)
   YYYY-MM-DD.summary.json    inputs, hashes, counts, timings, method parameters, suspect diagnostics
 
 Usage
@@ -32,7 +33,7 @@ from multiprocessing import Pool
 
 import h3, orjson
 
-METHOD_VERSION = "1.1"
+METHOD_VERSION = "1.2"
 RES = 4
 GOOD_TYPES = {"adsb_icao"}
 NACP_BAD = 8          # gross: NACp < 8, EPU >= 0.05 NM (93 m)
@@ -87,7 +88,8 @@ def day_parts(raw_dir, day):
 def score_trace(raw, day0):
     """One trace file -> aircraft record, or None if not usable.
 
-    Record: (cells, meta). cells: {(h3_int, hour): [reports, gross_bad, nic_bad, acc_bad]};
+    Record: (cells, meta, bad_minutes). cells: {(h3_int, hour): [reports, gross_bad, nic_bad, acc_bad]};
+    bad_minutes: sorted {(h3_int, minute_of_day)} with at least one gross-bad report (for burst timing);
     meta: (used, gross_bad, sum_lat, sum_lon, first_t, last_t, type, acc_capable).
     acc_capable: the aircraft reported NACp >= 10 at least once that day, so NACp < 10 is a change for it, not its
     normal equipage (many aircraft without SBAS report NACp 9 all the time).
@@ -104,6 +106,7 @@ def score_trace(raw, day0):
     cells = defaultdict(lambda: [0, 0, 0, 0])
     used = gross = 0
     cap = False
+    bad_min = set()
     sum_lat = sum_lon = 0.0
     for p in d.get("trace", []):
         det = p[8] if len(p) > 8 else None
@@ -123,15 +126,18 @@ def score_trace(raw, day0):
         first_t = p[0] if first_t is None else first_t
         last_used_t = p[0]
         used += 1
-        c = cells[(h3.str_to_int(h3.latlng_to_cell(p[1], p[2], RES)), hour)]
+        hx = h3.str_to_int(h3.latlng_to_cell(p[1], p[2], RES))
+        c = cells[(hx, hour)]
         g = nacp < NACP_BAD
+        if g:
+            bad_min.add((hx, int((base + p[0] - day0) // 60)))
         c[0] += 1; c[1] += g; c[2] += nic < NIC_BAD; c[3] += nacp < NACP_ACC
         gross += g
         cap = cap or nacp >= NACP_ACC
         sum_lat += p[1]; sum_lon += p[2]
     if not used:
-        return {}, (0, 0, 0.0, 0.0, 0, 0, "", False)
-    return dict(cells), (used, gross, sum_lat, sum_lon, first_t, last_used_t, d.get("t") or "", cap)
+        return {}, (0, 0, 0.0, 0.0, 0, 0, "", False), []
+    return dict(cells), (used, gross, sum_lat, sum_lon, first_t, last_used_t, d.get("t") or "", cap), sorted(bad_min)
 
 
 def work(args):
@@ -147,9 +153,8 @@ def work(args):
         if r is None:
             st["non_icao"] += 1
             continue
-        cells, meta = r
-        if meta[0]:
-            recs.append((cells, meta))
+        if r[1][0]:
+            recs.append(r)
     return recs, dict(st)
 
 
@@ -173,11 +178,11 @@ def is_bad(c, k):
 def find_suspects(recs):
     """Peer test. Returns a set of record indexes to drop and a diagnostic list."""
     tot = defaultdict(lambda: [0, 0])   # (hex, hour) -> [aircraft, gross-bad aircraft]
-    for cells, _ in recs:
+    for cells, *_ in recs:
         for key, c in cells.items():
             t = tot[key]; t[0] += 1; t[1] += is_bad(c, 1)
     drop, where = set(), []
-    for i, (cells, meta) in enumerate(recs):
+    for i, (cells, meta, _) in enumerate(recs):
         used, gross, slat, slon, t0, t1, typ, _ = meta
         if gross < SUSPECT_BAD_FRAC * used:
             continue
@@ -201,6 +206,7 @@ def aggregate(recs, drop):
     # hex (or (hex, hour)) -> [aircraft, gross, nic, acc, capable aircraft, capable aircraft acc-bad]
     daily = defaultdict(lambda: [0, 0, 0, 0, 0, 0])
     hourly = defaultdict(lambda: [0, 0, 0, 0, 0, 0])
+    minute = defaultdict(int)                    # (hex, minute) -> aircraft with a gross-bad report
 
     def add(t, c, cap):
         acc = is_bad(c, 3)
@@ -208,10 +214,12 @@ def aggregate(recs, drop):
         if cap:
             t[4] += 1; t[5] += acc
 
-    for i, (cells, meta) in enumerate(recs):
+    for i, (cells, meta, bad_minutes) in enumerate(recs):
         if i in drop:
             continue
         cap = meta[7]
+        for key in bad_minutes:
+            minute[key] += 1
         per_hex = defaultdict(lambda: [0, 0, 0, 0])
         for (hx, hour), c in cells.items():
             add(hourly[(hx, hour)], c, cap)
@@ -220,7 +228,7 @@ def aggregate(recs, drop):
                 ph[k] += c[k]
         for hx, c in per_hex.items():   # daily: the aircraft's reports in the hex over the whole day
             add(daily[hx], c, cap)
-    return daily, hourly
+    return daily, hourly, minute
 
 
 def score(bad, n):
@@ -241,7 +249,7 @@ def run(day, raw_dir, out_dir, workers):
     chain = stream.raw
     t_read = time.time() - t0
     drop, where = find_suspects(recs)
-    daily, hourly = aggregate(recs, drop)
+    daily, hourly, minute = aggregate(recs, drop)
     secs = time.time() - t0
 
     import pyarrow as pa, pyarrow.parquet as pq
@@ -273,12 +281,18 @@ def run(day, raw_dir, out_dir, workers):
         "capable": [v[4] for _, v in hrows],
         "cap_bad_acc10": [v[5] for _, v in hrows],
     }), os.path.join(out_dir, f"{day}.hourly.parquet"), compression="zstd")
+    mrows = sorted(minute.items())
+    pq.write_table(pa.table({
+        "h3": [h3.int_to_str(hx) for (hx, _), _ in mrows],
+        "minute": pa.array([m for (_, m), _ in mrows], pa.int16()),
+        "bad_nacp": pa.array([v for _, v in mrows], pa.int32()),
+    }), os.path.join(out_dir, f"{day}.minute.parquet"), compression="zstd")
     summary = {
         "day": day, "method_version": METHOD_VERSION, "inputs": [os.path.basename(p) for p in parts],
         "input_bytes": chain.nbytes, "input_sha256": chain.sha.hexdigest(),
         "seconds": round(secs, 1), "seconds_read": round(t_read, 1), "workers": workers,
         "hexes": len(rows), "hex_hours": len(hrows), "aircraft": len(recs), "avionics_suspects": len(drop),
-        "reports_used": sum(m[0] for _, m in recs),
+        "reports_used": sum(m[0] for _, m, _ in recs), "bad_hex_minutes": len(minute),
         **{k: st.get(k, 0) for k in ("files", "non_icao", "parse_errors")},
         "method": {"h3_res": RES, "types": sorted(GOOD_TYPES), "adsb_version": 2, "nacp_bad_below": NACP_BAD,
                    "nic_bad_below": NIC_BAD, "nacp_acc_bad_below": NACP_ACC,
