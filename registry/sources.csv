@@ -1,0 +1,83 @@
+id,name,lane,gives,access,licence,commercial,use,phase,assessed,notes
+adsblol-archive,adsb.lol daily archive (globe_history),gnss-observed,Worldwide readsb traces with nic/nac_p/sil/version/gva/alt_geom; ~3.7 GB/day; posted ~03:25 UTC next day,github.com/adsblol/globe_history_2026,ODbL 1.0 (feeders waive under CC0),yes,ingest,1,tracker-2026-10-06 live,Backbone. Derived downloadable hex data is published under ODbL with attribution; never blend non-ODbL sources into it
+adsblol-live,adsb.lol live API,gnss-observed,Near-real-time incl. nic/nac_p/gpsOkBefore; point queries up to 250 NM,api.adsb.lol,ODbL 1.0,ask,ingest-after-ok,2,tracker-2026-10-06,"Site says ""contact me"" for production use; permission request pending (DESIGN decision 4)"
+airplanes-live,airplanes.live,gnss-observed,Live ADS-B,API (returned 403),Terms: no commercial use or automated access without approval,no,exclude,,tracker-2026-10-06,
+adsbfi,adsb.fi open data,gnss-observed,Live ADS-B with nac_p,github.com/adsbfi/opendata,Personal non-commercial,no,exclude,,tracker-2026-10-06,
+adsbx,ADS-B Exchange,gnss-observed,Live ADS-B,api-lite,Community tier non-commercial; enterprise by quote,no,exclude,,tracker-2026-10-06,
+opensky,OpenSky Network,gnss-observed,REST has no NIC/NACp; Trino for researchers and government,REST / Trino,Commercial use needs a licence,no,exclude,,tracker-2026-10-06,
+stanford-rfi,Stanford RFI maps,gnss-observed,ADS-B jamming and spoofing maps,rfi.stanford.edu,CC BY-NC 4.0,no,visual-only,1,tracker-2026-10-06,Visual comparison in the validation report only
+gpsjam,GPSJam daily hex files,gnss-observed,Daily % aircraft with low NACp per H3 res-4 hex; score 100*(bad-1)/(good+bad),gpsjam.org/data/<date>-h3_4.csv (verified 2026-10-14; ~48k rows/day),No licence; built on airplanes.live and ADSBx,no,visual-only,1,tracker-2026-10-06 live-2026-10-14,Validation comparison only (side-by-side maps); emso-watch gpsjam.py is not a pipeline input
+cygnss-l1,NASA CYGNSS L1 (GNSS-R),gnss-observed,Delay-Doppler maps and SNR within +/-38 deg latitude; jammer localization method,NASA PO.DAAC (Earthdata login),NASA Earth science open data policy (UNVERIFIED for this product),unverified,later,7,iw-guide-2026-10-13,Verify product licence before use
+nisar-gcov,NISAR L2 GCOV (L-band SAR),gnss-observed,Jammer streaks in L-band SAR,ASF (Earthdata login),NASA open data policy (UNVERIFIED; joint NASA-ISRO mission),unverified,later,7,iw-guide-2026-10-13,Provisional products from 17 Jun 2026 per guide (UNVERIFIED)
+cosmic2-ro,COSMIC-2 radio occultation,gnss-observed,Deep-occultation amplitude as ground jamming power (Wu 2024),UCAR CDAAC,UCAR terms (UNVERIFIED),unverified,later,7,iw-guide-2026-10-13,
+smap-rfi,NASA SMAP RFI,gnss-observed,L-band (1.4 GHz) emitter maps,NASA NSIDC/Earthdata,NASA open data policy (UNVERIFIED for this product),unverified,later,7,iw-guide-2026-10-13,
+smos-rfi,ESA SMOS RFI,gnss-observed,L-band (1.4 GHz) emitter maps,ESA,ESA data policy (UNVERIFIED),unverified,later,7,iw-guide-2026-10-13,
+cors-igs,CORS / IGS RINEX (incl. IGS MGEX),gnss-observed,Station SNR/C/N0 for interference (SWEPOS method); multi-constellation,NASA CDDIS (Earthdata) and national CORS portals,NASA open; national portals vary (UNVERIFIED),unverified,later,7,iw-guide-2026-10-13,Check each national portal separately
+vt-gnss-rfi,Virginia Tech GNSS RFI map,gnss-observed,Interference across ~1264 CORS/IGS stations,Public map; export unknown,Unknown,unverified,visual-only,7,iw-guide-2026-10-13,
+digitraffic-ais,Digitraffic AIS (Finland),maritime,AIS in Finnish waters incl. Gulf of Finland; REST and MQTT,digitraffic.fi,CC BY 4.0 (stated),yes,ingest,4,tracker-2026-10-06,
+kystverket-ais,Kystverket AIS (Norway),maritime,Norwegian coast to Finnmark; TCP feed and BarentsWatch API,kystverket.no,NLOD (licence text not read),yes,ingest,4,tracker-2026-10-06,NLOD text UNVERIFIED
+noaa-marinecadastre,NOAA MarineCadastre AIS,maritime,US waters 2009-2025,fisheries.noaa.gov,"US gov; use constraint ""coastal and ocean planning"" (UNVERIFIED)",ask,ingest-after-ok,4,tracker-2026-10-06,
+aisstream,aisstream.io,maritime,Global live AIS WebSocket,aisstream.io,No terms page found,ask,ingest-after-ok,4,tracker-2026-10-06,
+aishub,AISHub,maritime,AIS,Contributors only,Contributor terms,no,exclude,,tracker-2026-10-06,
+gfw,Global Fishing Watch,maritime,AIS-derived,API,CC BY-NC,no,exclude,,tracker-2026-10-06,
+nga-msi,NGA MSI broadcast warnings,declared,NAVAREA IV/XII and HYDROLANT/HYDROPAC warnings incl. GPS mentions,msi.nga.mil/api/publications/broadcast-warn (JSON; verified 2026-10-14),US gov (licence statement not found),yes,ingest,2,tracker-2026-10-06 live-2026-10-14,issueDate is a DTG (101133Z MAY 2024); in-force warnings go back to 2021; no Baltic/Black Sea coverage
+navcen-gps-tests,USCG NAVCEN GPS interference test notices,declared,Test areas with coordinates and radii,navcen.uscg.gov (PDF),US gov,yes,ingest,2,tracker-2026-10-06,
+navcen-reports,USCG NAVCEN GPS problem reports,declared,Anonymized user GNSS problem reports,navcen.uscg.gov (HTML; no API),US gov,yes,ingest,2,tracker-2026-10-06 iw-guide-2026-10-13,Reports are unverified by NAVCEN
+faa-notam,FAA NOTAM Management Service,declared,GPS tests and interference NOTAMs,API by request to FAA,US gov,ask,ingest-after-ok,4,tracker-2026-10-06,Access request needed
+faa-ew-reports,FAA EW impact reports,declared,Pilot-report compilations by region,Public PDFs,US gov,yes,cite-only,2,iw-guide-2026-10-13,
+nasa-asrs,NASA ASRS,declared,Pilot narratives; long GPS-loss baseline,Public search,US gov,yes,cite-only,6,iw-guide-2026-10-13,
+marad-msci,MARAD MSCI advisories,declared,Maritime GNSS/AIS interference advisories,maritime.dot.gov,US gov,yes,ingest,2,iw-guide-2026-10-13,
+easa-czib,EASA CZIBs and SIB 2022-02,declared,Conflict-zone and standing GNSS interference bulletins,easa.europa.eu (HTML/PDF),Reuse terms UNVERIFIED,unverified,cite-only,2,tracker-2026-10-06 iw-guide-2026-10-13,
+ukmto,UKMTO warnings and advisories (incl. JMIC notes),declared,Maritime security warnings; JMIC notes carry the GNSS/AIS picture,sccd.royalnavy.mod.uk/api/ukmto/ (JSON; verified 2026-10-14),"Crown copyright (site footer); reuse terms UNVERIFIED",unverified,private-watch,2,live-2026-10-14,Courtesy: poll no more than every 30 min
+itu-rrb,ITU RRB summaries of decisions,declared,Formal satellite-jamming and GNSS-jamming cases,itu.int (PDF; three meetings a year),Reuse terms UNVERIFIED,unverified,cite-only,3,tracker-2026-10-06,Next meeting 26-30 Oct 2026; build the interference register from cited facts
+iarums,IARU Region 1 monitoring newsletters,declared,Monthly OTH radar/jammer/intruder logs,Public PDFs,Reuse terms UNVERIFIED,unverified,cite-only,6,iw-guide-2026-10-13,
+operator-disclosures,Satellite operator disclosures,declared,Operator-reported jamming (e.g. Eutelsat on Iran 2022),Press and filings,Per source,unverified,cite-only,3,tracker-2026-10-06,
+noaa-swpc,NOAA SWPC alerts,context,Space-weather alerts and warnings,services.swpc.noaa.gov (JSON; verified 2026-10-14),US gov public domain,yes,ingest,2,live-2026-10-14,
+noaa-glotec,NOAA GloTEC,context,Global TEC,services.swpc.noaa.gov/products/glotec,US gov public domain,yes,ingest,1,tracker-2026-10-06,
+esa-swe-scint,ESA SWE scintillation maps,context,S4 index,ESA SWE (login),Login required; terms UNVERIFIED,ask,ingest-after-ok,6,tracker-2026-10-06,
+cas-roti,CAS ROTI maps,context,ROTI,CAS,Non-commercial,no,exclude,,tracker-2026-10-06,
+e-callisto,e-CALLISTO,context,45-870 MHz solar radio spectrograms,e-callisto.org,Terms UNVERIFIED,unverified,later,6,iw-guide-2026-10-13,
+madrigal-tec,MIT Madrigal TEC,context,TEC and scintillation context,cedar.openmadrigal.org,Terms UNVERIFIED (citation requested),unverified,later,6,iw-guide-2026-10-13,
+giro,GIRO ionosondes,context,Ionosonde data,giro.uml.edu,Terms UNVERIFIED,unverified,later,6,iw-guide-2026-10-13,
+era5,ERA5 refractivity (Copernicus CDS),context,Refractivity for ducting checks,Copernicus CDS (free account),Copernicus licence (attribution; commercial use allowed),yes,ingest,6,iw-guide-2026-10-13,Licence text UNVERIFIED for CDS specifically
+uwyo-soundings,University of Wyoming soundings,context,Radiosonde soundings for ducting,weather.uwyo.edu,Terms UNVERIFIED,unverified,later,6,iw-guide-2026-10-13,
+ripe-atlas,RIPE Atlas,satcom,131 connected Starlink probes (6 Oct); none on other satcom ASNs,atlas.ripe.net API,Commercial use needs RIPE NCC permission (terms 4.5),ask,ingest-after-ok,3,tracker-2026-10-06,Permission request pending (DESIGN decision 4)
+ioda,IODA (Georgia Tech),satcom,National and AS-level outages incl. AS14593,api.ioda.inetintel.cc.gatech.edu/v2 (verified 2026-10-14),"""All Rights Reserved"" in responses",ask,ingest-after-ok,2,tracker-2026-10-06 live-2026-10-14,Permission request pending (DESIGN decision 4); blind to localized satcom jamming
+mlab-ndt,M-Lab NDT,satcom,Speed tests via BigQuery; 24 h lag,measurementlab.net,CC0,yes,ingest,3,tracker-2026-10-06,
+cloudflare-radar,Cloudflare Radar,satcom,Starlink traffic anomalies; outage annotations,API (free token),CC BY-NC,no,visual-only,,tracker-2026-10-06,
+ooni,OONI,satcom,Censorship measurements,api.ooni.io,CC BY-NC-SA,no,exclude,,tracker-2026-10-06,
+ookla,Ookla open data,satcom,Speed tests,Ookla,Non-commercial,no,exclude,,tracker-2026-10-06,
+kingofsat,KingOfSat channel listings,satcom,GEO channel removals at watched slots,en.kingofsat.net (HTML; parser verified 2026-10-14),Terms UNVERIFIED,unverified,private-watch,2,live-2026-10-14,A listing change is not a reception report; courtesy: hourly at most
+celestrak,CelesTrak GP data,satcom,GEO orbital elements for the inspector watch list,celestrak.org,No explicit licence (UNVERIFIED); usage policy: check every 2 h,unverified,ingest-after-ok,3,tracker-2026-10-06,GEO public-TLE errors 20-80 km: no separations under ~50 km
+space-track,Space-Track,satcom,TLE/SATCAT,space-track.org (account),Basic TLE/SATCAT redistributable with citation; derived analysis needs prior approval,ask,ingest-after-ok,3,tracker-2026-10-06,18 SDS permission request later (DESIGN decision 4)
+df6nm-dl0ao,DF6NM DL0AO LoranGrabber (Chayka),lf-hf,LF 88-112 kHz monitor image from Amberg DE; Loran/Chayka on/off,vlf.u01.de/LF/LFgrabber/lorvw.jpg,Personal site; terms UNVERIFIED,unverified,private-watch,2,live-2026-10-14,Incomplete TLS chain (CA fallback in emso-watch patch); image 12.5 h old on 14 Oct; courtesy: 15 min at most
+kiwisdr,KiwiSDR public receivers,lf-hf,HF waterfalls and TDoA; LF from some sites,kiwisdr.com,Per-receiver owner terms (UNVERIFIED),unverified,later,7,tracker-2026-10-06 iw-guide-2026-10-13,
+hfcc-eibi,HFCC schedules / EiBi lists,lf-hf,HF broadcast baseline,hfcc.org / eibispace.de,Terms UNVERIFIED,unverified,later,6,iw-guide-2026-10-13,
+sentinel1-rfi,Copernicus Sentinel-1 L1 RFI annotation,emitters,Per-burst RFI power ratio / max PSD / % bandwidth (C-band radars),Copernicus Data Space (free account),Copernicus Sentinel data legal notice (free incl. commercial),yes,ingest,5,tracker-2026-10-06 iw-guide-2026-10-13,Reimplement Bellingcat's method on L1 annotations; don't use Earth Engine
+earth-engine,Google Earth Engine (Bellingcat RIT runs here),emitters,Monthly RFI composites,earthengine.google.com,Non-commercial tier,no,exclude,,iw-guide-2026-10-13,
+aresys-rfi,ESA/Aresys Sentinel-1 RFI maps,emitters,Per-cycle RFI probability maps since Jun 2019,Public site; downloads gated,Terms UNVERIFIED,unverified,visual-only,5,iw-guide-2026-10-13,May be stale
+fmi-radar,FMI weather radar volumes,emitters,Raw ODIM HDF5 from every Finnish radar (RFI spokes),AWS S3 fmi-opendata-radar-volume-hdf5 (no account),CC BY 4.0,yes,ingest,5,iw-guide-2026-10-13,Sample (lowest sweep; hourly) to fit free minutes
+dwd-radar,DWD weather radar volumes,emitters,ODIM volumes (RFI spokes; DWD method),opendata.dwd.de,DWD open data terms (UNVERIFIED; GeoNutzV expected),unverified,ingest-after-ok,5,iw-guide-2026-10-13,
+eumetnet-opera,EUMETNET OPERA / Open Radar Data API,emitters,Composites and volumes; radar site list,MeteoGate API,Terms UNVERIFIED,unverified,ingest-after-ok,5,iw-guide-2026-10-13,
+umbra-sar,Umbra open SAR,emitters,16 cm-1 m X-band samples,AWS S3,CC BY 4.0,yes,later,7,iw-guide-2026-10-13,
+arcticdem,ArcticDEM strips,emitters,2 m time-stamped DEMs 2007-present,AWS S3 + STAC,CC BY 4.0 (per guide; UNVERIFIED),unverified,later,7,iw-guide-2026-10-13,
+rss-trade-press,RSS: GNSS and defense trade press,community,"Articles (RNTF, GPS World, Inside GNSS, Naval News, etc.)",Public RSS,Copyrighted articles,unverified,cite-only,6,iw-guide-2026-10-13,Extract facts with link; never republish text
+reddit-api,Reddit API (free tier),community,Posts in radio/aviation/defense subreddits,OAuth,Non-commercial free tier,no,exclude,,iw-guide-2026-10-13,
+reddit-dumps,Reddit history (Arctic Shift; Academic Torrents),community,Historical posts,Dumps,Reddit terms (non-commercial),no,exclude,,iw-guide-2026-10-13,
+bluesky-jetstream,Bluesky Jetstream,community,Public post stream,Jetstream,Terms UNVERIFIED,unverified,cite-only,6,iw-guide-2026-10-13,
+mastodon,Mastodon,community,Public posts,Per-instance API,Per-instance terms (UNVERIFIED),unverified,cite-only,6,iw-guide-2026-10-13,
+telegram,Telegram public channels,community,Milblogger and unit channels,Official API via Telethon,Telegram API terms (UNVERIFIED),unverified,cite-only,6,iw-guide-2026-10-13,Store channel and post URL only; no usernames
+bawa-2025,Bawa et al. 2025 Telegram dataset,community,518 channels; ~5.2M posts Dec 2020-Apr 2023,Figshare,Dataset licence UNVERIFIED,unverified,later,6,iw-guide-2026-10-13,
+warspotting,WarSpotting API,community,Russian losses by type/date/location/unit,API (no key; 10 req/10 s),All rights reserved (analysis only),ask,ingest-after-ok,6,iw-guide-2026-10-13,
+sigidwiki,sigidwiki,community,Signal identification wiki changes,MediaWiki API,Wiki licence UNVERIFIED,unverified,cite-only,6,iw-guide-2026-10-13,
+x-twitter,X,community,Posts,Paid API,Paid,no,exclude,,iw-guide-2026-10-13,
+fcc-uls,FCC ULS,attribution,US licensed transmitters,fcc.gov,US gov,yes,ingest,6,iw-guide-2026-10-13,
+intl-licence-registers,ACMA RRL / ISED / Ofcom registers,attribution,Licensed transmitters (AU/CA/UK),Regulator sites,Per regulator (UNVERIFIED),unverified,ingest-after-ok,6,iw-guide-2026-10-13,
+itu-mifr,ITU MIFR,attribution,International frequency register,ITU,Terms UNVERIFIED (may be restricted),unverified,later,6,iw-guide-2026-10-13,
+wmo-radar-db,WMO Radar Database,attribution,Weather radar sites and bands,Focal-point access,Restricted access,ask,ingest-after-ok,6,iw-guide-2026-10-13,
+ourairports,OurAirports navaids,attribution,Navaid locations and frequencies,ourairports.com CSV,Public domain,yes,ingest,6,iw-guide-2026-10-13,
+osm-overpass,OpenStreetMap (Overpass),attribution,Mast/antenna/radar tags,Overpass API,ODbL 1.0,yes,ingest,6,iw-guide-2026-10-13,Attribution; derived databases share-alike under ODbL
+opencellid,OpenCelliD,attribution,Cell tower locations,API,CC BY-SA 4.0 data; API terms UNVERIFIED,unverified,later,6,iw-guide-2026-10-13,Guide marked non-commercial; recheck
+wigle,WiGLE,attribution,Wi-Fi/cell observations,API,Non-commercial,no,exclude,,iw-guide-2026-10-13,
+gdelt,GDELT,attribution,Conflict and event context,gdeltproject.org,Open with citation (UNVERIFIED),unverified,ingest-after-ok,6,iw-guide-2026-10-13,
+acled,ACLED,attribution,Conflict events,API (registration),Registration; commercial use restricted (UNVERIFIED),ask,ingest-after-ok,6,iw-guide-2026-10-13,
