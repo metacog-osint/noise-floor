@@ -80,7 +80,7 @@ def kp_hours(day):
     """GFZ Kp (CC BY 4.0) for the day as {hour: kp}, None if unreachable."""
     try:
         url = f"https://kp.gfz.de/app/json/?start={day}T00:00:00Z&end={day}T23:59:59Z&index=Kp"
-        d = json.load(urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "emso-tracker (research)"}), timeout=30))
+        d = json.load(urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "noise-floor (research)"}), timeout=30))
         return {int(t[11:13]) + i: k for t, k in zip(d["datetime"], d["Kp"]) for i in range(3)}
     except Exception:
         return None

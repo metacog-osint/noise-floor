@@ -25,7 +25,7 @@ from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API = "https://public.api.bsky.app/xrpc"
-UA = {"User-Agent": "emso-tracker community collector (research)"}
+UA = {"User-Agent": "noise-floor community collector (research)"}
 ACCOUNTS = os.path.join(ROOT, "private", "watch", "bluesky_accounts.txt")
 KEYWORDS = os.path.join(ROOT, "private", "watch", "keywords.txt")
 RAW = os.path.join(ROOT, "data", "raw", "bluesky")

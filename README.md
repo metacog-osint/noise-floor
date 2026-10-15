@@ -1,4 +1,4 @@
-# EMSO tracker (working name)
+# Noise Floor
 
 This is an open-source picture of where the electromagnetic spectrum is being contested and what that does to positioning, navigation and timing (PNT) and to satellite communications. It is built only from sources whose licences allow it, and every source is recorded in a licence registry before it is used. The project belongs to The Intelligence Company.
 
@@ -58,4 +58,4 @@ Watch configuration (areas of interest, keywords, followed accounts, alert histo
 
 ## Licence
 
-**Code:** no licence has been chosen yet, so all rights are reserved for now. **Data outputs:** ODbL 1.0, as derived from adsb.lol.
+**Code:** MIT (see [`LICENSE`](LICENSE)). **Data outputs:** ODbL 1.0, as derived from adsb.lol. Validation figures carry their own attribution.

@@ -1,4 +1,6 @@
-# EMSO tracker: project notes for Claude
+# Noise Floor: project notes for Claude
+
+Product name decided 14 Oct 2026: **Noise Floor** (repo `noise-floor`; local folder still `emso-tracker`).
 
 Tom's own project under **The Intelligence Company**, to be hosted on theintelligence.company. Restarted 6 Oct 2026.
 **Merged with Interference Watch on 14 Oct 2026.** The "Merged plan" section at the end of `docs/DESIGN.md` decides what wins.
@@ -6,7 +8,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
 **Also read `CLAUDE.local.md` if present.** It holds private notes that are deliberately kept out of this public repo.
 
 ## Hard rules
-- **This repo is public.** No employer names, old-project names, credentials, personal paths or watch configuration
+- **This repo is public:** https://github.com/metacog-osint/noise-floor (created and first pushed 14 Oct 2026; CI checks the private
+  term list from the `FORBIDDEN_TERMS` secret). No employer names, old-project names, credentials, personal paths or watch configuration
   (AOIs, keywords, watch lists, alert history) in tracked files. Those go in `CLAUDE.local.md`, `private/` (gitignored)
   or the private store. The pre-commit hook `tools/check_public.py` enforces a private term list.
 - **Nothing from Tom's employer or its projects.** No code, names, accounts or infrastructure (details in `CLAUDE.local.md`).

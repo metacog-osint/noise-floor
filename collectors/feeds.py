@@ -26,7 +26,7 @@ FEEDS = os.path.join(ROOT, "private", "watch", "feeds.txt")
 KEYWORDS = os.path.join(ROOT, "private", "watch", "keywords.txt")
 RAW = os.path.join(ROOT, "data", "raw", "feeds")
 OUT = os.path.join(ROOT, "data", "community", "feeds")
-UA = {"User-Agent": "emso-tracker feed collector (research)", "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.5"}
+UA = {"User-Agent": "noise-floor feed collector (research)", "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.5"}
 A = "{http://www.w3.org/2005/Atom}"
 
 

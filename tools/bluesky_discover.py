@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API = "https://public.api.bsky.app/xrpc"
-UA = {"User-Agent": "emso-tracker account discovery (research)"}
+UA = {"User-Agent": "noise-floor account discovery (research)"}
 OUT = os.path.join(ROOT, "private", "watch")
 PAUSE_S = 0.35
 
