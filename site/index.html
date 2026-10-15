@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noise Floor</title>
+<meta name="description" content="An open, licence-clean picture of contested spectrum: GNSS degradation from ADS-B, SBAS outages, storms and jamming.">
+<style>
+  :root { --bg:#f7f6f2; --fg:#1d1f22; --mut:#5f6670; --line:#e2e0d8; --acc:#b4462b; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#121417; --fg:#e8e6e1; --mut:#9aa1a9; --line:#2a2e34; --acc:#e0805f; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:44rem; margin:0 auto; padding:4rem 1rem 3rem; }
+  h1 { font-size:2.4rem; letter-spacing:-0.02em; margin:0 0 .25rem; }
+  .tag { color:var(--mut); margin:0 0 2.5rem; }
+  h2 { font-size:1rem; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin:2.5rem 0 .75rem; }
+  ul { padding-left:1.1rem; } li { margin:.35rem 0; }
+  a { color:var(--acc); }
+  .status { border:1px solid var(--line); border-radius:8px; padding:.9rem 1rem; }
+  footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--mut); font-size:.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Noise Floor</h1>
+  <p class="tag">An open, licence-clean picture of where the radio spectrum is contested, and what that does to navigation and satellite communications.</p>
+
+  <div class="status"><strong>Status:</strong> method built and validated; the public map is in development.</div>
+
+  <h2>What it measures</h2>
+  <p>From aircraft's own ADS-B position-quality reports, it computes the share of aircraft in each area whose GNSS accuracy was degraded, by day, hour and minute, at two thresholds:</p>
+  <ul>
+    <li><strong>Worse than 93 m:</strong> jamming-scale loss.</li>
+    <li><strong>Worse than 10 m</strong> (for aircraft that showed 10 m capability that day): space weather and SBAS outages.</li>
+  </ul>
+  <p>It measures effects, not attribution.</p>
+
+  <h2>Validation so far</h2>
+  <ul>
+    <li>The known Baltic, Black Sea and Caucasus hotspots appear on every test day; quiet control regions stay near zero.</li>
+    <li>The 13–17 Oct 2025 EGNOS outage was reconstructed from aircraft data alone, to within an hour at both ends.</li>
+    <li>The 12 Nov 2025 G4 storm shows as 38% of capable aircraft losing 10 m accuracy over the northern US and Canada, against a 4% baseline, while jamming-scale loss stays flat.</li>
+    <li>Both bursts of the 22 Sep 2026 Bay Area GPS loss were recovered at the minute level.</li>
+  </ul>
+
+  <h2>Read more</h2>
+  <ul>
+    <li><a href="https://github.com/metacog-osint/noise-floor">Source code</a> (MIT)</li>
+    <li><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">Method card</a>: what the numbers mean and what they can't tell you</li>
+    <li><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">Validation report</a></li>
+  </ul>
+
+  <footer>
+    A project of The Intelligence Company. ADS-B data: <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0); derived data is published under ODbL.
+  </footer>
+</main>
+</body>
+</html>
