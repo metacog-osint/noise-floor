@@ -1,5 +1,7 @@
 # Noise Floor
 
+**Site:** https://noisefloor.theintelligence.company
+
 This is an open-source picture of where the electromagnetic spectrum is being contested and what that does to positioning, navigation and timing (PNT) and to satellite communications. It is built only from sources whose licences allow it, and every source is recorded in a licence registry before it is used. The project belongs to The Intelligence Company.
 
 **Status (Oct 2026):**
