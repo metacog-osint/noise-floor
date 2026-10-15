@@ -18,8 +18,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   Non-commercial sources (airplanes.live, adsb.fi, ADSBx, OpenSky, Stanford RFI, Cloudflare Radar, OONI, GFW, GPSJam) are
   visual comparison only.
 - adsb.lol-derived downloadable data is published under ODbL, with attribution on every map.
-- Free tier only. Ask before anything billable. **Commits:** commit finished steps locally (Tom, 14 Oct 2026). Push, create
-  the GitHub repo, deploy and publish only when Tom says so, each separately.
+- Free tier only. Ask before anything billable. **Commits and pushes:** commit finished steps, and push any commit that passes
+  the pre-commit checks (standing permission, Tom, 14 Oct 2026). Creating repos or services, changing deploy settings, and
+  publishing anything outside this repo (posts, products, the subdomain) still need Tom's OK each time.
 - Store UTC; show people Central time with the zone named.
 - Tom is a domain expert (intel, SDA, weather): cite sources and flag anything unverified.
 
