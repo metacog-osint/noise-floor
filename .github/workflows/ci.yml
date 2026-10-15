@@ -1,0 +1,23 @@
+name: ci
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: requirements.txt }
+      - run: pip install -r requirements.txt
+      - name: Public-repo guard (private term list from the FORBIDDEN_TERMS secret; fails closed without it)
+        env:
+          FORBIDDEN_TERMS: ${{ secrets.FORBIDDEN_TERMS }}
+        run: python tools/check_public.py --all
+      - name: Licence registry
+        run: python tools/check_registry.py
+      - name: Offline tests
+        run: for t in tests/test_*.py; do python "$t" || exit 1; done

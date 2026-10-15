@@ -165,7 +165,7 @@ def region_hours(day, sbas_flags):
     out = defaultdict(lambda: [0, 0, 0, 0])
     for r in rows:
         x = out[(parent(r["h3"]), r["hour"])]
-        x[0] += r["aircraft"]; x[1] += r["bad_nacp"]
+        x[0] += r["aircraft"]; x[1] += r.get("bad_nacp_live", r["bad_nacp"])   # latched aircraft aren't new interference
         if (area_of(r["h3"]), r["hour"]) not in sbas_flags:
             x[2] += r["capable"]; x[3] += r["cap_bad_acc10"]
     _RH[day] = out
@@ -276,8 +276,8 @@ def minute_series(day, level):
             _MS[key] = None
         elif level == "2":
             s = defaultdict(lambda: [0] * 1440)
-            for r in rows:
-                s[parent(r["h3"])][r["minute"]] += r["bad_nacp"]
+            for r in rows:   # live: leave out aircraft whose degradation is latched from earlier in the flight
+                s[parent(r["h3"])][r["minute"]] += r["bad_nacp"] - r.get("latched", 0)
             _MS[key] = dict(s)
         else:
             base = minute_series(day, "2")

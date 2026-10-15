@@ -29,6 +29,7 @@ def build_day(folder, day):
     q = (50.0, 10.0)      # quiet hex (central Europe)
     j = (59.3, 28.0)      # jammed hex (Estonia-Russia border)
     b = (55.0, 20.0)      # Baltic hex used for the threshold checks
+    pp = (48.0, 2.0)      # quiet hex where a latched aircraft arrives
     traces = {
         # Baltic hex, 20 min: 2 clean, 1 jammed, 1 fine-degraded; plus aircraft that must be ignored
         "aaaaa1": trace("aaaaa1", stay(0, 20, *b, GOOD)),
@@ -51,6 +52,11 @@ def build_day(folder, day):
         "jjjjj2": trace("jjjjj2", stay(0, 240, *j, BAD)),
         "jjjjj3": trace("jjjjj3", stay(0, 240, *j, BAD)),
         "jjjjj9": trace("jjjjj9", stay(0, 240, *j, BAD)),
+        # Latching: degraded in the jammed hex, then still bad 1,800 km away among healthy aircraft until the trace ends
+        "lllll1": trace("lllll1", stay(0, 30, *j, BAD) + stay(1800, 60, *pp, BAD)),
+        "ppppp1": trace("ppppp1", stay(0, 120, *pp, GOOD)),
+        "ppppp2": trace("ppppp2", stay(0, 120, *pp, GOOD)),
+        "ppppp3": trace("ppppp3", stay(0, 120, *pp, GOOD)),
         # Lone faulty aircraft with no peers: kept, and the GPSJam formula keeps its hex at score 0
         "ddddd1": trace("ddddd1", stay(0, 300, 40.0, -100.0, BAD)),
     }
@@ -83,7 +89,7 @@ def test_day():
         out = os.path.join(tmp, "out")
         s = P.run("2025-10-16", tmp, out, workers=2)
         assert s["input_sha256"] == hashlib.sha256(raw).hexdigest() and s["input_bytes"] == len(raw), "hash of the joined parts"
-        assert s["files"] == 19 and s["non_icao"] == 1, s
+        assert s["files"] == 23 and s["non_icao"] == 1, s
         assert s["avionics_suspects"] == 1 and s["avionics_suspect_centroids"][0][3] == "C42", s["avionics_suspect_centroids"]
         d = pq.read_table(os.path.join(out, "2025-10-16.parquet")).to_pylist()
         (b,) = near(d, 55.0, 20.0)
@@ -93,19 +99,24 @@ def test_day():
         (q,) = near(d, 50.0, 10.0)
         assert (q["aircraft"], q["bad_nacp"]) == (3, 0), ("faulty avionics dropped", q)
         (jm,) = near(d, 59.3, 28.0)
-        assert (jm["aircraft"], jm["bad_nacp"], jm["score"]) == (4, 4, 75.0), ("jammed long flight kept", jm)
+        assert (jm["aircraft"], jm["bad_nacp"], jm["score"], jm["latched"]) == (5, 5, 80.0, 0), ("jammed flights kept, live", jm)
+        (lp,) = near(d, 48.0, 2.0)
+        assert (lp["aircraft"], lp["bad_nacp"], lp["latched"], lp["bad_nacp_live"], lp["score_live"]) == (4, 1, 1, 0, 0.0), ("latched", lp)
+        assert s["latching"]["latched_aircraft"] == 1 and s["latching"]["latch_onset_regions_res2"][0][3] == 1, s["latching"]
         (lone,) = near(d, 40.0, -100.0)
         assert (lone["aircraft"], lone["bad_nacp"], lone["score"]) == (1, 1, 0.0), lone
         h = pq.read_table(os.path.join(out, "2025-10-16.hourly.parquet")).to_pylist()
         jh = sorted(r["hour"] for r in h if r["h3"] == jm["h3"])
-        assert jh == [0, 1, 2, 3] and all(r["bad_nacp"] == 4 for r in h if r["h3"] == jm["h3"]), jh
+        assert jh == [0, 1, 2, 3] and [r["bad_nacp"] for r in sorted(h, key=lambda r: r["hour"]) if r["h3"] == jm["h3"]] == [5, 4, 4, 4], jh
         assert max(r["hour"] for r in h) == 4 and min(r["hour"] for r in h) == 0, "300-min lone flight spans hours 0-4"
         m = pq.read_table(os.path.join(out, "2025-10-16.minute.parquet")).to_pylist()
         jm_min = [r for r in m if r["h3"] == jm["h3"]]
-        assert len(jm_min) == 240 and all(r["bad_nacp"] == 4 for r in jm_min), "4 jammed aircraft every minute for 4 h"
+        assert len(jm_min) == 240 and all(r["bad_nacp"] == (5 if r["minute"] < 30 else 4) and r["latched"] == 0 for r in jm_min), "jammed minutes"
+        lp_min = [r for r in m if r["h3"] == lp["h3"]]
+        assert len(lp_min) == 60 and all(r["bad_nacp"] == 1 and r["latched"] == 1 for r in lp_min), "latched minutes"
         q_cell = q["h3"]
         assert not [r for r in m if r["h3"] == q_cell], "dropped suspect leaves no bad minutes"
-        assert json.load(open(os.path.join(out, "2025-10-16.summary.json")))["method_version"] == "1.2"
+        assert json.load(open(os.path.join(out, "2025-10-16.summary.json")))["method_version"] == "1.3"
     finally:
         shutil.rmtree(tmp)
 
