@@ -1,12 +1,13 @@
-# Method card: GNSS degradation from ADS-B (PNT processor v1.3)
+# Method card: GNSS degradation from ADS-B (PNT processor v1.4)
 
-**Status:** v1.3, 14 Oct 2026. Validation is in `docs/validation/phase1.md`. **Code:** `pipeline/pnt_daily.py`, `pipeline/pnt_analysis.py`.
+**Status:** v1.4, 14 Oct 2026. Validation is in `docs/validation/phase1.md`. **Code:** `pipeline/pnt_daily.py`, `pipeline/pnt_analysis.py`.
 **Data:** adsb.lol globe_history daily archive, ODbL 1.0. Derived hex data is published under ODbL with attribution.
 **Changes:**
 
 - **v1.1:** a peer-based avionics-suspect rule, hourly output, and a capable-aircraft 10 m threshold.
 - **v1.2:** per-minute burst counts, plus post-processing (SBAS flag, baselines, bursts).
 - **v1.3:** a latching tag, with live counts kept separate from latched aircraft.
+- **v1.4:** a post-exposure tag replacing latching (catches intermittent degradation), plus type counts.
 
 ## What it measures
 
@@ -35,16 +36,14 @@ There are two thresholds, because they answer different questions:
    - "Where its peers are fine" means this: of the hex-hours where it is bad and at least two other aircraft are present, 75% or more have fewer than 25% of those others bad. At least three such hex-hours are needed to judge.
    - Faulty avionics are bad among healthy neighbours, while a jammed flight is bad among bad neighbours and stays in. (v1 dropped any aircraft bad for 95% of a 3-hour span, which also removed some genuinely jammed flights.)
    - Each day's suspects are listed in the run summary by rough centre point, hours and type designator, with no identifiers.
-4. **Latching (v1.3):**
-   - Some avionics hold NACp/NIC degraded until reset after landing, so a flight that crossed a jammed area can stay "bad" for hours afterwards.
-   - A report is a **latch candidate** if all three hold:
-     - It belongs to the aircraft's final gross-bad run of the day, with no recovery in flight (gaps up to 30 min allowed).
-     - That run lasts 30 min or more.
-     - The report is 300 km or more from where the run began.
-   - A candidate is **latched** where its hex-hour peers are mostly good (the same peer rule as for suspects). Where peers are bad too, the aircraft is still inside interference, so the report stays live.
-   - `latched` counts these aircraft. `bad_nacp_live` and `score_live` leave them out, while `bad_nacp` and `score` stay raw and comparable with GPSJam.
-   - The onset of each latched run is recorded by H3 res-2 region in the run summary.
-   - Analysis (anomalies, bursts) uses the live counts. The peer test for suspects also runs on live reports, so a latched flight isn't mistaken for faulty avionics.
+4. **Post-exposure (v1.4, replacing v1.3 latching):**
+   - Some avionics stay degraded after leaving interference. They may be latched, or flip on and off for hours (21–25 Oct 2025: mostly A350s, first degraded over the eastern Black Sea).
+   - An aircraft's **exposure point** is its first hex-hour with gross-bad reports where its peers were bad too (2 or more peers, 25% or more of them bad). That marks genuine interference.
+   - Any **later** hex-hour with gross-bad reports **300 km or more** from the exposure point, where peers are mostly good, is **post-exposure**: evidence of earlier exposure, not new interference there. No continuity is required.
+   - A second genuinely jammed area later in the flight has bad peers, so it stays live.
+   - Post-exposure reports are counted in `latched` and left out of `bad_nacp_live` and `score_live`. `bad_nacp` and `score` stay raw and comparable with GPSJam.
+   - The run summary records exposure regions (H3 res 2), post-exposure counts by aircraft type, and type counts for all aircraft.
+   - Analysis (anomalies, bursts) and the suspect test use live reports.
 5. **Hex score:** `100 × max(bad − 1, 0) / (good + bad)`, the formula GPSJam publishes. Subtracting one bad aircraft keeps a single faulty aircraft from colouring a hex, including lone aircraft the peer test can't judge.
 6. **Public maps:**
    - Colour only hexes with **5 or more aircraft**. Show 3–4 as low coverage, and leave out 1–2.
@@ -67,7 +66,7 @@ There are two thresholds, because they answer different questions:
 - **Spoofing can look clean.** A spoofed receiver may report good NACp at a false position. Spoofing needs separate detectors (Phase 4).
 - **SBAS outages.** If EGNOS, WAAS or another SBAS goes down, capable aircraft drop to NACp 9 across its whole service area. The 10 m metric then reads high everywhere, as it did in Europe during EGNOS's 13–17 Oct 2025 loss of signal. Check SBAS service status before reading the 10 m metric. The 93 m metric is unaffected.
 - **Short bursts.** The hourly majority rule (50% of an aircraft's reports in the hour) dampens events of a few minutes. Use counts, not shares, for timing until a per-minute counter exists.
-- **Latching.** Since v1.3, latched aircraft are tagged (step 4). The tag needs peers to confirm, so in sparse coverage a latched aircraft can still count as live.
+- **Post-exposure.** Since v1.4, aircraft still degraded after leaving interference are tagged (step 4). The tag needs peers both at the exposure point and later, so in sparse coverage such an aircraft can still count as live.
 - **Coverage.** adsb.lol depends on volunteer feeders. Sparse feeders mean few aircraft per hex and noisy scores, so read `aircraft` alongside `score`. No feeders means no data, not no interference.
 - **Location.** A degraded aircraft is somewhere inside the jammer's reach, not at the jammer. Hex patterns along routes show where aircraft flew, not the transmitter.
 
