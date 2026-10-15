@@ -45,7 +45,7 @@ This follows a private list of RSS and Atom feeds in `private/watch/feeds.txt` (
 
 ## Daily schedule (Windows)
 
-`run_daily.cmd` runs both collectors and appends to `data/logs/collectors.log`. It is registered as the Windows scheduled task **"emso-tracker daily collectors"**:
+`run_daily.cmd` runs both collectors and appends to `data/logs/collectors.log`. It is registered as the Windows scheduled task **"noise-floor daily collectors"**:
 
 - runs daily at 06:30 local time
 - catches up after the PC was off
@@ -55,6 +55,6 @@ This follows a private list of RSS and Atom feeds in `private/watch/feeds.txt` (
 The project is on the D: USB drive, so the task fails if the drive isn't connected (the log shows nothing new).
 
 ```powershell
-Get-ScheduledTaskInfo -TaskName "emso-tracker daily collectors"   # last run, result, next run
-Start-ScheduledTask   -TaskName "emso-tracker daily collectors"   # run now
+Get-ScheduledTaskInfo -TaskName "noise-floor daily collectors"   # last run, result, next run
+Start-ScheduledTask   -TaskName "noise-floor daily collectors"   # run now
 ```

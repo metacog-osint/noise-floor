@@ -146,3 +146,42 @@ Each run's `data/pnt/daily/<day>.summary.json` records the input files, their SH
 2. **Verify leads 1 and 2.** The Baltic one needs public reporting; New Mexico needs NAVCEN test notices.
 3. **FAA NOTAM API access** (Tom's request, decision 4). It closes the Bay Area case and enables automatic planned-test exclusion.
 4. **Backfill to the present.** About 365 days at roughly 3.5 GB of raw data a day (about 1.3 TB) is too much to keep locally. Run it in GitHub Actions on the public repo, downloading, processing and discarding each day, and keep only the outputs (about 2 MB a day).
+
+---
+
+# Latching tag: processor v1.3 (14 Oct 2026)
+
+**Generated tables and map:** `latching_results.md`. **Data:** the same 20 days, reprocessed with v1.3.
+
+## Bottom line
+
+- **The v1.3 tag works for the case it targets,** aircraft that stay degraded without a break after leaving a jammed area. It confirms 26–53 such aircraft a day, mostly flagged over central and western Europe and North America. **Hotspot shares are unchanged** (within 0.4 points), as they should be: inside a hotspot, neighbouring aircraft are bad too, so nothing is relabelled.
+- **But it doesn't explain the nightly central-Europe bursts.** Those fell only from 33 to 30 events. Tracing the aircraft inside them on three nights (21, 23 and 25 Oct) shows a different, more specific pattern:
+  - The bursts are made up mostly of **Airbus A350s**: **45–74% of the degraded aircraft, against 4–16% of all aircraft** in the same hex-hours. That is 10–15 times their share of traffic. A few 777s and A380s make up most of the rest.
+  - Their neighbours were 91–99% healthy, so this **isn't live interference over central Europe**.
+  - Most of these aircraft **first degraded hours earlier over the eastern Black Sea and Georgian coast, or north-east Turkey**, the strongest hotspot in Phase 1. Others first degraded near St Petersburg, Kaliningrad or in western Russia.
+  - After that first degradation they're bad about **50–60% of the time**, flipping between bad and good. That's why a rule built on an unbroken bad run until landing misses them.
+
+**Reading (hypothesis, not verified):** this is **intermittent post-exposure degradation**, carried mainly by one aircraft type on the overnight westbound long-haul wave from Asia and the Gulf. One possible mechanism is avionics rejecting GPS for the rest of a flight after spoofing exposure, then reporting an accuracy estimate that hovers around the 93 m threshold. Airbus and EASA guidance on this behaviour hasn't been checked yet. Either way, it is evidence of earlier exposure, not new interference where it is seen.
+
+## Verdicts
+
+| # | Check | Result | Verdict |
+|---|---|---|---|
+| 20 | Latch tag does no harm inside hotspots | Hotspot shares raw vs live: unchanged to within 0.4 points on 23–25 Oct | **Pass** |
+| 21 | Where latched episodes begin | 687 onsets over 17 days. The top regions are the western Black Sea coast (Bulgaria), the eastern Black Sea, the Malay Peninsula, the Bay of Bengal, the south Baltic and Polish coast, the Andaman Sea, the Persian Gulf, the Gulf of Aqaba, the Gulf of Oman and southern Iran. These are mostly known interference regions; the Malay Peninsula is a lead to check. | **Consistent** |
+| 22 | Do latched aircraft explain the nightly central-Europe bursts? | 33 events with raw counts vs 30 with live counts; peak sizes almost unchanged | **No** with the v1.3 rule; the cause is the A350 pattern above |
+| 23 | Type concentration in those bursts | A350s are 45–74% of degraded aircraft vs 4–16% of all aircraft, over 7 events on 3 nights | **Found** |
+
+## Next (v1.4)
+
+**A post-exposure tag** replaces the unbroken-run rule:
+
+- An aircraft's **exposure point** is its first gross-bad report of the day in a hex-hour where its peers were also bad, that is, genuine interference.
+- Any **later** gross-bad report **300 km or more** from that point, in a hex-hour where peers are mostly good, is tagged as post-exposure. There is no continuity requirement.
+- A second, genuinely jammed area later in the flight still has bad peers, so it stays live.
+
+Then:
+
+1. Re-run the 20 days and check that the nightly bursts collapse on live counts.
+2. Report post-exposure degradation by aircraft type as its own product. Which types carry interference effects downstream, and for how long, is useful to operators.

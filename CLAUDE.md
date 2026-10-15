@@ -1,6 +1,6 @@
 # Noise Floor: project notes for Claude
 
-Product name decided 14 Oct 2026: **Noise Floor** (repo `noise-floor`; local folder still `emso-tracker`).
+Product name decided 14 Oct 2026: **Noise Floor** (repo and local folder `noise-floor`).
 
 Tom's own project under **The Intelligence Company**, to be hosted on theintelligence.company. Restarted 6 Oct 2026.
 **Merged with Interference Watch on 14 Oct 2026.** The "Merged plan" section at the end of `docs/DESIGN.md` decides what wins.
