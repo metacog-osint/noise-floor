@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 from shapely.geometry import Polygon, box
 
-from . import bands, cmr, detect, geometry as geo, places, product, report, sites
+from . import bands, cmr, detect, geometry as geo, places, product, qa, report, sites, tabdetect, tables
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, "..", ".."))
@@ -25,6 +25,9 @@ def load_config(path=None):
     cfg = json.load(open(path))
     for k, d in (("state_dir", "private/nisar/state"), ("out_dir", "private/nisar/out")):
         cfg[k] = os.path.normpath(os.path.join(REPO, cfg.get(k, d)))     # relative to the repo root
+    # tables need tone-rank (PROVISIONAL); BETA products only support the image method
+    cols = cfg.get("collections", ["NISAR_L2_GCOV_PROVISIONAL_V1"])
+    cfg.setdefault("method", "image" if any("BETA" in c for c in cols) else "tables")
     return cfg
 
 
@@ -41,6 +44,12 @@ def earthdata_fs():
         raise RuntimeError("set EARTHDATA_TOKEN (or EARTHDATA_USERNAME / EARTHDATA_PASSWORD)")
     earthaccess.login(strategy="environment")
     return earthaccess.get_fsspec_https_session()
+
+
+def earthdata_session():
+    """Authenticated requests session (QA files, runconfigs). Call after earthdata_fs()."""
+    import earthaccess
+    return earthaccess.get_requests_https_session()
 
 
 def local_granules(folder):
@@ -115,6 +124,139 @@ def save_baseline(cfg, stack, f, grid, start):
     b = detect.baseline_grid(grid)
     np.savez_compressed(p, co_db=b["co_db"], cx_db=b["cx_db"], x0=b["x0"], y0=b["y0"], dx=b["dx"], dy=b["dy"],
                         epsg=b["epsg"], start=start)
+
+
+def fetch_tables(g, cfg, fs):
+    """Tier 1 read: the RSLC's per-block RFI tables, orbit and look side. (tab, orb, meta); tab may be {}."""
+    name = tables.rslc_name(g["granule"])
+    cpath = os.path.join(cfg["state_dir"], "cache", f"{name}.npz")
+    t0 = datetime.now(timezone.utc)
+    if cfg.get("cache_tables") and os.path.exists(cpath):
+        tab, orb, cmeta = tables.load_npz(cpath)
+        return tab, orb, {"tier": "tables", "rslc": name, "rslc_mb": 0.0, "look": cmeta.get("look", "Left"),
+                          "status": "from cache", "channels": sorted(f"{b}{p}" for b, p in tab)}
+    rg = cmr.find_granule(name)
+    if rg is None or not rg["links"].get("data"):
+        return {}, None, {"tier": "tables", "rslc": name, "status": "no RSLC in CMR"}
+    import h5py
+    url = rg["links"]["data"]
+    # Resolve the Earthdata redirect once and read from the signed file URL: each request through the
+    # redirect costs ~1 s. The signed URL carries a temporary credential: keep it in memory, never log it.
+    try:
+        import fsspec
+        r = earthdata_session().get(url, headers={"Range": "bytes=0-0"}, allow_redirects=True, timeout=60)
+        if r.status_code in (200, 206) and r.url != url:
+            url, fs = r.url, fsspec.filesystem("https")
+    except Exception:
+        pass                                                # fall back to the authenticated session
+    with fs.open(url, "rb", block_size=256 << 10, cache_type="blockcache") as f:
+        with h5py.File(f, "r") as h:
+            orb = tables.read_orbit(h)
+            look = h["/science/LSAR/identification/lookDirection"][()] if "/science/LSAR/identification/lookDirection" in h else b"Left"
+            tab, locs = tables.plan_tables(h)               # metadata and small arrays only
+            if any(loc is None for segs in locs.values() for loc in segs):
+                hits_mb = tables.read_hits_ranges(fs, url, tab, locs, h=h) / 1e6
+            else:
+                hits_mb = None
+        meta_mb = f.cache.total_requested_bytes / 1e6
+    if hits_mb is None:                                     # bulk arrays: concurrent range requests, no h5py lock
+        hits_mb = tables.read_hits_ranges(fs, url, tab, locs) / 1e6
+    mb = meta_mb + hits_mb
+    look = look.decode() if isinstance(look, bytes) else str(look)
+    meta = {"tier": "tables", "rslc": name, "rslc_mb": round(mb, 1), "look": look,
+            "channels": sorted(f"{b}{p}" for b, p in tab),
+            "read_s": round((datetime.now(timezone.utc) - t0).total_seconds(), 1)}
+    if not tab:
+        meta["status"] = "no tone-rank tables (processor ran another RFI algorithm)"
+        return {}, orb, meta
+    if cfg.get("cache_tables"):
+        cdir = os.path.join(cfg["state_dir"], "cache")
+        os.makedirs(cdir, exist_ok=True)
+        tables.save_npz(os.path.join(cdir, f"{name}.npz"), tab, orb,
+                        {"rslc": name, "gcov": g["granule"], "track": g["track"], "direction": g["direction"],
+                         "frame": g["frame"], "start": g["start"], "footprint": g.get("footprint"),
+                         "mode": g.get("mode"), "look": look})
+    return tab, orb, meta
+
+
+def process_granule_tables(g, cfg, fs, fetched=None):
+    """Tier 1: candidates per band from the RSLC tables (fetched now unless passed in), and meta."""
+    tab, orb, meta = fetched if fetched is not None else fetch_tables(g, cfg, fs)
+    if not tab:
+        return {}, meta
+    cands = tabdetect.detect(tab, orb, meta.get("look", "Left"), cfg.get("tables"))
+    meta["candidates"] = {b: len(c) for b, c in cands.items()}
+    return cands, meta
+
+
+def prefetch(items, cfg, fs, workers):
+    """Fetch tables for a batch of granules in parallel: {granule: (tab, orb, meta) or Exception}."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def one(g):
+        try:
+            return g["granule"], fetch_tables(g, cfg, fs)
+        except Exception as e:                       # reported per granule in the main loop
+            return g["granule"], e
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as ex:
+        return dict(ex.map(one, items))
+
+
+def merge_table_bands(cands_by_band, g, cfg, pair_km=20.0):
+    """Table candidates to detections; an A and a B candidate within pair_km are one emitter."""
+    a = list(cands_by_band.get("A", []))
+    b = list(cands_by_band.get("B", []))
+    pairs = []
+    for x in a:
+        y = min(b, key=lambda y: geo.km_between(x["lat"], x["lon"], y["lat"], y["lon"]), default=None)
+        if y is not None and geo.km_between(x["lat"], x["lon"], y["lat"], y["lon"]) <= pair_km:
+            b.remove(y)
+            pairs.append((x, y))
+        else:
+            pairs.append((x, None))
+    pairs += [(y, None) for y in b]
+    dets = []
+    for main, other, in pairs:
+        d = dict(main)
+        bl = sorted({main["band"]} | ({other["band"]} if other else set()))
+        runs = main["freq_runs_mhz"] + (other["freq_runs_mhz"] if other else [])
+        d["bands"] = bl
+        d["freq_runs_mhz"] = runs
+        d["band_text"] = tabdetect.describe_runs(runs) or " + ".join(bl)
+        d["gnss_overlap"] = sorted(set(main["gnss_overlap"]) | set(other["gnss_overlap"] if other else []))
+        lo = [r[0] for r in runs] or [0.0]
+        hi = [r[1] for r in runs] or [0.0]
+        d["freq_low_mhz"], d["freq_high_mhz"] = min(lo), max(hi)
+        d["interpretation"] = tabdetect.interpretation(d)
+        if other:
+            d["band_b"] = {k: other[k] for k in ("lat", "lon", "blocks", "peak_hit", "peak_isr_db", "freq_runs_mhz")}
+            d["confidence"] = max(d["confidence"], other["confidence"], key=["LOW", "MEDIUM", "HIGH"].index)
+        d["peak_excess_db"] = d.get("peak_isr_db")       # shared field name; for tables it is the ISR in dB
+        d["mean_excess_db"] = None
+        d["where"], d["country"] = places.describe(d["lat"], d["lon"])
+        d.update({k: g[k] for k in ("granule", "start", "end", "track", "frame", "direction", "stack") if k in g})
+        d["mode"] = g.get("mode", "")
+        d["id"] = _det_id(g, "+".join(bl), d["lat"], d["lon"])
+        d["url"] = cmr.search_url(g["granule"]) if not g.get("path") else ""
+        dets.append(d)
+    return dets
+
+
+def screen_decision(g, state, cfg):
+    """Tier 0: read the tables for this pass? (QA score above the floor, or the frame is due a look)."""
+    c = {"min_score": 10.0, "every": 3, **cfg.get("screen", {})}
+    stack = g.get("stack") or f'{g["track"]:03d}_{g["direction"]}_{g["frame"]:03d}'
+    st = state.setdefault("stacks", {}).setdefault(stack, {"since_tables": None})
+    q = g.get("qa")
+    if q is None:
+        return True, "no QA score"
+    top = max(q.values()) if q else 0.0
+    if top >= c["min_score"]:
+        return True, f"QA score {top:.3g} >= {c['min_score']}"
+    if st["since_tables"] is None or st["since_tables"] + 1 >= c["every"]:
+        return True, "rotation"
+    return False, f"QA score {top:.3g} below {c['min_score']}"
 
 
 def process_granule(g, cfg, fs=None):
@@ -201,14 +343,48 @@ def run(cfg, local_dir=None, seed=False, max_granules=None, days=None, now=None,
             todo = []
 
     # 2. score each granule
+    method = "image" if local_dir else cfg.get("method", "tables")
+    if method == "tables" and todo and fs is not None:
+        try:
+            qa.fetch_scores(todo, earthdata_session(), log=log)       # tier 0: ~0.1 MB per pass
+        except Exception as e:
+            log(f"QA scores failed: {e}")
     events, new_dets, errors = [], [], 0
-    for g in todo:
+    plan = {}
+    if method == "tables":
+        for g in todo:                               # decide in time order, so the rotation counts right
+            read, why = screen_decision(g, state, cfg)
+            st = state["stacks"][g.get("stack") or f'{g["track"]:03d}_{g["direction"]}_{g["frame"]:03d}']
+            st["since_tables"] = 0 if read else (st["since_tables"] or 0) + 1
+            plan[g["granule"]] = (read, why)
+    workers = int(cfg.get("workers", 4))
+    fetched = {}
+    for i, g in enumerate(todo):
+        if method == "tables" and g["granule"] not in fetched:
+            batch = [x for x in todo[i:i + 2 * workers] if plan[x["granule"]][0] and x["granule"] not in fetched]
+            if batch:
+                fetched.update(prefetch(batch, cfg, fs, workers))
         t0 = datetime.now(timezone.utc)
         try:
-            blobs, meta = process_granule(g, cfg, fs)
-            dets = merge_bands(blobs, g, cfg)
+            if method == "tables":
+                read, why = plan[g["granule"]]
+                if read:
+                    got = fetched.pop(g["granule"])
+                    if isinstance(got, Exception):
+                        raise got
+                    cands, meta = process_granule_tables(g, cfg, fs, got)     # tier 1: tens of MB
+                    dets = merge_table_bands(cands, g, cfg)
+                else:
+                    dets, meta = [], {"tier": "screened"}
+                meta["why"] = why
+                meta["rfi"] = {"likelihood": g.get("qa") or {}, "kind": g.get("qa_kind", "max_isr")}
+            else:
+                blobs, meta = process_granule(g, cfg, fs)
+                dets = merge_bands(blobs, g, cfg)
+                meta["rfi"]["kind"] = "fraction"
             for d in dets:
                 d["rfi_likelihood"] = meta["rfi"]["likelihood"]
+                d["rfi_kind"] = meta["rfi"].get("kind")
             ev = sites.update(state, g, dets, cfg, baseline_run=baseline_run)
             state["detections"] += dets
             new_dets += dets
@@ -219,9 +395,15 @@ def run(cfg, local_dir=None, seed=False, max_granules=None, days=None, now=None,
                 "footprint": g["footprint"], "detections": len(dets), "status": "ok",
                 "rfi": meta["rfi"], "crid": meta.get("crid"), "range_az": meta.get("range_az"),
                 "rejected": meta.get("rejected", 0), "baseline_from": meta.get("baseline_from"),
+                "tier": meta.get("tier", "image"), "why": meta.get("why"), "rslc_mb": meta.get("rslc_mb"),
+                "read_s": meta.get("read_s"),
+                "table_status": meta.get("status"),
                 "seconds": round((datetime.now(timezone.utc) - t0).total_seconds(), 1),
             }
-            log(f'{g["granule"][:60]}… {len(dets)} detection(s), rfiLikelihood {meta["rfi"]["likelihood"]}')
+            log(f'{g["granule"][:60]}… {meta.get("tier", "image")}: {len(dets)} detection(s)'
+                + (f' ({meta["why"]})' if meta.get('why') else '')
+                + (f', {meta["rslc_mb"]} MB' if meta.get('rslc_mb') else '')
+                + (f', {meta["status"]}' if meta.get('status') else ''))
         except Exception as e:
             errors += 1
             state["processed"][g["granule"]] = {"start": g["start"], "status": "error", "footprint": g.get("footprint"),

@@ -35,5 +35,14 @@
   },
   "ignore": [],
   "state_dir": "private/nisar/validation-shiraz-prov/state",
-  "out_dir": "private/nisar/validation-shiraz-prov/out"
+  "out_dir": "private/nisar/validation-shiraz-prov/out",
+  "method": "tables",
+  "screen": {
+    "min_score": 0.0,
+    "every": 1
+  },
+  "tables": {
+    "height_m": 1500.0
+  },
+  "cache_tables": true
 }

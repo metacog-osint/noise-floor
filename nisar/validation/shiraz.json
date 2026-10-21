@@ -35,5 +35,6 @@
   },
   "ignore": [],
   "state_dir": "private/nisar/validation-shiraz/state",
-  "out_dir": "private/nisar/validation-shiraz/out"
+  "out_dir": "private/nisar/validation-shiraz/out",
+  "method": "image"
 }

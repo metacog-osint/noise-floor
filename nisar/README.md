@@ -4,51 +4,75 @@ Finds places where NISAR's L-band radar picked up emissions inside its own recei
 
 It measures an **effect inside the radar's band**, not attribution. Every detection is a lead.
 
-**Status:** built and passing its offline self-test. It has **not yet run on live data**. The Shiraz validation below comes first.
+**Status (21 Oct 2026):** two methods.
 
-## What it measures
+- **Table method (default for PROVISIONAL products):** reads the RSLC processor's own per-block RFI tables. It has run on live data (see Validation).
+- **Image method (BETA products only):** scores cross-pol excess in GCOV images. It **failed** the Shiraz known-answer test on live BETA data, so treat its output as unvalidated.
 
-NISAR's L-band SAR listens in 1215–1300 MHz. Over most land it acquires in **20+5 MHz** mode, HH+HV:
+## What NISAR can see
+
+NISAR's L-band SAR listens in 1215–1300 MHz. Over most land it acquires in **20+5 MHz** mode, HH+HV ([ASF frequency table](https://nisar-docs.asf.alaska.edu/frequencies-polarization)):
 
 | Sub-band | Covers | GNSS in band |
 |---|---|---|
 | A | 1219–1239 MHz | GPS L2 (1227.6 MHz) |
-| B | 1291–1296 MHz | edge of Galileo E6 / QZSS L6 |
+| B | 1291–1296 MHz | upper edge of Galileo E6 / QZSS L6 |
 
-Other modes (40+5, 77, 20+20, 5+5) are handled from the product's mode tag. The whole range is also the L-band air-surveillance radar allocation.
+Other modes (40+5, 77, 20+20, 5+5) exist. The table method reads each pass's real frequency axis, so it doesn't depend on the mode. The whole range is also the L-band air-surveillance radar allocation. GPS L1 is out of band, so L1-only jammers don't appear.
 
-An emitter in band adds noise-like, unpolarized power. That power lands equally in HH and HV, and HV is normally much weaker than HH, so the HV/HH ratio climbs well above what the ground produces. The detector works in four steps:
+## Table method
 
-1. **Score.** It learns each scene's own HH → HV/HH relationship (median and spread per 1 dB HH bin) and scores each ~500 m cell's cross-pol excess.
-2. **Shape.** It smooths along the radar range direction, because interference streaks run cross-track, and keeps connected regions above a hysteresis threshold.
-3. **Weigh the evidence** for each candidate:
-   - **Band-specific:** present in one sub-band and absent in the other. The ground looks the same in both; interference does not.
-   - **Streak-shaped:** elongated along the range direction.
-   - **Unpolarized change since the frame's previous pass:** HH and HV rose by about the same linear power. A rise in the surface's own HV/HH ratio (wetness, wind, vegetation) counts against it.
-4. **Grade.** Candidates with no supporting evidence are dropped; the rest are graded LOW, MEDIUM or HIGH.
+PROVISIONAL products (acquired from 17 Jun 2026) are processed with RFI **tone-rank** detection and mitigation. Along the way the processor writes, into each RSLC, a grid of analysis blocks (azimuth time × slant range) holding:
 
-Across passes, detections within 25 km form a **site**. A site can be NEW, RETURNED or QUIET. When streak axes from two different viewing geometries cross at 20° or more, the site gets a **cross-fix**.
+- **`interferenceSignalRatio`:** RFI power over signal power per block;
+- **`signalMean`:** the estimated signal power;
+- **`hitCount`:** the share of pulses with RFI at each frequency bin.
 
-The band pattern is a hint, not an attribution:
+Sources: isce3 `isce3/signal/rfi_tone_rank.py` and `nisar/workflows/focus.py`.
 
-- **A only:** consistent with a GPS L2 jammer.
-- **B only:** points away from GPS.
-- **A + B:** a wideband emitter.
+These tables are computed on the raw data **before** mitigation, so the image filter can't hide what they record. They are small next to the image: 70–130 MB read per pass against 6–14 GB RSLC files.
+
+**Two tiers per pass:**
+
+1. **Tier 0, every pass (~0.1 MB):** the processor's `rfiLikelihood` per channel, from the GCOV's QA statistics file.
+   - For tone-rank it is the **maximum** interference-to-signal ratio over blocks (isce3 `focus.py`, `rfi_likelihood = np.max(isr)`), not the 0–1 fraction of the older algorithms.
+   - Because it is a maximum, one block with a near-zero signal estimate (open water, gaps) can push it to 10^11 or more. So it is only a coarse screen.
+   - Passes with every channel below `screen.min_score` (default 10) skip tier 1, unless their frame is due a look (every `screen.every` passes, default 3).
+   - Screened passes still count as clean coverage for the site logic.
+2. **Tier 1, flagged passes:** read the RSLC tables and orbit (`tables.py`), then detect (`tabdetect.py`):
+   - Score each block by the share of pulses hit at its most-hit frequency bin, ignoring the radar's own tones. **1233.125 MHz** and **1296.002 MHz** were present in every pass we checked, in two regions, and are excluded with ±0.15 MHz.
+   - Drop degenerate blocks, where the signal estimate is below 1/1000 of the median.
+   - Group hot blocks (≥ 50% of pulses hit) across both polarizations into candidates.
+   - Locate each candidate at the centroid of its blocks within 6 dB of the peak RFI power (ratio × signal mean). Turn that time and range into latitude and longitude from the orbit (`geoloc.py`: zero-Doppler, WGS84, configurable terrain height).
+   - Report the frequency runs that were hit and the GNSS signals they fall in.
+
+**Why one pass gives a position.** The receive beam confines an emitter's interference to part of the swath in range: about 14 of 53 range blocks on the strongest row at Shiraz. The azimuth beam confines it to a few seconds along track. So a detection is a point with an extent, not a streak needing a second geometry.
+
+**Data volume.** Measured over the private watch box (30 days to 21 Oct 2026):
+- ~14 passes a day and ~24 GB of GCOV files a day.
+- Tier 0 is ~1.4 MB a day.
+- Tier 1 is at most ~1.4 GB a day if every pass is read, and less after screening.
 
 ## Run
 
 ```sh
 pip install -r nisar/requirements.txt
 cp nisar/config.example.json private/watch/nisar.json      # set your area there; private/ is gitignored
-export EARTHDATA_TOKEN=...                                   # urs.earthdata.nasa.gov > Generate Token
+# EARTHDATA_TOKEN must be set (urs.earthdata.nasa.gov > Generate Token; user tokens last 60 days)
 cd nisar
 python -m nisar_rfi run                       # last 10 days over the area; first run records a baseline quietly
 python -m nisar_rfi run --start 2026-07-01 --end 2026-10-20 --seed   # backfill without alerts
-python -m nisar_rfi inspect <GranuleUR or file.h5>    # what RFI fields a product carries and what the scorer sees
+python -m nisar_rfi tables <GranuleUR> [--height 1500]   # table method on one pass, printed, nothing saved
+python -m nisar_rfi inspect <GranuleUR or file.h5>    # RFI fields a GCOV carries (also reads the full image)
 python -m nisar_rfi run --quiet               # one summary line, for logs others can read
 ```
 
-Searching NASA's catalog (CMR) needs no login. Reading products needs an Earthdata token. Band A is read at full resolution (~1 GB per frame, streamed with byte-range reads) and averaged down; band B is small. Per-granule seconds are logged in the state file.
+**Config keys for the table method:**
+- `method`: `tables` or `image`. The default is `image` if any collection is BETA, otherwise `tables`.
+- `screen.min_score`, `screen.every`.
+- `tables.height_m`: terrain height for geolocation. A wrong height shifts positions across track by about h / tan(incidence), roughly 2 km per 1.5 km of height.
+- `workers`: parallel table reads, default 4.
+- `cache_tables`: keep each pass's tables (3–7 MB compressed) in `state_dir/cache/`, so detection can be re-run offline.
 
 ## Where things go
 
@@ -57,74 +81,66 @@ Everything the run writes is private: it is watch output.
 | Path | What |
 |---|---|
 | `private/watch/nisar.json` | Area, thresholds, and the ignore list (known benign sites) |
-| `private/nisar/state/` | Processed granules, detections, sites; `baselines/` holds each frame's last pass for the change check |
-| `private/nisar/out/map.html` | Self-contained map: blobs by band, sites, cross-fixes, imaged frames with times (Central) |
+| `private/nisar/state/` | Processed granules (with tier, screen reason and MB read), detections, sites, per-frame rotation counters |
+| `private/nisar/out/map.html` | Self-contained map: detections, sites, imaged frames with times (Central) |
 | `private/nisar/out/latest.json`, `alerts.jsonl` | Last run and the alert log |
-| `private/nisar/out/observations.jsonl` | One row per detection in the observation shape (lane `emitters`), ready for D1 |
+| `private/nisar/out/observations.jsonl` | One row per detection in the observation shape, ready for D1 |
 | `private/nisar/out/*.geojson` | Detections and sites for GIS tools |
 
 - **Pushes.** ntfy is used only when `NISAR_PUSH=1` and `NTFY_TOPIC` are set. Push text carries the site number and band only, with no place, coordinates or link.
 - **Times.** Stored in UTC; the map and alert text show Central time with the zone named.
 
-## Validate before trusting it
+## Validation
 
-1. **Self-test (offline, also in CI).** Run `python tests/test_nisar.py` from the repo root. It builds four synthetic GCOV files in the real product layout:
-   - two clean passes;
-   - a band-A test jammer;
-   - a band-B test radar;
-   - a calm-water patch and a wind front as false-alarm bait.
-
-   It then checks every outcome. Current result:
-   - no false detections;
-   - both emitters found in the right band;
-   - NEW alerts on first appearance;
-   - a cross-fix 0.9 km from truth (stated ±4.8 km).
-2. **Shiraz known answer (live, public case).** NISAR saw a jammer ~50 km SW of Shiraz on 8 and 20 Jan 2026 and not on 27 Dec 2025 (GPS World, "Converging on the jammer", 18 May 2026). The granules are BETA products: track 157 ascending, frames 15–16, 20+5 MHz, HH+HV.
-
-   From `nisar/`, run `python -m nisar_rfi run --config validation/shiraz.json --start 2025-12-20 --end 2026-01-21`.
-
-   Expect a band-A site near 27.32°N 52.87°E on the January passes and nothing on 27 Dec. Write the result to `docs/validation/`.
-3. **One provisional granule from your area.** Run `inspect` on it. The output shows:
-   - the processor's `rfiLikelihood`;
-   - whether mitigation was applied, and which algorithm;
-   - the runconfig's RFI section.
-
-**Why step 3 matters.** PROVISIONAL products (17 Jun 2026 onward) are processed with an RFI filter that can weaken the image signature this detector uses. If detections look thin against the processor's `rfiLikelihood`, the filter is the first suspect.
-
-If the runconfig shows the processor ran **tone-rank**, the RSLC product carries a per-block RFI table: azimuth time × slant range, plus the fraction of pulses hit per frequency bin. That table survives filtering and names the frequencies. `product.rfi_block_grid` reads it.
+1. **Offline tests (also in CI):** `python tests/test_nisar.py` from the repo root.
+   - `test_tables.py`: geolocation round trip on a synthetic orbit; a synthetic L2 emitter found within 3 km, while the instrument tones and degenerate blocks raise nothing; QA parsing; screening and rotation.
+   - The image self-test on four synthetic GCOV files.
+2. **Shiraz known answer, BETA, image method: failed (21 Oct 2026).**
+   - GPS World ("Converging on the jammer", 18 May 2026) reports a jammer about 50 km SW of Shiraz (27.32°N 52.87°E) on 8 and 20 Jan 2026, absent on 27 Dec 2025. The data is track 157 ascending, frames 15–16.
+   - The image method made 56 detections at 30 sites over the six passes, 21 of them on 27 Dec. None was within 50 km of the jammer.
+   - The processor's own score on those BETA passes flags band B heavily (28–61% of blocks on 8 Jan) and band A barely. So check the band assumption before re-tuning.
+   - BETA products carry no per-block tables (their RFI algorithm is ST-EVD, with mitigation disabled), so the table method can't run on them.
+3. **Shiraz area, PROVISIONAL, table method:** see `docs/validation/nisar.md`.
 
 ## Limits
 
 - **Snapshots.** Each spot is imaged every few days, so latency is days, not hours.
-- **Blob-level location.** Within one pass the centroid can sit a few km toward the darker surface (sea) along the streak. A cross-fix needs two geometries.
-- **GPS L1 is out of band.** L1-only jammers do not appear here; the ADS-B lane covers L1.
-- **Tuned on synthetic data.** Thresholds in `detect` and `sites` were set on the self-test and will need tuning on the validation runs.
+- **Positions are block-scale.** Blocks are about 3 km in range and 1–2 km along track. The centroid sits where received power peaks, which a strong emitter's sidelobes can smear. Terrain height matters (see `tables.height_m`).
+- **Frame-wide interference.** A strong emitter can light up most of a frame; such candidates are flagged `widespread`, and their position is the power peak only.
+- **The instrument-tone list is empirical.** Two tones from five passes in two regions. Re-check it if detections cluster at one frequency everywhere.
+- **The table method needs tone-rank,** so it covers PROVISIONAL products only.
+- **Radars hop.** Long-range L-band radars hop across 1215–1400 MHz, and NISAR's 25 MHz of slices catch only part of that. A quiet radar site is expected often.
 
 ## Code
 
 | File | Role |
 |---|---|
-| `cmr.py` | Catalog search and UMM parsing |
-| `product.py` | HDF5 reads, local or streamed: identification, RFI metadata, block-averaged grids |
-| `detect.py` | Scene relationship, scoring, candidates, evidence |
-| `sites.py` | Sites, coverage, NEW/RETURNED/QUIET, cross-fixes |
+| `cmr.py` | Catalog search, granule lookup and UMM parsing |
+| `qa.py` | Tier 0: per-channel processor scores from the QA files |
+| `tables.py` | Tier 1 reads: RSLC tone-rank tables and orbit; local cache |
+| `geoloc.py` | Radar coordinates to latitude and longitude (and back) from the orbit |
+| `tabdetect.py` | Table method: block scores, instrument tones, candidates, frequency signatures |
+| `product.py`, `detect.py` | Image method: HDF5 reads and cross-pol scoring (BETA) |
+| `sites.py` | Sites, coverage, NEW/RETURNED/QUIET, cross-fixes (image method) |
 | `bands.py` | Sub-band edges and GNSS overlap |
 | `places.py` | Offline place wording from Natural Earth |
 | `report.py` | Alerts, observations, GeoJSON, map |
-| `pipeline.py` | One run |
+| `pipeline.py` | One run: search, screen, read, detect, sites, outputs |
 | `__main__.py` | Command-line interface |
 
 ## Data and licences
 
 | Data | Licence and use |
 |---|---|
-| NISAR | NASA/JPL-ISRO via ASF DAAC. NASA Earth science data, CC0 unless marked. Ingested; cite NISAR via ASF DAAC |
+| NISAR | NASA/JPL-ISRO via ASF DAAC. NASA Earth science data, CC0 unless marked; the CMR collections carry no use constraint (checked 21 Oct 2026). Ingested; cite NISAR via ASF DAAC |
 | Natural Earth | Public domain. Basemap land, countries and places |
 
 Both are recorded in `registry/sources.csv`.
 
 **Method references:**
 
-- isce3 NISAR product specification and RFI detection code;
-- NISAR Data User Guide (ASF);
-- GPS World, "Converging on the jammer" (18 May 2026), for the streak geometry and the Shiraz case.
+- isce3 (`rfi_tone_rank.py`, `focus.py`, the NISAR product specifications);
+- the [NISAR Data User Guide (ASF)](https://nisar-docs.asf.alaska.edu/), including the provisional known issues on the RFI filter;
+- GPS World, "Converging on the jammer" (18 May 2026), for the Shiraz case.
+
+If the work is shown publicly, credit @auonsson's post (20 Oct 2026) as the prompt for the idea.

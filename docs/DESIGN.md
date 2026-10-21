@@ -155,3 +155,9 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
   - No phone pushes until the Shiraz checks and a regional positive control pass.
   - Outputs stay private until validated.
 - **Data volume shapes the daily run.** GCOV files are 1.5–2.0 GB, and the detector streams most of band A. A large regional box can see ~14 granules a day (~24 GB of files). A cheap first pass on the processor's per-channel `rfiLikelihood` (a few bytes per granule) should decide which frames get the full read.
+- **Method change (21 Oct, after the first live runs).**
+  - **The image method failed the Shiraz BETA known answer:** 56 detections, none within 50 km of the jammer, 21 of them on the jammer-off date.
+  - **The default is now the table method.** It reads the RSLC processor's tone-rank tables: per-block interference-to-signal ratio and the share of pulses hit at each frequency, recorded before mitigation. Detection and geolocation come from the orbit. It costs 70–130 MB per pass instead of streaming the 1–2 GB image.
+  - **The QA `rfiLikelihood` is tier 0.** Under tone-rank it is the maximum ISR over blocks, so near-zero-signal blocks can push it past 10^11. It is a coarse screen with a per-frame rotation, not a detector.
+  - **Two instrument tones** (1233.125 and 1296.002 MHz), present in every pass checked in two regions, are excluded.
+  - The image method stays for BETA products only. Details: `nisar/README.md`.
