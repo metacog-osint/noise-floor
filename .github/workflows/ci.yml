@@ -11,8 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12", cache: pip, cache-dependency-path: requirements.txt }
-      - run: pip install -r requirements.txt
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: "requirements.txt\nnisar/requirements.txt" }
+      - run: pip install -r requirements.txt -r nisar/requirements.txt
       - name: Public-repo guard (private term list from the FORBIDDEN_TERMS secret; fails closed without it)
         env:
           FORBIDDEN_TERMS: ${{ secrets.FORBIDDEN_TERMS }}
