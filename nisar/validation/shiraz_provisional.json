@@ -1,0 +1,39 @@
+{
+  "_about": "Second Shiraz check, on PROVISIONAL products (17 Jun 2026 onward), which carry the processor's RFI filter; the BETA run (shiraz.json) predates it. CMR on 21 Oct 2026: 40 granules cover the site, tracks 56 and 157 ascending and 107 descending, all 20+5 MHz HH+HV. Whether the jammer is still on is unknown, so a miss here is not a failed known answer by itself; compare with the processor's rfiLikelihood. A hit from both directions is the first real ascending/descending cross-fix. Run from nisar/: python -m nisar_rfi run --config validation/shiraz_provisional.json --start 2026-06-17 --end 2026-10-21 --seed",
+  "aoi": {
+    "name": "Shiraz validation (provisional)",
+    "bbox": [
+      52.6,
+      27.1,
+      53.1,
+      27.5
+    ]
+  },
+  "collections": [
+    "NISAR_L2_GCOV_PROVISIONAL_V1"
+  ],
+  "max_granules_per_run": 60,
+  "keep_days": 400,
+  "cell_m": 500,
+  "frequencies": [
+    "A",
+    "B"
+  ],
+  "alert_min_confidence": "MEDIUM",
+  "detect": {
+    "seed_z": 5.0,
+    "grow_z": 2.0,
+    "min_cells": 4,
+    "min_excess_db": 1.5,
+    "line_km": 4.5
+  },
+  "sites": {
+    "site_prefix": "SHP",
+    "match_km": 25,
+    "quiet_after": 2,
+    "fix_min_cross_deg": 20
+  },
+  "ignore": [],
+  "state_dir": "private/nisar/validation-shiraz-prov/state",
+  "out_dir": "private/nisar/validation-shiraz-prov/out"
+}
