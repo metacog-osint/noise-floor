@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>L-band RFI Watch</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{
+  --bg:#0b0e13; --panel:rgba(16,20,27,.92); --line:#263040; --fg:#e7ebf0; --mut:#8b97a8;
+  --a:#f5a524; --b:#a78bfa; --ab:#f04438; --pass:#4cc9f0; --ok:#47cd89; --quiet:#667085;
+  --r:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+  font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+#map{position:fixed;inset:0;background:#0d1219}
+.leaflet-container{background:#0d1219;font:inherit}
+.leaflet-control-attribution{background:rgba(11,14,19,.7)!important;color:var(--mut)!important;font-size:10px}
+.leaflet-bottom{bottom:calc(112px + env(safe-area-inset-bottom))}
+.leaflet-control-attribution a{color:var(--mut)!important}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#121821;color:var(--fg);border:1px solid var(--line);box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.leaflet-popup-content{margin:12px 14px;min-width:230px;max-width:300px}
+.leaflet-popup-close-button{color:var(--mut)!important}
+
+/* header */
+#top{position:fixed;top:calc(8px + env(safe-area-inset-top));left:8px;right:8px;z-index:1000;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;pointer-events:none}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);pointer-events:auto}
+#title{padding:8px 12px}
+#title h1{font-size:15px;margin:0;font-weight:650;letter-spacing:.01em}
+#title .sub{color:var(--mut);font-size:12px}
+#ctrl{display:flex;gap:6px;padding:6px;flex-wrap:wrap;margin-left:auto}
+.chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:999px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:30px}
+.chip.on{color:var(--fg);border-color:#3b4a60;background:#1a2230}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+#demo{position:fixed;left:0;right:0;top:0;z-index:1001;background:repeating-linear-gradient(45deg,#3a2a05,#3a2a05 10px,#2c2004 10px,#2c2004 20px);color:#fcd34d;font-size:11.5px;font-weight:650;text-align:center;padding:3px 8px calc(3px);letter-spacing:.03em;display:none}
+
+/* sheet */
+#sheet{position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:1000;max-width:520px;
+  display:flex;flex-direction:column;max-height:58vh;transition:max-height .25s ease}
+#sheet.min{max-height:96px}
+#grab{display:flex;align-items:center;gap:10px;padding:10px 12px 8px;cursor:pointer;user-select:none}
+#grab .h{flex:1}
+#grab .big{font-size:14px;font-weight:600}
+#grab .small{font-size:12px;color:var(--mut)}
+#grab .handle{width:34px;height:4px;border-radius:2px;background:#3a4556;position:absolute;left:50%;top:5px;transform:translateX(-50%)}
+#tabs{display:flex;gap:4px;padding:0 10px 8px;border-bottom:1px solid var(--line)}
+#tabs button{flex:1;appearance:none;background:transparent;border:0;color:var(--mut);font:inherit;font-size:13px;padding:6px 4px;border-radius:8px;cursor:pointer}
+#tabs button.on{color:var(--fg);background:#1a2230}
+#list{overflow:auto;padding:4px 0 6px;-webkit-overflow-scrolling:touch}
+.row{display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(38,48,64,.6);cursor:pointer;align-items:flex-start}
+.row:last-child{border-bottom:0}
+.row:hover{background:#151c27}
+.row .m{flex:1;min-width:0}
+.row .t1{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t2{font-size:12px;color:var(--mut)}
+.row .r{text-align:right;font-size:12px;color:var(--mut);white-space:nowrap}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:1px 6px;border-radius:5px;border:1px solid var(--line);color:var(--mut)}
+.tag.new{color:#fcd34d;border-color:#7a5b0c}
+.tag.quiet{color:var(--quiet)}
+.tag.active{color:var(--ok);border-color:#1d5c3c}
+.empty{padding:16px 12px;color:var(--mut);font-size:13px}
+.about{padding:10px 12px 14px;font-size:12.5px;color:#c4ccd7}
+.about p{margin:0 0 8px}
+.about b{color:var(--fg)}
+.lg{display:flex;flex-wrap:wrap;gap:10px 14px;padding:4px 0 8px;font-size:12px;color:var(--mut)}
+.lg span{display:inline-flex;gap:6px;align-items:center}
+
+/* popups */
+.pp h3{font-size:14px;margin:0 0 2px}
+.pp .when{color:var(--mut);font-size:12px;margin-bottom:8px}
+.pp table{border-collapse:collapse;width:100%;font-size:12.5px;margin:6px 0}
+.pp td{padding:2px 0;vertical-align:top}
+.pp td:first-child{color:var(--mut);padding-right:10px;white-space:nowrap}
+.pp .int{font-size:12.5px;color:#c4ccd7;margin:6px 0}
+.pp a{color:var(--pass)}
+.pp .band{display:inline-flex;gap:6px;align-items:center;font-weight:600;font-size:12.5px}
+
+/* map marks */
+.blob{filter:blur(2.2px)}
+.lbl{background:transparent;border:0;box-shadow:none;color:#7fd8f5;font-size:10.5px;font-weight:600;text-shadow:0 0 3px #000,0 0 3px #000;padding:0;white-space:nowrap}
+.lbl:before{display:none}
+.site{width:16px;height:16px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.35);box-shadow:0 0 0 2px rgba(0,0,0,.4)}
+.site.quiet{border-color:var(--quiet)}
+.site.new{animation:pulse 1.6s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(252,211,77,.85)}100%{box-shadow:0 0 0 16px rgba(252,211,77,0)}}
+.sitelbl{background:transparent;border:0;box-shadow:none;color:#fff;font-size:11px;font-weight:700;text-shadow:0 0 3px #000,0 0 4px #000;padding:0}
+.sitelbl:before{display:none}
+.fix{color:#fff;font-size:20px;line-height:20px;text-align:center;text-shadow:0 0 4px #000;font-weight:300}
+.truth{color:#fff;font-size:16px;line-height:16px;text-align:center;text-shadow:0 0 3px #000}
+@media (max-width:640px){ .leaflet-control-zoom{display:none} #ctrl{margin-left:0;width:100%} }
+@media (prefers-reduced-motion:reduce){ .site.new{animation:none;box-shadow:0 0 0 4px rgba(252,211,77,.6)} #sheet{transition:none} }
+</style>
+</head>
+<body>
+<div id="demo">SYNTHETIC TEST DATA — not real detections</div>
+<div id="map" role="application" aria-label="Map of L-band interference detections"></div>
+<div id="top">
+  <div class="card" id="title"><h1 id="t-h">L-band RFI Watch</h1><div class="sub" id="t-sub"></div></div>
+  <div class="card" id="ctrl" role="toolbar" aria-label="Filters">
+    <button class="chip" data-days="3">3 d</button>
+    <button class="chip on" data-days="12">12 d</button>
+    <button class="chip" data-days="30">30 d</button>
+    <button class="chip" data-days="9999">All</button>
+    <button class="chip on" data-band="A" aria-pressed="true"><span class="dot" style="background:var(--a)"></span>A</button>
+    <button class="chip on" data-band="B" aria-pressed="true"><span class="dot" style="background:var(--b)"></span>B</button>
+  </div>
+</div>
+<div id="sheet" class="card min">
+  <div id="grab" role="button" aria-expanded="false" tabindex="0"><span class="handle"></span>
+    <div class="h"><div class="big" id="g-big"></div><div class="small" id="g-small"></div></div>
+    <span class="small">▴</span></div>
+  <div id="tabs" role="tablist">
+    <button class="on" data-tab="det">Detections</button><button data-tab="sites">Sites</button>
+    <button data-tab="passes">Passes</button><button data-tab="about">About</button>
+  </div>
+  <div id="list"></div>
+</div>
+<script>
+const DATA = /*__DATA__*/null;
+const BANDCOL = {A: getCss('--a'), B: getCss('--b'), AB: getCss('--ab')};
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const bandKey = b => b.length > 1 ? 'AB' : b[0];
+// Stored in UTC; shown in Central time with the zone named.
+const CT = new Intl.DateTimeFormat('en-US', {timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'});
+const fmtT = t => t ? CT.format(new Date(t.length === 16 ? t + ':00Z' : t)) : '';
+const gen = new Date(DATA.generated);
+let windowDays = 12, bandsOn = new Set(['A', 'B']), tab = 'det';
+const PP = {maxWidth: 300, autoPanPaddingTopLeft: L.point(12, 175), autoPanPaddingBottomRight: L.point(12, 125)};
+
+if (DATA.demo) { document.getElementById('demo').style.display = 'block'; document.getElementById('top').style.top = 'calc(26px + env(safe-area-inset-top))'; }
+document.getElementById('t-h').textContent = `L-band RFI · ${DATA.aoi.name}`;
+document.getElementById('t-sub').textContent = `NISAR GCOV · updated ${fmtT(DATA.generated)}`;
+
+const map = L.map('map', {zoomControl: true, attributionControl: true, worldCopyJump: false, preferCanvas: false})
+  .setView(DATA.aoi.center, 6);
+map.zoomControl.setPosition('topright');
+map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+map.createPane('land'); map.getPane('land').style.zIndex = 150;
+L.geoJSON(DATA.land, {pane: 'land', interactive: false,
+  style: {color: '#2b3646', weight: 1, fillColor: '#1a212c', fillOpacity: 1}}).addTo(map);
+// Basemap is Natural Earth land only (public domain): no third-party tile service.
+map.attributionControl.addAttribution('NISAR: NASA/JPL-ISRO via ASF DAAC · Natural Earth');
+L.geoJSON(DATA.aoi.geojson, {interactive: false, style: {color: '#5b6b82', weight: 1, dashArray: '2 6', fill: false}}).addTo(map);
+
+const gPass = L.layerGroup().addTo(map), gDet = L.layerGroup().addTo(map), gSite = L.layerGroup().addTo(map),
+      gFix = L.layerGroup().addTo(map), gTruth = L.layerGroup().addTo(map);
+const detLayers = {}, siteLayers = {};
+
+function inWindow(t){ return (gen - new Date(t)) / 864e5 <= windowDays; }
+function detVisible(d){ return inWindow(d.start) && d.bands.some(b => bandsOn.has(b)); }
+
+function detPopup(d){
+  const k = bandKey(d.bands);
+  const lk = Object.entries(d.rfi_likelihood || {}).map(([c, v]) => `${c} ${(v * 100).toFixed(1)}%`).join(', ') || 'n/a';
+  return `<div class="pp"><h3>${esc(d.where || (d.lat + ', ' + d.lon))}</h3>
+  <div class="when">${esc(fmtT(d.start))} · track ${d.track} ${d.direction === 'A' ? 'ascending' : 'descending'} · frame ${d.frame}</div>
+  <div class="band"><span class="dot" style="background:${BANDCOL[k]}"></span>${esc(d.band_text)}</div>
+  ${d.gnss_overlap.length ? `<div class="when" style="margin:2px 0 0">In band: ${esc(d.gnss_overlap.join(', '))}</div>` : ''}
+  <div class="int">${esc(d.interpretation)}</div>
+  <table>
+    <tr><td>Cross-pol excess</td><td>peak ${d.peak_excess_db} dB · mean ${d.mean_excess_db} dB</td></tr>
+    <tr><td>Anomaly</td><td>peak z ${d.peak_z} · ${esc(d.confidence.toLowerCase())} confidence</td></tr>
+    <tr><td>Extent</td><td>${d.length_km} × ${d.width_km} km · ${d.area_km2} km²</td></tr>
+    <tr><td>Shape</td><td>${d.aligned_with_range ? 'streak along range (RFI-like)' : 'not range-aligned'}</td></tr>
+    <tr><td>Processor flag</td><td>${esc(lk)}</td></tr>
+    <tr><td>Site</td><td>${esc(d.site || '')}${d.ignored ? ' · ignored: ' + esc(d.ignored) : ''}</td></tr>
+  </table>
+  ${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">Granule in Vertex ↗</a>` : ''}</div>`;
+}
+
+function sitePopup(s){
+  const cov = s.coverage || [], act = cov.filter(c => c.active).length;
+  return `<div class="pp"><h3>${esc(s.id)} · ${esc(s.where || '')}</h3>
+  <div class="when">first ${fmtT(s.first_seen)} · last ${fmtT(s.last_seen)}</div>
+  <table>
+    <tr><td>Status</td><td>${esc(s.status)}${s.ignored ? ' (ignored: ' + esc(s.ignored) + ')' : ''}</td></tr>
+    <tr><td>Active passes</td><td>${act} of ${cov.length} that covered it</td></tr>
+    <tr><td>Bands seen</td><td>${esc(s.bands_seen.join(', '))}</td></tr>
+    <tr><td>Geometries</td><td>${esc(s.geometries.join(', '))}</td></tr>
+    <tr><td>Cross-fix</td><td>${s.fix ? `${s.fix.lat}, ${s.fix.lon} ± ${s.fix.error_km} km (${s.fix.crossing_deg}° crossing)` : 'needs two crossing geometries'}</td></tr>
+  </table></div>`;
+}
+
+function draw(){
+  [gPass, gDet, gSite, gFix, gTruth].forEach(g => g.clearLayers());
+  for (const k in detLayers) delete detLayers[k];
+  const showLabels = map.getZoom() >= 6;
+  // passes, newest on top
+  const passes = DATA.passes.filter(p => inWindow(p.start)).sort((a, b) => a.start < b.start ? -1 : 1);
+  passes.forEach(p => {
+    const age = (gen - new Date(p.start)) / 864e5, op = Math.max(.25, 1 - age / Math.max(windowDays, 1));
+    const poly = L.polygon(p.footprint.map(([x, y]) => [y, x]), {color: getCss('--pass'), weight: 1, opacity: op * .8,
+      dashArray: '4 4', fillColor: getCss('--pass'), fillOpacity: .025, interactive: false}).addTo(gPass);
+    if (showLabels && windowDays <= 30) {
+      const top = p.footprint.reduce((a, b) => b[1] > a[1] ? b : a);       // label the frame's northern corner
+      L.tooltip({permanent: true, direction: 'top', className: 'lbl', opacity: op, offset: [0, -2]})
+        .setLatLng([top[1], top[0]]).setContent(`${esc(fmtT(p.start))} ${p.direction}`).addTo(gPass);
+    }
+  });
+  DATA.detections.filter(detVisible).sort((a, b) => a.start < b.start ? -1 : 1).forEach(d => {
+    const k = bandKey(d.bands), col = BANDCOL[k];
+    const op = {HIGH: .6, MEDIUM: .45, LOW: .25}[d.confidence] ?? .3;
+    const glow = L.polygon(d.outline.map(([x, y]) => [y, x]), {stroke: false, fillColor: col, fillOpacity: op, className: 'blob', interactive: false}).addTo(gDet);
+    const edge = L.polygon(d.outline.map(([x, y]) => [y, x]), {color: col, weight: 1.2, opacity: .9, fill: true, fillOpacity: .01,
+      dashArray: d.confidence === 'LOW' ? '3 3' : null}).addTo(gDet).bindPopup(detPopup(d), PP);
+    detLayers[d.id] = edge;
+  });
+  DATA.sites.forEach(s => {
+    const vis = s.detections_meta.some(d => inWindow(d.start) && d.bands.some(b => bandsOn.has(b)));
+    if (!vis) return;
+    const isNew = (gen - new Date(s.first_seen)) / 864e5 <= 3 && !s.baseline;
+    const icon = L.divIcon({className: '', html: `<div class="site ${s.status === 'QUIET' ? 'quiet' : ''} ${isNew ? 'new' : ''}"></div>`, iconSize: [16, 16], iconAnchor: [8, 8]});
+    const m = L.marker([s.lat, s.lon], {icon, keyboard: true, title: s.id}).addTo(gSite).bindPopup(sitePopup(s), PP);
+    if (showLabels) m.bindTooltip(s.id, {permanent: true, direction: 'right', offset: [10, 0], className: 'sitelbl'});
+    siteLayers[s.id] = m;
+    if (s.fix) {
+      L.circle([s.fix.lat, s.fix.lon], {radius: s.fix.error_km * 1000, color: '#fff', weight: 1, dashArray: '3 4', fill: false, interactive: false}).addTo(gFix);
+      L.marker([s.fix.lat, s.fix.lon], {icon: L.divIcon({className: '', html: '<div class="fix">⌖</div>', iconSize: [20, 20], iconAnchor: [10, 10]})})
+        .addTo(gFix).bindPopup(`<div class="pp"><h3>Cross-fix · ${esc(s.id)}</h3><div class="when">${s.fix.lat}, ${s.fix.lon} ± ${s.fix.error_km} km</div><div class="int">Intersection of streak axes from two viewing geometries crossing at ${s.fix.crossing_deg}°.</div></div>`, PP);
+    }
+  });
+  (DATA.truth || []).forEach(t => L.marker([t.lat, t.lon], {icon: L.divIcon({className: '', html: '<div class="truth">✕</div>', iconSize: [16, 16], iconAnchor: [8, 8]})})
+    .addTo(gTruth).bindPopup(`<div class="pp"><h3>Test emitter (truth)</h3><div class="when">${esc(t.label)}</div></div>`, PP));
+  renderSheet();
+}
+
+function renderSheet(){
+  const dets = DATA.detections.filter(detVisible).sort((a, b) => a.start < b.start ? 1 : -1);
+  const sites = DATA.sites.filter(s => s.detections_meta.some(d => inWindow(d.start)));
+  const newSites = sites.filter(s => (gen - new Date(s.first_seen)) / 864e5 <= 3 && !s.baseline);
+  const passes = DATA.passes.filter(p => inWindow(p.start));
+  document.getElementById('g-big').textContent =
+    `${dets.length} detection${dets.length === 1 ? '' : 's'} · ${sites.filter(s => s.status === 'ACTIVE').length} active site${sites.length === 1 ? '' : 's'}` + (newSites.length ? ` · ${newSites.length} new` : '');
+  document.getElementById('g-small').textContent = `${passes.length} passes imaged in the last ${windowDays >= 9999 ? 'archive' : windowDays + ' days'}`;
+  const L_ = document.getElementById('list');
+  if (tab === 'det') {
+    L_.innerHTML = `<div class="lg" style="padding:6px 12px 2px"><span><span class="dot" style="background:var(--a)"></span>A only</span><span><span class="dot" style="background:var(--b)"></span>B only</span><span><span class="dot" style="background:var(--ab)"></span>A + B</span></div>` +
+      (dets.map(d => `<div class="row" data-det="${d.id}"><span class="dot" style="margin-top:5px;background:${BANDCOL[bandKey(d.bands)]}"></span>
+      <div class="m"><div class="t1">${esc(d.where || d.lat + ', ' + d.lon)}</div><div class="t2">${esc(d.band_text)}${d.gnss_overlap.length ? ' · ' + esc(d.gnss_overlap.join(', ')) : ''}</div></div>
+      <div class="r">${fmtT(d.start)}<br><span class="tag">${esc(d.confidence)}</span></div></div>`).join('') || '<div class="empty">Nothing in this window.</div>');
+  } else if (tab === 'sites') {
+    L_.innerHTML = sites.sort((a, b) => a.last_seen < b.last_seen ? 1 : -1).map(s => {
+      const isNew = newSites.includes(s), cov = s.coverage || [];
+      return `<div class="row" data-site="${s.id}"><div class="m"><div class="t1">${esc(s.id)} · ${esc(s.where || '')}</div>
+      <div class="t2">${cov.filter(c => c.active).length}/${cov.length} passes active · bands ${esc(s.bands_seen.join('+'))}${s.fix ? ' · fixed ±' + s.fix.error_km + ' km' : ''}</div></div>
+      <div class="r">${fmtT(s.last_seen)}<br>${isNew ? '<span class="tag new">NEW</span>' : `<span class="tag ${s.status === 'QUIET' ? 'quiet' : 'active'}">${esc(s.status)}</span>`}</div></div>`;
+    }).join('') || '<div class="empty">No sites in this window.</div>';
+  } else if (tab === 'passes') {
+    L_.innerHTML = passes.sort((a, b) => a.start < b.start ? 1 : -1).map(p => {
+      const lk = Object.entries(p.rfi_likelihood || {}).map(([c, v]) => `${c} ${(v * 100).toFixed(0)}%`).join(' ');
+      return `<div class="row" data-pass="${esc(p.granule)}"><div class="m"><div class="t1">T${p.track} ${p.direction === 'A' ? 'asc' : 'desc'} · frame ${p.frame}</div>
+      <div class="t2">${esc(p.mode || '')} MHz · processor flag ${esc(lk || 'n/a')}${p.status === 'error' ? ' · <b style="color:var(--ab)">error</b>' : ''}</div></div>
+      <div class="r">${fmtT(p.start)}<br>${p.detections ? `<span class="tag active">${p.detections} det</span>` : '<span class="tag">clean</span>'}</div></div>`;
+    }).join('') || '<div class="empty">No passes in this window.</div>';
+  } else {
+    L_.innerHTML = `<div class="about">
+      <p><b>What this shows.</b> Places where NISAR's L-band radar picked up emissions inside its own receive band. Frequency A covers ${esc(DATA.band_text.A || '')}; frequency B covers ${esc(DATA.band_text.B || '')}.</p>
+      <p><b>How.</b> Unpolarized interference raises cross-pol (HV) relative to co-pol (HH) far beyond what the ground itself produces. Each pass is scored against its own scene, smoothed along the radar range direction (interference streaks run cross-track), and grouped into sites across passes.</p>
+      <p><b>Reading it.</b> Blob = one pass. Ring = site (pulsing = first seen in the last 3 days, grey = quiet on recent passes). ⌖ = cross-fix from two crossing geometries. Dashed outlines = imaged frames, labelled with acquisition time.</p>
+      <p><b>Limits.</b> Snapshots, not continuous: each spot is imaged every few days. Locations are blob-level. Jammers that only cover GPS L1 do not appear. Products are processed with an RFI filter, which can weaken weak signatures. These are leads for triage, not findings.</p>
+      <p class="sub" style="color:var(--mut)">${esc(DATA.footer || '')}</p></div>`;
+  }
+  const focus = () => { document.getElementById('sheet').classList.add('min'); grab.setAttribute('aria-expanded', 'false'); };
+  L_.querySelectorAll('[data-det]').forEach(r => r.onclick = () => { const l = detLayers[r.dataset.det]; if (l) { focus(); map.fitBounds(l.getBounds(), {maxZoom: 9, paddingTopLeft: [16, 170], paddingBottomRight: [16, 120]}); setTimeout(() => l.openPopup(), 350); } });
+  L_.querySelectorAll('[data-site]').forEach(r => r.onclick = () => { const m = siteLayers[r.dataset.site]; if (m) { focus(); map.setView(m.getLatLng(), 9); setTimeout(() => m.openPopup(), 350); } });
+  L_.querySelectorAll('[data-pass]').forEach(r => r.onclick = () => { const p = DATA.passes.find(x => x.granule === r.dataset.pass); if (p) { focus(); map.fitBounds(p.footprint.map(([x, y]) => [y, x]), {paddingTopLeft: [16, 170], paddingBottomRight: [16, 120]}); } });
+}
+
+document.querySelectorAll('[data-days]').forEach(b => b.onclick = () => {
+  windowDays = +b.dataset.days; document.querySelectorAll('[data-days]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
+document.querySelectorAll('[data-band]').forEach(b => b.onclick = () => {
+  const k = b.dataset.band; bandsOn.has(k) ? bandsOn.delete(k) : bandsOn.add(k);
+  b.classList.toggle('on', bandsOn.has(k)); b.setAttribute('aria-pressed', bandsOn.has(k)); draw(); });
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  tab = b.dataset.tab; document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.getElementById('sheet').classList.remove('min'); document.getElementById('grab').setAttribute('aria-expanded', 'true'); renderSheet(); });
+const grab = document.getElementById('grab');
+const toggleSheet = () => { const s = document.getElementById('sheet'); s.classList.toggle('min'); grab.setAttribute('aria-expanded', !s.classList.contains('min')); };
+grab.onclick = toggleSheet; grab.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSheet(); } };
+let lastZ = map.getZoom(); map.on('zoomend', () => { const z = map.getZoom(); if ((z >= 6) !== (lastZ >= 6)) draw(); lastZ = z; });
+draw();
+if (DATA.detections.length) {
+  const b = L.latLngBounds(DATA.detections.filter(detVisible).map(d => [d.lat, d.lon]));
+  if (b.isValid()) map.fitBounds(b.pad(0.4), {maxZoom: 8, paddingTopLeft: [16, 150], paddingBottomRight: [16, 130]});
+}
+</script>
+</body>
+</html>

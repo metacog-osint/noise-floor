@@ -31,6 +31,7 @@ It is an **effect** measure, not attribution. Read [`docs/method-card.md`](docs/
 | `pipeline/pnt_analysis.py` | SBAS service flag, same-hour baselines and anomaly events, minute-burst events |
 | `pipeline/run_days.py` | Process date ranges, skipping days already done |
 | `collectors/` | Community collectors (Bluesky, RSS/Atom). The account and feed lists are private and not in this repo. |
+| `nisar/` | NISAR L-band lane: emitters inside NISAR's receive bands (incl. GPS L2), sites and cross-fixes. Built, self-test passing, not yet run live. See [`nisar/README.md`](nisar/README.md) |
 | `registry/sources.csv` | Licence registry: every source, its licence, and what it may be used for. Checked by `tools/check_registry.py`. |
 | `docs/` | Design, method card and validation reports with figures |
 | `tools/` | Validation scripts and repository checks |
