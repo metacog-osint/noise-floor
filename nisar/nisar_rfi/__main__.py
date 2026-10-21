@@ -2,6 +2,7 @@
 
   python -m nisar_rfi run      [--config config.json] [--days 10] [--max N] [--local DIR] [--seed]
   python -m nisar_rfi inspect  GRANULE_UR | URL | FILE.h5
+  python -m nisar_rfi tables   GCOV_OR_RSLC_GRANULE_UR [--height M]
   python -m nisar_rfi map      [--config config.json]
 """
 import argparse
@@ -24,6 +25,28 @@ def cmd_run(a):
                              start=day(a.start), end=end, log=log)
     if a.quiet:
         print(f"nisar: run complete, {len(alerts)} alert(s)")
+
+
+def cmd_tables(a):
+    """Table method on one pass: read the RSLC RFI tables and print the candidates (nothing saved)."""
+    import tempfile
+
+    from . import tabdetect, tables
+    name = a.granule.replace("_L1_PR_RSLC_", "_L2_PR_GCOV_")
+    g = cmr.find_granule(name) or {"granule": name, "track": 0, "direction": "", "frame": 0, "start": ""}
+    fs = pipeline.earthdata_fs()
+    with tempfile.TemporaryDirectory() as d:
+        tab, orb, meta = pipeline.fetch_tables(g, {"state_dir": d}, fs)
+    print(f'{tables.rslc_name(name)}\n{meta.get("rslc_mb")} MB in {meta.get("read_s")} s; channels {meta.get("channels")}'
+          + (f'; {meta["status"]}' if meta.get("status") else ""))
+    if not tab:
+        return
+    for band, cands in tabdetect.detect(tab, orb, meta.get("look", "Left"), {"height_m": a.height}).items():
+        print(f"band {band}: {len(cands)} candidate(s)")
+        for c in cands:
+            print(f'  {c["lat"]:.3f},{c["lon"]:.3f}  {c["blocks"]} blocks, {int(c["peak_hit"] * 100)}% of pulses, '
+                  f'ISR {c["peak_isr_db"]} dB, {"+".join(c["pols"])}, {c["along_km"]} x {c["across_km"]} km, '
+                  f'{c["confidence"]}{" WIDESPREAD" if c["widespread"] else ""}: {tabdetect.describe_runs(c["freq_runs_mhz"])}')
 
 
 def cmd_map(a):
@@ -114,6 +137,10 @@ def main(argv=None):
     i = sub.add_parser("inspect")
     i.add_argument("target")
     i.set_defaults(fn=cmd_inspect)
+    t = sub.add_parser("tables")
+    t.add_argument("granule")
+    t.add_argument("--height", type=float, default=0.0, help="terrain height for geolocation, m")
+    t.set_defaults(fn=cmd_tables)
     m = sub.add_parser("map")
     m.add_argument("--config", default=default_cfg)
     m.set_defaults(fn=cmd_map)

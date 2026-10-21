@@ -1,6 +1,7 @@
 """Outputs: alerts, observations (event-model rows), GeoJSON, map."""
 import gzip
 import hashlib
+import math
 import json
 import os
 import sys
@@ -31,6 +32,14 @@ def _t(ts):
     return ts[:16] + "Z" if ts and not ts.endswith("Z") else (ts[:16] + "Z" if ts else "")
 
 
+def _rfi_flag_text(d):
+    """The processor's per-channel RFI score in its own units: fraction (ST-EVD) or ISR in dB (tone-rank)."""
+    lk = d.get("rfi_likelihood") or {}
+    if d.get("rfi_kind") == "max_isr":
+        return ", ".join(f"{k} {10 * math.log10(v):.0f} dB" for k, v in lk.items() if v and v > 0)
+    return ", ".join(f"{k} {v * 100:.1f}%" for k, v in lk.items())
+
+
 def alerts_from_events(events, state, cfg, now):
     min_conf = cfg.get("alert_min_confidence", "MEDIUM")
     out = []
@@ -50,11 +59,17 @@ def alerts_from_events(events, state, cfg, now):
             sig = f' ({", ".join(d["gnss_overlap"])})' if d["gnss_overlap"] else ""
             title = f'{word} L-band emitter {s["id"]}: {d["where"]} — band {"+".join(d["bands"])}{sig}'
             fix = (f' Cross-fix {s["fix"]["lat"]}, {s["fix"]["lon"]} ±{s["fix"]["error_km"]} km.' if s.get("fix") else "")
-            lk = ", ".join(f"{k} {v * 100:.1f}%" for k, v in (d.get("rfi_likelihood") or {}).items())
+            lk = _rfi_flag_text(d)
+            if d.get("method") == "tables":
+                measure = (f'Processor RFI table: {d["band_text"]}; {int(d["peak_hit"] * 100)}% of pulses hit, '
+                           f'interference {d["peak_isr_db"]} dB over the signal, {d["blocks"]} blocks '
+                           f'({d["along_km"]} x {d["across_km"]} km), {"+".join(d["pols"])}, ')
+            else:
+                measure = (f'Cross-pol excess peak {d["peak_excess_db"]} dB over {d["area_km2"]} km², '
+                           f'{"streak along range" if d["aligned_with_range"] else "not range-aligned"}, ')
             detail = (f'NISAR pass {central(d["start"])}, track {d["track"]}{d["direction"]} frame {d["frame"]}. '
-                      f'{d["interpretation"]} Cross-pol excess peak {d["peak_excess_db"]} dB over {d["area_km2"]} km², '
-                      f'{"streak along range" if d["aligned_with_range"] else "not range-aligned"}, '
-                      f'{d["confidence"].lower()} confidence. Processor RFI flag: {lk or "n/a"}.{fix} '
+                      f'{d["interpretation"]} {measure}'
+                      f'{d["confidence"].lower()} confidence. Processor RFI score: {lk or "n/a"}.{fix} '
                       "One radar snapshot: a lead for triage, not a finding.")
             when, url = _t(d["start"]), d.get("url", "")
         out.append({
@@ -69,19 +84,24 @@ def alerts_from_events(events, state, cfg, now):
 
 def observation(d):
     """One detection as an observation row (event model, DESIGN.md merged plan), ready for D1."""
+    tab = d.get("method") == "tables"
     return {
-        "source_id": "nisar_gcov_rfi", "raw_item_id": d["granule"],
+        "source_id": "nisar_rslc_rfi_tables" if tab else "nisar_gcov_rfi", "raw_item_id": d["granule"],
         "observed_start": d["start"], "observed_end": d.get("end") or d["start"],
         "geom": {"type": "Polygon", "coordinates": [d["outline"]]},
         "h3_index": h3.latlng_to_cell(d["lat"], d["lon"], 6),
         "domain": "GNSS" if d["gnss_overlap"] else "RADAR",
         "freq_low_mhz": d["freq_low_mhz"], "freq_high_mhz": d["freq_high_mhz"],
-        "metric": "crosspol_excess_db", "value": d["peak_excess_db"], "baseline": "scene HH-ratio relationship",
-        "anomaly_score": d["peak_z"], "claim_text": None, "language": None, "extracted_systems": [],
+        "metric": "isr_db" if tab else "crosspol_excess_db", "value": d["peak_excess_db"],
+        "baseline": "processor tone-rank table" if tab else "scene HH-ratio relationship",
+        "anomaly_score": d.get("peak_hit") if tab else d["peak_z"],
+        "claim_text": None, "language": None, "extracted_systems": [],
         "link": d.get("url"), "confidence": d["confidence"],
         "extra": {"site": d.get("site"), "bands": d["bands"], "where": d["where"], "track": d["track"],
                   "direction": d["direction"], "frame": d["frame"], "axis_az": d["axis_az"],
-                  "aligned_with_range": d["aligned_with_range"], "rfi_likelihood": d.get("rfi_likelihood")},
+                  "aligned_with_range": d["aligned_with_range"], "rfi_likelihood": d.get("rfi_likelihood"),
+                  "method": d.get("method", "image"), "freq_runs_mhz": d.get("freq_runs_mhz"),
+                  "peak_hit": d.get("peak_hit"), "pols": d.get("pols"), "widespread": d.get("widespread")},
     }
 
 

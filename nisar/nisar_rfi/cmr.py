@@ -94,6 +94,19 @@ def search(short_name, bbox, start, end=None, max_items=2000, session=None):
     return out[:max_items]
 
 
+def find_granule(name, short_names=("NISAR_L1_RSLC_PROVISIONAL_V1", "NISAR_L2_GCOV_PROVISIONAL_V1",
+                                     "NISAR_L1_RSLC_BETA_V1", "NISAR_L2_GCOV_BETA_V1"), session=None):
+    """One granule by its GranuleUR, from the first collection that has it (None if absent)."""
+    s = session or requests.Session()
+    for short in short_names:
+        r = s.get(CMR, params={"short_name": short, "readable_granule_name": name}, headers=UA, timeout=60)
+        r.raise_for_status()
+        items = r.json().get("items", [])
+        if items:
+            return parse(items[0])
+    return None
+
+
 def search_url(granule):
     """Vertex link for a granule, for reports."""
     return f"https://search.asf.alaska.edu/#/?dataset=NISAR&searchType=List%20Search&searchList={granule}"
