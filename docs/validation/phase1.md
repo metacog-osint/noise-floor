@@ -185,3 +185,62 @@ Then:
 
 1. Re-run the 20 days and check that the nightly bursts collapse on live counts.
 2. Report post-exposure degradation by aircraft type as its own product. Which types carry interference effects downstream, and for how long, is useful to operators.
+
+---
+
+# Post-exposure tag: processor v1.4 (21 Oct 2026)
+
+**Generated tables and map:** `latching_results.md` (now v1.4). **Data:** the same 20 days, all at v1.4. The last two (12 Nov 2025 and 22 Sep 2026) were reprocessed on 21 Oct.
+
+## Bottom line
+
+- **The post-exposure tag finds far more downstream degradation than the latch did:**
+  - It tags **164–324 aircraft a day**, against 26–53 under v1.3.
+  - Over central Europe it covers **41–55% of gross-bad aircraft-hexes**, and over western Europe 50–75%.
+  - Inside real hotspots the share stays low: Baltic 5–12%, Black Sea 6–11%. That is the expected split: away from jammers, much of what looks bad was carried in from elsewhere.
+- **Hotspots are untouched.** Shares fall by at most 1.8 points (raw vs live, 23–25 Oct).
+- **The nightly central-Europe bursts shrink but don't disappear:**
+  - Events went from 33 (v1.2) to 30 (v1.3) to **26** (v1.4).
+  - The largest burst on most nights got smaller: 27 to 17 aircraft on 10 Oct, 25 to 10 on 23 Oct. No burst above 17 aircraft remains.
+  - Six nights now have no burst, against two before.
+  - On six nights the count rose, probably because removing tagged aircraft split one large event into smaller ones that still clear the threshold.
+- **The tag catches only 38–47% of the aircraft in the bursts that remain:**
+  - 21 Oct, 05:03–05:09Z, near Berlin: 6 of 16 aircraft tagged.
+  - 23 Oct, 04:16–04:26Z, over north-west Germany: 7 of 15 tagged.
+  - In both, peers were 98–99% healthy and A350-900s made up 38–47% of the degraded aircraft, against 2–4% of traffic.
+  - First degradations were over the eastern Black Sea and Georgian coast (21 Oct) and near St Petersburg and Lake Ladoga (23 Oct). On 21 Oct, 3 aircraft first degraded over Pomerania, roughly 220–290 km from the burst. That is inside the tag's 300 km radius, so they count as local.
+- **The type pattern holds across all 17 October days,** not just the three traced nights. Of 4,025 post-exposure aircraft-days:
+
+| Type | Share of post-exposure | Share of all traffic | Over-representation |
+|---|---|---|---|
+| A350-900 (A359) | 24.9% | 1.28% | 19.4× |
+| A380 (A388) | 5.0% | 0.26% | 19.2× |
+| 777-300ER (B77W) | 8.0% | 1.69% | 4.7× |
+| 777-200LR/F (B77L) | 3.0% | 0.79% | 3.8× |
+| A330-300 (A333) | 4.5% | 1.25% | 3.6× |
+| A321 | 9.3% | 3.09% | 3.0× |
+| 737-800, A320, A320neo, 737 MAX 8 | — | — | 0.6–1.3× |
+
+**Reading (hypothesis, not verified):**
+- Comparing against all traffic mixes route with avionics. Long-haul widebodies fly the Gulf/Asia–Europe corridors over Turkey and the Black Sea, while most narrowbodies don't.
+- 777-300ERs fly the same corridors as A350s, yet they're over-represented 4.7×, not 19×. So aircraft type looks like it matters beyond route.
+- The A321's 3.0× is the narrowbody exception. It isn't explained yet; it may reflect which carriers fly it on medium-haul routes near the hotspots.
+- Airbus and EASA guidance on post-spoofing GPS behaviour still hasn't been checked.
+
+## Verdicts
+
+| # | Check | Result | Verdict |
+|---|---|---|---|
+| 24 | Post-exposure tag does no harm inside hotspots | Raw vs live shares fall at most 1.8 points on 23–25 Oct | **Pass** |
+| 25 | Where exposure episodes begin | 3,835 onsets; 34% inside the Phase 1 hotspot sub-regions (v1.3: 10%). The top H3 res-2 regions are the eastern Black Sea / Turkish–Georgian coast (681), east-central Turkey (493), offshore Kaliningrad (293), western Russia near Tver (283), the central Black Sea (266) and Lake Ladoga, north-east of St Petersburg (174) | **Consistent** with known interference regions |
+| 26 | Do post-exposure aircraft explain the nightly central-Europe bursts? | 33 → 26 events, smaller peaks, 6 quiet nights vs 2; 38–47% of aircraft in the remaining bursts tagged | **Partly** |
+| 27 | Type concentration, all days | A359 19.4×, A388 19.2×, B77W 4.7×. Narrowbodies are about 1×, except the A321 at 3.0× | **Found** |
+
+## Next
+
+1. **Why the rest of the burst aircraft go untagged.** Two possible causes, not yet checked:
+   - The exposure point fails the peer test where overnight traffic is sparse. A fix would confirm it against the hex's daily baseline instead of same-hour peers.
+   - The aircraft first degraded within 300 km of the burst, over the southern Baltic.
+2. **A like-for-like type comparison:** only aircraft that crossed a hotspot, so route exposure is held constant.
+3. **Fix the type table's denominator.** It counts only the top 80 types per day, so A350-1000 (A35K) shows zero traffic and an infinite ratio.
+4. Check Airbus and EASA guidance (still open).
