@@ -9,7 +9,7 @@ Usage
   python tools/check_public.py          # staged files (pre-commit)
   python tools/check_public.py --all    # all tracked files
 """
-import os, subprocess, sys
+import gzip, os, subprocess, sys
 
 ROOT = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip() or "."
 TERMS_FILE = os.path.join(ROOT, "private", "forbidden_terms.txt")
@@ -39,6 +39,12 @@ def main():
             if t in n.lower():
                 hits.append(f"{n}: file name contains a private term")
         data = open(os.path.join(ROOT, n), "rb").read() if every else git("show", f":{n}")
+        if n.lower().endswith(".gz"):  # check compressed assets as text too
+            try:
+                data = gzip.decompress(data)
+            except Exception:
+                hits.append(f"{n}: could not decompress to check")
+                continue
         if b"\0" in data[:8192]:
             continue  # binary
         for i, line in enumerate(data.decode("utf-8", "replace").splitlines(), 1):

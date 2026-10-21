@@ -6,3 +6,4 @@ shapely>=2.0
 h3>=4.0
 requests>=2.31
 earthaccess>=0.12
+tzdata>=2024.1
