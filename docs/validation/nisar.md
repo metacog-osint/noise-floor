@@ -2,6 +2,8 @@
 
 **Lane:** `nisar/` (see `nisar/README.md`). **Data:** NISAR GCOV and RSLC products from ASF DAAC: BETA (Oct 2025 – Jan 2026) and PROVISIONAL (17 Jun 2026 onward). **Known answer:** the jammer about 50 km SW of Shiraz, Iran (27.32°N 52.87°E), from GPS World, "Converging on the jammer" (Sean Gorman, 18 May 2026). The article places it from independent signals intelligence, on at 8 and 20 Jan 2026 and off at 27 Dec 2025, on track 157 ascending, frame 15.
 
+**The published location is internally inconsistent (found 22 Oct 2026).** The article gives both "27.32°N, 52.87°E" and "roughly 50 km southwest of Shiraz", but that coordinate is 257 km south of Shiraz city (29.61°N 52.54°E), near the Gulf coast. One of the two is wrong, and the article doesn't say which. Everything below was scored against the coordinate. A re-score against the other reading is in section 1. Until the author confirms the position, this is a weaker known answer than it looked.
+
 Detections outside the published case stay in the private outputs until the method is validated.
 
 ## Bottom line
@@ -32,6 +34,7 @@ Detections outside the published case stay in the private outputs until the meth
 | A site at the jammer on 8 and 20 Jan | Nearest detection 50.8 km away (20 Jan); none within 50 km on either date | **Fail** |
 | Nothing at the jammer on 27 Dec | 21 detections elsewhere in the frames on that date | **Fail** (false alarms) |
 | Overall | 56 detections at 30 sites over 6 passes | Not usable as built |
+| Re-score against "about 50 km SW of Shiraz" (22 Oct 2026) | The passes reach 30.05°N, so they cover it. Detections fall 16–26 km from Shiraz city and from a point 50 km SW of it on **all three** dates, including 27 Dec, when the jammer was reported off | **No pass either:** a persistent source near Shiraz, not the reported on/off pattern |
 
 **What the processor itself says.** BETA products ran ST-EVD detection with mitigation disabled, and report the fraction of blocks flagged per channel:
 

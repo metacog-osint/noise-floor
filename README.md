@@ -12,7 +12,8 @@ This is an open-source picture of where the electromagnetic spectrum is being co
   - It separates geomagnetic storms (10 m accuracy loss) from jamming-scale loss.
   - It recovers both bursts of the 22 Sep 2026 Bay Area GPS loss.
   - It tags aircraft whose avionics stay latched after crossing a jammed area.
-- **It doesn't run daily yet.** That is Phase 2.
+  - It matches an FAA-announced GPS interference test at White Sands (Oct 2025) day by day.
+- **Phase 2 runs every day** in GitHub Actions: each new adsb.lol day is processed about 06:00 UTC and published to the [map](https://noisefloor.theintelligence.company/map) and [charts](https://noisefloor.theintelligence.company/charts), with the day's anomalies, bursts, SBAS flags and announced GPS tests. History goes back to 1 Oct 2025. Every day's outputs are downloadable from the [data releases](https://github.com/metacog-osint/noise-floor/releases) (ODbL).
 
 ## What it measures
 
@@ -30,8 +31,12 @@ It is an **effect** measure, not attribution. Read [`docs/method-card.md`](docs/
 | `pipeline/pnt_daily.py` | One adsb.lol day to per-hex daily, hourly and per-minute degradation (about 1 to 1.5 min per worldwide day) |
 | `pipeline/pnt_analysis.py` | SBAS service flag, same-hour baselines and anomaly events, minute-burst events |
 | `pipeline/run_days.py` | Process date ranges, skipping days already done |
+| `pipeline/daily_job.py` | The daily run and the backfill: download, process, analyse, publish to the monthly data releases |
+| `pipeline/faa_gps_tests.py` | Announced US GPS interference tests from the FAA's public flight advisories |
+| `.github/workflows/` | CI, the daily run, the backfill and the site deploy |
+| `site_src/`, `tools/build_site.py` | The public site (generated into `site/`) |
 | `collectors/` | Community collectors (Bluesky, RSS/Atom). The account and feed lists are private and not in this repo. |
-| `nisar/` | NISAR L-band lane: emitters inside NISAR's receive bands (incl. GPS L2), sites and cross-fixes. Built, self-test passing, not yet run live. See [`nisar/README.md`](nisar/README.md) |
+| `nisar/` | NISAR L-band lane: emitters inside NISAR's receive bands (incl. GPS L2), sites and cross-fixes. Runs daily, privately, until it passes a ground-truth test; see [`docs/validation/nisar.md`](docs/validation/nisar.md) and [`nisar/README.md`](nisar/README.md) |
 | `registry/sources.csv` | Licence registry: every source, its licence, and what it may be used for. Checked by `tools/check_registry.py`. |
 | `docs/` | Design, method card and validation reports with figures |
 | `tools/` | Validation scripts and repository checks |
@@ -43,6 +48,7 @@ It is an **effect** measure, not attribution. Read [`docs/method-card.md`](docs/
 |---|---|---|
 | ADS-B traces | [adsb.lol](https://www.adsb.lol/) globe_history, ODbL 1.0 | Ingested. Derived hex data is published under ODbL, with attribution on every map. |
 | Kp index | GFZ Potsdam, CC BY 4.0 | Ingested |
+| Announced GPS tests | FAA flight advisories (faasafety.gov), US government work | Ingested as declared events |
 | Basemaps | Natural Earth, public domain | Ingested |
 | GPSJam, Stanford RFI, OpenSky, Cloudflare Radar and other sources not licensed for commercial use | — | Visual comparison only. Never ingested. |
 
