@@ -91,7 +91,7 @@ Each run's `data/pnt/daily/<day>.summary.json` records the input files, their SH
 3. **Baselines.** Add a rolling same-hour median per region over the previous 14 days. The storm and EGNOS cases show that a fixed threshold isn't enough on the fine metric.
 4. **Leads seen in passing (not yet explained):**
    - A gross spike over northern Europe at 02Z on all three October days (low traffic).
-   - A gross spike over the southern US at 03–08Z on 16 and 22 Oct, both weekdays. Check NAVCEN GPS test notices.
+   - A gross spike over the southern US at 03–08Z on 16 and 22 Oct, both weekdays. **Explained (22 Oct 2026):** a scheduled GPS interference test at White Sands Missile Range; see lead 2 below.
 5. **Retrieve the 22 Sep 2026 NOTAM** from the FAA archive to close the Bay Area case.
 
 ## Sources for this section
@@ -126,24 +126,39 @@ Each run's `data/pnt/daily/<day>.summary.json` records the input files, their SH
 | 18 | Burst thresholds from earlier days | Within-day thresholds produced 53–66 burst events a day, mostly the same regions at the same hours (Hungary and Slovakia at 01:30–05:30Z, Southern California in the afternoons). Same-slot thresholds from earlier days cut this to 11–57. | **Pass** |
 | 19 | Same-hour baseline anomalies | Raw anomalous region-hours were 200–500 a day, mostly small-sample. A binomial z ≥ 4 test and grouping into events give 137–174 events a day: **9–22 major** (25+ points above baseline), 65–90 notable, the rest minor. | **Pass**, read majors first |
 
-## Leads from the quiet days (not verified)
+## Leads from the quiet days
 
-1. **Southern and central Baltic, 23 Oct 2025.**
+1. **Southern and central Baltic, 23 Oct 2025 (not corroborated).**
    - The 93 m share peaked at 51% over open sea around 55.6°N 17.9°E (between Bornholm, Gotland and the Polish coast), against a 14-day median near 15%.
    - It spanned 04–19Z over 62 region-hours, with matching 10 m events beside it.
-   - This reads as a day-long expansion of the Baltic interference footprint. Check against Polish, Swedish and Lithuanian reporting for that date.
-2. **New Mexico, 03–08Z on 23 and 24 Oct 2025.**
-   - On the 10 m measure, 54–55% of capable aircraft were below 10 m, against a near-zero baseline. This is near White Sands, at night local time.
-   - It is likely the same pattern as the 93 m spikes over the southern US at 03–08Z noted in Phase 1.1. Check against NAVCEN GPS test notices.
+   - This reads as a day-long expansion of the Baltic interference footprint.
+   - **Checked 22 Oct 2026:** no public report ties an event to that date. Swedish, Polish and Lithuanian reporting describes the 2025 Baltic interference as near-continuous and growing (the Swedish Transport Agency counted 733 incidents in 2025 up to late August, against 495 in all of 2024), but nothing names 23 Oct. It stays a lead. The backfill to 1 Oct 2025 makes it testable against the whole year: is 23 Oct unusual for the southern Baltic, or an ordinary bad day?
+2. **New Mexico, 03–08Z on 23 and 24 Oct 2025: verified, a scheduled GPS test.**
+   - On the 10 m measure, 54–55% of capable aircraft were below 10 m in the worst region-hours, against a near-zero baseline, near White Sands at night local time.
+   - **Match:** FAA flight advisory **WSMRNM GPS 25-16 (Revision 1)**, released 2 Oct 2025, scheduled GPS interference testing centred at 33°38′20″N 106°34′11″W, daily 0300–1100Z on **7–10, 14–17 and 21–24 Oct 2025**. GPS (including WAAS and ADS-B) "may not be available" out to 363 NM at FL400 and 242 NM at 10,000 ft. NOTAMs were published separately; they weren't retrieved.
+   - **Test against the schedule** (aircraft within 450 km of the centre, about the advisory's 10,000 ft radius; 10 m share of capable aircraft, 03–10Z against 13–23Z):
+
+     | Days in the processed set | 10 m share, 03–10Z | 10 m share, 13–23Z | 93 m share, 03–10Z |
+     |---|---|---|---|
+     | Scheduled, effect seen: 15–17, 21–24 Oct | 10.2–27.2% | 1.8–2.4% | 3.7–8.7% |
+     | Scheduled, no effect: 9, 10, 14 Oct | 3.1–3.5% | 2.6–3.6% | 0.0% |
+     | Not scheduled: 11–13, 18–20, 25 Oct | 1.6–3.1% | 1.4–4.2% | 0.0% |
+
+   - **Timing:** on every day with an effect the 10 m share jumps at 03Z (1–3% at 00–02Z, then 16–25%) and falls back between 06Z and 11Z, inside the scheduled window. A scheduled window is a request, so a quiet scheduled day (9, 10, 14 Oct) most likely means no test ran.
+   - **Result: pass.** 7 of 10 scheduled days show the effect, 0 of 7 unscheduled days do, and the onset hour matches. Planned tests like this need an exclusion layer (FAA SPANS flight advisories are public: registry `faa-spans-gps-advisories`) so they aren't read as hostile interference.
 3. **Nightly bursts over central Europe, 01–06Z.**
    - Hungary, Slovakia, Czechia, Germany, Romania, Serbia and Austria have burst events on most nights, even against same-slot thresholds.
    - Hypothesis: overnight inbound flights cross jammed airspace (Iraq, the Caucasus, the Black Sea) and arrive with avionics still latched at degraded NACp (method card, "Latching").
    - Testing it needs per-aircraft continuity: was the aircraft already bad before it entered the region?
 
+Sources for the leads (retrieved 22 Oct 2026):
+- FAA, Flight Advisory GPS Interference Testing, WSMRNM GPS 25-16 (Revision 1), released 2 Oct 2025: [PDF](https://www.faasafety.gov/files/notices/2025/Oct/WSMRNM_25-16_GPS_Flight_Advisory_(Revision_1).pdf); [SPANS notice NOTC4680](https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14680).
+- Swedish Transport Agency figures on GNSS interference in 2025, as reported by [The Local, 4 Sep 2025](https://www.thelocal.se/20250904/sweden-accuses-russia-of-jamming-aircraft-gps-over-baltic) (secondary report; the agency's own release wasn't retrieved).
+
 ## Open items (next phase)
 
 1. **Per-aircraft latching tag.** Mark aircraft that degraded in a known hotspot and stayed degraded, so downstream "events" made of latched aircraft are labelled rather than counted as new interference. This tests lead 3.
-2. **Verify leads 1 and 2.** The Baltic one needs public reporting; New Mexico needs NAVCEN test notices.
+2. **Leads 1 and 2.** New Mexico is verified against the FAA test schedule (22 Oct 2026). The Baltic lead found no date-specific reporting; test it against the backfilled year.
 3. **FAA NOTAM API access** (Tom's request, decision 4). It closes the Bay Area case and enables automatic planned-test exclusion.
 4. **Backfill to the present.** About 365 days at roughly 3.5 GB of raw data a day (about 1.3 TB) is too much to keep locally. Run it in GitHub Actions on the public repo, downloading, processing and discarding each day, and keep only the outputs (about 2 MB a day).
 

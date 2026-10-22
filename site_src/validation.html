@@ -13,6 +13,7 @@
     <tr><td>SBAS outage from aircraft alone</td><td>The 13–17 Oct 2025 EGNOS outage reconstructed to within an hour at both ends</td><td><span class="chip st-validated">Pass</span></td></tr>
     <tr><td>Storms separate from jamming</td><td>G4, 12 Nov 2025: 38.5% of capable aircraft below 10 m against a 3.7% baseline; G2, 18 Oct: 12.4%. The 93 m measure stays flat in both</td><td><span class="chip st-validated">Pass</span></td></tr>
     <tr><td>Minute-level timing</td><td>Bay Area, 22 Sep 2026: bursts at 18:00–18:08Z and 19:52–20:12Z. The matching NOTAM is UNVERIFIED (needs FAA API access)</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Announced GPS test (FAA flight advisory WSMRNM GPS 25-16, White Sands, Oct 2025)</td><td>Near the range, 10–27% of 10 m-capable aircraft fell below 10 m from 03Z on 7 of the 10 scheduled days, against about 2% at other hours; none of the 7 unscheduled days showed it. Onset matched the 03Z start every time</td><td><span class="chip st-validated">Pass</span></td></tr>
     <tr><td>Faulty avionics removed without removing jammed flights</td><td>The peer test drops aircraft bad among healthy neighbours only; hotspot shares change by at most 1.8 points after the post-exposure tag</td><td><span class="chip st-validated">Pass</span></td></tr>
     <tr><td>Nightly bursts over central Europe explained</td><td>The post-exposure tag cut them from 33 to 26 events and shrank the peaks, but catches only 38–47% of the aircraft in the bursts that remain</td><td><span class="chip st-partial">Partly</span></td></tr>
   </tbody>
@@ -39,7 +40,7 @@
 <h2 id="next">Validation still to come</h2>
 <ul>
   <li><strong>Published localizations,</strong> such as the 2024 Baltic open-source work, scored as known positives.</li>
-  <li><strong>Announced test events</strong> (Jammertest in Norway, US GPS interference test notices) as known positives and planned-test exclusions.</li>
+  <li><strong>More announced test events</strong> (Jammertest in Norway, further US test notices) as known positives, and a planned-test exclusion layer from the public FAA flight advisories.</li>
   <li><strong>Known false look-alikes,</strong> such as radar faults, as cases the methods must not flag.</li>
   <li><strong>A surveyed emitter or announced test</strong> to measure NISAR position accuracy.</li>
 </ul>
