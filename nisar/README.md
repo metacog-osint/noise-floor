@@ -110,6 +110,7 @@ Everything the run writes is private: it is watch output.
 - **Frame-wide interference.** A strong emitter can light up most of a frame; such candidates are flagged `widespread`, and their position is the power peak only.
 - **The instrument-tone list is empirical.** Two tones from five passes in two regions. Re-check it if detections cluster at one frequency everywhere.
 - **The table method needs tone-rank,** so it covers PROVISIONAL products only.
+- **Broadband jamming may be missed.** Tone-rank flags loud narrowband tones. A noise jammer that raises the whole spectrum may not register, so the table method is strongest on CW and narrowband emitters. This is a hypothesis from a control-area run (see `docs/validation/nisar.md` §4).
 - **Radars hop.** Long-range L-band radars hop across 1215–1400 MHz, and NISAR's 25 MHz of slices catch only part of that. A quiet radar site is expected often.
 
 ## Code
