@@ -81,6 +81,26 @@ PROVISIONAL products run **tone-rank** detection and mitigation. These checks co
 
 **Not covered here.** These data can't test the alert logic: the run was a seeded baseline, so alerts were held.
 
+## 4. Regional run with a documented L2 jamming area as the control
+
+A 30-day run over a private watch area (429 passes, 22 Sep – 21 Oct 2026) included an area where published work reports GNSS jamming on L1, L2 and L5. Locations stay private.
+
+- **Cost and run time:**
+  - 335 passes read their tables and 93 were screened out.
+  - 25.5 GB downloaded (median 89 MB per read).
+  - About 1 h 35 min, or ~3–4 minutes a day in daily use.
+- **At the control area:**
+  - Emitters were detected on every pass that covered it (13 of 13), 11–56 km from the reference points.
+  - Mostly in band B (1290.8–1291.8 MHz).
+  - In band A only as tones at 1221.5–1225.3 MHz on a few passes.
+  - **Nothing at the GPS L2 centre frequency.**
+- **Elsewhere in the area:** narrowband sites at the L2 centre (1227.2–1228.5 MHz) repeated on 5–9 passes from 2–4 geometries, within 5–23 km. That is good evidence that the method finds real ground emitters; it says nothing about who operates them.
+- **Reading (hypothesis, not verified):**
+  - Tone-rank flags loud **narrowband tones** in each block's spectrum.
+  - A broadband noise jammer raises the signal estimate without standing out as tones, so the table method may **under-detect barrage jamming** while catching CW and narrowband emitters well.
+  - A complementary detector on `signalMean` anomalies (power above what the same ground gives on other passes) is the next step.
+- **Alert volume:** if this run had been live, 142 sites would have raised a first-time alert. The first live run of any area must be a seeded baseline, as the pipeline already does.
+
 ## Reproduce
 
 ```sh
