@@ -147,7 +147,9 @@ def detect(tables, orbit, look="Left", cfg=None):
             peak_hit = float(w.max())
             peak_isr = float(np.nanmax(isr[rows, cols])) if np.isfinite(isr[rows, cols]).any() else float("nan")
             conf = ("HIGH" if nb >= 8 and peak_hit >= 0.9 and len(pols_hit) >= 2 else
-                    "MEDIUM" if nb >= 4 or (len(pols_hit) >= 2 and peak_hit >= 0.7) else "LOW")
+                    "MEDIUM" if nb >= 10 or (len(pols_hit) >= 2 and peak_hit >= 0.7) else "LOW")
+            # small single-polarization clusters near half the pulses and ~0 dB ISR were noise-like on
+            # the Shiraz-area validation (21 Oct 2026): they stay LOW, below the default alert floor
             if widespread and conf == "HIGH":
                 conf = "MEDIUM"           # frame-wide interference: the position is the power peak only
             cands.append({

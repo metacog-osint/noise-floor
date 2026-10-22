@@ -161,3 +161,8 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
   - **The QA `rfiLikelihood` is tier 0.** Under tone-rank it is the maximum ISR over blocks, so near-zero-signal blocks can push it past 10^11. It is a coarse screen with a per-frame rotation, not a detector.
   - **Two instrument tones** (1233.125 and 1296.002 MHz), present in every pass checked in two regions, are excluded.
   - The image method stays for BETA products only. Details: `nisar/README.md`.
+- **Validation (21 Oct, `docs/validation/nisar.md`).**
+  - The table method ran on 40 PROVISIONAL passes over the Shiraz case area. Detections repeat within 9–24 km, and one site agrees across ascending and descending geometries.
+  - But no HIGH or MEDIUM detection fell within 50 km of the published jammer site, though the site was inside the swath on every pass.
+  - Status: plausible, not validated against ground truth; outputs private.
+  - Next: a positive control with ground truth in the PROVISIONAL period.
