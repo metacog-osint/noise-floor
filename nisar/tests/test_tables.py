@@ -218,6 +218,17 @@ def test_combine_methods():
     assert "noise jammer" in d["interpretation"]
 
 
+def test_token_days_left():
+    import base64
+    import json as _json
+    import time
+    body = base64.urlsafe_b64encode(_json.dumps({"exp": time.time() + 10 * 86400}).encode()).decode().rstrip("=")
+    fake = f"eyJhbGciOiJub25lIn0.{body}.sig"
+    d = pipeline.token_days_left(fake)
+    assert 9.9 < d < 10.1, d
+    assert pipeline.token_days_left("not-a-jwt") is None and pipeline.token_days_left("a.b.c") is None
+
+
 if __name__ == "__main__":
     for k, v in list(globals().items()):
         if k.startswith("test_"):

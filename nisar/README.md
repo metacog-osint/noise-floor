@@ -77,6 +77,16 @@ python -m nisar_rfi inspect <GranuleUR or file.h5>    # RFI fields a GCOV carrie
 python -m nisar_rfi run --quiet               # one summary line, for logs others can read
 ```
 
+**Daily run on Windows.** `nisar/run_daily.cmd` runs one cycle from the repo's `.venv` and appends to `data/logs/nisar.log` (gitignored). Register it once with Task Scheduler (user account, daily, start when available, 2-hour limit):
+
+```powershell
+$cmd = "<repo>\nisar\run_daily.cmd"
+Register-ScheduledTask -TaskName "noise-floor daily NISAR" -Action (New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c `"$cmd`"" -WorkingDirectory "<repo>") -Trigger (New-ScheduledTaskTrigger -Daily -At "07:00") -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 2))
+```
+
+- **Token.** The script reads `EARTHDATA_TOKEN` from the user environment, and the token is never echoed.
+- **Expiry.** Each run records the token's expiry, read from the token's own claim, in the state's `health`. From 14 days out it logs a warning to renew it.
+
 **Config keys for the table method:**
 - `method`: `tables` or `image`. The default is `image` if any collection is BETA, otherwise `tables`.
 - `screen.min_score`, `screen.every`.

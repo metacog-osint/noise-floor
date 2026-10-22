@@ -170,3 +170,4 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
   - Tone-rank misses noise jammers. The broadband detector scores the processor's per-block signal power, flagging HV far above the frame's HH-to-HV/HH relationship, with an excess-power and absolute-ratio gate.
   - On a documented L1/L2/L5 jamming area it detects on 12 of 13 covering passes, where the tone method saw nothing at the L2 centre. Forested regions without reported jamming stay near zero.
   - Both detectors run on every table read and merge within 20 km.
+- **Daily run (Tom, 22 Oct):** on this PC through Task Scheduler (`nisar/run_daily.cmd`, 07:00 Central), about 0.85 GB and 3–4 minutes a day. Phone pushes stay off and outputs stay private. The full backfill to 17 Jun is on hold.
