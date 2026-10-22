@@ -1,6 +1,6 @@
 name: backfill
 # Backfill the daily GNSS outputs over a date range, in two phases:
-#   1. process: one job per calendar month (two at a time by default). Each day is downloaded from adsb.lol,
+#   1. process: one job per calendar month, two at a time. Each day is downloaded from adsb.lol,
 #      processed and published to release pnt-data-YYYY-MM without the analyses (pipeline/daily_job.py
 #      --skip-analysis). Days already published are skipped, so a failed or cancelled run can simply be rerun.
 #   2. analyse: the analyses in date order, so each day's baselines include the days before it (two jobs, one
@@ -17,10 +17,6 @@ on:
         description: "Last day to process (YYYY-MM-DD)"
         required: true
         default: "2026-10-06"
-      max_parallel:
-        description: "Months processed at once"
-        type: number
-        default: 2
       skip_process:
         description: "Only rerun the analysis phase"
         type: boolean
@@ -68,7 +64,7 @@ jobs:
     timeout-minutes: 340
     strategy:
       fail-fast: false
-      max-parallel: ${{ inputs.max_parallel }}
+      max-parallel: 2           # keeps uploads under GitHub's content-creation limit
       matrix:
         chunk: ${{ fromJSON(needs.plan.outputs.chunks) }}
     steps:

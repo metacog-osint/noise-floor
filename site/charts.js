@@ -302,7 +302,11 @@
       ? "Each panel has its own scale (shown on its axis), so compare levels with the table, not the line heights."
       : "All panels share one scale, so levels compare directly.";
     var ticks = [{ i: 0, label: dayLabel(days[0]), anchor: "start" }];
-    if (days.length > 1) ticks.push({ i: days.length - 1, label: dayLabel(days[days.length - 1]), anchor: "end" });
+    if (days.length > 60) {                          // long ranges: a middle date, with years on all three
+      var mid = Math.floor((days.length - 1) / 2);
+      ticks = [{ i: 0, label: dayLabel(days[0], true), anchor: "start" }, { i: mid, label: dayLabel(days[mid], true) }];
+      ticks.push({ i: days.length - 1, label: dayLabel(days[days.length - 1], true), anchor: "end" });
+    } else if (days.length > 1) ticks.push({ i: days.length - 1, label: dayLabel(days[days.length - 1]), anchor: "end" });
     names.forEach(function (name) {
       var r = TREND.regions[name], cell = document.createElement("div"), h = document.createElement("h4"), box = document.createElement("div");
       h.textContent = name;
