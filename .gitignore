@@ -18,3 +18,4 @@ out/
 spikes/*.csv
 *.tar
 *.parquet
+.wrangler/
