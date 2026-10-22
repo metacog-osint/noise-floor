@@ -46,6 +46,23 @@ def earthdata_fs():
     return earthaccess.get_fsspec_https_session()
 
 
+def token_days_left(token=None):
+    """Days until the Earthdata user token expires, from its own expiry claim (None if unreadable).
+    Reads only the claim; the token is never logged or stored."""
+    import base64
+    import time
+    tok = token if token is not None else os.environ.get("EARTHDATA_TOKEN", "")
+    parts = tok.split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        body = json.loads(base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4)))
+        exp = float(body["exp"])
+    except Exception:
+        return None
+    return (exp - time.time()) / 86400.0
+
+
 def earthdata_session():
     """Authenticated requests session (QA files, runconfigs). Call after earthdata_fs()."""
     import earthaccess
@@ -381,12 +398,19 @@ def run(cfg, local_dir=None, seed=False, max_granules=None, days=None, now=None,
         todo = todo[:cap]
 
     fs = None
+    days = None if local_dir else token_days_left()
+    if days is not None:
+        until = (now + timedelta(days=days)).strftime("%Y-%m-%d")
+        health["token"] = {"days_left": round(days, 1), "expires": until}
+        if days < 14:
+            log(f"WARNING: Earthdata token expires in {max(days, 0):.0f} day(s), on {until} (UTC). "
+                "Generate a new one at urs.earthdata.nasa.gov and update the EARTHDATA_TOKEN user variable.")
     if todo and not local_dir:
         try:
             fs = earthdata_fs()
         except Exception as e:
             health["download"] = {"status": "ERROR", "msg": str(e)[:300]}
-            log(f"login failed: {e}")
+            log(f"login failed: {e}" + (" (Earthdata token has expired)" if days is not None and days <= 0 else ""))
             todo = []
 
     # 2. score each granule
