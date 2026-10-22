@@ -2,3 +2,4 @@ h3>=4
 orjson
 pyarrow
 tzdata>=2024.1
+pypdf>=5.1

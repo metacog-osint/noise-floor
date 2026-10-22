@@ -32,6 +32,7 @@ jobs:
     timeout-minutes: 350
     outputs:
       changed: ${{ steps.run.outputs.changed }}
+      tests_changed: ${{ steps.tests.outputs.tests_changed }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -47,8 +48,20 @@ jobs:
           FORCE: ${{ inputs.force && '--force' || '' }}
           REANALYSE: ${{ inputs.reanalyse && '--reanalyse' || '' }}
         run: python pipeline/daily_job.py $DAYS $FORCE $REANALYSE
+      # declared events: announced US GPS interference tests from the FAA's public flight advisories
+      - name: Announced GPS tests
+        id: tests
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data/declared
+          gh release download declared-data -p faa_gps_tests.json -D data/declared --clobber
+          python pipeline/faa_gps_tests.py --rss
+          gh release upload declared-data data/declared/faa_gps_tests.json --clobber
   deploy:
     needs: process
-    if: ${{ !cancelled() && needs.process.outputs.changed == 'true' }}
+    if: ${{ !cancelled() && (needs.process.outputs.changed == 'true' || needs.process.outputs.tests_changed == 'true') }}
     uses: ./.github/workflows/deploy-site.yml
     secrets: inherit

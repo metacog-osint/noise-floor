@@ -54,7 +54,8 @@
 <p class="small">Changes against each region's own recent history, from the same daily run. The measure buttons above switch this list too. Persistent hotspots are part of their own baseline, so they show here only when they grow or move.</p>
 <p id="ev-summary"></p>
 <div id="ev-body">
-<label class="ctl check"><input type="checkbox" id="ev-show" checked> Outline these on the map <span class="ev-key" aria-hidden="true"><i class="ev-area"></i> anomaly <i class="ev-dot"></i> burst</span></label>
+<label class="ctl check"><input type="checkbox" id="ev-show" checked> Outline these on the map <span class="ev-key" aria-hidden="true"><i class="ev-area"></i> anomaly <i class="ev-dot"></i> burst <i class="ev-test"></i> announced test</span></label>
+<div id="ev-tests" class="small"></div>
 
 <div id="ev-sbas-wrap" hidden>
 <h3>SBAS service flags</h3>
@@ -63,12 +64,12 @@
 </div>
 
 <h3 id="ev-anom-h">Anomalies</h3>
-<div class="tw"><table id="ev-anom"><thead><tr><th>Level</th><th>UTC</th><th>Central</th><th>Centre</th><th>Regions</th><th>Peak share</th><th>Above usual</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="tw"><table id="ev-anom"><thead><tr><th>Level</th><th>UTC</th><th>Central</th><th>Centre</th><th>Regions</th><th>Peak share</th><th>Above usual</th><th>Announced test</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small"><span id="ev-anom-note"></span> <button type="button" class="linkish" id="ev-anom-more" hidden></button></p>
 
 <div id="ev-burst-wrap">
 <h3>Bursts</h3>
-<div class="tw"><table id="ev-burst"><thead><tr><th>UTC</th><th>Central</th><th>Centre</th><th>Peak aircraft</th><th>Regions</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="tw"><table id="ev-burst"><thead><tr><th>UTC</th><th>Central</th><th>Centre</th><th>Peak aircraft</th><th>Regions</th><th>Announced test</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small"><span id="ev-burst-note"></span> <button type="button" class="linkish" id="ev-burst-more" hidden></button></p>
 </div>
 </div>
@@ -80,6 +81,7 @@
   <li><strong>Level</strong> is the largest excess in the event: major 25 points or more, notable 10–25, minor under 10. "Peak share" is the highest share in any of its region-hours.</li>
   <li><strong>Burst:</strong> 3 or more minutes in which the number of aircraft with a jamming-scale report in a region rises above its usual level for that 15-minute slot on earlier days (at least 5 aircraft, and 5 times the usual spread). Short, sharp events show here: tests, short-lived jammers, the start of a spoofing episode.</li>
   <li>Aircraft still degraded after leaving interference elsewhere are left out of both. With fewer than 5 earlier days there are no anomalies, and bursts are judged against the day's own level.</li>
+  <li><strong>Announced tests:</strong> US GPS interference tests announced in the FAA's public flight advisories. An event is tagged when it overlaps a test window and lies within the test's widest radius (the one for aircraft at FL400). The dashed circle shows the radius at FL250. A tag means the event fits an announced test, not that the test caused it.</li>
   <li>Automatic and not reviewed by a person. An event is an effect, not attribution: storms, SBAS problems and avionics faults can cause them too. Code: <a href="https://github.com/metacog-osint/noise-floor/blob/main/pipeline/pnt_analysis.py">pnt_analysis.py</a>.</li>
 </ul>
 </details>

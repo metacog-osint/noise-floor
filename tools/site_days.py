@@ -6,12 +6,14 @@ stored as assets on this repo's pnt-data-YYYY-MM releases. The deploy job downlo
 
   python3 tools/site_days.py DIR [SITE]   # DIR/<day>.map.json -> SITE/data/gnss/<day>.json, rebuild days.json;
                                           # DIR/<day>.{anomalies,bursts,sbas}.json -> SITE/data/events/<day>.json;
-                                          # DIR/<day>.hotspots.json (every day) -> SITE/data/trend.json
+                                          # DIR/<day>.hotspots.json (every day) -> SITE/data/trend.json;
+                                          # DIR/faa_gps_tests.json -> announced tests in every events file
 
 A committed file wins over a downloaded one for the same day. The index keeps the committed days' notes and
 marks every other day "daily": made automatically, not reviewed by a person.
 """
 import json
+import math
 import os
 import re
 import shutil
@@ -110,6 +112,66 @@ def write_trend(days, folder, path):
     return len(found)
 
 
+def km(a, b):
+    p1, p2 = math.radians(a[0]), math.radians(b[0])
+    h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(b[1] - a[1]) / 2) ** 2
+    return 12742 * math.asin(min(1.0, math.sqrt(h)))
+
+
+def reach_nm(test):
+    """Widest radius in an advisory (the FL400 one): aircraft at cruise are affected farthest out."""
+    return max(test.get("radii_nm", {}).values() or [0])
+
+
+def tests_on(tests, day):
+    """Announced tests with a window overlapping the UTC day, trimmed to that day's windows."""
+    d0, d1, out = f"{day}T00:00Z", f"{day}T23:59Z", []
+    for t in tests:
+        w = [x for x in t["windows"] if x[0] <= d1 and x[1] >= d0]
+        if w:
+            out.append({"id": t["id"], "place": t.get("place", ""), "centre": t["centre"], "radii_nm": t.get("radii_nm", {}),
+                        "windows": w, "url": t.get("notice_url", "")})
+    return out
+
+
+def annotate(ev, tests):
+    """Add the day's announced tests to an events file, and tag each anomaly or burst that overlaps one in time and
+    lies within its widest radius. A tag means "consistent with an announced test", not proof."""
+    day = ev["day"]
+    ev["tests"] = tests_on(tests, day)
+    for e in ev.get("anomalies", []) + ev.get("bursts", []):
+        if "t0" in e:
+            s, f = f"{day}T{e['t0'][:5]}Z", f"{day}T{e['t1'][:5]}Z"
+        else:
+            s, f = f"{day}T{e['h0']:02d}:00Z", f"{day}T{e['h1']:02d}:59Z"
+        e.pop("test", None)
+        for t in ev["tests"]:
+            if any(w[0] <= f and w[1] >= s for w in t["windows"]) and km((e["lat"], e["lon"]), t["centre"]) <= reach_nm(t) * 1.852:
+                e["test"] = t["id"]
+                break
+    return ev
+
+
+def annotate_all(events_dir, tests_path):
+    """Annotate every events file (committed and daily) with the announced tests. Returns (files, tagged events)."""
+    if not os.path.exists(tests_path) or not os.path.isdir(events_dir):
+        return 0, 0
+    with open(tests_path, encoding="utf-8") as f:
+        tests = list(json.load(f).get("tests", {}).values())
+    files = tagged = 0
+    for name in sorted(os.listdir(events_dir)):
+        if not name.endswith(".json"):
+            continue
+        p = os.path.join(events_dir, name)
+        with open(p, encoding="utf-8") as f:
+            ev = annotate(json.load(f), tests)
+        with open(p, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(ev, f, separators=(",", ":"), ensure_ascii=False)
+        files += 1
+        tagged += sum(1 for e in ev.get("anomalies", []) + ev.get("bursts", []) if e.get("test"))
+    return files, tagged
+
+
 def entry(day, note="", daily=False):
     path = os.path.join(GNSS, f"{day}.json")
     with open(path, encoding="utf-8") as f:
@@ -142,12 +204,14 @@ def main():
     with_events = [d for d in added if write_events(d, src, EVENTS)]
     hot_days = sorted(m.group(1) for m in map(HOT_FILE.match, os.listdir(src) if os.path.isdir(src) else []) if m)
     trend = write_trend(hot_days, src, os.path.join(os.path.dirname(GNSS), "trend.json"))   # every day, validated too
+    n_files, n_tagged = annotate_all(EVENTS, os.path.join(src, "faa_gps_tests.json"))
     index = list(committed.values()) + [entry(d, daily=True) for d in added]
     index.sort(key=lambda d: d["day"])
     with open(index_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(index, f, separators=(",", ":"), ensure_ascii=False)
     print(f"days.json: {len(committed)} committed + {len(added)} daily"
-          + (f" ({added[0]} to {added[-1]}); event files for {len(with_events)}; trend days {trend}" if added else ""))
+          + (f" ({added[0]} to {added[-1]}); event files for {len(with_events)}; trend days {trend}" if added else "")
+          + (f"; announced tests on {n_files} event files, {n_tagged} events tagged" if n_files else ""))
 
 
 if __name__ == "__main__":

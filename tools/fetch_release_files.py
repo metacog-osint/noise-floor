@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download the site's files from this repo's pnt-data-* releases into a folder, fetching only what changed.
+"""Download the site's files from this repo's pnt-data-* and declared-data releases, fetching only what changed.
 
   python3 tools/fetch_release_files.py DIR     # uses GH_TOKEN or GITHUB_TOKEN for the asset listing
 
@@ -16,7 +16,8 @@ import sys
 import time
 import urllib.request
 
-FILES = re.compile(r"^\d{4}-\d{2}-\d{2}\.(map|anomalies|bursts|sbas|hotspots)\.json$")
+FILES = re.compile(r"^(\d{4}-\d{2}-\d{2}\.(map|anomalies|bursts|sbas|hotspots)\.json|faa_gps_tests\.json)$")
+TAGS = ("pnt-data-", "declared-data")     # daily outputs; declared events (announced GPS tests)
 NEXT = re.compile(r'<([^>]+)>;\s*rel="next"')
 
 
@@ -62,7 +63,7 @@ def main():
             manifest = json.load(f)
     want = {}
     for rel in api_pages(f"https://api.github.com/repos/{repo}/releases?per_page=100", token):
-        if not rel["tag_name"].startswith("pnt-data-"):
+        if not rel["tag_name"].startswith(TAGS):
             continue
         for a in api_pages(f"https://api.github.com/repos/{repo}/releases/{rel['id']}/assets?per_page=100", token):
             if FILES.match(a["name"]):
