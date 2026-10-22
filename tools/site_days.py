@@ -6,7 +6,7 @@ stored as assets on this repo's pnt-data-YYYY-MM releases. The deploy job downlo
 
   python3 tools/site_days.py DIR [SITE]   # DIR/<day>.map.json -> SITE/data/gnss/<day>.json, rebuild days.json;
                                           # DIR/<day>.{anomalies,bursts,sbas}.json -> SITE/data/events/<day>.json;
-                                          # DIR/<day>.hotspots.json (daily days only) -> SITE/data/trend.json
+                                          # DIR/<day>.hotspots.json (every day) -> SITE/data/trend.json
 
 A committed file wins over a downloaded one for the same day. The index keeps the committed days' notes and
 marks every other day "daily": made automatically, not reviewed by a person.
@@ -16,11 +16,13 @@ import os
 import re
 import shutil
 import sys
+from datetime import date, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GNSS = os.path.join(ROOT, "site", "data", "gnss")
 EVENTS = os.path.join(ROOT, "site", "data", "events")
 MAP_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.map\.json$")
+HOT_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.hotspots\.json$")
 MEASURE = {"gross": "jam", "capable_10m": "acc"}
 
 
@@ -89,18 +91,19 @@ def write_trend(days, folder, path):
                 found[day] = json.load(f)["regions"]
     if not found:
         return 0
-    order = sorted(found)
-    names = list(found[order[-1]])                        # the newest day's areas, in its order
+    first, last = date.fromisoformat(min(found)), date.fromisoformat(max(found))
+    order = [(first + timedelta(days=k)).isoformat() for k in range((last - first).days + 1)]   # missing days are gaps
+    names = list(found[max(found)])                       # the newest day's areas, in its order
     regions = {}
     for name in names:
-        r = [found[d].get(name) or {} for d in order]
+        r = [(found.get(d) or {}).get(name) or {} for d in order]
         regions[name] = {"box": next((x["box"] for x in r if x.get("box")), None),
                          "share": [x.get("share") for x in r], "aircraft_hexes": [x.get("aircraft_hexes") for x in r]}
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump({"licence": "ODbL 1.0; derived from adsb.lol", "measure": "share of aircraft-hexes worse than 93 m, live",
                    "days": order, "regions": regions}, f, separators=(",", ":"), ensure_ascii=False)
-    return len(order)
+    return len(found)
 
 
 def entry(day, note="", daily=False):
@@ -134,7 +137,8 @@ def main():
         shutil.copyfile(os.path.join(src, name), os.path.join(GNSS, f"{m.group(1)}.json"))
         added.append(m.group(1))
     with_events = [d for d in added if write_events(d, src, EVENTS)]
-    trend = write_trend(added, src, os.path.join(os.path.dirname(GNSS), "trend.json"))
+    hot_days = sorted(m.group(1) for m in map(HOT_FILE.match, os.listdir(src) if os.path.isdir(src) else []) if m)
+    trend = write_trend(hot_days, src, os.path.join(os.path.dirname(GNSS), "trend.json"))   # every day, validated too
     index = list(committed.values()) + [entry(d, daily=True) for d in added]
     index.sort(key=lambda d: d["day"])
     with open(index_path, "w", encoding="utf-8", newline="\n") as f:
