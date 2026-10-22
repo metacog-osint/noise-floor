@@ -261,5 +261,5 @@ Then:
    - The exposure point fails the peer test where overnight traffic is sparse. A fix would confirm it against the hex's daily baseline instead of same-hour peers.
    - The aircraft first degraded within 300 km of the burst, over the southern Baltic.
 2. **A like-for-like type comparison:** only aircraft that crossed a hotspot, so route exposure is held constant.
-3. **Fix the type table's denominator.** It counts only the top 80 types per day, so A350-1000 (A35K) shows zero traffic and an infinite ratio.
+3. **Fix the type table's denominator.** It counts only the top 80 types per day, so A350-1000 (A35K) shows zero traffic and an infinite ratio. **Fixed 22 Oct 2026** in `pnt_daily.py`: the summary now keeps every type. Days processed earlier, including the 1 Oct 2025 – 6 Oct 2026 backfill, keep the top-80 counts; the type chart skips types without a denominator.
 4. Check Airbus and EASA guidance (still open).

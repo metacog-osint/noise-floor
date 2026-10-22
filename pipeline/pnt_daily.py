@@ -253,7 +253,7 @@ def resolve_post_exposure(recs, tot):
         out.append(pe)
     diag = {"latched_aircraft": n_aircraft, "latch_candidate_cells_unjudged": unjudged,
             "latch_onset_regions_res2": [[c, *[round(x, 2) for x in h3.cell_to_latlng(c)], n] for c, n in regions.most_common(30)],
-            "post_exposure_types": dict(types.most_common(40)),
+            "post_exposure_types": dict(types.most_common()),     # all types: a cap hid rare ones from the ratios
             "note": "v1.4: latched = post-exposure; onset = exposure point (first bad hex-hour with bad peers)"}
     return out, diag
 
@@ -403,7 +403,7 @@ def run(day, raw_dir, out_dir, workers):
                    "score": "100*max(bad-1,0)/(good+bad)"},
         "source": "adsb.lol globe_history (ODbL 1.0)",
         "latching": latch_diag,
-        "type_counts_all": dict(Counter(m[6] or "?" for _, m, _ in recs).most_common(80)),
+        "type_counts_all": dict(Counter(m[6] or "?" for _, m, _ in recs).most_common()),   # all types (was top 80)
         "avionics_suspect_centroids": sorted(where),   # [mean lat, mean lon, hours, type]; no identifiers
     }
     json.dump(summary, open(os.path.join(out_dir, f"{day}.summary.json"), "w"), indent=1)
