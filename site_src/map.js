@@ -1,5 +1,6 @@
 /* Noise Floor public map: GNSS degradation per H3 hex from ADS-B (adsb.lol, ODbL).
-   Data: /data/gnss/<day>.json (cells: h3, aircraft, bad_live, bad_raw, capable, capable_bad10).
+   Data: /data/gnss/<day>.json (cells: h3, aircraft, bad_live, bad_raw, capable, capable_bad10) and
+   /data/events/<day>.json (anomaly events, bursts and SBAS flags from pipeline/pnt_analysis.py).
    One canvas layer draws land and hexes; hover/click looks up the hex under the pointer. */
 (function () {
   "use strict";
@@ -9,7 +10,9 @@
     acc: { label: "Accuracy loss (worse than 10 m, capable aircraft)", unit: "of 10 m-capable aircraft degraded",
            breaks: [10, 25, 50, 75], classes: ["Under 10%", "10–25%", "25–50%", "50–75%", "75% or more"] }
   };
-  var state = { day: null, measure: "jam", raw: false };
+  var state = { day: null, measure: "jam", raw: false, ev: null, evShow: true, evAll: { anom: false, burst: false }, evFocus: null };
+  var EV_ROWS = { anom: 15, burst: 10 };
+  var TIER = { major: "Major", notable: "Notable", minor: "Minor" };
   var days = [], cells = {}, cellList = [], land = [], colors = {};
   var mapEl = document.getElementById("map");
   if (!mapEl || !window.L || !window.h3) return;
@@ -18,7 +21,7 @@
   function readColors() {
     colors = { ocean: css("--map-ocean"), land: css("--map-land"), coast: css("--map-coast"), quiet: css("--map-quiet"),
                low: css("--map-low"), ramp: [css("--ramp-1"), css("--ramp-2"), css("--ramp-3"), css("--ramp-4")],
-               focus: css("--fg") };
+               focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean") };
     mapEl.style.background = colors.ocean;
   }
 
@@ -80,6 +83,32 @@
         cells[state.focus].bnd.forEach(function (p, i) { var q = m.latLngToContainerPoint(p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); });
         g.closePath(); g.stroke();
       }
+      if (state.evShow && state.ev) {
+        var rows = evRows();
+        var outline = function (e) {
+          g.beginPath();
+          poly(e).forEach(function (loops) { loops.forEach(function (loop) {
+            loop.forEach(function (p, i) { var q = m.latLngToContainerPoint(p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); });
+            g.closePath();
+          }); });
+          g.stroke();
+        };
+        g.strokeStyle = colors.event; g.lineWidth = 2;
+        rows.anom.forEach(function (e) { if (e !== state.evFocus) outline(e); });
+        rows.burst.forEach(function (e) {
+          if (e === state.evFocus) return;
+          var q = m.latLngToContainerPoint([e.lat, e.lon]);
+          g.beginPath(); g.arc(q.x, q.y, 5, 0, 2 * Math.PI); g.fillStyle = colors.event; g.fill();
+          g.lineWidth = 2; g.strokeStyle = colors.ring; g.stroke(); g.strokeStyle = colors.event;
+        });
+        if (state.evFocus) {
+          g.strokeStyle = colors.focus; g.lineWidth = 3;
+          if (state.evFocus.t0) {
+            var q = m.latLngToContainerPoint([state.evFocus.lat, state.evFocus.lon]);
+            g.beginPath(); g.arc(q.x, q.y, 7, 0, 2 * Math.PI); g.fillStyle = colors.event; g.fill(); g.stroke();
+          } else outline(state.evFocus);
+        }
+      }
     }
   });
   var layer = new Canvas();
@@ -100,6 +129,12 @@
       lines.push(["Worse than 10 m", d[5]]);
     }
     lines.push(["Share", e && e.share !== null ? e.share.toFixed(1) + "%" : (e ? "low coverage (3–4 aircraft)" : "too few aircraft")]);
+    if (state.evShow && state.ev) {
+      var r2 = h3.cellToParent(h, 2);
+      evRows().anom.forEach(function (a) {
+        if (a.cells.indexOf(r2) >= 0) lines.push(["Anomaly", TIER[a.tier] + ", " + pad(a.h0) + ":00–" + pad(a.h1) + ":59Z"]);
+      });
+    }
     return lines;
   }
   function showTip(h, pt) {
@@ -148,6 +183,121 @@
     document.getElementById("map-table-note").textContent = rows.length ? "" : "No hex reached the first class on this day for this measure.";
   }
 
+  // ---------- events panel: anomaly events, bursts, SBAS flags (pipeline/pnt_analysis.py)
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function ll2(lat, lon) {
+    return Math.abs(lat).toFixed(1) + "°" + (lat >= 0 ? "N" : "S") + " " + Math.abs(lon).toFixed(1) + "°" + (lon >= 0 ? "E" : "W");
+  }
+  var CT = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric",
+                                              hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+  var UT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
+  function central(day, mins) {
+    var p = day.split("-"), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2], 0, mins)), x = {};
+    CT.formatToParts(d).forEach(function (q) { x[q.type] = q.value; });
+    return { time: x.hour + ":" + x.minute + " " + String(x.dayPeriod || "").toLowerCase(), zone: x.timeZoneName,
+             date: x.month + " " + x.day, utcDate: UT.format(new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]))) };
+  }
+  // "03:00–05:59Z" and "10:00 pm (Oct 20)–12:59 am CDT"
+  function when(day, m0, m1) {
+    var a = central(day, m0), b = central(day, m1);
+    return [pad(Math.floor(m0 / 60)) + ":" + pad(m0 % 60) + "–" + pad(Math.floor(m1 / 60)) + ":" + pad(m1 % 60) + "Z",
+            a.time + (a.date !== a.utcDate ? " (" + a.date + ")" : "") + "–" + b.time + " " + b.zone];
+  }
+  function mins(hhmm) { return +hhmm.slice(0, 2) * 60 + +hhmm.slice(3, 5); }
+  function poly(e) {
+    if (!e.poly) {
+      // skip events whose regions cross the antimeridian (Leaflet would draw them across the world)
+      var bad = e.cells.some(function (c) {
+        var lons = h3.cellToBoundary(c).map(function (p) { return p[1]; });
+        return Math.max.apply(null, lons) - Math.min.apply(null, lons) > 180;
+      });
+      e.poly = bad || !e.cells.length ? [] : h3.cellsToMultiPolygon(e.cells);
+    }
+    return e.poly;
+  }
+  function evRows() {
+    var ev = state.ev; if (!ev) return { anom: [], burst: [], anomAll: [], burstAll: [] };
+    var anomAll = ev.anomalies.filter(function (e) { return e.m === state.measure; });
+    var anom = state.evAll.anom ? anomAll : anomAll.filter(function (e) { return e.tier !== "minor"; }).slice(0, EV_ROWS.anom);
+    var burstAll = state.measure === "jam" ? ev.bursts : [];
+    var burst = state.evAll.burst ? burstAll : burstAll.slice(0, EV_ROWS.burst);
+    return { anom: anom, burst: burst, anomAll: anomAll, burstAll: burstAll };
+  }
+  function showEvent(e) {
+    state.evFocus = e; state.focus = null; state.pinned = false; tip.hidden = true;
+    var pts = [];
+    poly(e).forEach(function (loops) { loops.forEach(function (loop) { pts = pts.concat(loop); }); });
+    if (pts.length) map.fitBounds(L.latLngBounds(pts), { maxZoom: 5, padding: [40, 40] });
+    else map.setView([e.lat, e.lon], 5);
+    layer.redraw(); mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  function cell(tr, text, cls) { var td = document.createElement("td"); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); return td; }
+  function showButton(tr, e, label) {
+    var td = document.createElement("td"), btn = document.createElement("button");
+    btn.type = "button"; btn.className = "linkish"; btn.textContent = "Show"; btn.setAttribute("aria-label", "Show " + label + " on the map");
+    btn.addEventListener("click", function () { showEvent(e); });
+    td.appendChild(btn); tr.appendChild(td);
+  }
+  function moreButton(id, kind, shown, total, label) {
+    var b = document.getElementById(id);
+    b.hidden = total <= shown && !state.evAll[kind];
+    b.textContent = state.evAll[kind] ? "Show fewer" : "Show all " + total + " " + label;
+  }
+  function renderEvents() {
+    var ev = state.ev, rows = evRows(), jam = state.measure === "jam";
+    var sum = document.getElementById("ev-summary"), anomBody = document.querySelector("#ev-anom tbody"),
+        burstBody = document.querySelector("#ev-burst tbody"), sbasEl = document.getElementById("ev-sbas");
+    document.getElementById("ev-day").textContent = state.day;
+    document.getElementById("ev-anom-h").textContent = jam ? "Anomalies, jamming-scale (93 m)" : "Anomalies, accuracy (10 m)";
+    document.getElementById("ev-burst-wrap").hidden = !jam;
+    document.getElementById("ev-sbas-wrap").hidden = jam;
+    anomBody.textContent = ""; burstBody.textContent = ""; sbasEl.textContent = "";
+    document.getElementById("ev-body").hidden = !ev;
+    if (!ev) { sum.textContent = state.evLoading ? "Loading events…" : "No event data for this day."; return; }
+
+    var n = { major: 0, notable: 0, minor: 0 };
+    rows.anomAll.forEach(function (e) { n[e.tier]++; });
+    var parts = [];
+    if (ev.anomaly_note) parts.push("Anomalies need at least 5 earlier days for a baseline; this day has " + ev.baseline_days + ".");
+    else parts.push("Compared with the same hour on " + ev.baseline_days + " earlier days: " + n.major + " major, " + n.notable +
+                    " notable and " + n.minor + " minor anomaly events on this measure.");
+    if (jam) parts.push(ev.bursts.length + " bursts" + (ev.burst_basis === "within day" ? " (judged against the day's own level: fewer than 5 earlier days)." : "."));
+    else parts.push(ev.sbas.length ? "SBAS flags: " + ev.sbas.length + "." : "No SBAS flags.");
+    sum.textContent = parts.join(" ");
+
+    rows.anom.forEach(function (e) {
+      var tr = document.createElement("tr"), w = when(state.day, e.h0 * 60, e.h1 * 60 + 59);
+      cell(tr, TIER[e.tier]); cell(tr, w[0]); cell(tr, w[1], "mut"); cell(tr, ll2(e.lat, e.lon));
+      cell(tr, e.regions, "num"); cell(tr, e.peak.toFixed(0) + "%", "num"); cell(tr, "+" + e.excess.toFixed(0) + " pts", "num");
+      showButton(tr, e, TIER[e.tier] + " anomaly at " + w[0]); anomBody.appendChild(tr);
+    });
+    var shown = state.evAll.anom ? rows.anomAll.length : rows.anom.length;
+    document.getElementById("ev-anom-note").textContent = ev.anomaly_note ? "No baseline yet for this day."
+      : rows.anomAll.length ? (state.evAll.anom ? "All events, ranked by size × excess." : "Major and notable events, ranked by size × excess (top " + EV_ROWS.anom + ").")
+      : "No anomaly events on this measure.";
+    moreButton("ev-anom-more", "anom", shown, rows.anomAll.length, n.minor ? "events, including minor" : "events");
+
+    rows.burst.forEach(function (e) {
+      var tr = document.createElement("tr"), w = when(state.day, mins(e.t0), mins(e.t1));
+      cell(tr, w[0]); cell(tr, w[1], "mut"); cell(tr, ll2(e.lat, e.lon)); cell(tr, e.peak, "num"); cell(tr, e.regions, "num");
+      showButton(tr, e, "burst at " + w[0]); burstBody.appendChild(tr);
+    });
+    document.getElementById("ev-burst-note").textContent = rows.burstAll.length ? "Ranked by peak aircraft." : "No bursts on this day.";
+    moreButton("ev-burst-more", "burst", rows.burst.length, rows.burstAll.length, "bursts");
+
+    if (!jam) {
+      if (!ev.sbas.length) { var p0 = document.createElement("p"); p0.className = "small"; p0.textContent = "No SBAS service area was flagged on this day."; sbasEl.appendChild(p0); }
+      else {
+        var ul = document.createElement("ul");
+        ev.sbas.forEach(function (s) {
+          var li = document.createElement("li"), w = when(state.day, s.start * 60, s.end * 60 + 59);
+          li.textContent = s.area + ": " + s.state + ", " + w[0] + " (" + w[1] + ")"; ul.appendChild(li);
+        });
+        sbasEl.appendChild(ul);
+      }
+    }
+  }
+
   // ---------- legend, stats, controls
   function renderLegend() {
     var m = MEASURES[state.measure], el = document.getElementById("map-legend");
@@ -178,6 +328,10 @@
 
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true;
+    state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
+    fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (ev) { if (state.day !== day) return; state.ev = ev; state.evLoading = false; renderEvents(); layer.redraw(); });
+    renderEvents();
     mapEl.classList.add("loading");
     return fetch("/data/gnss/" + day + ".json").then(function (r) { return r.json(); }).then(function (j) {
       cells = {}; cellList = [];
@@ -192,7 +346,7 @@
     });
   }
 
-  function refresh() { layer.redraw(); renderLegend(); renderStats(); renderTable(); writeHash(); }
+  function refresh() { state.evFocus = null; layer.redraw(); renderLegend(); renderStats(); renderTable(); renderEvents(); writeHash(); }
 
   Promise.all([fetch("/data/gnss/days.json").then(function (r) { return r.json(); }),
                fetch("/data/land.json").then(function (r) { return r.json(); })]).then(function (res) {
@@ -243,6 +397,12 @@
       });
     });
     document.getElementById("map-raw").addEventListener("change", function (e) { state.raw = e.target.checked; refresh(); });
+    document.getElementById("ev-show").addEventListener("change", function (e) { state.evShow = e.target.checked; layer.redraw(); });
+    [["ev-anom-more", "anom"], ["ev-burst-more", "burst"]].forEach(function (p) {
+      document.getElementById(p[0]).addEventListener("click", function () {
+        state.evAll[p[1]] = !state.evAll[p[1]]; state.evFocus = null; renderEvents(); layer.redraw();
+      });
+    });
     map.setView([35, 15], window.innerWidth < 700 ? 1.5 : 2.5);
     layer.addTo(map); renderLegend();
     loadDay(day);

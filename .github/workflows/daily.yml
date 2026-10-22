@@ -16,6 +16,10 @@ on:
         description: "Redo days that are already published"
         type: boolean
         default: false
+      reanalyse:
+        description: "Rerun only the analyses on published days (no adsb.lol download)"
+        type: boolean
+        default: false
 permissions:
   contents: write    # create the monthly data releases and upload assets
   actions: read      # the deploy job looks up the newest commit that passed CI
@@ -41,7 +45,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DAYS: ${{ inputs.days }}
           FORCE: ${{ inputs.force && '--force' || '' }}
-        run: python pipeline/daily_job.py $DAYS $FORCE
+          REANALYSE: ${{ inputs.reanalyse && '--reanalyse' || '' }}
+        run: python pipeline/daily_job.py $DAYS $FORCE $REANALYSE
   deploy:
     needs: process
     if: ${{ !cancelled() && needs.process.outputs.changed == 'true' }}

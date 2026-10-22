@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Export public visual data for the site from the processed GNSS days (data/pnt/, gitignored).
 
-  python tools/export_site_data.py      # writes site/data/gnss/*.json, site/data/charts.json, site/data/land.json
+  python tools/export_site_data.py      # writes site/data/gnss/*.json, site/data/events/*.json, charts.json, land.json
   python tools/export_site_data.py --map-day 2026-10-21 OUT.json   # one day's map file (the daily workflow)
 
 Everything written here is derived from the adsb.lol archive and published under ODbL 1.0 with
@@ -21,7 +21,7 @@ import pyarrow.parquet as pq
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 from validate_phase1 import SUBREGIONS, in_box  # noqa: E402
-from site_days import stats  # noqa: E402
+from site_days import stats, write_events  # noqa: E402
 
 DAILY = os.path.join(ROOT, "data", "pnt", "daily")
 ANALYSIS = os.path.join(ROOT, "data", "pnt", "analysis")
@@ -170,7 +170,10 @@ def main():
         print(json.dumps({"day": sys.argv[2], "kb": round(size / 1024), "hexes": hexes, "jam_hexes": jam}))
         return
     idx = map_days()
-    charts = {"licence": "ODbL 1.0; derived from adsb.lol (data/pnt). Aggregates only.",
+    for day in DAYS:                                   # the map page's events panel
+        if not write_events(day, ANALYSIS, os.path.join(OUT, "events")):
+            sys.exit(f"{day}: analysis files missing in {ANALYSIS} (run pipeline/pnt_analysis.py)")
+    charts ={"licence": "ODbL 1.0; derived from adsb.lol (data/pnt). Aggregates only.",
               "egnos": egnos(), "storm": storm(), "bay": bay(), "hotspots": hotspots(), "types": types()}
     size = write(os.path.join(OUT, "charts.json"), charts)
     lsize = land()
