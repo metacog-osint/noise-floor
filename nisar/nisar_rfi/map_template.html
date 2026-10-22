@@ -34,6 +34,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
 .chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:999px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:30px}
 .chip.on{color:var(--fg);border-color:#3b4a60;background:#1a2230}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.plabel{color:#c9d1dc;font-size:11px;white-space:nowrap;text-shadow:0 0 3px #0d1219,0 0 3px #0d1219,0 0 2px #0d1219;pointer-events:none}
+.plabel::before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;background:#c9d1dc;margin-right:4px;vertical-align:middle}
 #demo{position:fixed;left:0;right:0;top:0;z-index:1001;background:repeating-linear-gradient(45deg,#3a2a05,#3a2a05 10px,#2c2004 10px,#2c2004 20px);color:#fcd34d;font-size:11.5px;font-weight:650;text-align:center;padding:3px 8px calc(3px);letter-spacing:.03em;display:none}
 
 /* sheet */
@@ -105,6 +107,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
     <button class="chip" data-days="9999">All</button>
     <button class="chip on" data-band="A" aria-pressed="true"><span class="dot" style="background:var(--a)"></span>A</button>
     <button class="chip on" data-band="B" aria-pressed="true"><span class="dot" style="background:var(--b)"></span>B</button>
+    <button class="chip on" data-layer="borders" aria-pressed="true">Borders</button>
+    <button class="chip on" data-layer="places" aria-pressed="true">Places</button>
   </div>
 </div>
 <div id="sheet" class="card min">
@@ -146,6 +150,32 @@ L.geoJSON(DATA.land, {pane: 'land', interactive: false,
   style: {color: '#2b3646', weight: 1, fillColor: '#1a212c', fillOpacity: 1}}).addTo(map);
 // Basemap is Natural Earth land only (public domain): no third-party tile service.
 map.attributionControl.addAttribution('NISAR: NASA/JPL-ISRO via ASF DAAC · Natural Earth');
+// country borders and place names, each switchable from the filter bar (remembered per browser)
+map.createPane('borders'); map.getPane('borders').style.zIndex = 160; map.getPane('borders').style.pointerEvents = 'none';
+const layerOn = Object.assign({borders: true, places: true}, (() => { try { return JSON.parse(localStorage.getItem('nf-nisar-layers') || '{}'); } catch (e) { return {}; } })());
+const gBorders = L.geoJSON(DATA.borders || {type: 'FeatureCollection', features: []}, {pane: 'borders', interactive: false,
+  style: f => ({color: '#5d6b80', weight: 1, opacity: 0.85, dashArray: f.properties && f.properties.d ? '4 4' : null})});
+const gPlaces = L.layerGroup();
+function drawPlaces(){
+  gPlaces.clearLayers();
+  const z = map.getZoom(), minPop = z < 5 ? 2e6 : z < 6 ? 7.5e5 : z < 7 ? 3e5 : z < 8 ? 1.2e5 : 0, b = map.getBounds().pad(0.1);
+  (DATA.places || []).forEach(p => {
+    if ((p[3] || 0) < minPop || !b.contains([p[1], p[2]])) return;
+    L.marker([p[1], p[2]], {interactive: false, keyboard: false,
+      icon: L.divIcon({className: 'plabel', html: p[0].replace(/[<&>]/g, ''), iconSize: null, iconAnchor: [2, 6]})}).addTo(gPlaces);
+  });
+}
+function applyLayers(){
+  layerOn.borders ? gBorders.addTo(map) : gBorders.remove();
+  layerOn.places ? gPlaces.addTo(map) : gPlaces.remove();
+  document.querySelectorAll('[data-layer]').forEach(x => { const on = !!layerOn[x.dataset.layer]; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
+}
+map.on('zoomend moveend', () => { if (layerOn.places) drawPlaces(); });
+drawPlaces(); applyLayers();
+document.querySelectorAll('[data-layer]').forEach(b => b.onclick = () => {
+  layerOn[b.dataset.layer] = !layerOn[b.dataset.layer];
+  try { localStorage.setItem('nf-nisar-layers', JSON.stringify(layerOn)); } catch (e) {}
+  if (layerOn.places) drawPlaces(); applyLayers(); });
 L.geoJSON(DATA.aoi.geojson, {interactive: false, style: {color: '#5b6b82', weight: 1, dashArray: '2 6', fill: false}}).addTo(map);
 
 const gPass = L.layerGroup().addTo(map), gDet = L.layerGroup().addTo(map), gSite = L.layerGroup().addTo(map),

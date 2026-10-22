@@ -4,6 +4,7 @@
   python tools/export_site_data.py      # writes site/data/gnss/*.json, site/data/events/*.json, charts.json, land.json
   python tools/export_site_data.py --map-day 2026-10-21 OUT.json   # one day's map file (the daily workflow)
   python tools/export_site_data.py --hotspot-day 2026-10-21 OUT.json   # one day's shares in the named areas
+  python tools/export_site_data.py --basemap   # only borders.json and places.json (Natural Earth 50m, v5.1.2)
 
 Everything written here is derived from the adsb.lol archive and published under ODbL 1.0 with
 attribution (the site footer and map credit it). Only aggregates per H3 hex (no aircraft identifiers)
@@ -28,6 +29,8 @@ DAILY = os.path.join(ROOT, "data", "pnt", "daily")
 ANALYSIS = os.path.join(ROOT, "data", "pnt", "analysis")
 OUT = os.path.join(ROOT, "site", "data")
 LAND_SRC = os.path.join(ROOT, "nisar", "nisar_rfi", "assets", "land.geojson.gz")
+NE_DIR = os.path.join(ROOT, "data", "natural_earth")          # downloaded on demand (gitignored)
+NE_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/{}.geojson"
 
 DAYS = [f"2025-10-{d:02d}" for d in range(9, 26)] + ["2025-11-11", "2025-11-12", "2026-09-22"]
 NOTES = {**{f"2025-10-{d}": "EGNOS outage" for d in range(13, 18)},
@@ -183,7 +186,51 @@ def land():
     return write(os.path.join(OUT, "land.json"), g)
 
 
+def natural_earth(name):
+    """A Natural Earth 50m layer, downloaded once into data/natural_earth/ (public domain)."""
+    import urllib.request
+    path = os.path.join(NE_DIR, f"{name}.geojson")
+    if not os.path.exists(path):
+        os.makedirs(NE_DIR, exist_ok=True)
+        with urllib.request.urlopen(NE_URL.format(name), timeout=120) as r:
+            open(path, "wb").write(r.read())
+    return json.load(open(path, encoding="utf-8"))
+
+
+def borders():
+    """Land boundaries as [class, [[lat, lon], ...]] lines; class 1 = disputed, line of control or indefinite."""
+    from shapely.geometry import shape
+    out = []
+    for f in natural_earth("ne_50m_admin_0_boundary_lines_land")["features"]:
+        cls = 0 if f["properties"].get("FEATURECLA", "").startswith("International") else 1
+        g = shape(f["geometry"]).simplify(0.02, preserve_topology=False)
+        for line in getattr(g, "geoms", [g]):
+            pts = [[round(y, 2), round(x, 2)] for x, y in line.coords]
+            if len(pts) >= 2:
+                out.append([cls, pts])
+    return write(os.path.join(OUT, "borders.json"),
+                 {"source": "Natural Earth 50m admin-0 boundary lines (public domain)", "lines": out})
+
+
+def places():
+    """Place labels [name, lat, lon, rank, capital] (rank: Natural Earth scalerank, 0 = most prominent) and the
+    monitored areas of the daily trend [name, lat0, lat1, lon0, lon1]."""
+    pl = []
+    for f in natural_earth("ne_50m_populated_places_simple")["features"]:
+        p = f["properties"]
+        if p["scalerank"] <= 7 or p.get("adm0cap"):
+            pl.append([" ".join(p["name"].split()), round(p["latitude"], 2), round(p["longitude"], 2), p["scalerank"], 1 if p.get("adm0cap") else 0])
+    pl.sort(key=lambda r: (r[3], -r[4]))
+    areas = [[name] + list(box) for name, box in DAILY_AREAS.items()]
+    return write(os.path.join(OUT, "places.json"),
+                 {"source": "Natural Earth 50m populated places (public domain); monitored areas from the daily trend",
+                  "places": pl, "areas": areas})
+
+
 def main():
+    if len(sys.argv) == 2 and sys.argv[1] == "--basemap":
+        print(json.dumps({"borders_kb": borders() // 1024, "places_kb": places() // 1024}))
+        return
     if len(sys.argv) == 4 and sys.argv[1] == "--map-day":
         size, st = map_day(sys.argv[2], sys.argv[3])
         print(json.dumps({"day": sys.argv[2], "kb": round(size / 1024), **st}))
@@ -200,6 +247,7 @@ def main():
               "egnos": egnos(), "storm": storm(), "bay": bay(), "hotspots": hotspots(), "types": types()}
     size = write(os.path.join(OUT, "charts.json"), charts)
     lsize = land()
+    borders(); places()
     print(f"map days: {len(idx)} ({sum(d['kb'] for d in idx) / 1024:.1f} MB); charts.json {size // 1024} KB; land.json {lsize // 1024} KB")
     for d in idx:
         print(f"  {d['day']}  hexes(5+) {d['hexes']:6d}  jamming-scale hexes {d['jam_hexes']:5d}  {d['kb']} KB  {d['note']}")

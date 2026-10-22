@@ -13,7 +13,9 @@
   var state = { day: null, measure: "jam", raw: false, ev: null, evShow: true, evAll: { anom: false, burst: false }, evFocus: null };
   var EV_ROWS = { anom: 15, burst: 10 };
   var TIER = { major: "Major", notable: "Notable", minor: "Minor" };
-  var days = [], cells = {}, cellList = [], land = [], colors = {};
+  var days = [], cells = {}, cellList = [], land = [], colors = {}, borders = [], places = [], areas = [];
+  var layersOn = { borders: true, places: true, areas: false };
+  try { var savedLayers = JSON.parse(localStorage.getItem("nf-map-layers") || "null"); if (savedLayers) layersOn = Object.assign(layersOn, savedLayers); } catch (e) { /* defaults */ }
   var mapEl = document.getElementById("map");
   if (!mapEl || !window.L || !window.h3) return;
 
@@ -21,7 +23,8 @@
   function readColors() {
     colors = { ocean: css("--map-ocean"), land: css("--map-land"), coast: css("--map-coast"), quiet: css("--map-quiet"),
                low: css("--map-low"), ramp: [css("--ramp-1"), css("--ramp-2"), css("--ramp-3"), css("--ramp-4")],
-               focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean"), test: css("--ink-2") };
+               focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean"), test: css("--ink-2"),
+               border: css("--map-border"), label: css("--map-label"), halo: css("--map-halo"), area: css("--map-area") };
     mapEl.style.background = colors.ocean;
   }
 
@@ -83,6 +86,37 @@
         cells[state.focus].bnd.forEach(function (p, i) { var q = m.latLngToContainerPoint(p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); });
         g.closePath(); g.stroke();
       }
+      var labels = [];
+      if (layersOn.borders && borders.length) {
+        g.save(); g.lineWidth = 0.9; g.strokeStyle = colors.border;
+        [0, 1].forEach(function (cls) {
+          g.setLineDash(cls ? [3, 3] : []); g.beginPath();
+          borders.forEach(function (l) {
+            if (l.cls !== cls || l.box[0] > b.getNorth() || l.box[1] < b.getSouth() || l.box[2] > b.getEast() || l.box[3] < b.getWest()) return;
+            l.pts.forEach(function (p, i) { var q = m.latLngToContainerPoint(p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); });
+          });
+          g.stroke();
+        });
+        g.restore();
+      }
+      if (layersOn.areas && areas.length) {
+        g.save(); g.setLineDash([2, 4]); g.strokeStyle = colors.area; g.lineWidth = 1.3;
+        areas.forEach(function (a) {
+          var p0 = m.latLngToContainerPoint([a[2], a[3]]), p1 = m.latLngToContainerPoint([a[1], a[4]]);
+          g.strokeRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+          labels.push({ text: a[0], x: p0.x + 4, y: p0.y + 13, kind: "area" });
+        });
+        g.restore();
+      }
+      if (layersOn.places && places.length) {
+        var z = m.getZoom(), maxRank = z < 2 ? 0 : z < 3 ? 1 : z < 4 ? 2 : z < 5 ? 3 : z < 6 ? 4 : 7;
+        places.forEach(function (p) {
+          if (p[3] > maxRank && !(p[4] && z >= 3.5)) return;
+          if (p[1] > b.getNorth() || p[1] < b.getSouth() || p[2] > b.getEast() || p[2] < b.getWest()) return;
+          var q = m.latLngToContainerPoint([p[1], p[2]]);
+          labels.push({ text: p[0], x: q.x + 5, y: q.y + 4, dot: q, cap: !!p[4], kind: "place" });
+        });
+      }
       if (state.evShow && state.ev && state.ev.tests) {
         g.save(); g.setLineDash([6, 5]); g.strokeStyle = colors.test; g.lineWidth = 1.5;
         state.ev.tests.forEach(function (t) {
@@ -117,6 +151,25 @@
             g.beginPath(); g.arc(q.x, q.y, 7, 0, 2 * Math.PI); g.fillStyle = colors.event; g.fill(); g.stroke();
           } else outline(state.evFocus);
         }
+      }
+      // labels last, with a halo, skipping any that would overlap one already drawn
+      if (labels.length) {
+        var taken = [], font = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        g.save(); g.lineJoin = "round"; g.textBaseline = "alphabetic";
+        labels.forEach(function (l) {
+          g.font = (l.kind === "area" ? "italic 11px " : l.cap ? "600 11.5px " : "11px ") + font;
+          var w = g.measureText(l.text).width, r = [l.x - 2, l.y - 11, l.x + w + 2, l.y + 3];
+          if (taken.some(function (t) { return r[0] < t[2] && r[2] > t[0] && r[1] < t[3] && r[3] > t[1]; })) return;
+          taken.push(r);
+          if (l.dot) {
+            g.fillStyle = colors.label;
+            if (l.cap) g.fillRect(l.dot.x - 2.5, l.dot.y - 2.5, 5, 5);
+            else { g.beginPath(); g.arc(l.dot.x, l.dot.y, 2, 0, 2 * Math.PI); g.fill(); }
+          }
+          g.strokeStyle = colors.halo; g.lineWidth = 3; g.strokeText(l.text, l.x, l.y);
+          g.fillStyle = l.kind === "area" ? colors.area : colors.label; g.fillText(l.text, l.x, l.y);
+        });
+        g.restore();
       }
     }
   });
@@ -418,7 +471,12 @@
     var note = document.getElementById("map-day-note");
     note.textContent = d && d.daily ? "Daily run: automatic, not reviewed by a person" : d && d.note ? d.note : "";
   }
-  function writeHash() { history.replaceState(null, "", "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "")); }
+  function hashFor() {
+    var c = map.getCenter();
+    return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") +
+           "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
+  }
+  function writeHash() { if (state.day) history.replaceState(null, "", hashFor()); }
 
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true;
@@ -442,6 +500,17 @@
   }
 
   function refresh() { state.evFocus = null; layer.redraw(); renderLegend(); renderStats(); renderTable(); renderEvents(); renderTimeline(); writeHash(); }
+
+  fetch("/data/borders.json").then(function (r) { return r.json(); }).then(function (j) {
+    borders = j.lines.map(function (l) {
+      var lats = l[1].map(function (p) { return p[0]; }), lons = l[1].map(function (p) { return p[1]; });
+      return { cls: l[0], pts: l[1], box: [Math.min.apply(null, lats), Math.max.apply(null, lats), Math.min.apply(null, lons), Math.max.apply(null, lons)] };
+    });
+    layer.redraw();
+  }).catch(function () { /* the map works without borders */ });
+  fetch("/data/places.json").then(function (r) { return r.json(); }).then(function (j) {
+    places = j.places; areas = j.areas; layer.redraw();
+  }).catch(function () { /* the map works without labels */ });
 
   Promise.all([fetch("/data/gnss/days.json").then(function (r) { return r.json(); }),
                fetch("/data/land.json").then(function (r) { return r.json(); })]).then(function (res) {
@@ -484,13 +553,15 @@
       document.querySelectorAll('input[name="measure"]').forEach(function (r) { r.checked = r.value === state.measure; });
       document.getElementById("map-raw").checked = state.raw;
       document.getElementById("map-raw-wrap").hidden = state.measure !== "jam";
+      var v = (hp.v || "").split(",").map(Number);
+      state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
       return d;
     }
     var day = fromHash();
     window.addEventListener("hashchange", function () {
-      var want = "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "");
-      if (location.hash === want) return;              // our own replaceState
+      if (location.hash === hashFor()) return;         // our own replaceState
       var d = fromHash(); renderLegend();
+      if (state.view) map.setView([state.view[0], state.view[1]], state.view[2], { animate: false });
       if (d !== state.day) loadDay(d); else refresh();
     });
     sel.addEventListener("change", function () { loadDay(sel.value); });
@@ -513,7 +584,24 @@
         state.evAll[p[1]] = !state.evAll[p[1]]; state.evFocus = null; renderEvents(); layer.redraw();
       });
     });
-    map.setView([35, 15], window.innerWidth < 700 ? 1.5 : 2.5);
+    if (state.view) map.setView([state.view[0], state.view[1]], state.view[2], { animate: false });
+    else map.setView([35, 15], window.innerWidth < 700 ? 1.5 : 2.5);
+    map.on("moveend", writeHash);
+    ["borders", "places", "areas"].forEach(function (k) {
+      var box = document.getElementById("lyr-" + k);
+      box.checked = layersOn[k];
+      box.addEventListener("change", function () {
+        layersOn[k] = box.checked;
+        try { localStorage.setItem("nf-map-layers", JSON.stringify(layersOn)); } catch (e) { /* this visit only */ }
+        layer.redraw();
+      });
+    });
+    var jump = document.getElementById("map-jump");
+    jump.addEventListener("change", function () {
+      var v = jump.value.split(",").map(Number);
+      if (v.length === 3) map.setView([v[0], v[1]], v[2], { animate: false });   // instant: animations stall in hidden tabs
+      jump.value = "";
+    });
     layer.addTo(map); renderLegend();
     loadDay(day);
     renderTimeline();
