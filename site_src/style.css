@@ -171,6 +171,7 @@ button.linkish { font: inherit; font-size: .88rem; color: var(--acc); background
 .multiples { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .8rem 1rem; }
 .multiples h4 { margin: 0 0 .1rem; font-size: .88rem; font-weight: 600; }
 .multiples h4 .bx { display: block; font-weight: 400; font-size: .76rem; color: var(--mut); }
+.trend-ctl { margin: .1rem 0 .9rem; font-size: .9rem; }
 details.table-view { margin-top: .5rem; }
 details.table-view summary { cursor: pointer; color: var(--acc); font-size: .88rem; }
 details.table-view .tw { max-height: 22rem; overflow: auto; }
