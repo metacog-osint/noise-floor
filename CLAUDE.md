@@ -31,6 +31,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
 - `tools/check_public.py`: pre-commit check for private terms.
 - **The public site `site/` is generated.** Edit `site_src/` (page bodies, `lanes.json`) and run `python tools/build_site.py`;
   the Sources page comes from `registry/sources.csv`. CI fails if `site/` is out of step. Cloudflare Pages deploys `site/` from `main`.
+  **Its Git builds have stuck in "queued" since 15 Oct 2026:** after pushing site changes, run `python tools/cf_pages_kick.py`
+  (needs `CLOUDFLARE_API_TOKEN`), then check the live page.
 
 ## History
 - An Oct 2025 attempt never processed a full day. Its raw adsb.lol traces for Oct 2025 are still on D: (path in
