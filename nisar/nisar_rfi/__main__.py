@@ -4,6 +4,7 @@
   python -m nisar_rfi inspect  GRANULE_UR | URL | FILE.h5
   python -m nisar_rfi tables   GCOV_OR_RSLC_GRANULE_UR [--height M]
   python -m nisar_rfi map      [--config config.json]
+  python -m nisar_rfi publish  [--config config.json] [--build-only]   (private web view)
 """
 import argparse
 import os
@@ -47,6 +48,16 @@ def cmd_tables(a):
             print(f'  {c["lat"]:.3f},{c["lon"]:.3f}  {c["blocks"]} blocks, {int(c["peak_hit"] * 100)}% of pulses, '
                   f'ISR {c["peak_isr_db"]} dB, {"+".join(c["pols"])}, {c["along_km"]} x {c["across_km"]} km, '
                   f'{c["confidence"]}{" WIDESPREAD" if c["widespread"] else ""}: {tabdetect.describe_runs(c["freq_runs_mhz"])}')
+
+
+def cmd_publish(a):
+    from . import view
+    cfg = pipeline.load_config(a.config)
+    folder = view.build(cfg)
+    print(f"view built: {folder}")
+    if not a.build_only:
+        ok = view.deploy(cfg, folder)
+        raise SystemExit(0 if ok else 1)
 
 
 def cmd_map(a):
@@ -141,6 +152,10 @@ def main(argv=None):
     t.add_argument("granule")
     t.add_argument("--height", type=float, default=0.0, help="terrain height for geolocation, m")
     t.set_defaults(fn=cmd_tables)
+    pb = sub.add_parser("publish")
+    pb.add_argument("--config", default=default_cfg)
+    pb.add_argument("--build-only", action="store_true")
+    pb.set_defaults(fn=cmd_publish)
     m = sub.add_parser("map")
     m.add_argument("--config", default=default_cfg)
     m.set_defaults(fn=cmd_map)
