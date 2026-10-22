@@ -34,5 +34,10 @@ jobs:
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "Cloudflare secrets not set; skipping deploy"; exit 0
           fi
+          # a slow CI run for an older commit must not roll the site back
+          HEAD_SHA="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)"
+          if [ "$HEAD_SHA" != "$SHA" ]; then
+            echo "Not the current tip of main ($HEAD_SHA); skipping deploy"; exit 0
+          fi
           npx --yes wrangler@4.151.3 pages deploy site --project-name noise-floor --branch main \
             --commit-hash "$SHA" --commit-message "deploy-site $SHA" --commit-dirty=true
