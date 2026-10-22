@@ -441,17 +441,25 @@
     {
       "id": "public-map",
       "group": "platform",
-      "name": "Public map and data",
-      "status": "planned",
+      "name": "Public map, charts and data",
+      "status": "prototype",
       "phase": "Phase 2",
-      "summary": "A daily map of GNSS degradation with a time slider and downloadable hex data.",
+      "summary": "An interactive map and charts of the validated days are live; the daily map comes with the pipeline.",
       "what": "A static site: MapLibre with H3 hexes, a time slider, the method card and the validation report. Daily hex data is downloadable under ODbL.",
       "how": "A daily pipeline in GitHub Actions, and a backfill from Oct 2025 (about 1.3 TB downloaded and discarded; only MBs a day are kept).",
       "data": [
         "adsb.lol daily archive (ODbL; derived data published under ODbL with attribution)"
       ],
-      "notes": "Static files on the free tier: no servers and no database bill. Planned: ad-hoc queries over the full history in the browser (DuckDB-WASM), with no server.",
+      "notes": "Live now: the map and charts for the 20 validated days, with each day's hex data downloadable under ODbL. Next: the daily pipeline in GitHub Actions and a time slider over the full history. Planned: ad-hoc queries over the full history in the browser (DuckDB-WASM), with no server. Static files on the free tier: no servers and no database bill.",
       "links": [
+        [
+          "Map",
+          "/map"
+        ],
+        [
+          "Charts",
+          "/charts"
+        ],
         [
           "Source code",
           "https://github.com/metacog-osint/noise-floor"

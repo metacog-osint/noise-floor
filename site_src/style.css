@@ -91,3 +91,79 @@ td.num { text-align: right; white-space: nowrap; }
 footer.site { border-top: 1px solid var(--line); color: var(--mut); font-size: .85rem; }
 footer.site .in { max-width: 62rem; margin: 0 auto; padding: 1.2rem 1rem 2rem; }
 footer.site p { margin: .25rem 0; max-width: none; }
+
+/* ---- map and charts ---- */
+:root {
+  --map-ocean: #f4f3ee; --map-land: #e8e5dc; --map-coast: #d3cfc3;
+  --map-quiet: rgba(95, 102, 112, 0.20); --map-low: rgba(95, 102, 112, 0.08);
+  --ramp-1: #e3824c; --ramp-2: #c85f2a; --ramp-3: #a2441a; --ramp-4: #6e2c0f;
+  --surface-chart: #fcfcfb; --grid: #e1e0d9; --axis: #c3c2b7; --ink-2: #52514e; --ink-3: #898781;
+  --series-1: #2a78d6; --series-2: #eb6834; --series-base: #898781; --wash: rgba(42, 120, 214, 0.10); --band: rgba(235, 104, 52, 0.10);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --map-ocean: #121417; --map-land: #262a30; --map-coast: #353a42;
+    --map-quiet: rgba(154, 161, 169, 0.22); --map-low: rgba(154, 161, 169, 0.09);
+    --ramp-1: #b04c1f; --ramp-2: #d8652b; --ramp-3: #f28a4a; --ramp-4: #ffbd8a;
+    --surface-chart: #1a1a19; --grid: #2c2c2a; --axis: #383835; --ink-2: #c3c2b7; --ink-3: #898781;
+    --series-1: #3987e5; --series-2: #d95926; --series-base: #898781; --wash: rgba(57, 135, 229, 0.12); --band: rgba(217, 89, 38, 0.09);
+  }
+}
+main.wide { max-width: 80rem; }
+.controls { display: flex; flex-wrap: wrap; gap: .6rem 1.2rem; align-items: end; margin: 1rem 0 .4rem; }
+.ctl { display: flex; flex-direction: column; gap: .2rem; font-size: .88rem; color: var(--mut); }
+.ctl select { font: inherit; font-size: .95rem; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); max-width: 22rem; }
+.seg { border: 0; padding: 0; margin: 0; }
+.seg legend { padding: 0; margin-bottom: .2rem; }
+.seg label { display: inline-flex; gap: .3rem; align-items: center; margin-right: .9rem; color: var(--fg); font-size: .95rem; }
+.ctl.check { flex-direction: row; align-items: center; gap: .4rem; color: var(--fg); font-size: .95rem; }
+.map-line { margin: .2rem 0 .6rem; }
+.tagnote:not(:empty) { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 0 .55rem; margin-right: .4rem; color: var(--fg); }
+.map-frame { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+#map { height: 68vh; min-height: 420px; max-height: 760px; background: var(--map-ocean); }
+#map.loading { opacity: .6; transition: opacity .2s; }
+.leaflet-container { font: inherit; }
+.leaflet-control-attribution { font-size: .72rem; }
+.map-tip { position: absolute; z-index: 800; pointer-events: none; background: var(--card); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 8px; padding: .45rem .6rem; font-size: .82rem; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 11rem; }
+.map-tip .h b { font-weight: 600; }
+.map-tip .r { display: flex; justify-content: space-between; gap: .9rem; }
+.map-tip .r span { color: var(--mut); }
+.map-tip .r b { font-variant-numeric: tabular-nums; }
+.legend-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .6rem 0 .2rem; }
+.map-legend { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .85rem; color: var(--mut); }
+.map-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+.map-legend i { width: 1rem; height: .75rem; border-radius: 2px; display: inline-block; outline: 1px solid var(--line); }
+button.linkish { font: inherit; font-size: .88rem; color: var(--acc); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+.chart-card { background: var(--surface-chart); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem .8rem; margin: 1.2rem 0; }
+.chart-card h3 { margin: 0 0 .15rem; }
+.chart-card .sub { color: var(--mut); font-size: .88rem; margin: 0 0 .6rem; max-width: none; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--ink-3); font-size: 11px; font-family: inherit; }
+.chart .lbl { fill: var(--ink-2); font-size: 11.5px; }
+.chart .grid line { stroke: var(--grid); stroke-width: 1; }
+.chart .axis line, .chart line.axis { stroke: var(--axis); stroke-width: 1; }
+.chart .ref { stroke: var(--ink-3); stroke-width: 1; }
+.chart .xhair { stroke: var(--ink-3); stroke-width: 1; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem; font-size: .85rem; color: var(--ink-2); margin: .3rem 0 0; }
+.chart-legend span { display: inline-flex; align-items: center; gap: .4rem; }
+.chart-legend i { display: inline-block; width: 16px; height: 2px; border-radius: 1px; }
+.chart-legend i.box { width: 12px; height: 10px; border-radius: 2px; }
+.chart-tip { position: absolute; z-index: 5; pointer-events: none; background: var(--card); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 8px; padding: .4rem .55rem; font-size: .8rem; box-shadow: 0 4px 16px rgba(0,0,0,.12); white-space: nowrap; }
+.chart-tip .t { color: var(--mut); margin-bottom: .15rem; }
+.chart-tip .r { display: flex; align-items: center; gap: .45rem; }
+.chart-tip .r b { font-variant-numeric: tabular-nums; }
+.chart-tip .r i { display: inline-block; width: 12px; height: 2px; border-radius: 1px; }
+.multiples { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .8rem 1rem; }
+.multiples h4 { margin: 0 0 .1rem; font-size: .88rem; font-weight: 600; }
+details.table-view { margin-top: .5rem; }
+details.table-view summary { cursor: pointer; color: var(--acc); font-size: .88rem; }
+details.table-view .tw { max-height: 22rem; overflow: auto; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .8rem; margin: .8rem 0; }
+.tile { background: var(--surface-chart); border: 1px solid var(--line); border-radius: 12px; padding: .8rem 1rem; }
+.tile .label { color: var(--mut); font-size: .85rem; }
+.tile .value { font-size: 2rem; font-weight: 600; line-height: 1.2; margin: .15rem 0; }
+.tile .note { color: var(--mut); font-size: .82rem; }
