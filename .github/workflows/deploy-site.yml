@@ -1,0 +1,38 @@
+name: deploy-site
+# Deploys site/ to Cloudflare Pages (project noise-floor) by direct upload after CI passes on main.
+# Replaces Cloudflare's Git-triggered builds, which have stuck in "queued" since 15 Oct 2026.
+# Needs repo secrets CLOUDFLARE_PAGES_TOKEN (Cloudflare Pages: Edit only) and CLOUDFLARE_ACCOUNT_ID;
+# skips without them.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: deploy-site
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Deploy site/ to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare secrets not set; skipping deploy"; exit 0
+          fi
+          npx --yes wrangler@4.151.3 pages deploy site --project-name noise-floor --branch main \
+            --commit-hash "$SHA" --commit-message "deploy-site $SHA" --commit-dirty=true
