@@ -34,6 +34,11 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   **Deploys run from GitHub Actions** (`.github/workflows/deploy-site.yml`): after CI passes on `main`, `site/` is uploaded
   straight to Cloudflare Pages. Cloudflare's own Git-triggered builds stuck in "queued" from 15 Oct 2026; `tools/cf_pages_kick.py`
   is the manual fallback. Check the live page after site changes.
+- **Daily pipeline (Phase 2, from 22 Oct 2026):** `.github/workflows/daily.yml` runs `pipeline/daily_job.py` at 05:40 UTC (again at 12:40 for late releases).
+  It processes each new adsb.lol day, uploads the outputs to the release `pnt-data-YYYY-MM` (ODbL; `<day>.map.json` last,
+  as the done marker) and calls `deploy-site.yml`, which adds every release's map files to `site/data/gnss/`
+  (`tools/site_days.py`). Rerun or fill days with Actions → daily → Run workflow (`days`, `force`). GitHub disables
+  scheduled workflows after 60 days without a push to the repo.
 
 ## History
 - An Oct 2025 attempt never processed a full day. Its raw adsb.lol traces for Oct 2025 are still on D: (path in

@@ -146,6 +146,16 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
 - **The Bluesky collector was pulled forward from the Phase 6 community lane.** It lives in `collectors/bluesky.py`, with the account list and keywords in `private/watch/` (never in the repo).
 - **The 22 Sep 2026 NOTAM couldn't be retrieved publicly.** Closing that case needs FAA NOTAM API access (decision 4).
 
+### Progress (22 Oct 2026)
+
+- **Phase 2 daily job is live.** `.github/workflows/daily.yml` runs `pipeline/daily_job.py` each day at 05:40 UTC: it downloads
+  the new adsb.lol day (published about 03:30 UTC the next day), runs the processor and the analyses, and redeploys the site.
+  The map shows daily days from 2026-10-07.
+- **Storage: GitHub Releases instead of R2.** Each month's outputs are assets on the release `pnt-data-YYYY-MM` of this repo
+  (about 3 MB a day, ODbL). It needs no new service and no billing, and the files are public downloads. The earlier days a
+  baseline needs (30 days back) are fetched from there. R2 stays an option if the history outgrows releases.
+- **Site deploys** add the map files from every release at deploy time, so daily data never goes into git.
+
 ### Progress (21 Oct 2026)
 
 - **NISAR L-band lane pulled forward from Phase 7** (`nisar/`). It detects emitters inside NISAR's receive bands from cross-pol excess, checks band specificity, streak shape and unpolarized change, groups detections into sites and cross-fixes them. The offline self-test passes (in CI). It has not run on live data yet. Next: the Shiraz known-answer run (`nisar/validation/shiraz.json`), then an `inspect` of one provisional granule to see how much the processor's RFI filter leaves. Open decision: where the daily run lives, because its logs and outputs are watch data (public Actions with `--quiet` and outputs to the private store, or this PC).

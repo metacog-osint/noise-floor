@@ -40,7 +40,7 @@
       "data": [
         "adsb.lol daily archive (ODbL 1.0)"
       ],
-      "notes": "An effect measure, not attribution. Processing takes 53–70 s per worldwide day on one PC. Validated on 20 days (Oct–Nov 2025 and Sep 2026). Next: a cross-day blacklist of persistently faulty avionics, to complement the daily peer test.",
+      "notes": "An effect measure, not attribution. Processing takes 53–70 s per worldwide day on one PC. Validated on 20 days (Oct–Nov 2025 and Sep 2026). Runs every day in GitHub Actions from 2026-10-07. Next: a cross-day blacklist of persistently faulty avionics, to complement the daily peer test.",
       "links": [
         [
           "Method card",
@@ -442,15 +442,15 @@
       "id": "public-map",
       "group": "platform",
       "name": "Public map, charts and data",
-      "status": "prototype",
+      "status": "running",
       "phase": "Phase 2",
-      "summary": "An interactive map and charts of the validated days are live; the daily map comes with the pipeline.",
-      "what": "A static site: MapLibre with H3 hexes, a time slider, the method card and the validation report. Daily hex data is downloadable under ODbL.",
-      "how": "A daily pipeline in GitHub Actions, and a backfill from Oct 2025 (about 1.3 TB downloaded and discarded; only MBs a day are kept).",
+      "summary": "The map updates every day from an automatic pipeline; the charts cover the validated days.",
+      "what": "A static site: a Leaflet map of H3 hexes, charts, the method card and the validation report. Each day's hex data is downloadable under ODbL, and the full daily outputs sit in monthly data releases.",
+      "how": "A GitHub Actions workflow processes each new adsb.lol day after it is published (about 03:30 UTC the next day), stores the outputs as assets on a monthly GitHub release, and redeploys the site. It checks the last 7 days each run and fills gaps. A backfill to Oct 2025 (about 1.3 TB downloaded and discarded) is planned.",
       "data": [
         "adsb.lol daily archive (ODbL; derived data published under ODbL with attribution)"
       ],
-      "notes": "Live now: the map and charts for the 20 validated days, with each day's hex data downloadable under ODbL. Next: the daily pipeline in GitHub Actions and a time slider over the full history. Planned: ad-hoc queries over the full history in the browser (DuckDB-WASM), with no server. Static files on the free tier: no servers and no database bill.",
+      "notes": "Live: the daily map from 2026-10-07, the 20 validated days, and the full daily outputs (per hex, hour and minute; SBAS flags, anomalies and bursts) in the data releases, all under ODbL. Daily runs are automatic and not reviewed by a person. Next: a time slider over the full history and daily charts. Planned: ad-hoc queries in the browser (DuckDB-WASM), with no server. Static files on the free tier: no servers and no database bill.",
       "links": [
         [
           "Map",
@@ -459,6 +459,10 @@
         [
           "Charts",
           "/charts"
+        ],
+        [
+          "Data releases",
+          "https://github.com/metacog-osint/noise-floor/releases"
         ],
         [
           "Source code",
