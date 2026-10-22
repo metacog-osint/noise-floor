@@ -190,6 +190,14 @@ def write_map(state, cfg, now, path, demo=False, truth=None):
     land = {"type": "FeatureCollection", "features": [
         {"type": "Feature", "properties": {}, "geometry": mapping(shape(f["geometry"]).intersection(view))}
         for f in fc["features"] if shape(f["geometry"]).intersects(view)]}
+    bl = json.load(gzip.open(os.path.join(HERE, "assets", "borders.geojson.gz"), "rt", encoding="utf-8"))
+    borders = {"type": "FeatureCollection", "features": [
+        {"type": "Feature", "properties": f["properties"], "geometry": mapping(shape(f["geometry"]).intersection(view))}
+        for f in bl["features"] if shape(f["geometry"]).intersects(view)]}
+    gz = json.load(gzip.open(os.path.join(HERE, "assets", "gazetteer.json.gz"), "rt", encoding="utf-8"))
+    vw, vs, ve, vn = view.bounds
+    places = sorted(([p[0], p[1], p[2], p[4]] for p in gz["places"] if vs <= p[1] <= vn and vw <= p[2] <= ve),
+                    key=lambda p: -(p[3] or 0))[:600]           # [name, lat, lon, population], largest first
     aoi_geom = mapping(box(*a["bbox"])) if not a.get("polygon") else {"type": "Polygon", "coordinates": [a["polygon"]]}
     w, s_, e, n = w0, s0, e0, n0
     dets = [d for d in state["detections"] if d["start"] >= cut]
@@ -210,7 +218,8 @@ def write_map(state, cfg, now, path, demo=False, truth=None):
     data = {
         "generated": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "demo": demo, "truth": truth or [],
         "aoi": {"name": a["name"], "center": [(s_ + n) / 2, (w + e) / 2], "geojson": aoi_geom},
-        "land": land, "passes": passes, "detections": dets, "sites": sites, "band_text": bt,
+        "land": land, "borders": borders, "places": places,
+        "passes": passes, "detections": dets, "sites": sites, "band_text": bt,
         "footer": f"Generated {central(now.strftime('%Y-%m-%dT%H:%M'))}. NISAR data: NASA/JPL-ISRO via ASF DAAC "
                   "(NASA open data). Land and places: Natural Earth (public domain).",
     }

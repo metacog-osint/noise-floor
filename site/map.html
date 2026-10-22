@@ -29,6 +29,22 @@
     <label><input type="radio" name="measure" value="acc"> Accuracy (10 m)</label>
   </fieldset>
   <label class="ctl check" id="map-raw-wrap"><input type="checkbox" id="map-raw"> Include post-exposure aircraft</label>
+  <fieldset class="ctl seg layers"><legend>Layers</legend>
+    <label><input type="checkbox" id="lyr-borders" checked> Country borders</label>
+    <label><input type="checkbox" id="lyr-places" checked> Place names</label>
+    <label><input type="checkbox" id="lyr-areas"> Monitored areas</label>
+  </fieldset>
+  <label class="ctl"><span>Jump to</span><select id="map-jump" aria-label="Jump to a region">
+    <option value="">Choose a region…</option>
+    <option value="30,10,2">World</option>
+    <option value="52,15,4">Europe</option>
+    <option value="57.5,23,5">Baltic</option>
+    <option value="43,37,5">Black Sea and Caucasus</option>
+    <option value="34,33,5.5">Eastern Mediterranean</option>
+    <option value="27,51,5">Persian Gulf and Strait of Hormuz</option>
+    <option value="39,-98,3.5">North America</option>
+    <option value="38,128,4.5">East Asia</option>
+  </select></label>
 </div>
 <div class="timeline" id="timeline">
   <div class="tl-head small"><span id="tl-title"></span><span id="tl-range" class="mut"></span></div>
