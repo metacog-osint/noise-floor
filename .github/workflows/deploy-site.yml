@@ -48,13 +48,13 @@ jobs:
           echo "Deploying $SHA"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
       - if: steps.pick.outputs.sha != ''
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ steps.pick.outputs.sha }}
       # the release files are cached between deploys; only new or changed ones are downloaded
       - name: Restore the release-file cache
         if: steps.pick.outputs.sha != ''
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/release-files
           key: release-files-${{ github.run_id }}-${{ github.run_attempt }}
@@ -69,12 +69,12 @@ jobs:
           python3 tools/site_days.py "$RUNNER_TEMP/release-files"
       - name: Save the release-file cache
         if: steps.files.outputs.changed == 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/release-files
           key: release-files-${{ github.run_id }}-${{ github.run_attempt }}
       - if: steps.pick.outputs.sha != ''
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
       - name: Deploy site/ to Cloudflare Pages
