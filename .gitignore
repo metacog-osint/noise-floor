@@ -13,7 +13,8 @@ __pycache__/
 *.pyc
 
 # Data outputs. adsb.lol-derived data is ODbL: publish it deliberately, never by accident.
-data/
+# (Root data/ only: site/data/ is the deliberate public export, written by tools/export_site_data.py.)
+/data/
 out/
 spikes/*.csv
 *.tar
