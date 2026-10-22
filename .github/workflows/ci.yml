@@ -19,5 +19,7 @@ jobs:
         run: python tools/check_public.py --all
       - name: Licence registry
         run: python tools/check_registry.py
+      - name: Public site matches site_src and the registry
+        run: python tools/build_site.py && git diff --exit-code -- site
       - name: Offline tests
         run: for t in tests/test_*.py; do python "$t" || exit 1; done

@@ -29,6 +29,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
 - `tools/sun_transit.py`: sun-outage windows for GEO satellites from fixed receivers (`--daily`, `--start`, `--end`,
   `--threshold`). Checked against a separately written calculator: Tehran windows and times agree.
 - `tools/check_public.py`: pre-commit check for private terms.
+- **The public site `site/` is generated.** Edit `site_src/` (page bodies, `lanes.json`) and run `python tools/build_site.py`;
+  the Sources page comes from `registry/sources.csv`. CI fails if `site/` is out of step. Cloudflare Pages deploys `site/` from `main`.
 
 ## History
 - An Oct 2025 attempt never processed a full day. Its raw adsb.lol traces for Oct 2025 are still on D: (path in
