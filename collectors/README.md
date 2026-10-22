@@ -43,9 +43,31 @@ This follows a private list of RSS and Atom feeds in `private/watch/feeds.txt` (
 
 **Feeds that refuse automated requests** are read manually. The collector isn't disguised to get past them. As of 14 Oct 2026 that means GPS World (403). X has no free read API, so posts there are read manually too.
 
+## Watch pollers (`watch.py`, `chayka.py`)
+
+Daily trigger pollers, ported from Tom's emso-watch trigger board on 22 Oct 2026. Each trigger is a lead for triage, graded WARNING (an official notice), EFFECT (a report or a measured change) or NATURAL (space weather, to rule out first). Each fires once.
+
+| Source | Registry row | Use |
+|---|---|---|
+| NOAA SWPC alerts | `noaa-swpc` | ingest |
+| NGA MSI broadcast warnings (GNSS, jamming, AIS, radar) | `nga-msi` | ingest |
+| USCG NAVCEN planned GPS tests (PDF schedule) and GPS user reports | `navcen-gps-tests`, `navcen-reports` | ingest |
+| UKMTO warnings and advisories | `ukmto` (OGL); JMIC notes are linked only (`jmic-notes`) | ingest |
+| KingOfSat removals at watched GEO slots | `kingofsat` | private watch: hourly at most, never the robots-disallowed paths |
+| Chayka / Loran status from the DL0AO image (`chayka.py`) | `df6nm-dl0ao` | private watch: a status line, not a trigger, until the Chayka-vs-GNSS study shows abs(rho) >= 0.3 with n >= 60 |
+| Sun-transit windows for watched receiver/GEO pairs, next 48 h | computed (`tools/sun_transit.py`) | private |
+
+**Setup.** The watch lists (KingOfSat slots and channels, sun-transit pairs, watch countries) live in `private/watch/pollers.json`, which is gitignored. A source whose list is missing reports SKIP; the others still run. `chayka.py` needs Pillow (`requirements-dev.txt`) and uses `collectors/ca_extra.pem` because `vlf.u01.de` serves an incomplete certificate chain.
+
+**Run:** `python collectors/watch.py` (all sources) or `--only nga,ukmto`.
+
+**Outputs** (all under `data/`, gitignored): `data/watch/digest_*.md`, `alerts.jsonl` (every trigger, append-only), `state.json`, `navcen_gps_tests.json`, `chayka/`, and raw responses under `data/raw/watch/YYYY-MM-DD/`.
+
+**Not ported:** IODA (ask first), Cloudflare Radar and GPSJam (visual comparison only), and phone pushes through ntfy (a new service, so Tom's OK first). Announced US GPS tests for the public map come separately from the FAA's flight advisories (`pipeline/faa_gps_tests.py`, in the daily GitHub workflow).
+
 ## Daily schedule (Windows)
 
-`run_daily.cmd` runs both collectors and appends to `data/logs/collectors.log`. It is registered as the Windows scheduled task **"noise-floor daily collectors"**:
+`run_daily.cmd` runs the collectors and the watch pollers and appends to `data/logs/collectors.log`. It is registered as the Windows scheduled task **"noise-floor daily collectors"**:
 
 - runs daily at 06:30 local time
 - catches up after the PC was off

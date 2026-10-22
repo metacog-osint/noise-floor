@@ -126,7 +126,7 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
 ### Merged phases (each finished and committed before the next)
 
 1. **Foundation:** as above. Repo, licence registry (merge both research docs), PNT processor v1 on three frozen days, method card, and a validation report against known hotspots and GPSJam maps (visual) for the same dates.
-2. **Daily and backfill, plus the declared lane:** daily job, backfill, static map live. Port emso-watch's pollers to Worker cron, with ntfy alerts.
+2. **Daily and backfill, plus the declared lane:** daily job, backfill, static map live. Port emso-watch's pollers to Worker cron, with ntfy alerts. **Status 22 Oct 2026:** daily job, backfill and map done in GitHub Actions; announced US GPS tests from FAA advisories on the public map; the pollers run daily on Tom's PC with a private digest (`collectors/watch.py`). Worker cron and ntfy wait for Tom's OK (new services).
 3. **SATCOM v1:** GEO threat board and the ITU RRB interference register.
 4. **Spoofing and maritime:** ADS-B spoofing detectors, AIS (Digitraffic, Kystverket), declared-warning layers.
 5. **Emitters:** Sentinel-1 RFI board and weather-radar spokes.
