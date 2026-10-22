@@ -201,7 +201,8 @@ def process(day, a):
             shutil.rmtree(raw, ignore_errors=True)
     hist, an = (0, {}) if a.skip_analysis else analyse(day)   # backfill: analyses run later, in date order
     import export_site_data as E
-    size, hexes, jam = E.map_day(day, os.path.join(SITE, f"{day}.map.json"))
+    size, st = E.map_day(day, os.path.join(SITE, f"{day}.map.json"))
+    hexes, jam = st["hexes"], st["jam_hexes"]
     E.hotspot_day(day, os.path.join(SITE, f"{day}.hotspots.json"))
     if not a.no_upload:
         upload(day, with_analysis=not a.skip_analysis)

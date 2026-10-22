@@ -11,6 +11,16 @@
   </fieldset>
   <label class="ctl check" id="map-raw-wrap"><input type="checkbox" id="map-raw"> Include post-exposure aircraft</label>
 </div>
+<div class="timeline" id="timeline">
+  <div class="tl-head small"><span id="tl-title"></span><span id="tl-range" class="mut"></span></div>
+  <div class="tl-strip" id="tl-strip"></div>
+  <div class="tl-row">
+    <button type="button" class="tl-btn" id="tl-prev" aria-label="Previous day">‹</button>
+    <input type="range" id="tl-slider" min="0" max="0" step="1" value="0" aria-label="Day">
+    <button type="button" class="tl-btn" id="tl-next" aria-label="Next day">›</button>
+    <span class="tl-day" id="tl-day" aria-live="polite"></span>
+  </div>
+</div>
 <p class="small map-line"><span id="map-day-note" class="tagnote"></span> <span id="map-stats"></span></p>
 
 <div class="map-frame">
