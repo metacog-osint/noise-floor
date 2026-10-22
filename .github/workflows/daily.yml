@@ -5,6 +5,7 @@ name: daily
 on:
   schedule:
     - cron: "40 5 * * *"     # 05:40 UTC = 00:40 CDT / 23:40 CST
+    - cron: "40 12 * * *"    # second look, for a late adsb.lol release (exits in about a minute if nothing is new)
   workflow_dispatch:
     inputs:
       days:
