@@ -51,7 +51,8 @@ These tables are computed on the raw data **before** mitigation, so the image fi
 **Data volume.** Measured over the private watch box (30 days to 21 Oct 2026):
 - ~14 passes a day and ~24 GB of GCOV files a day.
 - Tier 0 is ~1.4 MB a day.
-- Tier 1 is at most ~1.4 GB a day if every pass is read, and less after screening.
+- Tier 1 is at most ~1.4 GB a day if every pass is read. With the default screen, about 78% of passes were read in that sample: ~1 GB and ~6–7 minutes a day.
+- A tier-1 read takes about 30–40 s. The run resolves the Earthdata redirect once (the signed URL is never logged), walks ~8 MB of HDF5 metadata, then fetches the hit arrays by concurrent byte-range requests.
 
 ## Run
 
