@@ -17,6 +17,7 @@ Usage
   python pipeline/daily_job.py                          # latest missing days (what the schedule runs)
   python pipeline/daily_job.py 2026-10-07:2026-10-20    # a range
   python pipeline/daily_job.py 2026-09-22 --raw-dir data/raw/adsblol --no-upload   # local test: no download, no upload
+  python pipeline/daily_job.py 2026-10-07:2026-10-21 --reanalyse    # rerun only the analyses on published days
 """
 import argparse, json, os, shutil, subprocess, sys, time, traceback
 from datetime import date, datetime, timedelta, timezone
@@ -120,6 +121,38 @@ def upload(day):
     _ASSETS.pop((REPO, tag), None)
 
 
+def analyse(day):
+    """pnt_analysis for one day, with earlier days fetched for the baselines. Returns (files fetched, its summary)."""
+    hist = fetch_history(day)
+    for p in outputs(day)[4:]:            # a rerun must not reuse the day's old SBAS flags
+        if os.path.exists(p):
+            os.remove(p)
+    cmd = [sys.executable, os.path.join(HERE, "pnt_analysis.py"), day]
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+    if r.returncode:
+        raise RuntimeError(f"pnt_analysis {day}: {r.stderr.strip()[-600:]}")
+    return hist, json.loads(r.stdout.strip().splitlines()[-1])
+
+
+def reanalyse(day, a):
+    """Rerun only the analyses on a published day (after the analysis code changes): no adsb.lol download."""
+    t0, tag = time.time(), data_tag(day)
+    have = assets(REPO, tag) or {}
+    if f"{day}.map.json" not in have:
+        return {"day": day, "status": "not published; nothing to reanalyse"}
+    for name in (f"{day}.hourly.parquet", f"{day}.minute.parquet"):
+        if not os.path.exists(os.path.join(DAILY, name)):
+            os.makedirs(DAILY, exist_ok=True)
+            gh("release", "download", tag, "-R", REPO, "-p", name, "-D", DAILY, "--clobber")
+    hist, an = analyse(day)
+    if not a.no_upload:
+        gh("release", "upload", tag, "-R", REPO, "--clobber", *outputs(day)[4:])
+        _ASSETS.pop((REPO, tag), None)
+    return {"day": day, "status": "reanalysed" if not a.no_upload else "reanalysed (not uploaded)", "history_files": hist,
+            "baseline_days": an.get("baseline_days"), "anomaly_region_hours": an.get("anomaly_region_hours"),
+            "burst_events": an.get("burst_events"), "total_s": round(time.time() - t0)}
+
+
 def process(day, a):
     t0 = time.time()
     raw = a.raw_dir or download_raw(day)
@@ -131,15 +164,7 @@ def process(day, a):
     finally:
         if not a.raw_dir and not a.keep_raw:
             shutil.rmtree(raw, ignore_errors=True)
-    hist = fetch_history(day)
-    for p in outputs(day)[4:]:            # a rerun must not reuse the day's old SBAS flags
-        if os.path.exists(p):
-            os.remove(p)
-    cmd = [sys.executable, os.path.join(HERE, "pnt_analysis.py"), day]
-    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
-    if r.returncode:
-        raise RuntimeError(f"pnt_analysis {day}: {r.stderr.strip()[-600:]}")
-    an = json.loads(r.stdout.strip().splitlines()[-1])
+    hist, an = analyse(day)
     import export_site_data as E
     size, hexes, jam = E.map_day(day, os.path.join(SITE, f"{day}.map.json"))
     if not a.no_upload:
@@ -156,6 +181,7 @@ def main():
     ap.add_argument("days", nargs="*", help="YYYY-MM-DD or START:END (default: the last --lookback days)")
     ap.add_argument("--lookback", type=int, default=7)
     ap.add_argument("--force", action="store_true", help="redo days that are already published")
+    ap.add_argument("--reanalyse", action="store_true", help="rerun only the analyses on published days")
     ap.add_argument("--raw-dir", help="use local adsb.lol files instead of downloading")
     ap.add_argument("--keep-raw", action="store_true")
     ap.add_argument("--no-upload", action="store_true")
@@ -165,16 +191,16 @@ def main():
     days = sorted(set(expand(a.days))) if a.days else [(today - timedelta(days=k)).isoformat() for k in range(a.lookback, 0, -1)]
     results, failed = [], False
     for day in days:
-        if not a.force and not a.no_upload and f"{day}.map.json" in (assets(REPO, data_tag(day)) or {}):
+        if not a.force and not a.reanalyse and not a.no_upload and f"{day}.map.json" in (assets(REPO, data_tag(day)) or {}):
             continue
         try:
-            r = process(day, a)
+            r = reanalyse(day, a) if a.reanalyse else process(day, a)
         except Exception as e:
             traceback.print_exc()
             r, failed = {"day": day, "status": f"ERROR {e.__class__.__name__}: {e}"[:300]}, True
         print(json.dumps(r), flush=True)
         results.append(r)
-    done = [r["day"] for r in results if r["status"] == "published"]
+    done = [r["day"] for r in results if r["status"] in ("published", "reanalysed")]
     print(json.dumps({"published": done, "checked": len(days)}))
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:

@@ -99,6 +99,7 @@ footer.site p { margin: .25rem 0; max-width: none; }
   --ramp-1: #e3824c; --ramp-2: #c85f2a; --ramp-3: #a2441a; --ramp-4: #6e2c0f;
   --surface-chart: #fcfcfb; --grid: #e1e0d9; --axis: #c3c2b7; --ink-2: #52514e; --ink-3: #898781;
   --series-1: #2a78d6; --series-2: #eb6834; --series-base: #898781; --wash: rgba(42, 120, 214, 0.10); --band: rgba(235, 104, 52, 0.10);
+  --map-event: #2a78d6;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -107,6 +108,7 @@ footer.site p { margin: .25rem 0; max-width: none; }
     --ramp-1: #b04c1f; --ramp-2: #d8652b; --ramp-3: #f28a4a; --ramp-4: #ffbd8a;
     --surface-chart: #1a1a19; --grid: #2c2c2a; --axis: #383835; --ink-2: #c3c2b7; --ink-3: #898781;
     --series-1: #3987e5; --series-2: #d95926; --series-base: #898781; --wash: rgba(57, 135, 229, 0.12); --band: rgba(217, 89, 38, 0.09);
+    --map-event: #3987e5;
   }
 }
 main.wide { max-width: 80rem; }
@@ -134,6 +136,15 @@ main.wide { max-width: 80rem; }
 .map-legend { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .85rem; color: var(--mut); }
 .map-legend span { display: inline-flex; align-items: center; gap: .35rem; }
 .map-legend i { width: 1rem; height: .75rem; border-radius: 2px; display: inline-block; outline: 1px solid var(--line); }
+#events h3 { margin: 1.2rem 0 .3rem; font-size: 1.02rem; }
+#events td { white-space: nowrap; }
+#events td.mut { color: var(--mut); }
+.ev-key { display: inline-flex; align-items: center; gap: .35rem; margin-left: .6rem; color: var(--mut); font-size: .85rem; }
+.ev-key i { display: inline-block; }
+.ev-key .ev-area { width: .95rem; height: .75rem; border: 2px solid var(--map-event); border-radius: 2px; margin-left: .2rem; }
+.ev-key .ev-dot { width: .65rem; height: .65rem; border-radius: 50%; background: var(--map-event); margin-left: .5rem; }
+details.ev-how { margin: .4rem 0 1.6rem; font-size: .92rem; }
+details.ev-how summary { cursor: pointer; color: var(--acc); }
 button.linkish { font: inherit; font-size: .88rem; color: var(--acc); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 
 .chart-card { background: var(--surface-chart); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem .8rem; margin: 1.2rem 0; }

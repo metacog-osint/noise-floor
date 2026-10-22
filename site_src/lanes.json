@@ -450,7 +450,7 @@
       "data": [
         "adsb.lol daily archive (ODbL; derived data published under ODbL with attribution)"
       ],
-      "notes": "Live: the daily map from 2026-10-07, the 20 validated days, and the full daily outputs (per hex, hour and minute; SBAS flags, anomalies and bursts) in the data releases, all under ODbL. Daily runs are automatic and not reviewed by a person. Next: a time slider over the full history and daily charts. Planned: ad-hoc queries in the browser (DuckDB-WASM), with no server. Static files on the free tier: no servers and no database bill.",
+      "notes": "Live: the daily map from 2026-10-07 with each day's anomalies, bursts and SBAS flags listed and outlined, the 20 validated days, and the full daily outputs (per hex, hour and minute; SBAS flags, anomalies and bursts) in the data releases, all under ODbL. Daily runs are automatic and not reviewed by a person. Next: a time slider over the full history and daily charts. Planned: ad-hoc queries in the browser (DuckDB-WASM), with no server. Static files on the free tier: no servers and no database bill.",
       "links": [
         [
           "Map",

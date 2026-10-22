@@ -228,7 +228,8 @@ def anomaly_events(found):
                        "regions": len({f["region"] for f in g}), "region_hours": len(g), "peak_excess": round(ex, 1),
                        "peak_share": max(f["share"] for f in g),
                        "lat": round(sum(f["lat"] for f in g) / len(g), 2), "lon": round(sum(f["lon"] for f in g) / len(g), 2),
-                       "tier": "major" if ex >= 25 else "notable" if ex >= 10 else "minor"})
+                       "tier": "major" if ex >= 25 else "notable" if ex >= 10 else "minor",
+                       "cells": sorted({f["region"] for f in g})})
     ev.sort(key=lambda e: -e["region_hours"] * e["peak_excess"])
     return ev
 
@@ -329,7 +330,8 @@ def bursts(day):
         ev.append({"start": min(f["start"] for f in g), "end": max(f["end"] for f in g),
                    "peak_aircraft": max(f["peak_aircraft"] for f in g),
                    "lat": round(sum(f["lat"] for f in g) / len(g), 2), "lon": round(sum(f["lon"] for f in g) / len(g), 2),
-                   "detections": len(g), "regions": len({f["region"] for f in g}), "basis": g[0]["basis"]})
+                   "detections": len(g), "regions": len({f["region"] for f in g}), "basis": g[0]["basis"],
+                   "cells": sorted({f["region"] for f in g})})
     ev.sort(key=lambda e: -e["peak_aircraft"])
     return {"day": day, "bursts": found, "events": ev}
 
