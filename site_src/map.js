@@ -8,9 +8,13 @@
     jam: { label: "Jamming-scale loss (worse than 93 m)", unit: "of aircraft degraded",
            breaks: [2, 5, 10, 25], classes: ["Under 2%", "2–5%", "5–10%", "10–25%", "25% or more"] },
     acc: { label: "Accuracy loss (worse than 10 m, capable aircraft)", unit: "of 10 m-capable aircraft degraded",
-           breaks: [10, 25, 50, 75], classes: ["Under 10%", "10–25%", "25–50%", "50–75%", "75% or more"] }
+           breaks: [10, 25, 50, 75], classes: ["Under 10%", "10–25%", "25–50%", "50–75%", "75% or more"] },
+    chg: { label: "Change from usual (93 m)", unit: "points above the hex's usual share",
+           breaks: [5, 10, 25, 50], classes: ["Under 5 points above usual", "5–10 points", "10–25 points", "25–50 points", "50 points or more"] }
   };
-  var state = { day: null, measure: "jam", raw: false, ev: null, evShow: true, evAll: { anom: false, burst: false }, evFocus: null };
+  function emeasure() { return state.measure === "acc" ? "acc" : "jam"; }    // events and the strip follow 93 m for chg
+  var state = { day: null, measure: "jam", raw: false, ev: null, evShow: true, evAll: { anom: false, burst: false }, evFocus: null,
+                iu: -1, playing: false, hist: null };
   var EV_ROWS = { anom: 15, burst: 10 };
   var TIER = { major: "Major", notable: "Notable", minor: "Minor" };
   var days = [], cells = {}, cellList = [], land = [], colors = {}, borders = [], places = [], areas = [];
@@ -31,14 +35,20 @@
   // value and class for a cell under the current measure; null = not drawn
   function evaluate(c) {
     var n, bad;
-    if (state.measure === "jam") { n = c[1]; bad = state.raw ? c[3] : c[2]; }
-    else { n = c[4]; bad = c[5]; }
+    if (state.measure === "acc") { n = c[4]; bad = c[5]; }
+    else { n = c[1]; bad = state.raw && state.measure === "jam" ? c[3] : c[2]; }
     if (n < 3) return null;
     if (n < 5) return { cls: "low", share: null, n: n, bad: bad };
     var share = 100 * Math.max(bad - 1, 0) / n;        // one bad aircraft never colours a hex (GPSJam's formula)
+    var today = share, usual = null;
+    if (state.measure === "chg") {
+      usual = state.iu >= 0 ? c[state.iu] : null;
+      if (usual === null || usual === undefined) return { cls: "low", share: null, n: n, bad: bad, nobase: true };
+      share = today - usual;
+    }
     var b = MEASURES[state.measure].breaks, k = 0;
     while (k < b.length && share >= b[k]) k++;
-    return { cls: k === 0 ? "quiet" : k - 1, share: share, n: n, bad: bad };
+    return { cls: k === 0 ? "quiet" : k - 1, share: share, n: n, bad: bad, today: today, usual: usual };
   }
 
   var map = L.map(mapEl, { minZoom: 1, maxZoom: 7, zoomSnap: 0.5, worldCopyJump: false,
@@ -55,6 +65,7 @@
     },
     onRemove: function (m) { L.DomUtil.remove(this._c); m.off("moveend zoomend resize viewreset", this.redraw, this); },
     redraw: function () {
+      if (!this._map) return;                          // data can arrive before the layer is on the map
       var m = this._map, size = m.getSize(), dpr = window.devicePixelRatio || 1, c = this._c;
       c.width = size.x * dpr; c.height = size.y * dpr; c.style.width = size.x + "px"; c.style.height = size.y + "px";
       L.DomUtil.setPosition(c, m.containerPointToLayerPoint([0, 0]));
@@ -182,7 +193,7 @@
     var e = evaluate(c.d), d = c.d, ll = h3.cellToLatLng(h);
     var lines = [];
     lines.push(["", (Math.abs(ll[0]).toFixed(1) + "°" + (ll[0] >= 0 ? "N" : "S") + " " + Math.abs(ll[1]).toFixed(1) + "°" + (ll[1] >= 0 ? "E" : "W"))]);
-    if (state.measure === "jam") {
+    if (state.measure !== "acc") {
       lines.push(["Aircraft", d[1]]);
       lines.push(["Worse than 93 m", (state.raw ? d[3] : d[2]) + (state.raw ? "" : " (live)")]);
       if (!state.raw && d[3] !== d[2]) lines.push(["Incl. post-exposure", d[3]]);
@@ -190,7 +201,15 @@
       lines.push(["10 m-capable aircraft", d[4]]);
       lines.push(["Worse than 10 m", d[5]]);
     }
-    lines.push(["Share", e && e.share !== null ? e.share.toFixed(1) + "%" : (e ? "low coverage (3–4 aircraft)" : "too few aircraft")]);
+    if (state.measure === "chg" && e && e.share !== null) {
+      lines.push(["Share today", e.today.toFixed(1) + "%"]);
+      lines.push(["Usual (14-day median)", e.usual.toFixed(1) + "%"]);
+      lines.push(["Change", (e.share >= 0 ? "+" : "") + e.share.toFixed(1) + " points"]);
+    } else {
+      lines.push(["Share", e && e.share !== null ? e.share.toFixed(1) + "%" :
+        (e && e.nobase ? "no usual level yet (fewer than 5 earlier days)" : e ? "low coverage (3–4 aircraft)" : "too few aircraft")]);
+    }
+    lines.push(["", "Click for this area's history"]);
     if (state.evShow && state.ev) {
       var r2 = h3.cellToParent(h, 2);
       evRows().anom.forEach(function (a) {
@@ -225,7 +244,7 @@
   map.on("mouseout", function () { if (!state.pinned) tip.hidden = true; });
   map.on("click", function (ev) {
     var h = h3.latLngToCell(ev.latlng.lat, ev.latlng.lng, 4);
-    if (cells[h]) { state.pinned = true; state.focus = h; showTip(h, ev.containerPoint); layer.redraw(); }
+    if (cells[h]) { state.pinned = true; state.focus = h; showTip(h, ev.containerPoint); layer.redraw(); openHistory(h); }
     else { state.pinned = false; state.focus = null; tip.hidden = true; layer.redraw(); }
   });
 
@@ -238,7 +257,8 @@
     body.textContent = "";
     rows.forEach(function (x) {
       var ll = h3.cellToLatLng(x.c.h), tr = document.createElement("tr");
-      [ll[0].toFixed(1) + ", " + ll[1].toFixed(1), x.e.n, x.e.bad, x.e.share.toFixed(1) + "%"].forEach(function (v, i) {
+      var shareText = state.measure === "chg" ? "+" + x.e.share.toFixed(1) + " pts (" + x.e.today.toFixed(0) + "% vs " + x.e.usual.toFixed(0) + "%)" : x.e.share.toFixed(1) + "%";
+      [ll[0].toFixed(1) + ", " + ll[1].toFixed(1), x.e.n, x.e.bad, shareText].forEach(function (v, i) {
         var td = document.createElement("td"); td.textContent = v; if (i) td.className = "num"; tr.appendChild(td);
       });
       var td = document.createElement("td"), btn = document.createElement("button");
@@ -283,9 +303,9 @@
   }
   function evRows() {
     var ev = state.ev; if (!ev) return { anom: [], burst: [], anomAll: [], burstAll: [] };
-    var anomAll = ev.anomalies.filter(function (e) { return e.m === state.measure; });
+    var anomAll = ev.anomalies.filter(function (e) { return e.m === emeasure(); });
     var anom = state.evAll.anom ? anomAll : anomAll.filter(function (e) { return e.tier !== "minor"; }).slice(0, EV_ROWS.anom);
-    var burstAll = state.measure === "jam" ? ev.bursts : [];
+    var burstAll = emeasure() === "jam" ? ev.bursts : [];
     var burst = state.evAll.burst ? burstAll : burstAll.slice(0, EV_ROWS.burst);
     return { anom: anom, burst: burst, anomAll: anomAll, burstAll: burstAll };
   }
@@ -310,7 +330,7 @@
     b.textContent = state.evAll[kind] ? "Show fewer" : "Show all " + total + " " + label;
   }
   function renderEvents() {
-    var ev = state.ev, rows = evRows(), jam = state.measure === "jam";
+    var ev = state.ev, rows = evRows(), jam = emeasure() === "jam";
     var sum = document.getElementById("ev-summary"), anomBody = document.querySelector("#ev-anom tbody"),
         burstBody = document.querySelector("#ev-burst tbody"), sbasEl = document.getElementById("ev-sbas");
     document.getElementById("ev-day").textContent = state.day;
@@ -389,7 +409,9 @@
       s.appendChild(sw); s.appendChild(document.createTextNode(it[1])); el.appendChild(s);
     });
     var cap = document.getElementById("map-measure-note");
-    cap.textContent = state.measure === "jam"
+    cap.textContent = state.measure === "chg"
+      ? "Today's jamming-scale share minus the hex's own median over its previous 14 days with traffic (live counts). Persistent hotspots fade; new or growing activity stands out."
+      : state.measure === "jam"
       ? (state.raw ? "Raw: includes aircraft still degraded after leaving interference (comparable with GPSJam)."
                    : "Live: aircraft still degraded after leaving interference elsewhere are left out.")
       : "Counted only for aircraft that showed 10 m accuracy at least once that day. Space weather and SBAS outages show here.";
@@ -403,10 +425,10 @@
   function dayIndex(day) { for (var i = 0; i < days.length; i++) if (days[i].day === day) return i; return -1; }
   function renderTimeline() {
     var strip = document.getElementById("tl-strip"); if (!strip || !days.length) return;
-    var key = TL[state.measure].key, n = days.length, W = Math.max(280, strip.clientWidth), H = 56;
+    var key = TL[emeasure()].key, n = days.length, W = Math.max(280, strip.clientWidth), H = 56;
     var vals = days.map(function (d) { return d[key] || 0; }), max = Math.max.apply(null, vals.concat([1]));
     var NS = "http://www.w3.org/2000/svg", bw = W / n, cur = dayIndex(state.day);
-    document.getElementById("tl-title").textContent = TL[state.measure].title;
+    document.getElementById("tl-title").textContent = TL[emeasure()].title;
     document.getElementById("tl-range").textContent = " · " + days[0].day + " to " + days[n - 1].day + " · peak " + max.toLocaleString();
     strip.textContent = "";
     var svg = document.createElementNS(NS, "svg");
@@ -447,8 +469,9 @@
     sl.max = days.length - 1; if (i >= 0) sl.value = i;
     sl.setAttribute("aria-valuetext", state.day);
     document.getElementById("tl-day").textContent = state.day + (d && d.daily ? "" : " · validated");
-    document.getElementById("tl-prev").disabled = i <= 0;
-    document.getElementById("tl-next").disabled = i >= days.length - 1;
+    document.getElementById("tl-prev").disabled = document.getElementById("mp-prev").disabled = i <= 0;
+    document.getElementById("tl-next").disabled = document.getElementById("mp-next").disabled = i >= days.length - 1;
+    document.getElementById("mp-day").textContent = state.day || "";
     var bars = document.querySelectorAll("#tl-strip .tl-bar");
     for (var k = 0; k < bars.length; k++) bars[k].setAttribute("class", k === i ? "tl-bar on" : "tl-bar");
   }
@@ -494,9 +517,110 @@
         if (Math.max.apply(null, lons) - Math.min.apply(null, lons) > 180) return;   // skip cells across the antimeridian
         var c = { h: d[0], d: d, bnd: bnd }; cells[d[0]] = c; cellList.push(c);
       });
+      state.iu = (j.cols || []).indexOf("usual");
+      document.getElementById("mp-chg-wrap").classList.toggle("off", state.iu < 0);
+      document.querySelector('input[name="measure"][value="chg"]').disabled = state.iu < 0;
       mapEl.classList.remove("loading");
-      layer.redraw(); renderStats(); renderTable(); writeHash();
+      layer.redraw(); renderStats(); renderTable(); writeHash(); if (state.hist) drawHistory();
     });
+  }
+
+  // ---------- play through the days (waits for each day to load; any other control stops it)
+  function setPlaying(on) {
+    state.playing = on;
+    var b = document.getElementById("tl-play");
+    b.textContent = on ? "❚❚" : "▶"; b.setAttribute("aria-pressed", on); b.setAttribute("aria-label", on ? "Pause" : "Play through the days");
+    if (on) playStep();
+  }
+  function playStep() {
+    if (!state.playing) return;
+    var i = dayIndex(state.day);
+    if (i >= days.length - 1) { setPlaying(false); return; }
+    var next = days[i + 1].day;
+    if (days[i + 2]) fetch("/data/gnss/" + days[i + 2].day + ".json");     // warm the cache for the step after
+    document.getElementById("map-day").value = next;
+    loadDay(next).then(function () { setTimeout(playStep, 900); }, function () { setPlaying(false); });
+  }
+
+  // ---------- click-for-history: the H3 resolution-3 area around a clicked hex, every day
+  var histCache = {};
+  function openHistory(h) {
+    var r3 = h3.cellToParent(h, 3), r2 = h3.cellToParent(r3, 2);
+    state.hist = { r3: r3, data: null };
+    var sec = document.getElementById("hist");
+    sec.hidden = false;
+    document.getElementById("hist-sub").textContent = "Loading…";
+    document.getElementById("hist-chart").textContent = "";
+    (histCache[r2] ? Promise.resolve(histCache[r2]) : fetch("/data/history/" + r2 + ".json").then(function (r) { return r.ok ? r.json() : null; }))
+      .then(function (j) {
+        histCache[r2] = j;
+        if (!state.hist || state.hist.r3 !== r3) return;
+        state.hist.data = j && j.areas[r3] ? { days: j.days, s: j.areas[r3] } : null;
+        drawHistory();
+      }).catch(function () { document.getElementById("hist-sub").textContent = "No history for this area in this build."; });
+  }
+  function drawHistory() {
+    var hst = state.hist, box = document.getElementById("hist-chart"), sub = document.getElementById("hist-sub"), note = document.getElementById("hist-note");
+    if (!hst) return;
+    if (!hst.data) { sub.textContent = "No history for this area in this build."; box.textContent = ""; note.textContent = ""; return; }
+    var acc = emeasure() === "acc", s = hst.data.s, dd = hst.data.days, n = dd.length;
+    var vals = dd.map(function (_, i) {
+      var a = acc ? s.k[i] : s.a[i], b = acc ? s.kb[i] : s.b[i];
+      return a >= (acc ? 10 : 20) ? 100 * b / a : null;
+    });
+    var have = vals.filter(function (v) { return v !== null; }), sorted = have.slice().sort(function (x, y) { return x - y; });
+    var med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : null, mx = sorted.length ? sorted[sorted.length - 1] : null;
+    var evs = (s.ev && s.ev[acc ? "acc" : "jam"]) || [];
+    var ci = dd.indexOf(state.day), cv = ci >= 0 ? vals[ci] : null;
+    sub.textContent = "Around " + ll2(s.c[0], s.c[1]) + " (H3 area of about 12,000 km² containing the hex). " +
+      (acc ? "Share of 10 m-capable aircraft-hexes below 10 m" : "Share of aircraft-hexes worse than 93 m (live)") + ", per day; days with too little traffic are gaps.";
+    var peakDay = mx !== null ? dd[vals.indexOf(mx)] : null;
+    note.textContent = (med !== null ? "Median " + med.toFixed(1) + "%; highest " + mx.toFixed(1) + "% on " + peakDay + ". " : "") +
+      (cv !== null ? "On " + state.day + ": " + cv.toFixed(1) + "%. " : "") +
+      (evs.length ? evs.length + " day" + (evs.length === 1 ? "" : "s") + " with an anomaly event over this region (marked above the line; darker = larger)." : "No anomaly events over this region.") +
+      " Click a point to open that day.";
+    // chart: one series, 2px line, crosshair tooltip, event marks, the selected day
+    box.textContent = "";
+    var NS = "http://www.w3.org/2000/svg", W = Math.max(300, box.clientWidth), H = 190, m = { l: 38, r: 12, t: 16, b: 24 };
+    var iw = W - m.l - m.r, ih = H - m.t - m.b, ymax = Math.max(10, Math.ceil((mx || 0) / 10) * 10);
+    var X = function (i) { return m.l + (n === 1 ? iw / 2 : iw * i / (n - 1)); }, Y = function (v) { return m.t + ih * (1 - v / ymax); };
+    function el(name, attrs, parent) { var e = document.createElementNS(NS, name); for (var k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "img", "aria-label": "Daily share for this area" });
+    for (var k = 0; k <= 4; k++) {
+      var gy = Y(ymax * k / 4);
+      el("line", { x1: m.l, x2: W - m.r, y1: gy, y2: gy, class: "hgrid" }, svg);
+      var t = el("text", { x: m.l - 6, y: gy + 4, "text-anchor": "end", class: "htext" }, svg); t.textContent = Math.round(ymax * k / 4) + "%";
+    }
+    [0, Math.floor((n - 1) / 2), n - 1].forEach(function (i, j) {
+      if (n < 2 && j) return;
+      var t = el("text", { x: X(i), y: H - 6, "text-anchor": j === 0 ? "start" : j === 2 ? "end" : "middle", class: "htext" }, svg); t.textContent = dd[i];
+    });
+    evs.forEach(function (e) { el("rect", { x: X(e[0]) - 1.5, y: 2, width: 3, height: 8, class: "hev l" + e[1] }, svg); });
+    if (ci >= 0) el("line", { x1: X(ci), x2: X(ci), y1: m.t, y2: m.t + ih, class: "hcur" }, svg);
+    var d = "", pen = false;
+    vals.forEach(function (v, i) { if (v === null) { pen = false; return; } d += (pen ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); pen = true; });
+    el("path", { d: d, class: "hline" }, svg);
+    var dot = el("circle", { r: 4, class: "hdot", visibility: "hidden" }, svg);
+    var hit = el("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent", tabindex: 0 }, svg);
+    var tipEl = document.getElementById("hist-tip");
+    if (!tipEl) { tipEl = document.createElement("div"); tipEl.id = "hist-tip"; tipEl.className = "tl-tip"; tipEl.hidden = true; box.parentNode.appendChild(tipEl); }
+    function at(ev) { var r = svg.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.round((ev.clientX - r.left - m.l) / (iw * r.width / W) * (n - 1)))); }
+    hit.addEventListener("mousemove", function (ev) {
+      var i = at(ev), v = vals[i], a = acc ? s.k[i] : s.a[i];
+      var e = evs.filter(function (x) { return x[0] === i; })[0];
+      tipEl.textContent = dd[i] + " · " + (v === null ? "too little traffic" : v.toFixed(1) + "% of " + a + " aircraft-hexes") + (e ? " · anomaly event" : "");
+      tipEl.hidden = false;
+      var r = box.getBoundingClientRect(), p = box.parentNode.getBoundingClientRect();
+      tipEl.style.left = Math.max(0, Math.min(ev.clientX - p.left + 10, p.width - tipEl.offsetWidth)) + "px";
+      tipEl.style.top = (r.top - p.top - 4) + "px";
+      if (v !== null) { dot.setAttribute("cx", X(i)); dot.setAttribute("cy", Y(v)); dot.setAttribute("visibility", "visible"); } else dot.setAttribute("visibility", "hidden");
+    });
+    hit.addEventListener("mouseleave", function () { tipEl.hidden = true; dot.setAttribute("visibility", "hidden"); });
+    hit.addEventListener("click", function (ev) {
+      var day = dd[at(ev)];
+      if (dayIndex(day) >= 0 && day !== state.day) { document.getElementById("map-day").value = day; loadDay(day); }
+    });
+    box.appendChild(svg);
   }
 
   function refresh() { state.evFocus = null; layer.redraw(); renderLegend(); renderStats(); renderTable(); renderEvents(); renderTimeline(); writeHash(); }
@@ -510,6 +634,11 @@
   }).catch(function () { /* the map works without borders */ });
   fetch("/data/places.json").then(function (r) { return r.json(); }).then(function (j) {
     places = j.places; areas = j.areas; layer.redraw();
+    var dl = document.getElementById("map-search-list"), seen = {};
+    areas.concat(places).forEach(function (p) {
+      if (seen[p[0]]) return; seen[p[0]] = 1;
+      var o = document.createElement("option"); o.value = p[0]; dl.appendChild(o);
+    });
   }).catch(function () { /* the map works without labels */ });
 
   Promise.all([fetch("/data/gnss/days.json").then(function (r) { return r.json(); }),
@@ -553,6 +682,7 @@
       document.querySelectorAll('input[name="measure"]').forEach(function (r) { r.checked = r.value === state.measure; });
       document.getElementById("map-raw").checked = state.raw;
       document.getElementById("map-raw-wrap").hidden = state.measure !== "jam";
+      if (hp.m === "chg") state.measure = "chg";
       var v = (hp.v || "").split(",").map(Number);
       state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
       return d;
@@ -567,7 +697,7 @@
     sel.addEventListener("change", function () { loadDay(sel.value); });
     document.querySelectorAll('input[name="measure"]').forEach(function (r) {
       r.addEventListener("change", function () {
-        state.measure = r.value; document.getElementById("map-raw-wrap").hidden = state.measure !== "jam"; refresh();
+        state.measure = r.value; document.getElementById("map-raw-wrap").hidden = state.measure !== "jam"; refresh(); if (state.hist) drawHistory();
       });
     });
     document.getElementById("map-raw").addEventListener("change", function (e) { state.raw = e.target.checked; refresh(); });
@@ -595,6 +725,34 @@
         try { localStorage.setItem("nf-map-layers", JSON.stringify(layersOn)); } catch (e) { /* this visit only */ }
         layer.redraw();
       });
+    });
+    // on-map panel: a Leaflet control so clicks and scrolls inside it don't move the map
+    var panel = document.getElementById("map-panel"), ptoggle = document.getElementById("mp-toggle");
+    var pctl = L.control({ position: "topright" });
+    pctl.onAdd = function () { L.DomEvent.disableClickPropagation(panel); L.DomEvent.disableScrollPropagation(panel); return panel; };
+    pctl.addTo(map);
+    function setPanel(open) { panel.classList.toggle("closed", !open); ptoggle.setAttribute("aria-expanded", open); }
+    setPanel(window.innerWidth >= 700);
+    ptoggle.addEventListener("click", function () { setPanel(panel.classList.contains("closed")); });
+    document.getElementById("mp-prev").addEventListener("click", function () { setPlaying(false); stepTo(dayIndex(state.day) - 1, true); });
+    document.getElementById("mp-next").addEventListener("click", function () { setPlaying(false); stepTo(dayIndex(state.day) + 1, true); });
+    document.getElementById("tl-play").addEventListener("click", function () { setPlaying(!state.playing); });
+    ["tl-prev", "tl-next", "tl-slider", "map-day"].forEach(function (id) {
+      document.getElementById(id).addEventListener("pointerdown", function () { setPlaying(false); });
+    });
+    var evBox = document.getElementById("lyr-events"), evBox2 = document.getElementById("ev-show");
+    function setEvents(on) { state.evShow = on; evBox.checked = evBox2.checked = on; layer.redraw(); }
+    evBox.addEventListener("change", function () { setEvents(evBox.checked); });
+    evBox2.addEventListener("change", function () { setEvents(evBox2.checked); });
+    document.getElementById("hist-close").addEventListener("click", function () { state.hist = null; document.getElementById("hist").hidden = true; });
+    var search = document.getElementById("map-search");
+    search.addEventListener("change", function () {
+      var q = search.value.trim().toLowerCase(); if (!q) return;
+      var a = areas.filter(function (x) { return x[0].toLowerCase() === q; })[0];
+      if (a) { map.fitBounds([[a[1], a[3]], [a[2], a[4]]], { animate: false }); search.value = ""; return; }
+      var p = places.filter(function (x) { return x[0].toLowerCase() === q; })[0] ||
+              places.filter(function (x) { return x[0].toLowerCase().indexOf(q) === 0; })[0];
+      if (p) { map.setView([p[1], p[2]], 6, { animate: false }); search.value = ""; }
     });
     var jump = document.getElementById("map-jump");
     jump.addEventListener("change", function () {

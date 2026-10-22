@@ -9,7 +9,7 @@
 <meta property="og:description" content="An open, licence-clean picture of contested radio spectrum: GNSS degradation, L-band emitters, satellite communications and the evidence behind each.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css">
-
+<script defer src="/home.js"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -24,6 +24,13 @@
 <div class="callout">
   <p><strong>Status, 22 Oct 2026.</strong> The GNSS method is built and validated on 20 days of worldwide aircraft data, and those days are on the <a href="/map">map</a> and in the <a href="/charts">charts</a>. The <a href="/map">map</a> now updates every day from an automatic pipeline. The NISAR L-band emitter lane has passed its first positive control.</p>
 </div>
+
+<section id="today" class="today" aria-labelledby="today-h" hidden>
+  <h2 id="today-h">On the map today: <span id="today-day"></span></h2>
+  <p id="today-sum"></p>
+  <ul id="today-list" class="today-list"></ul>
+  <p class="small"><a id="today-link" href="/map">Open the map</a> · From the automatic daily run, not reviewed by a person.</p>
+</section>
 
 <h2>Explore the data</h2>
 <div class="grid">

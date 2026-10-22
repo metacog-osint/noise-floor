@@ -139,6 +139,37 @@ main.wide { max-width: 80rem; }
 .map-legend span { display: inline-flex; align-items: center; gap: .35rem; }
 .map-legend i { width: 1rem; height: .75rem; border-radius: 2px; display: inline-block; outline: 1px solid var(--line); }
 .layers label { font-size: .9rem; }
+.controls .search input { font: inherit; font-size: .95rem; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); min-width: 14rem; }
+.map-panel { background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.15); font-size: .85rem; max-width: 16rem; }
+.map-panel .mp-toggle { width: 100%; text-align: left; font: inherit; font-weight: 600; background: none; border: 0; color: var(--fg); padding: .45rem .7rem; cursor: pointer; }
+.map-panel.closed .mp-body { display: none; }
+.map-panel.closed .mp-toggle span { display: inline-block; transform: rotate(-90deg); }
+.mp-body { padding: 0 .7rem .6rem; display: flex; flex-direction: column; gap: .5rem; }
+.mp-step { display: flex; align-items: center; gap: .4rem; }
+.mp-day { font-variant-numeric: tabular-nums; flex: 1; text-align: center; }
+.mp-group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
+.mp-group legend, .mp-group > span { color: var(--mut); font-size: .78rem; margin-bottom: .1rem; padding: 0; }
+.mp-group label { display: flex; gap: .35rem; align-items: center; }
+.mp-group select { font: inherit; padding: .25rem .35rem; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); }
+#mp-chg-wrap.off { opacity: .45; }
+.tl-play { font-size: .9rem; }
+.today { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: .3rem 1.1rem .5rem; margin: 1rem 0 1.4rem; }
+.today h2 { margin-top: .6rem; }
+.today-list { margin: .3rem 0 .6rem; padding-left: 1.2rem; }
+.today-list li { margin: .25rem 0; }
+.today-list li.mut { color: var(--mut); list-style: none; margin-left: -1.2rem; }
+.hist { margin: .8rem 0 1rem; padding: .7rem 1rem .5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-chart); position: relative; }
+.hist-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.hist-head h2 { margin: 0; font-size: 1.05rem; }
+.hist .hgrid { stroke: var(--grid); stroke-width: 1; }
+.hist .htext { fill: var(--ink-3); font-size: 11px; font-family: inherit; }
+.hist .hline { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.hist .hdot { fill: var(--series-1); stroke: var(--surface-chart); stroke-width: 2; }
+.hist .hcur { stroke: var(--fg); stroke-width: 1; stroke-dasharray: 3 3; }
+.hist .hev { fill: var(--ramp-2); }
+.hist .hev.l3 { fill: var(--ramp-4); }
+.hist .hev.l1 { fill: var(--ramp-1); opacity: .6; }
+.hist svg { display: block; width: 100%; height: auto; cursor: pointer; }
 .timeline { position: relative; margin: .6rem 0 .3rem; }
 .tl-head { color: var(--ink-2); margin-bottom: .15rem; }
 .tl-head .mut { color: var(--mut); }

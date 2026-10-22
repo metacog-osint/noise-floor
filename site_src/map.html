@@ -5,27 +5,9 @@
 
 <div class="controls" role="group" aria-label="Map controls">
   <label class="ctl"><span>Day</span><select id="map-day" aria-label="Day"></select></label>
-  <fieldset class="ctl seg"><legend>Measure</legend>
-    <label><input type="radio" name="measure" value="jam" checked> Jamming-scale (93 m)</label>
-    <label><input type="radio" name="measure" value="acc"> Accuracy (10 m)</label>
-  </fieldset>
+  <label class="ctl search"><span>Find a place</span><input type="search" id="map-search" list="map-search-list" placeholder="City or monitored area" autocomplete="off" aria-label="Find a place or monitored area"></label>
+  <datalist id="map-search-list"></datalist>
   <label class="ctl check" id="map-raw-wrap"><input type="checkbox" id="map-raw"> Include post-exposure aircraft</label>
-  <fieldset class="ctl seg layers"><legend>Layers</legend>
-    <label><input type="checkbox" id="lyr-borders" checked> Country borders</label>
-    <label><input type="checkbox" id="lyr-places" checked> Place names</label>
-    <label><input type="checkbox" id="lyr-areas"> Monitored areas</label>
-  </fieldset>
-  <label class="ctl"><span>Jump to</span><select id="map-jump" aria-label="Jump to a region">
-    <option value="">Choose a region…</option>
-    <option value="30,10,2">World</option>
-    <option value="52,15,4">Europe</option>
-    <option value="57.5,23,5">Baltic</option>
-    <option value="43,37,5">Black Sea and Caucasus</option>
-    <option value="34,33,5.5">Eastern Mediterranean</option>
-    <option value="27,51,5">Persian Gulf and Strait of Hormuz</option>
-    <option value="39,-98,3.5">North America</option>
-    <option value="38,128,4.5">East Asia</option>
-  </select></label>
 </div>
 <div class="timeline" id="timeline">
   <div class="tl-head small"><span id="tl-title"></span><span id="tl-range" class="mut"></span></div>
@@ -34,6 +16,7 @@
     <button type="button" class="tl-btn" id="tl-prev" aria-label="Previous day">‹</button>
     <input type="range" id="tl-slider" min="0" max="0" step="1" value="0" aria-label="Day">
     <button type="button" class="tl-btn" id="tl-next" aria-label="Next day">›</button>
+    <button type="button" class="tl-btn tl-play" id="tl-play" aria-label="Play through the days" aria-pressed="false">▶</button>
     <span class="tl-day" id="tl-day" aria-live="polite"></span>
   </div>
 </div>
@@ -42,13 +25,51 @@
 <div class="map-frame">
   <div id="map" role="img" aria-label="World map of hexes coloured by the share of aircraft with degraded GNSS on the selected day. A table of the worst hexes follows the map."></div>
   <div id="map-tip" class="map-tip" hidden></div>
+  <div id="map-panel" class="map-panel">
+    <button type="button" class="mp-toggle" id="mp-toggle" aria-expanded="true" aria-controls="mp-body">Map options <span aria-hidden="true">▾</span></button>
+    <div id="mp-body" class="mp-body">
+      <div class="mp-step">
+        <button type="button" class="tl-btn" id="mp-prev" aria-label="Previous day">‹</button>
+        <span id="mp-day" class="mp-day"></span>
+        <button type="button" class="tl-btn" id="mp-next" aria-label="Next day">›</button>
+      </div>
+      <fieldset class="mp-group"><legend>Measure</legend>
+        <label><input type="radio" name="measure" value="jam" checked> Jamming-scale (93 m)</label>
+        <label><input type="radio" name="measure" value="acc"> Accuracy (10 m)</label>
+        <label id="mp-chg-wrap"><input type="radio" name="measure" value="chg"> Change from usual (93 m)</label>
+      </fieldset>
+      <fieldset class="mp-group"><legend>Layers</legend>
+        <label><input type="checkbox" id="lyr-borders" checked> Country borders</label>
+        <label><input type="checkbox" id="lyr-places" checked> Place names</label>
+        <label><input type="checkbox" id="lyr-areas"> Monitored areas</label>
+        <label><input type="checkbox" id="lyr-events" checked> Events and announced tests</label>
+      </fieldset>
+      <label class="mp-group"><span>Jump to</span><select id="map-jump" aria-label="Jump to a region">
+        <option value="">Choose a region…</option>
+        <option value="30,10,2">World</option>
+        <option value="52,15,4">Europe</option>
+        <option value="57.5,23,5">Baltic</option>
+        <option value="43,37,5">Black Sea and Caucasus</option>
+        <option value="34,33,5.5">Eastern Mediterranean</option>
+        <option value="27,51,5">Persian Gulf and Strait of Hormuz</option>
+        <option value="39,-98,3.5">North America</option>
+        <option value="38,128,4.5">East Asia</option>
+      </select></label>
+    </div>
+  </div>
 </div>
+<section id="hist" class="hist" hidden aria-labelledby="hist-h">
+  <div class="hist-head"><h2 id="hist-h">History of this area</h2><button type="button" class="linkish" id="hist-close">Close</button></div>
+  <p class="small" id="hist-sub"></p>
+  <div class="chart" id="hist-chart"></div>
+  <p class="small" id="hist-note"></p>
+</section>
 <div class="legend-row"><div id="map-legend" class="map-legend" aria-label="Legend"></div></div>
 <p class="small" id="map-measure-note"></p>
 
 <section id="events" aria-labelledby="ev-h">
 <h2 id="ev-h">What stood out on <span id="ev-day"></span></h2>
-<p class="small">Changes against each region's own recent history, from the same daily run. The measure buttons above switch this list too. Persistent hotspots are part of their own baseline, so they show here only when they grow or move.</p>
+<p class="small">Changes against each region's own recent history, from the same daily run. The measure buttons on the map switch this list too. Persistent hotspots are part of their own baseline, so they show here only when they grow or move.</p>
 <p id="ev-summary"></p>
 <div id="ev-body">
 <label class="ctl check"><input type="checkbox" id="ev-show" checked> Outline these on the map <span class="ev-key" aria-hidden="true"><i class="ev-area"></i> anomaly <i class="ev-dot"></i> burst <i class="ev-test"></i> announced test</span></label>
@@ -91,6 +112,9 @@
 
 <h2>Reading the map</h2>
 <ul>
+  <li><strong>Click a hex</strong> to see the history of the area around it (an H3 resolution-3 cell, about 12,000 km²): its share for every day since 1 October 2025, with the days an anomaly event covered it. Click a point on that chart to open the day.</li>
+  <li><strong>Change from usual</strong> colours each hex by how far today's share sits above its own median over its previous 14 days with traffic. Persistent hotspots fade, so new or growing activity stands out. Hexes with fewer than 5 such days show as low coverage.</li>
+  <li><strong>Play</strong> (▶ under the strip) steps through the days one by one; any other control stops it.</li>
   <li><strong>Hexes</strong> are H3 resolution 4, about 1,770 km² each. A hex is coloured only when 5 or more aircraft were in it that day; 3–4 show as low coverage, and 1–2 are left out.</li>
   <li><strong>Share</strong> follows the formula GPSJam publishes: one bad aircraft is subtracted, so a single faulty receiver never colours a hex.</li>
   <li><strong>Jamming-scale</strong> means a reported position uncertainty of 93 m or worse (NACp below 8). "Live" leaves out aircraft still degraded after leaving interference elsewhere; tick the box to include them.</li>

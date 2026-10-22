@@ -254,7 +254,7 @@ def main():
         {"title": "Sources · Noise Floor", "description": "Noise Floor's licence registry: every source, its licence and how it may be used.",
          "nav": "sources"}, sources_page(rows), updated))
     written += ["lanes.html", "sources.html"]
-    for f in ("style.css", "map.js", "charts.js"):
+    for f in ("style.css", "map.js", "charts.js", "home.js"):
         shutil.copy(os.path.join(SRC, f), os.path.join(OUT, f))
     open(os.path.join(OUT, "robots.txt"), "w", newline="\n").write("User-agent: *\nAllow: /\n")
     open(os.path.join(OUT, "_headers"), "w", newline="\n").write(
@@ -264,7 +264,7 @@ def main():
         dup = sorted({i for i in ids if ids.count(i) > 1})
         if dup:
             sys.exit(f"{name}: duplicate ids {dup}")
-    expected = set(written) | {"style.css", "map.js", "charts.js", "robots.txt", "_headers", "data"}
+    expected = set(written) | {"style.css", "map.js", "charts.js", "home.js", "robots.txt", "_headers", "data"}
     stray = sorted(set(os.listdir(OUT)) - expected)
     if stray:
         sys.exit(f"unexpected files in site/: {stray} (remove them, or add them to the build)")
