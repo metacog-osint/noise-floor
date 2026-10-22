@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Charts · Noise Floor</title>
-<meta name="description" content="Charts of the validation cases: an SBAS outage, a geomagnetic storm, minute-level GPS loss, hotspots day by day and aircraft types carrying effects downstream.">
+<meta name="description" content="GNSS degradation in known interference areas, updated daily, and charts of the validation cases: an SBAS outage, a geomagnetic storm, minute-level GPS loss and aircraft types carrying effects downstream.">
 <meta property="og:title" content="Charts · Noise Floor">
-<meta property="og:description" content="Charts of the validation cases: an SBAS outage, a geomagnetic storm, minute-level GPS loss, hotspots day by day and aircraft types carrying effects downstream.">
+<meta property="og:description" content="GNSS degradation in known interference areas, updated daily, and charts of the validation cases: an SBAS outage, a geomagnetic storm, minute-level GPS loss and aircraft types carrying effects downstream.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css">
 <script defer src="/charts.js"></script>
@@ -19,8 +19,16 @@
 </div></header>
 <main id="main">
 <p class="kicker">Charts</p>
-<h1>The validation cases, charted</h1>
-<p class="lede">Each chart is one test from the validation report, drawn from the processed aircraft data. Hover or use the arrow keys for values; every chart also has a table.</p>
+<h1>Daily hotspots and the validation cases</h1>
+<p class="lede">The first chart updates every morning from the automatic daily run. The rest are tests from the validation report, drawn from the processed aircraft data. Hover or use the arrow keys for values; every chart also has a table.</p>
+
+<h2 id="trend">Hotspots, every day</h2>
+<div class="chart-card">
+  <h3>Share of aircraft-hexes worse than 93 m, daily<span id="trend-range"></span></h3>
+  <p class="sub">From the automatic daily run, not reviewed by a person; a new day is added each morning. Live counts (aircraft degraded after leaving interference elsewhere are left out). The same measure and areas as the validation chart further down, plus Cyprus–Levant. All panels share one scale.</p>
+  <div class="multiples" id="trend-grid"></div>
+  <details class="table-view"><summary>Table</summary><div class="tw"><table id="trend-table"></table></div></details>
+</div>
 
 <h2 id="egnos">An SBAS outage, from aircraft alone</h2>
 <div class="chart-card">
@@ -54,7 +62,7 @@
   <details class="table-view"><summary>Table (minutes with any report)</summary><div class="tw"><table><thead><tr><th>Minute (UTC)</th><th>Aircraft-hexes</th></tr></thead><tbody><tr><td>17:55Z</td><td class="num">1</td></tr><tr><td>18:00Z</td><td class="num">1</td></tr><tr><td>18:01Z</td><td class="num">5</td></tr><tr><td>18:02Z</td><td class="num">8</td></tr><tr><td>18:03Z</td><td class="num">5</td></tr><tr><td>18:04Z</td><td class="num">1</td></tr><tr><td>18:05Z</td><td class="num">1</td></tr><tr><td>18:06Z</td><td class="num">1</td></tr><tr><td>18:08Z</td><td class="num">2</td></tr><tr><td>18:12Z</td><td class="num">1</td></tr><tr><td>18:13Z</td><td class="num">1</td></tr><tr><td>18:16Z</td><td class="num">1</td></tr><tr><td>18:19Z</td><td class="num">1</td></tr><tr><td>18:42Z</td><td class="num">1</td></tr><tr><td>18:47Z</td><td class="num">1</td></tr><tr><td>18:49Z</td><td class="num">1</td></tr><tr><td>18:54Z</td><td class="num">3</td></tr><tr><td>18:55Z</td><td class="num">1</td></tr><tr><td>18:56Z</td><td class="num">1</td></tr><tr><td>18:57Z</td><td class="num">1</td></tr><tr><td>19:02Z</td><td class="num">1</td></tr><tr><td>19:09Z</td><td class="num">1</td></tr><tr><td>19:12Z</td><td class="num">1</td></tr><tr><td>19:14Z</td><td class="num">2</td></tr><tr><td>19:15Z</td><td class="num">1</td></tr><tr><td>19:22Z</td><td class="num">1</td></tr><tr><td>19:23Z</td><td class="num">1</td></tr><tr><td>19:24Z</td><td class="num">1</td></tr><tr><td>19:25Z</td><td class="num">1</td></tr><tr><td>19:28Z</td><td class="num">1</td></tr><tr><td>19:31Z</td><td class="num">1</td></tr><tr><td>19:37Z</td><td class="num">1</td></tr><tr><td>19:41Z</td><td class="num">1</td></tr><tr><td>19:42Z</td><td class="num">1</td></tr><tr><td>19:44Z</td><td class="num">1</td></tr><tr><td>19:45Z</td><td class="num">1</td></tr><tr><td>19:46Z</td><td class="num">3</td></tr><tr><td>19:48Z</td><td class="num">1</td></tr><tr><td>19:49Z</td><td class="num">1</td></tr><tr><td>19:50Z</td><td class="num">1</td></tr><tr><td>19:52Z</td><td class="num">1</td></tr><tr><td>19:53Z</td><td class="num">1</td></tr><tr><td>19:54Z</td><td class="num">1</td></tr><tr><td>19:55Z</td><td class="num">1</td></tr><tr><td>19:56Z</td><td class="num">7</td></tr><tr><td>19:57Z</td><td class="num">4</td></tr><tr><td>19:58Z</td><td class="num">8</td></tr><tr><td>19:59Z</td><td class="num">7</td></tr><tr><td>20:00Z</td><td class="num">5</td></tr><tr><td>20:01Z</td><td class="num">4</td></tr><tr><td>20:02Z</td><td class="num">1</td></tr><tr><td>20:03Z</td><td class="num">6</td></tr><tr><td>20:04Z</td><td class="num">9</td></tr><tr><td>20:05Z</td><td class="num">6</td></tr><tr><td>20:06Z</td><td class="num">4</td></tr><tr><td>20:07Z</td><td class="num">8</td></tr><tr><td>20:08Z</td><td class="num">10</td></tr><tr><td>20:09Z</td><td class="num">12</td></tr><tr><td>20:10Z</td><td class="num">8</td></tr><tr><td>20:11Z</td><td class="num">11</td></tr><tr><td>20:12Z</td><td class="num">4</td></tr><tr><td>20:13Z</td><td class="num">1</td></tr><tr><td>20:14Z</td><td class="num">1</td></tr><tr><td>20:16Z</td><td class="num">1</td></tr><tr><td>20:17Z</td><td class="num">1</td></tr><tr><td>20:18Z</td><td class="num">1</td></tr><tr><td>20:21Z</td><td class="num">1</td></tr><tr><td>20:22Z</td><td class="num">1</td></tr><tr><td>20:24Z</td><td class="num">2</td></tr><tr><td>20:25Z</td><td class="num">1</td></tr><tr><td>20:26Z</td><td class="num">1</td></tr><tr><td>20:27Z</td><td class="num">1</td></tr><tr><td>20:28Z</td><td class="num">1</td></tr><tr><td>20:29Z</td><td class="num">1</td></tr><tr><td>20:30Z</td><td class="num">2</td></tr><tr><td>20:32Z</td><td class="num">1</td></tr><tr><td>20:33Z</td><td class="num">1</td></tr><tr><td>20:35Z</td><td class="num">2</td></tr><tr><td>20:36Z</td><td class="num">3</td></tr><tr><td>20:40Z</td><td class="num">1</td></tr><tr><td>20:42Z</td><td class="num">1</td></tr></tbody></table></div></details>
 </div>
 
-<h2 id="hotspots">Hotspots, day by day</h2>
+<h2 id="hotspots">Hotspots in the validation period</h2>
 <div class="chart-card">
   <h3>Share of aircraft-hexes worse than 93 m, daily, 9–25 Oct 2025</h3>
   <p class="sub">Live counts (aircraft degraded after leaving interference elsewhere are left out). Five known interference areas and one quiet high-latitude control; all panels share a 0–60% scale.</p>

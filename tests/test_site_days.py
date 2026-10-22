@@ -64,6 +64,18 @@ def main():
         assert ev["sbas"] == [{"area": "EGNOS (Europe)", "start": 1, "end": 2, "state": "outage"},
                               {"area": "EGNOS (Europe)", "start": 4, "end": 4, "state": "degraded"}], ev["sbas"]
         assert not S.write_events("2026-10-20", src, os.path.join(tmp, "events"))   # analysis files missing
+
+        # trend: one series per area over the days that have a hotspot file; a missing area is a gap
+        write(os.path.join(src, "2026-10-20.hotspots.json"), {"regions": {"A": {"share": 10.0, "aircraft_hexes": 100, "box": [1, 2, 3, 4]}}})
+        write(os.path.join(src, "2026-10-21.hotspots.json"), {"regions": {"A": {"share": 12.5, "aircraft_hexes": 80, "box": [1, 2, 3, 4]},
+                                                                          "B": {"share": None, "aircraft_hexes": 0, "box": [5, 6, 7, 8]}}})
+        tp = os.path.join(tmp, "trend.json")
+        assert S.write_trend(["2026-10-19", "2026-10-21", "2026-10-20"], src, tp) == 2
+        tr = json.load(open(tp))
+        assert tr["days"] == ["2026-10-20", "2026-10-21"], tr
+        assert tr["regions"]["A"] == {"box": [1, 2, 3, 4], "share": [10.0, 12.5], "aircraft_hexes": [100, 80]}, tr
+        assert tr["regions"]["B"]["share"] == [None, None] and tr["regions"]["B"]["box"] == [5, 6, 7, 8], tr
+        assert S.write_trend(["2026-10-19"], src, os.path.join(tmp, "none.json")) == 0 and not os.path.exists(os.path.join(tmp, "none.json"))
         print("test_site_days: ok")
     finally:
         shutil.rmtree(tmp)

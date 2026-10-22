@@ -18,6 +18,7 @@ Usage
   python pipeline/daily_job.py 2026-10-07:2026-10-20    # a range
   python pipeline/daily_job.py 2026-09-22 --raw-dir data/raw/adsblol --no-upload   # local test: no download, no upload
   python pipeline/daily_job.py 2026-10-07:2026-10-21 --reanalyse    # rerun only the analyses on published days
+  python pipeline/daily_job.py 2025-10-09:2025-10-25 --upload-local # publish days already processed on this PC
 """
 import argparse, json, os, shutil, subprocess, sys, time, traceback
 from datetime import date, datetime, timedelta, timezone
@@ -40,7 +41,8 @@ NOTES = """GNSS degradation outputs for {month}, one set per UTC day, made autom
 **Licence: ODbL 1.0**, derived from adsb.lol. Aggregates per H3 hex and region only: no aircraft identifiers.
 
 Per day: `<day>.parquet` (per hex), `.hourly.parquet`, `.minute.parquet`, `.summary.json` (run details and method
-parameters), `.sbas.json`, `.anomalies.json`, `.bursts.json`, and `.map.json` (the site's map file).
+parameters), `.sbas.json`, `.anomalies.json`, `.bursts.json`, `.hotspots.json` (shares in the named areas) and
+`.map.json` (the site's map file).
 Method: [method card](https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md)."""
 
 
@@ -116,7 +118,7 @@ def upload(day):
         gh("release", "create", tag, "-R", REPO, "--title", f"GNSS degradation data, {day[:7]}",
            "--notes", NOTES.format(month=day[:7]), "--latest=false")
         _ASSETS[(REPO, tag)] = {}
-    gh("release", "upload", tag, "-R", REPO, "--clobber", *outputs(day))
+    gh("release", "upload", tag, "-R", REPO, "--clobber", *outputs(day), os.path.join(SITE, f"{day}.hotspots.json"))
     gh("release", "upload", tag, "-R", REPO, "--clobber", os.path.join(SITE, f"{day}.map.json"))   # last: marks done
     _ASSETS.pop((REPO, tag), None)
 
@@ -140,17 +142,33 @@ def reanalyse(day, a):
     have = assets(REPO, tag) or {}
     if f"{day}.map.json" not in have:
         return {"day": day, "status": "not published; nothing to reanalyse"}
-    for name in (f"{day}.hourly.parquet", f"{day}.minute.parquet"):
+    for name in (f"{day}.parquet", f"{day}.hourly.parquet", f"{day}.minute.parquet"):
         if not os.path.exists(os.path.join(DAILY, name)):
             os.makedirs(DAILY, exist_ok=True)
             gh("release", "download", tag, "-R", REPO, "-p", name, "-D", DAILY, "--clobber")
     hist, an = analyse(day)
+    import export_site_data as E
+    E.hotspot_day(day, os.path.join(SITE, f"{day}.hotspots.json"))
     if not a.no_upload:
-        gh("release", "upload", tag, "-R", REPO, "--clobber", *outputs(day)[4:])
+        gh("release", "upload", tag, "-R", REPO, "--clobber", *outputs(day)[4:], os.path.join(SITE, f"{day}.hotspots.json"))
         _ASSETS.pop((REPO, tag), None)
     return {"day": day, "status": "reanalysed" if not a.no_upload else "reanalysed (not uploaded)", "history_files": hist,
             "baseline_days": an.get("baseline_days"), "anomaly_region_hours": an.get("anomaly_region_hours"),
             "burst_events": an.get("burst_events"), "total_s": round(time.time() - t0)}
+
+
+def upload_local(day, a):
+    """Publish a day already processed and analysed here (data/pnt): site files, then the release upload."""
+    missing = [p for p in outputs(day) if not os.path.exists(p)]
+    if missing:
+        return {"day": day, "status": f"missing local outputs: {', '.join(os.path.basename(p) for p in missing)}"}
+    import export_site_data as E
+    E.map_day(day, os.path.join(SITE, f"{day}.map.json"))
+    E.hotspot_day(day, os.path.join(SITE, f"{day}.hotspots.json"))
+    if a.no_upload:
+        return {"day": day, "status": "done (not uploaded)"}
+    upload(day)
+    return {"day": day, "status": "published"}
 
 
 def process(day, a):
@@ -167,6 +185,7 @@ def process(day, a):
     hist, an = analyse(day)
     import export_site_data as E
     size, hexes, jam = E.map_day(day, os.path.join(SITE, f"{day}.map.json"))
+    E.hotspot_day(day, os.path.join(SITE, f"{day}.hotspots.json"))
     if not a.no_upload:
         upload(day)
     return {"day": day, "status": "published" if not a.no_upload else "done (not uploaded)",
@@ -182,6 +201,7 @@ def main():
     ap.add_argument("--lookback", type=int, default=7)
     ap.add_argument("--force", action="store_true", help="redo days that are already published")
     ap.add_argument("--reanalyse", action="store_true", help="rerun only the analyses on published days")
+    ap.add_argument("--upload-local", action="store_true", help="publish days already processed on this machine")
     ap.add_argument("--raw-dir", help="use local adsb.lol files instead of downloading")
     ap.add_argument("--keep-raw", action="store_true")
     ap.add_argument("--no-upload", action="store_true")
@@ -194,7 +214,7 @@ def main():
         if not a.force and not a.reanalyse and not a.no_upload and f"{day}.map.json" in (assets(REPO, data_tag(day)) or {}):
             continue
         try:
-            r = reanalyse(day, a) if a.reanalyse else process(day, a)
+            r = reanalyse(day, a) if a.reanalyse else upload_local(day, a) if a.upload_local else process(day, a)
         except Exception as e:
             traceback.print_exc()
             r, failed = {"day": day, "status": f"ERROR {e.__class__.__name__}: {e}"[:300]}, True

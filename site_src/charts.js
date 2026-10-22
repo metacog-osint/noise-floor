@@ -1,9 +1,9 @@
-/* Noise Floor charts: small SVG renderer for /data/charts.json (ODbL, derived from adsb.lol).
+/* Noise Floor charts: small SVG renderer for /data/charts.json and /data/trend.json (ODbL, derived from adsb.lol).
    Lines get a crosshair tooltip; bars get per-mark tooltips. Values also appear in each chart's table view. */
 (function () {
   "use strict";
   var NS = "http://www.w3.org/2000/svg";
-  var DATA = null;
+  var DATA = null, TREND = null;     // TREND: null while loading, false when this build has no daily data
 
   function el(name, attrs, parent) {
     var e = document.createElementNS(NS, name);
@@ -255,12 +255,67 @@
     });
   }
 
+  // ---------- daily hotspot trend: one small multiple per named area, one shared scale
+  function dayLabel(s, year) {
+    var d = new Date(Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)));
+    return d.getUTCDate() + " " + MON[d.getUTCMonth()] + (year ? " " + d.getUTCFullYear() : "");
+  }
+  function boxLabel(b) {
+    function lat(v) { return Math.abs(v).toFixed(1) + "°" + (v >= 0 ? "N" : "S"); }
+    function lon(v) { return Math.abs(v).toFixed(1) + "°" + (v >= 0 ? "E" : "W"); }
+    return lat(b[0]) + "–" + lat(b[1]) + ", " + lon(b[2]) + "–" + lon(b[3]);
+  }
+  function trend() {
+    var grid = document.getElementById("trend-grid"); if (!grid) return;
+    var table = document.getElementById("trend-table");
+    grid.textContent = ""; table.textContent = "";
+    if (!TREND) {
+      var p = document.createElement("p"); p.className = "small";
+      p.textContent = TREND === false ? "No daily data in this build yet." : "Loading…"; grid.appendChild(p); return;
+    }
+    var days = TREND.days, names = Object.keys(TREND.regions), all = [];
+    document.getElementById("trend-range").textContent = ", " + dayLabel(days[0], true) + " to " + dayLabel(days[days.length - 1], true);
+    names.forEach(function (n) { TREND.regions[n].share.forEach(function (v) { if (v !== null) all.push(v); }); });
+    var ymax = Math.max(20, Math.ceil(Math.max.apply(null, all.concat([0])) / 10) * 10);   // next 10%, so the lines keep their shape
+    var ticks = [{ i: 0, label: dayLabel(days[0]), anchor: "start" }];
+    if (days.length > 1) ticks.push({ i: days.length - 1, label: dayLabel(days[days.length - 1]), anchor: "end" });
+    names.forEach(function (name) {
+      var r = TREND.regions[name], cell = document.createElement("div"), h = document.createElement("h4"), box = document.createElement("div");
+      h.textContent = name;
+      if (r.box) { var bx = document.createElement("span"); bx.className = "bx"; bx.textContent = boxLabel(r.box); h.appendChild(bx); }
+      box.className = "chart"; cell.appendChild(h); cell.appendChild(box); grid.appendChild(cell);
+      lineChart(box, {
+        aria: "Daily share of aircraft-hexes worse than 93 m, " + name, height: 150, x: days, unit: "%", yMax: ymax,
+        series: [{ name: name, values: r.share, color: cssVar("--series-1") }], xTicks: ticks,
+        xTitle: function (i) { return dayLabel(days[i], true) + " · " + (r.aircraft_hexes[i] || 0).toLocaleString() + " aircraft-hexes"; }
+      });
+    });
+    var thead = document.createElement("thead"), hr = document.createElement("tr");
+    ["Day"].concat(names).forEach(function (s) { var th = document.createElement("th"); th.textContent = s; hr.appendChild(th); });
+    thead.appendChild(hr); table.appendChild(thead);
+    var tbody = document.createElement("tbody");
+    days.slice().reverse().forEach(function (d) {
+      var i = days.indexOf(d), tr = document.createElement("tr"), td = document.createElement("td");
+      td.textContent = d; tr.appendChild(td);
+      names.forEach(function (n) {
+        var v = TREND.regions[n].share[i], c = document.createElement("td"); c.className = "num";
+        c.textContent = v === null || v === undefined ? "–" : v.toFixed(1) + "%"; tr.appendChild(c);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+  }
+
   function drawAll() {
     document.querySelectorAll(".chart[data-chart]").forEach(function (box) {
       var f = DRAW[box.getAttribute("data-chart")]; if (f) f(box);
     });
     var hm = document.getElementById("hotspot-grid"); if (hm) hotspots(hm);
+    trend();
   }
+  trend();
+  fetch("/data/trend.json").then(function (r) { return r.ok ? r.json() : false; }).catch(function () { return false; })
+    .then(function (t) { TREND = t; trend(); });
   fetch("/data/charts.json").then(function (r) { return r.json(); }).then(function (j) {
     DATA = j; drawAll();
     var t; window.addEventListener("resize", function () { clearTimeout(t); t = setTimeout(drawAll, 150); });
