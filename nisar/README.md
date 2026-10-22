@@ -73,6 +73,7 @@ cd nisar
 python -m nisar_rfi run                       # last 10 days over the area; first run records a baseline quietly
 python -m nisar_rfi run --start 2026-07-01 --end 2026-10-20 --seed   # backfill without alerts
 python -m nisar_rfi tables <GranuleUR> [--height 1500]   # table method on one pass, printed, nothing saved
+python -m nisar_rfi publish [--build-only]            # private web view (needs the setup below)
 python -m nisar_rfi inspect <GranuleUR or file.h5>    # RFI fields a GCOV carries (also reads the full image)
 python -m nisar_rfi run --quiet               # one summary line, for logs others can read
 ```
@@ -86,6 +87,18 @@ Register-ScheduledTask -TaskName "noise-floor daily NISAR" -Action (New-Schedule
 
 - **Token.** The script reads `EARTHDATA_TOKEN` from the user environment, and the token is never echoed.
 - **Expiry.** Each run records the token's expiry, read from the token's own claim, in the state's `health`. From 14 days out it logs a warning to renew it.
+
+**Private web view.** `python -m nisar_rfi publish` builds a small static site from the outputs (`private/nisar/view/`): a landing page with run health, new sites and the strongest repeat sites, the maps, and the GeoJSON/JSONL files. It deploys the site with wrangler to a Cloudflare Pages project behind Cloudflare Access. `run_daily.cmd` publishes after every run.
+
+One-time setup by the owner, kept out of this repo:
+
+1. Enable Cloudflare Zero Trust (the Free plan covers 50 users).
+2. Create an API token with Pages Edit, Access Apps and Policies Edit, Access Organizations, Identity Providers and Groups Edit, and Account Settings Read. Store it as the `CLOUDFLARE_API_TOKEN` user variable.
+3. Create the Pages project, then a self-hosted Access application covering **both** `<project>.pages.dev` and `*.<project>.pages.dev`, because every deployment also gets its own hostname. Allow the owner's email through one-time PIN.
+4. Check that anonymous requests to both hostnames redirect to the Access login *before* the first real deploy.
+5. Add `"view": {"pages_project": ..., "account_id": ..., "extra_maps": [...]}` to the private config.
+
+The pages also send `noindex` and `no-store` headers.
 
 **Config keys for the table method:**
 - `method`: `tables` or `image`. The default is `image` if any collection is BETA, otherwise `tables`.
@@ -147,7 +160,8 @@ Everything the run writes is private: it is watch output.
 | `sites.py` | Sites, coverage, NEW/RETURNED/QUIET, cross-fixes (image method) |
 | `bands.py` | Sub-band edges and GNSS overlap |
 | `places.py` | Offline place wording from Natural Earth |
-| `report.py` | Alerts, observations, GeoJSON, map |
+| `report.py` | Alerts, observations (deduplicated by detection), GeoJSON, map |
+| `view.py` | Private web view: bundle and deploy behind Cloudflare Access |
 | `pipeline.py` | One run: search, screen, read, detect, sites, outputs |
 | `__main__.py` | Command-line interface |
 

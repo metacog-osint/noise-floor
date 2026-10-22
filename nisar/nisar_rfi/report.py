@@ -108,7 +108,7 @@ def observation(d):
         "extra": {"site": d.get("site"), "bands": d["bands"], "where": d["where"], "track": d["track"],
                   "direction": d["direction"], "frame": d["frame"], "axis_az": d["axis_az"],
                   "aligned_with_range": d["aligned_with_range"], "rfi_likelihood": d.get("rfi_likelihood"),
-                  "method": d.get("method", "image"), "freq_runs_mhz": d.get("freq_runs_mhz"),
+                  "method": d.get("method", "image"), "freq_runs_mhz": d.get("freq_runs_mhz"), "det_id": d["id"],
                   "peak_hit": d.get("peak_hit"), "pols": d.get("pols"), "widespread": d.get("widespread"),
                   "broadband": d.get("broadband"), "peak_excess_power_db": d.get("peak_excess_power_db")},
     }
@@ -131,6 +131,23 @@ def push(alerts):
             print(f"push failed: {e}", file=sys.stderr)
 
 
+def write_observations(path, dets, rebuild=False):
+    """Append observation rows for detections not already in the log (by detection id), or rewrite
+    the log from `dets` when rebuild=True. Re-running a window never duplicates rows."""
+    seen = set()
+    if not rebuild and os.path.exists(path):
+        for line in open(path, encoding="utf-8"):
+            try:
+                seen.add(json.loads(line).get("extra", {}).get("det_id"))
+            except Exception:
+                continue
+    with open(path, "w" if rebuild else "a", encoding="utf-8") as f:
+        for d in dets:
+            if d["id"] not in seen:
+                f.write(json.dumps(observation(d)) + "\n")
+                seen.add(d["id"])
+
+
 def _fc(features):
     return {"type": "FeatureCollection", "features": features}
 
@@ -141,9 +158,7 @@ def write_all(state, cfg, new_dets, alerts, now, demo=False, truth=None):
     with open(os.path.join(out, "alerts.jsonl"), "a") as f:
         for a in alerts:
             f.write(json.dumps(a) + "\n")
-    with open(os.path.join(out, "observations.jsonl"), "a") as f:
-        for d in new_dets:
-            f.write(json.dumps(observation(d)) + "\n")
+    write_observations(os.path.join(out, "observations.jsonl"), new_dets)
     push(alerts)
 
     dets = sorted(state["detections"], key=lambda d: d["start"])
