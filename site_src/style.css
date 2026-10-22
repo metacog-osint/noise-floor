@@ -157,6 +157,8 @@ main.wide { max-width: 80rem; }
 .ev-key i { display: inline-block; }
 .ev-key .ev-area { width: .95rem; height: .75rem; border: 2px solid var(--map-event); border-radius: 2px; margin-left: .2rem; }
 .ev-key .ev-dot { width: .65rem; height: .65rem; border-radius: 50%; background: var(--map-event); margin-left: .5rem; }
+.ev-key .ev-test { width: .8rem; height: .8rem; border-radius: 50%; border: 1.5px dashed var(--ink-2); margin-left: .5rem; }
+#ev-tests:not(:empty) { margin: .2rem 0 .4rem; }
 details.ev-how { margin: .4rem 0 1.6rem; font-size: .92rem; }
 details.ev-how summary { cursor: pointer; color: var(--acc); }
 button.linkish { font: inherit; font-size: .88rem; color: var(--acc); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }

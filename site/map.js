@@ -21,7 +21,7 @@
   function readColors() {
     colors = { ocean: css("--map-ocean"), land: css("--map-land"), coast: css("--map-coast"), quiet: css("--map-quiet"),
                low: css("--map-low"), ramp: [css("--ramp-1"), css("--ramp-2"), css("--ramp-3"), css("--ramp-4")],
-               focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean") };
+               focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean"), test: css("--ink-2") };
     mapEl.style.background = colors.ocean;
   }
 
@@ -83,6 +83,15 @@
         cells[state.focus].bnd.forEach(function (p, i) { var q = m.latLngToContainerPoint(p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); });
         g.closePath(); g.stroke();
       }
+      if (state.evShow && state.ev && state.ev.tests) {
+        g.save(); g.setLineDash([6, 5]); g.strokeStyle = colors.test; g.lineWidth = 1.5;
+        state.ev.tests.forEach(function (t) {
+          var nm = t.radii_nm.FL250 || Math.max.apply(null, Object.keys(t.radii_nm).map(function (k) { return t.radii_nm[k]; }).concat([0]));
+          var c = m.latLngToContainerPoint(t.centre), top = m.latLngToContainerPoint([t.centre[0] + nm * 1.852 / 111.32, t.centre[1]]);
+          g.beginPath(); g.arc(c.x, c.y, Math.abs(c.y - top.y), 0, 2 * Math.PI); g.stroke();
+        });
+        g.restore();
+      }
       if (state.evShow && state.ev) {
         var rows = evRows();
         var outline = function (e) {
@@ -133,6 +142,10 @@
       var r2 = h3.cellToParent(h, 2);
       evRows().anom.forEach(function (a) {
         if (a.cells.indexOf(r2) >= 0) lines.push(["Anomaly", TIER[a.tier] + ", " + pad(a.h0) + ":00–" + pad(a.h1) + ":59Z"]);
+      });
+      (state.ev.tests || []).forEach(function (t) {
+        var nm = t.radii_nm.FL250 || 0, d = h3.greatCircleDistance(ll, t.centre, "km");
+        if (nm && d <= nm * 1.852) lines.push(["Announced test", t.id]);
       });
     }
     return lines;
@@ -264,11 +277,24 @@
     if (jam) parts.push(ev.bursts.length + " bursts" + (ev.burst_basis === "within day" ? " (judged against the day's own level: fewer than 5 earlier days)." : "."));
     else parts.push(ev.sbas.length ? "SBAS flags: " + ev.sbas.length + "." : "No SBAS flags.");
     sum.textContent = parts.join(" ");
+    var testsEl = document.getElementById("ev-tests"); testsEl.textContent = "";
+    if (ev.tests && ev.tests.length) {
+      testsEl.appendChild(document.createTextNode("Announced GPS tests this day (FAA flight advisories): "));
+      ev.tests.forEach(function (t, k) {
+        var a = document.createElement("a"); a.href = t.url; a.textContent = t.id; a.rel = "noopener";
+        if (k) testsEl.appendChild(document.createTextNode("; "));
+        testsEl.appendChild(a);
+        var w0 = t.windows[0], w1 = t.windows[t.windows.length - 1];
+        testsEl.appendChild(document.createTextNode(", " + t.place + ", " + w0[0].slice(11, 16) + "–" + w1[1].slice(11, 16) + "Z"));
+      });
+      testsEl.appendChild(document.createTextNode("."));
+    }
 
     rows.anom.forEach(function (e) {
       var tr = document.createElement("tr"), w = when(state.day, e.h0 * 60, e.h1 * 60 + 59);
       cell(tr, TIER[e.tier]); cell(tr, w[0]); cell(tr, w[1], "mut"); cell(tr, ll2(e.lat, e.lon));
       cell(tr, e.regions, "num"); cell(tr, e.peak.toFixed(0) + "%", "num"); cell(tr, "+" + e.excess.toFixed(0) + " pts", "num");
+      cell(tr, e.test || "–", e.test ? "" : "mut");
       showButton(tr, e, TIER[e.tier] + " anomaly at " + w[0]); anomBody.appendChild(tr);
     });
     var shown = state.evAll.anom ? rows.anomAll.length : rows.anom.length;
@@ -280,6 +306,7 @@
     rows.burst.forEach(function (e) {
       var tr = document.createElement("tr"), w = when(state.day, mins(e.t0), mins(e.t1));
       cell(tr, w[0]); cell(tr, w[1], "mut"); cell(tr, ll2(e.lat, e.lon)); cell(tr, e.peak, "num"); cell(tr, e.regions, "num");
+      cell(tr, e.test || "–", e.test ? "" : "mut");
       showButton(tr, e, "burst at " + w[0]); burstBody.appendChild(tr);
     });
     document.getElementById("ev-burst-note").textContent = rows.burstAll.length ? "Ranked by peak aircraft." : "No bursts on this day.";

@@ -83,6 +83,24 @@ def main():
         assert S.write_trend(["2026-10-18", "2026-10-20"], src, tp) == 2
         tr = json.load(open(tp))
         assert tr["days"] == ["2026-10-18", "2026-10-19", "2026-10-20"] and tr["regions"]["A"]["share"] == [8.0, None, 10.0], tr
+        # announced tests: an event inside a test's window and widest radius is tagged; others aren't
+        tests = {"tests": {"WSMRNM GPS 25-16": {"id": "WSMRNM GPS 25-16", "place": "White Sands Missile Range, NM",
+                                                "centre": [33.64, -106.57], "radii_nm": {"FL400": 363, "FL250": 328},
+                                                "windows": [["2025-10-22T03:00Z", "2025-10-22T11:00Z"]], "notice_url": "u"}}}
+        write(os.path.join(tmp, "faa_gps_tests.json"), tests)
+        evd = os.path.join(tmp, "ev2")
+        os.makedirs(evd)
+        write(os.path.join(evd, "2025-10-22.json"), {"day": "2025-10-22", "anomalies": [
+            {"m": "acc", "h0": 3, "h1": 5, "lat": 33.0, "lon": -106.0},          # inside, in window
+            {"m": "jam", "h0": 3, "h1": 5, "lat": 55.6, "lon": 17.9},            # far away
+            {"m": "acc", "h0": 13, "h1": 14, "lat": 33.0, "lon": -106.0}],       # outside the window
+            "bursts": [{"t0": "10:50Z", "t1": "11:10Z", "lat": 34.0, "lon": -107.0}]})
+        write(os.path.join(evd, "2025-10-25.json"), {"day": "2025-10-25", "anomalies": [], "bursts": []})
+        assert S.annotate_all(evd, os.path.join(tmp, "faa_gps_tests.json")) == (2, 2)
+        ev = json.load(open(os.path.join(evd, "2025-10-22.json")))
+        assert [a.get("test") for a in ev["anomalies"]] == ["WSMRNM GPS 25-16", None, None], ev["anomalies"]
+        assert ev["bursts"][0]["test"] == "WSMRNM GPS 25-16" and ev["tests"][0]["place"].startswith("White Sands"), ev
+        assert json.load(open(os.path.join(evd, "2025-10-25.json")))["tests"] == []
         print("test_site_days: ok")
     finally:
         shutil.rmtree(tmp)
