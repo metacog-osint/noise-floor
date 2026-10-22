@@ -92,7 +92,7 @@ Each run's `data/pnt/daily/<day>.summary.json` records the input files, their SH
 4. **Leads seen in passing (not yet explained):**
    - A gross spike over northern Europe at 02Z on all three October days (low traffic).
    - A gross spike over the southern US at 03–08Z on 16 and 22 Oct, both weekdays. **Explained (22 Oct 2026):** a scheduled GPS interference test at White Sands Missile Range; see lead 2 below.
-5. **Retrieve the 22 Sep 2026 NOTAM** from the FAA archive to close the Bay Area case.
+5. ~~Retrieve the 22 Sep 2026 NOTAM~~ **Closed 22 Oct 2026** by FAA flight advisory PMSRCA GPS 26-03 (Revision 2): see row 17.
 
 ## Sources for this section
 
@@ -122,7 +122,7 @@ Each run's `data/pnt/daily/<day>.summary.json` records the input files, their SH
 | 14 | SBAS flag: EGNOS outage | Flagged 13 Oct 10–23Z (14 h), 14–16 Oct all day, 17 Oct 00–11Z (12 h). EGNOS service area only; no other day in 9–25 Oct flagged for EGNOS except one hour on 12 Oct. | **Pass** (within an hour at both ends) |
 | 15 | SBAS flag: false positives | With absolute thresholds, India (GAGAN) and Australia/NZ (SouthPAN) were flagged 7–14 h every day. Most airliners can't use those SBASs, so capable aircraft routinely lose 10 m there. Against each area's own same-hour baseline, and with the excess required to beat 4 × MAD, that falls to 1–6 stray hours a day. | **Partial pass.** Residual flags in those two areas are labelled as such. |
 | 16 | Storm labelling | 12 Nov: Canada 01–05Z, Japan 01–14Z, Korea 02–12Z, all labelled storm. 18 Oct: Canada 20–22Z labelled storm, once the label checks Kp within ±3 h (storm effects lag the 3-hourly index). | **Pass** |
-| 17 | Minute bursts, Bay Area 22 Sep 2026 | Burst events at **18:00–18:08Z (peak 13 aircraft)** and **19:52–20:12Z (peak 36)**, centred on the southern Central Valley. The early burst only shows when each region is summed with its neighbours, because it straddles res-2 cell edges. | **Pass.** Counts are lower than the source thread's (about 40 and 80 aircraft above 8,000 ft), reflecting adsb.lol coverage and our filters. |
+| 17 | Minute bursts, Bay Area 22 Sep 2026 | Burst events at **18:00–18:08Z (peak 13 aircraft)** and **19:52–20:12Z (peak 36)**, centred on the southern Central Valley. The early burst only shows when each region is summed with its neighbours, because it straddles res-2 cell edges. | **Pass.** Counts are lower than the source thread's (about 40 and 80 aircraft above 8,000 ft), reflecting adsb.lol coverage and our filters. **Declared test confirmed (22 Oct 2026):** FAA flight advisory PMSRCA GPS 26-03 (Revision 2), published 10 Sep 2026, scheduled a Point Mugu Sea Range GPS test on 22 Sep 18:30–20:29Z, centred 34.36°N 121.69°W, with GPS (incl. WAAS and ADS-B) possibly unavailable out to 567 NM at 10,000 ft and 623 NM at FL250. The Bay Area is about 160 NM from the centre. The 19:52–20:12Z burst falls inside the window; the 18:00–18:08Z burst starts 22 minutes before it opens and stays unexplained ([PDF](https://www.faasafety.gov/files/notices/2026/Sep/PMSRCA_26-03_GPS_Flight_Advisory_(Revision_2).pdf)). |
 | 18 | Burst thresholds from earlier days | Within-day thresholds produced 53–66 burst events a day, mostly the same regions at the same hours (Hungary and Slovakia at 01:30–05:30Z, Southern California in the afternoons). Same-slot thresholds from earlier days cut this to 11–57. | **Pass** |
 | 19 | Same-hour baseline anomalies | Raw anomalous region-hours were 200–500 a day, mostly small-sample. A binomial z ≥ 4 test and grouping into events give 137–174 events a day: **9–22 major** (25+ points above baseline), 65–90 notable, the rest minor. | **Pass**, read majors first |
 
@@ -159,7 +159,7 @@ Sources for the leads (retrieved 22 Oct 2026):
 
 1. **Per-aircraft latching tag.** Mark aircraft that degraded in a known hotspot and stayed degraded, so downstream "events" made of latched aircraft are labelled rather than counted as new interference. This tests lead 3.
 2. **Leads 1 and 2.** New Mexico is verified against the FAA test schedule (22 Oct 2026). The Baltic lead found no date-specific reporting; test it against the backfilled year.
-3. **FAA NOTAM API access** (Tom's request, decision 4). It closes the Bay Area case and enables automatic planned-test exclusion.
+3. **FAA NOTAM API access** (Tom's request, decision 4). Planned-test exclusion now runs from the FAA's public flight advisories (`pipeline/faa_gps_tests.py`), which also closed the Bay Area case; the NOTAM API would add short-notice and non-advisory NOTAMs.
 4. **Backfill to the present.** About 365 days at roughly 3.5 GB of raw data a day (about 1.3 TB) is too much to keep locally. Run it in GitHub Actions on the public repo, downloading, processing and discarding each day, and keep only the outputs (about 2 MB a day).
 
 ---

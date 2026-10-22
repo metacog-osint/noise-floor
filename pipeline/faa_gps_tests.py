@@ -10,6 +10,8 @@ instead of reading it as hostile interference. Validated on WSMRNM GPS 25-16 (do
   python pipeline/faa_gps_tests.py --rss                    # new advisories from the notices feed (daily)
   python pipeline/faa_gps_tests.py --crawl 14600 15300      # one-off history by notice id (polite, ~2 s/request)
   python pipeline/faa_gps_tests.py --parse FILE.pdf         # print what the parser reads from one advisory
+  python pipeline/faa_gps_tests.py --reparse                # re-read every stored advisory (after parser changes)
+  python pipeline/faa_gps_tests.py --nids 14715 14774       # specific notice ids
 
 Store: data/declared/faa_gps_tests.json, one record per test, keyed by its base id (a revision replaces the
 earlier one). Needs pypdf.
@@ -26,10 +28,11 @@ UA = {"User-Agent": "noise-floor (research; github.com/metacog-osint/noise-floor
 MONTHS = {m: i for i, m in enumerate(("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"), 1)}
 DASH = "-–—"
 
-ID_RE = re.compile(r"NAV GPS \(([A-Z0-9_]+ GPS \d{2}-\d+(?: REV \d+)?)\)")
-CENTRE_RE = re.compile(r"(\d{2})(\d{2})(\d{2})([NS])\s*(\d{3})(\d{2})(\d{2})([EW])")
-LINE_RE = re.compile(r"(\d{1,2})(?:\s+([A-Z]{3}))?(?:\s+(\d{2}))?(?:\s*[" + DASH + r"]\s*(\d{1,2})\s+([A-Z]{3}))?\s+(\d{2})\s+(?:DLY\s+)?"
-                     r"(\d{4})Z\s*[" + DASH + r"]\s*(\d{4})Z")
+ID_RE = re.compile(r"N\s?A\s?V\s+GPS\s*\(([A-Z0-9_]+ GPS[ _]\d{2}-\d+(?: REV \d+)?)\)")     # text extraction sometimes splits "NA V"
+CENTRE_RE = re.compile(r"(\d{2})(\d{2})(\d{2})([NS])\s*(\d{2,3})(\d{2})(\d{2})([EW])")    # some write 86 deg as '86', not '086'
+DATE_RE = re.compile(r"^\s*(\d{1,2})(?:\s+([A-Z]{3}))?(?:\s+(\d{2}))?(?:\s*[" + DASH + r"]\s*(\d{1,2})\s+([A-Z]{3}))?\s+(\d{2})(?=\s)")
+TIMES_RE = re.compile(r"(\d{4})Z\s*[" + DASH + r"]\s*(\d{4})Z")
+AREA_RE = re.compile(r"AREA\s+DEFINED\s+AS:?\s*((?:\d{6}[NS]\s*\d{6,7}[EW]\s*(?:TO\s+)?)+)")
 RADIUS_RE = re.compile(r"(\d+)\s*NM\s+RADIUS\s+(?:CENTERED\s+AT\s+\S+\s+\(\S+\)\s+)?(?:AT\s+)?(FL\d+(?:-UNL)?|\d+\s*FT(?:\s*AGL)?)")
 NOTICE_TITLE_RE = re.compile(r"GPS\s+Interference\s+Testing", re.I)
 
@@ -55,8 +58,12 @@ def parse_text(t):
     centre = [dms(*c.group(1, 2, 3, 4)), dms(*c.group(5, 6, 7, 8))]
     b0, b1 = t.find("B. Dates"), t.find("C. Duration")
     windows = []
-    for g in LINE_RE.finditer(t[b0:b1] if 0 <= b0 < b1 else t):
-        d1, m1, y1, d2, m2, yy, t0, t1 = g.groups()
+    for line in (t[b0:b1] if 0 <= b0 < b1 else t).splitlines():
+        g = DATE_RE.match(line)
+        times = TIMES_RE.findall(line[g.end():]) if g else []
+        if not times:
+            continue
+        d1, m1, y1, d2, m2, yy = g.groups()
         y = 2000 + int(yy)
         if d2 is None:                                  # single day: "06 OCT 26 0600Z - 1200Z"
             first = last = date(y, MONTHS[m1], int(d1))
@@ -64,22 +71,39 @@ def parse_text(t):
             last = date(y, MONTHS[m2], int(d2))
             y0 = 2000 + int(y1) if y1 else (y - 1 if m1 == "DEC" and m2 == "JAN" else y)
             first = date(y0, MONTHS[m1 or m2], int(d1))
-        h0, h1 = (int(x[:2]) * 60 + int(x[2:]) for x in (t0, t1))
-        d = first
-        while d <= last:
-            s = datetime(d.year, d.month, d.day, tzinfo=timezone.utc) + timedelta(minutes=h0)
-            e = datetime(d.year, d.month, d.day, tzinfo=timezone.utc) + timedelta(minutes=h1 + (1440 if h1 < h0 else 0))
-            windows.append([s.strftime("%Y-%m-%dT%H:%MZ"), e.strftime("%Y-%m-%dT%H:%MZ")])
-            d += timedelta(days=1)
+        for t0, t1 in times:                            # one or more windows on the line, each every day of the range
+            h0, h1 = (int(x[:2]) * 60 + int(x[2:]) for x in (t0, t1))
+            d = first
+            while d <= last:
+                s = datetime(d.year, d.month, d.day, tzinfo=timezone.utc) + timedelta(minutes=h0)
+                e = datetime(d.year, d.month, d.day, tzinfo=timezone.utc) + timedelta(minutes=h1 + (1440 if h1 < h0 else 0))
+                windows.append([s.strftime("%Y-%m-%dT%H:%MZ"), e.strftime("%Y-%m-%dT%H:%MZ")])
+                d += timedelta(days=1)
     radii = {}
     for r in RADIUS_RE.finditer(t):
         alt = re.sub(r"\s+", " ", r.group(2)).replace("-UNL", "").replace(" FT", "FT")
         radii.setdefault(alt, int(r.group(1)))
+    area = None
+    a = AREA_RE.search(t)
+    if a:                                               # a polygon instead of radii: keep it, and its reach from the centre
+        area = [[dms(*q[:4]), dms(*q[4:])] for q in CENTRE_RE.findall(a.group(1))]
+        if area:
+            reach = max(_nm(centre, q) for q in area)
+            radii.setdefault("AREA", round(reach))
     if not windows:
         return None
-    full = m.group(1)
-    return {"id": full, "base": re.sub(r" REV \d+$", "", full), "centre": centre, "radii_nm": radii,
-            "windows": sorted(windows)}
+    full = m.group(1).replace("GPS_", "GPS ")
+    rec = {"id": full, "base": re.sub(r" REV \d+$", "", full), "centre": centre, "radii_nm": radii, "windows": sorted(set(map(tuple, windows)))}
+    rec["windows"] = [list(w) for w in rec["windows"]]
+    if area:
+        rec["area"] = area
+    return rec
+
+
+def _nm(a, b):
+    p1, p2 = math.radians(a[0]), math.radians(b[0])
+    h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(b[1] - a[1]) / 2) ** 2
+    return 6371.0 * 2 * math.asin(min(1.0, math.sqrt(h))) / 1.852
 
 
 def pdf_text(data):
@@ -104,12 +128,14 @@ def notice(nid):
 def pdf_place(t):
     """The place line under the date line at the top of an advisory ("WHITE SANDS MISSILE RANGE, NM")."""
     m = re.search(r"\n\s*\d{1,2}\s*(?:[A-Za-z]+\s*)?[" + DASH + r"?]\s*\d{1,2}\s+[A-Za-z]+\s*\n\s*([^\n]+?)\s*\n", t)
-    return m.group(1).title().replace(", Nm", ", NM") if m else None
+    return re.sub(r",\s*([A-Za-z]{2})$", lambda g: ", " + g.group(1).upper(), m.group(1).title()) if m else None
 
 
 def place(title):
     m = re.search(r"GPS\s+Interference\s+Testing\s+(?:at\s+)?(.+?)\s+\d{1,2}\s*(?:[A-Z]{3}\s*)?[" + DASH + r"]", title, re.I)
-    return (m.group(1) if m else re.sub(r"(?i)GPS\s+Interference\s+Testing\s*", "", title)).strip(" ,")
+    pl = (m.group(1) if m else re.sub(r"(?i)GPS\s+Interference\s+Testing\s*", "", title)).strip(" ,").lstrip("-–:").strip()
+    pl = pl.title() if pl.isupper() else pl
+    return re.sub(r",\s*([A-Za-z]{2})$", lambda g: ", " + g.group(1).upper(), pl)
 
 
 def load():
@@ -157,6 +183,8 @@ def main():
     ap.add_argument("--rss", action="store_true")
     ap.add_argument("--crawl", nargs=2, type=int, metavar=("FIRST_NID", "LAST_NID"))
     ap.add_argument("--parse")
+    ap.add_argument("--reparse", action="store_true")
+    ap.add_argument("--nids", nargs="+", type=int)
     a = ap.parse_args()
     if a.parse:
         with open(a.parse, "rb") as f:
@@ -172,6 +200,24 @@ def main():
                 nids.append(int(m.group(1)))
     if a.crawl:
         nids += list(range(a.crawl[0], a.crawl[1] + 1))
+    if a.nids:
+        nids += a.nids
+    if a.reparse:
+        changed = 0
+        for base, old in list(store["tests"].items()):
+            try:
+                rec = parse_text(pdf_text(get(old["pdf_url"], binary=True)))
+            except Exception as e:
+                print(old["id"], f"error {e.__class__.__name__}: {e}"[:160])
+                continue
+            time.sleep(1.5)
+            if rec:
+                new = {**old, **{k: rec[k] for k in ("id", "centre", "radii_nm", "windows")}}
+                if rec.get("area"):
+                    new["area"] = rec["area"]
+                changed += new != old
+                store["tests"][base] = new
+        print(json.dumps({"reparsed": len(store["tests"]), "changed": changed}))
     added = 0
     for nid in sorted(set(nids)):
         try:

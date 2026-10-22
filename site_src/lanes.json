@@ -89,7 +89,7 @@
       "data": [
         "adsb.lol daily archive"
       ],
-      "notes": "Recovered both bursts of the 22 Sep 2026 San Francisco Bay Area GPS loss (18:00–18:08Z and 19:52–20:12Z). The NOTAM for that window is UNVERIFIED: it needs FAA NOTAM API access.",
+      "notes": "Recovered both bursts of the 22 Sep 2026 San Francisco Bay Area GPS loss (18:00–18:08Z and 19:52–20:12Z). An FAA flight advisory confirms a Point Mugu Sea Range GPS test that day, 18:30–20:29Z; the second burst falls inside it.",
       "links": [
         [
           "Validation report",
@@ -172,19 +172,33 @@
       "id": "declared",
       "group": "pnt",
       "name": "Declared interference and test notices",
-      "status": "planned",
+      "status": "running",
       "phase": "Phase 2",
-      "summary": "What authorities say: navigation warnings, GPS test notices and NOTAMs.",
+      "summary": "What authorities say: announced GPS interference tests now; navigation warnings and NOTAMs next.",
       "what": "Official notices that GNSS may be unreliable in an area and time window: maritime navigation warnings, US GPS interference test notices, NOTAMs and announced test events.",
-      "how": "Light pollers on a schedule. A declared window becomes an explanation for observed degradation, or flags it as a planned test rather than an incident.",
+      "how": "The FAA's public flight advisories for US GPS interference tests are read every morning (window, centre and radius by altitude). An anomaly or burst inside a test's window and reach is tagged on the map as consistent with an announced test, rather than counted as an incident. Other notices will join the same layer.",
       "data": [
-        "NGA Maritime Safety Information broadcast warnings",
-        "US Coast Guard NAVCEN GPS test notices",
-        "FAA NOTAMs (API access pending)",
-        "UKMTO advisories (reuse terms UNVERIFIED; private watch only)"
+        "FAA SPANS GPS interference testing flight advisories (US government)",
+        "NGA Maritime Safety Information broadcast warnings (next)",
+        "US Coast Guard NAVCEN GPS test notices (next)",
+        "UKMTO advisories (Open Government Licence; next)",
+        "FAA NOTAMs (API access pending)"
       ],
-      "notes": "Pollers were prototyped in an earlier tool and will be ported to Cloudflare Workers cron. Announced events such as Jammertest serve as planned-test exclusions and known positives.",
-      "links": []
+      "notes": "Live: 214 announced US tests from Sep 2025 on, back-matched to the full history. It matched the White Sands test of Oct 2025 day by day and the Point Mugu test behind the 22 Sep 2026 Bay Area GPS loss. Announced events such as Jammertest serve as known positives.",
+      "links": [
+        [
+          "Map",
+          "/map"
+        ],
+        [
+          "Validation",
+          "/validation"
+        ],
+        [
+          "Collector",
+          "https://github.com/metacog-osint/noise-floor/blob/main/pipeline/faa_gps_tests.py"
+        ]
+      ]
     },
     {
       "id": "context",
