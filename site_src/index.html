@@ -1,0 +1,42 @@
+<!--{"title": "Noise Floor", "description": "An open, licence-clean picture of contested radio spectrum: GNSS degradation, L-band emitters, satellite communications and the evidence behind each.", "nav": "home"}-->
+<h1>Noise Floor</h1>
+<p class="lede">An open, licence-clean picture of where the radio spectrum is contested, and what that does to navigation and satellite communications. It measures effects and states its evidence. It doesn't assign blame.</p>
+
+<div class="callout">
+  <p><strong>Status, {{UPDATED}}.</strong> The GNSS method is built and validated on 20 days of worldwide aircraft data. The NISAR L-band emitter lane has passed its first positive control. The public map is in development; until then, results live in the validation reports.</p>
+</div>
+
+<h2>What it builds</h2>
+<div class="flow">
+  <div><b>Positioning and navigation</b>Where aircraft and ships lose GNSS accuracy or get false positions, separated from storms and service outages.</div>
+  <div><b>Emitters from space</b>Transmitters that show up as interference in satellite radar data, with frequency and position.</div>
+  <div><b>Satellite communications</b>Inspector satellites near comsats, the official interference record, outages and predictable sun outages.</div>
+  <div><b>Assessment</b>Lanes fused into events, each graded on its evidence, with benign explanations kept in view.</div>
+</div>
+
+<h2>Lanes at a glance</h2>
+<p>{{LANE_COUNT}} lanes, from validated methods to planned ones. Each has a page entry with what it measures, how, which sources and its limits.</p>
+{{STATUS_COUNTS}}
+{{LANE_GRID}}
+<p><a href="lanes.html">All lanes in detail</a> · <a href="lanes.html#build-order">Build order</a></p>
+
+<h2>Results so far</h2>
+<ul>
+  <li><strong>Hotspots reproduce.</strong> The known Baltic, Black Sea and Caucasus hotspots appear on every test day; quiet control regions stay near zero.</li>
+  <li><strong>An SBAS outage, from aircraft alone.</strong> The 13–17 Oct 2025 EGNOS outage was reconstructed to within an hour at both ends.</li>
+  <li><strong>Storms separate from jamming.</strong> On the 12 Nov 2025 G4 storm, 38.5% of capable aircraft lost 10 m accuracy against a 3.7% baseline, while jamming-scale loss stayed flat.</li>
+  <li><strong>Minute-level timing.</strong> Both bursts of the 22 Sep 2026 Bay Area GPS loss were recovered.</li>
+  <li><strong>Downstream effects by type.</strong> A350-900s are 19× over-represented among aircraft still degraded after leaving interference. Why is still a hypothesis.</li>
+  <li><strong>L-band emitters from radar.</strong> NISAR's own interference tables detected an area of documented L1/L2/L5 jamming on 12 of 13 passes. The published Shiraz jammer was not confirmed.</li>
+</ul>
+<p><a href="validation.html">How each was tested, including what failed</a></p>
+
+<h2>How it works</h2>
+<ul>
+  <li><strong>Method first.</strong> Frozen test days, a published method card and validation before any user interface.</li>
+  <li><strong>Licence-clean.</strong> Every source is recorded with its licence before it feeds a layer; non-commercial sources are for visual comparison only. <a href="sources.html">See the registry</a>.</li>
+  <li><strong>Static and free.</strong> Daily batch jobs write small files served from a CDN: no servers, no database bill.</li>
+  <li><strong>Effects, not attribution.</strong> Every output says what was observed and on what basis.</li>
+  <li><strong>Public and private kept apart.</strong> Watch areas and alerts never enter the public repo or this site.</li>
+</ul>
+<p><a href="methods.html">Methods</a> · <a href="https://github.com/metacog-osint/noise-floor">Source code (MIT)</a></p>

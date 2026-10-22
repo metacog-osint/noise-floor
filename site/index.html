@@ -4,55 +4,65 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Noise Floor</title>
-<meta name="description" content="An open, licence-clean picture of contested spectrum: GNSS degradation from ADS-B, SBAS outages, storms and jamming.">
-<style>
-  :root { --bg:#f7f6f2; --fg:#1d1f22; --mut:#5f6670; --line:#e2e0d8; --acc:#b4462b; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#121417; --fg:#e8e6e1; --mut:#9aa1a9; --line:#2a2e34; --acc:#e0805f; } }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-  main { max-width:44rem; margin:0 auto; padding:4rem 1rem 3rem; }
-  h1 { font-size:2.4rem; letter-spacing:-0.02em; margin:0 0 .25rem; }
-  .tag { color:var(--mut); margin:0 0 2.5rem; }
-  h2 { font-size:1rem; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin:2.5rem 0 .75rem; }
-  ul { padding-left:1.1rem; } li { margin:.35rem 0; }
-  a { color:var(--acc); }
-  .status { border:1px solid var(--line); border-radius:8px; padding:.9rem 1rem; }
-  footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--mut); font-size:.85rem; }
-</style>
+<meta name="description" content="An open, licence-clean picture of contested radio spectrum: GNSS degradation, L-band emitters, satellite communications and the evidence behind each.">
+<meta property="og:title" content="Noise Floor">
+<meta property="og:description" content="An open, licence-clean picture of contested radio spectrum: GNSS degradation, L-band emitters, satellite communications and the evidence behind each.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<main>
-  <h1>Noise Floor</h1>
-  <p class="tag">An open, licence-clean picture of where the radio spectrum is contested, and what that does to navigation and satellite communications.</p>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site"><div class="in">
+<a class="brand" href="/">Noise Floor</a>
+<nav aria-label="Main"><a href="/index.html" aria-current="page">Home</a><a href="/lanes.html">Lanes</a><a href="/methods.html">Methods</a><a href="/validation.html">Validation</a><a href="/sources.html">Sources</a></nav>
+</div></header>
+<main id="main">
+<h1>Noise Floor</h1>
+<p class="lede">An open, licence-clean picture of where the radio spectrum is contested, and what that does to navigation and satellite communications. It measures effects and states its evidence. It doesn't assign blame.</p>
 
-  <div class="status"><strong>Status:</strong> method built and validated; the public map is in development.</div>
+<div class="callout">
+  <p><strong>Status, 22 Oct 2026.</strong> The GNSS method is built and validated on 20 days of worldwide aircraft data. The NISAR L-band emitter lane has passed its first positive control. The public map is in development; until then, results live in the validation reports.</p>
+</div>
 
-  <h2>What it measures</h2>
-  <p>From aircraft's own ADS-B position-quality reports, it computes the share of aircraft in each area whose GNSS accuracy was degraded, by day, hour and minute, at two thresholds:</p>
-  <ul>
-    <li><strong>Worse than 93 m:</strong> jamming-scale loss.</li>
-    <li><strong>Worse than 10 m</strong> (for aircraft that showed 10 m capability that day): space weather and SBAS outages.</li>
-  </ul>
-  <p>It measures effects, not attribution.</p>
+<h2>What it builds</h2>
+<div class="flow">
+  <div><b>Positioning and navigation</b>Where aircraft and ships lose GNSS accuracy or get false positions, separated from storms and service outages.</div>
+  <div><b>Emitters from space</b>Transmitters that show up as interference in satellite radar data, with frequency and position.</div>
+  <div><b>Satellite communications</b>Inspector satellites near comsats, the official interference record, outages and predictable sun outages.</div>
+  <div><b>Assessment</b>Lanes fused into events, each graded on its evidence, with benign explanations kept in view.</div>
+</div>
 
-  <h2>Validation so far</h2>
-  <ul>
-    <li>The known Baltic, Black Sea and Caucasus hotspots appear on every test day; quiet control regions stay near zero.</li>
-    <li>The 13–17 Oct 2025 EGNOS outage was reconstructed from aircraft data alone, to within an hour at both ends.</li>
-    <li>The 12 Nov 2025 G4 storm shows as 38% of capable aircraft losing 10 m accuracy over the northern US and Canada, against a 4% baseline, while jamming-scale loss stays flat.</li>
-    <li>Both bursts of the 22 Sep 2026 Bay Area GPS loss were recovered at the minute level.</li>
-  </ul>
+<h2>Lanes at a glance</h2>
+<p>25 lanes, from validated methods to planned ones. Each has a page entry with what it measures, how, which sources and its limits.</p>
+<div class="counts"><div class="count"><b>3</b><span><span class="chip st-validated">Validated</span></span></div><div class="count"><b>1</b><span><span class="chip st-partial">Partly validated</span></span></div><div class="count"><b>3</b><span><span class="chip st-running">Running</span></span></div><div class="count"><b>1</b><span><span class="chip st-built">Built</span></span></div><div class="count"><b>1</b><span><span class="chip st-prototype">Prototype</span></span></div><div class="count"><b>16</b><span><span class="chip st-planned">Planned</span></span></div></div>
+<h3>Positioning, navigation and timing</h3><div class="grid"><div class="card"><span class="chip st-validated">Validated</span><h3><a href="lanes.html#gnss-adsb">GNSS degradation from ADS-B</a></h3><p>Share of aircraft per area whose own GNSS accuracy degraded, by day, hour and minute.</p></div><div class="card"><span class="chip st-validated">Validated</span><h3><a href="lanes.html#sbas">SBAS outage and storm flags</a></h3><p>Hours when an SBAS service area loses 10 m accuracy, labelled storm or probable service problem.</p></div><div class="card"><span class="chip st-validated">Validated</span><h3><a href="lanes.html#bursts">Minute bursts and anomaly events</a></h3><p>Short interference bursts timed to the minute, and departures from each area&#x27;s own baseline.</p></div><div class="card"><span class="chip st-prototype">Prototype</span><h3><a href="lanes.html#post-exposure">Downstream effects by aircraft type</a></h3><p>Which aircraft types stay degraded after leaving interference, and how far they carry it.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#horizon">Radio-horizon jammer localizer</a></h3><p>Narrow down where a jammer sits from the first position at which each aircraft lost GNSS.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#adsb-spoofing">ADS-B spoofing detection</a></h3><p>Aircraft fed false positions: jumps, convergence on false points, altitude mismatches.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#ais">Spoofing at sea (AIS)</a></h3><p>Ship position reports that jump, circle or land ashore.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#declared">Declared interference and test notices</a></h3><p>What authorities say: navigation warnings, GPS test notices and NOTAMs.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#lf-vlf">Low-frequency navigation and VLF</a></h3><p>Chayka (Loran-type) and RSDN-20 Alpha VLF signals, the backups to GNSS.</p></div></div><h3>Emitters seen from space</h3><div class="grid"><div class="card"><span class="chip st-partial">Partly validated</span><h3><a href="lanes.html#nisar">L-band emitters from NISAR radar</a></h3><p>Transmitters inside NISAR&#x27;s L-band receive slices (one contains GPS L2), from the processor&#x27;s own RFI tables.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#sentinel1">Sentinel-1 RFI board</a></h3><p>C-band emitters from the interference reports in Sentinel-1 radar products.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#weather-radar">Weather-radar spokes</a></h3><p>Interference spokes in open weather-radar data, as evidence of nearby emitters.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#spaceborne">Spaceborne and network GNSS</a></h3><p>GNSS reflectometry, radio occultation, ground reference networks and L-band radiometers.</p></div></div><h3>Satellite communications</h3><div class="grid"><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#geo-board">GEO threat board</a></h3><p>Known inspector satellites near commercial comsats, with drift and manoeuvre flags.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#rrb-register">Interference register</a></h3><p>Curated, geolocated cases of harmful interference from the official record.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#satisp">Satellite-internet health</a></h3><p>Telling a constellation-wide outage from a local one.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#lband-overlay">L-band risk overlay</a></h3><p>Where observed GNSS jamming lies near L-band mobile-satellite services.</p></div><div class="card"><span class="chip st-built">Built</span><h3><a href="lanes.html#sun-outage">Sun-outage calculator</a></h3><p>Predictable daily losses when the sun passes behind a GEO satellite, to the minute.</p></div></div><h3>Context and assessment</h3><div class="grid"><div class="card"><span class="chip st-running">Running</span><h3><a href="lanes.html#context">Space-weather context</a></h3><p>Geomagnetic storms and ionospheric scintillation, to separate natural degradation from deliberate interference.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#events">Events and grading</a></h3><p>Fusing lanes into events, each graded on five fields.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#exclusions">Attribution and exclusion layers</a></h3><p>Benign explanations kept in view: licensed transmitters, radars, navaids, ducting.</p></div><div class="card"><span class="chip st-running">Running</span><h3><a href="lanes.html#community">Community reporting lane</a></h3><p>What researchers and operators report in public posts, collected daily as leads.</p></div><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#assessment">Daily status and weekly assessment</a></h3><p>A per-region daily status and a written weekly assessment.</p></div></div><h3>Platform</h3><div class="grid"><div class="card"><span class="chip st-planned">Planned</span><h3><a href="lanes.html#public-map">Public map and data</a></h3><p>A daily map of GNSS degradation with a time slider and downloadable hex data.</p></div><div class="card"><span class="chip st-running">Running</span><h3><a href="lanes.html#private-watch">Private watch</a></h3><p>Daily runs over private areas of interest, behind a login, kept apart from the public site.</p></div></div>
+<p><a href="lanes.html">All lanes in detail</a> · <a href="lanes.html#build-order">Build order</a></p>
 
-  <h2>Read more</h2>
-  <ul>
-    <li><a href="https://github.com/metacog-osint/noise-floor">Source code</a> (MIT)</li>
-    <li><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">Method card</a>: what the numbers mean and what they can't tell you</li>
-    <li><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">Validation report</a></li>
-  </ul>
+<h2>Results so far</h2>
+<ul>
+  <li><strong>Hotspots reproduce.</strong> The known Baltic, Black Sea and Caucasus hotspots appear on every test day; quiet control regions stay near zero.</li>
+  <li><strong>An SBAS outage, from aircraft alone.</strong> The 13–17 Oct 2025 EGNOS outage was reconstructed to within an hour at both ends.</li>
+  <li><strong>Storms separate from jamming.</strong> On the 12 Nov 2025 G4 storm, 38.5% of capable aircraft lost 10 m accuracy against a 3.7% baseline, while jamming-scale loss stayed flat.</li>
+  <li><strong>Minute-level timing.</strong> Both bursts of the 22 Sep 2026 Bay Area GPS loss were recovered.</li>
+  <li><strong>Downstream effects by type.</strong> A350-900s are 19× over-represented among aircraft still degraded after leaving interference. Why is still a hypothesis.</li>
+  <li><strong>L-band emitters from radar.</strong> NISAR's own interference tables detected an area of documented L1/L2/L5 jamming on 12 of 13 passes. The published Shiraz jammer was not confirmed.</li>
+</ul>
+<p><a href="validation.html">How each was tested, including what failed</a></p>
 
-  <footer>
-    A project of The Intelligence Company. ADS-B data: <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0); derived data is published under ODbL.
-  </footer>
+<h2>How it works</h2>
+<ul>
+  <li><strong>Method first.</strong> Frozen test days, a published method card and validation before any user interface.</li>
+  <li><strong>Licence-clean.</strong> Every source is recorded with its licence before it feeds a layer; non-commercial sources are for visual comparison only. <a href="sources.html">See the registry</a>.</li>
+  <li><strong>Static and free.</strong> Daily batch jobs write small files served from a CDN: no servers, no database bill.</li>
+  <li><strong>Effects, not attribution.</strong> Every output says what was observed and on what basis.</li>
+  <li><strong>Public and private kept apart.</strong> Watch areas and alerts never enter the public repo or this site.</li>
+</ul>
+<p><a href="methods.html">Methods</a> · <a href="https://github.com/metacog-osint/noise-floor">Source code (MIT)</a></p>
+
 </main>
+<footer class="site"><div class="in">
+<p>A project of The Intelligence Company. Updated 22 Oct 2026. <a href="https://github.com/metacog-osint/noise-floor">Source code</a> (MIT).</p>
+<p>ADS-B data: <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources.html">Sources</a>.</p>
+</div></footer>
 </body>
 </html>

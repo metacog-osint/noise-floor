@@ -1,0 +1,57 @@
+<!--{"title": "Methods · Noise Floor", "description": "How Noise Floor measures GNSS degradation from ADS-B, finds L-band emitters in NISAR radar data, and predicts sun outages.", "nav": "methods"}-->
+<p class="kicker">Methods</p>
+<h1>How it works</h1>
+<p class="lede">Three methods are built and tested. Each has a fuller write-up in the repository; this page is the short version.</p>
+
+<h2 id="adsb">GNSS degradation from aircraft (ADS-B)</h2>
+<p>Aircraft broadcast their own position quality: NACp (accuracy) and NIC (integrity). When GNSS is jammed, spoofed or degraded by space weather, those numbers drop. The processor reads a full day of worldwide ADS-B and works out, for each H3 hex (resolution 4, about 1,770 km²), the share of aircraft whose accuracy degraded.</p>
+<div class="tw"><table>
+  <thead><tr><th>Measure</th><th>Threshold</th><th>What it's for</th></tr></thead>
+  <tbody>
+    <tr><td>Gross</td><td>NACp below 8: uncertainty of 93 m or worse</td><td>Jamming-scale loss; directly comparable with GPSJam</td></tr>
+    <tr><td>Accuracy</td><td>NACp below 10, counted only for aircraft that showed 10 m capability that day</td><td>Finer degradation, including space weather and SBAS problems</td></tr>
+  </tbody>
+</table></div>
+<h3>What's kept, and what's filtered out</h3>
+<ul>
+  <li><strong>Only the aircraft's own GNSS:</strong> version-2 reports of type <code>adsb_icao</code>. Multilateration, TIS-B and rebroadcast positions are dropped.</li>
+  <li><strong>Airborne only</strong> (1,000 ft or more), sampled at most every 30 s per aircraft, so fast and slow reporters weigh alike.</li>
+  <li><strong>Faulty avionics:</strong> an aircraft bad where its peers are fine is dropped for the day. A jammed flight is bad among bad neighbours and stays in.</li>
+  <li><strong>Post-exposure:</strong> after an aircraft's first genuinely jammed hex-hour, later degraded reports 300 km or more away, among healthy peers, are tagged as downstream effects rather than new interference.</li>
+  <li><strong>Small samples:</strong> the hex score subtracts one bad aircraft (the formula GPSJam publishes), and maps colour only hexes with 5 or more aircraft.</li>
+</ul>
+<h3>Derived signals</h3>
+<ul>
+  <li><strong>SBAS flag:</strong> hours when 60% of 10 m-capable aircraft across an SBAS service area fall below 10 m. Kp labels them storm or probable service problem.</li>
+  <li><strong>Anomalies:</strong> each region-hour against the median of the same hour over up to 14 earlier days.</li>
+  <li><strong>Minute bursts:</strong> aircraft counts per minute, to time short events.</li>
+</ul>
+<p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">Full method card</a>: every parameter, and what the numbers can't tell you.</p>
+
+<h2 id="nisar">L-band emitters from NISAR radar</h2>
+<p>NASA-ISRO's NISAR radar listens at L-band. Over most land it uses two slices: 1219–1239 MHz, which contains GPS L2, and 1291–1296 MHz. Anything transmitting there leaks into its data. Since June 2026, NASA's processor filters that interference out of the images, but first it records what it found in tables inside each product.</p>
+<div class="flow">
+  <div><b>Tier 0: screen</b>Every pass: the processor's own interference score, from a 0.1 MB file.</div>
+  <div><b>Tier 1: tables</b>Flagged passes: per-block interference tables and the orbit, about 90 MB instead of a multi-GB image.</div>
+  <div><b>Tones</b>Frequencies hit in most pulses, excluding the radar's own two tones.</div>
+  <div><b>Broadband</b>The cross-polarized channel far above what the ground produces: the signature of a noise jammer.</div>
+  <div><b>Position</b>Block time and slant range turned into latitude and longitude from the orbit.</div>
+</div>
+<ul>
+  <li><strong>Why one pass gives a position:</strong> the radar's receive beam limits interference to part of the swath, and its azimuth beam to a few seconds along track.</li>
+  <li><strong>Why broadband needs its own detector:</strong> the processor's tone detector flags loud narrowband lines. A noise jammer raises the whole spectrum instead, which shows up as extra power, most clearly in the channel where ground echo is weak.</li>
+  <li><strong>Limits:</strong> GPS L1 is out of band. Positions are block-scale (a few km). Horizontally polarized sources are under-detected. Radars that hop frequency are seen only part of the time.</li>
+</ul>
+<p><a href="https://github.com/metacog-osint/noise-floor/blob/main/nisar/README.md">Lane README</a> · <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/nisar.md">Validation</a></p>
+
+<h2 id="sun">Sun-outage windows</h2>
+<p>Twice a year the sun passes behind each geostationary satellite as seen from a given receiver, and dishes lose the signal for a few minutes a day at times that can be predicted to the minute. The calculator uses a solar ephemeris accurate to about 0.01°. It counts an outage when the sun is within 1.2° of the satellite, which suits a 0.9 m Ku-band dish. A reported loss inside a window is natural; one outside it, much longer, or hitting only some channels deserves a second look.</p>
+<p><a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/sun_transit.py">Code</a></p>
+
+<h2 id="data">How data is handled</h2>
+<ul>
+  <li><strong>Licence registry:</strong> {{SOURCE_COUNT}} sources, each with its licence, whether commercial use is allowed, and how it may be used. A source can't feed a public layer without a recorded licence. <a href="sources.html">Browse it</a>.</li>
+  <li><strong>Raw data stays where it is:</strong> adsb.lol keeps the aircraft archive, and NASA keeps NISAR. Noise Floor keeps megabytes of derived output, not terabytes.</li>
+  <li><strong>Times:</strong> stored in UTC; shown to people in US Central time with the zone named.</li>
+  <li><strong>Public and private:</strong> a check on every commit blocks private terms from the public repository.</li>
+</ul>
