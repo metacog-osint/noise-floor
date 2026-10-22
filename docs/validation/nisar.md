@@ -20,9 +20,8 @@ Detections outside the published case stay in the private outputs until the meth
   - No HIGH or MEDIUM detection fell within 50 km of it; the nearest candidate is a LOW 30 km away.
   - Either the jammer was off or had moved after January, or the method misses it. These data can't separate the two.
   - So the table method is **plausible but not validated against ground truth**. Its outputs stay private.
-- **Next:** a positive control with ground truth inside the PROVISIONAL period. Candidates:
-  - a documented interference case whose L2 coverage is published;
-  - announced GPS interference tests whose NOTAMs give place, time and band.
+- **Broadband detector (section 5) passes its first positive control.** In an area with documented L1/L2/L5 jamming, where the tone method saw nothing at the L2 centre, it detects on 12 of 13 covering passes. It stays near zero in forested regions without reported jamming.
+- **Next:** a surveyed emitter or an announced GPS interference test (NOTAM with place, time and band) to measure position accuracy.
 
 ## 1. Image method on BETA products: failed
 
@@ -100,6 +99,50 @@ A 30-day run over a private watch area (429 passes, 22 Sep – 21 Oct 2026) incl
   - A broadband noise jammer raises the signal estimate without standing out as tones, so the table method may **under-detect barrage jamming** while catching CW and narrowband emitters well.
   - A complementary detector on `signalMean` anomalies (power above what the same ground gives on other passes) is the next step.
 - **Alert volume:** if this run had been live, 142 sites would have raised a first-time alert. The first live run of any area must be a seeded baseline, as the pipeline already does.
+
+## 5. Broadband detector on the processor's signal power
+
+**Why.** At the control area of section 4 the tone method found nothing at the L2 centre. Tone-rank flags loud narrowband tones, while a noise jammer raises the whole spectrum. That raised level shows up in the tables' per-block `signalMean`, the processor's estimate of the background power, not as tones.
+
+**Method** (`nisar/nisar_rfi/bbdetect.py`):
+
+- **Signature.** Natural echo comes back much weaker in the cross-polarized channel (HV) than in HH, and thermal noise is similar in both. An outside transmitter isn't tied to the radar's transmit polarization, so a vertical or slant-polarized source lifts HV about as much as HH.
+- **Score.** Per pass and band, learn the frame's own relationship between HH power and the HV/HH ratio (median and robust spread per 1 dB HH bin). Then score each block's excess ratio and its z-score against that relationship.
+- **Gates.**
+  - MEDIUM needs 4 blocks, a ratio excess of at least 4 dB, excess HV power at least 5 dB over the frame, and HV within 1 dB of HH at the peak.
+  - HIGH needs 8 blocks, 6 dB and 8 dB.
+  - The last gate is physical: vegetation at L-band stays near −5 dB or below, so a ratio near or above 0 dB points to an outside source.
+- **Position.** The centroid of the excess HV power, from the orbit.
+- **Merging.** A broadband candidate within 20 km of a tone candidate in the same band becomes evidence on that detection. Other broadband candidates become their own detections; LOW ones are dropped.
+
+**Results, regional 30-day set (335 passes read):**
+
+| Check | Result |
+|---|---|
+| Control area (documented L1/L2/L5 jamming) | MEDIUM/HIGH within 40 km on **12 of 13** covering passes; in band A (which contains GPS L2) on 9 passes. The tone method had nothing at the L2 centre there |
+| Candidates | 761 in all; 263 MEDIUM/HIGH (141 HIGH). Runs in about 30 s over the cached set |
+| Geographic contrast | MEDIUM/HIGH detections concentrate where jamming is documented. Neighbouring, heavily forested regions with no reported jamming, the land cover most likely to cause cross-pol false alarms, gave 1–4 detections each over 37–83 passes |
+| Absolute-ratio gate | Removed 8 of 271 MEDIUM/HIGH candidates; the control result is unchanged |
+| Repeat sites | The strongest broadband site in the set lies in the control area: 9 passes, 5 geometries, both bands, ratio excess up to 16.5 dB |
+
+**Shiraz case area (40 PROVISIONAL passes):**
+- Again nothing within 40 km of the published site.
+- Broadband candidates fall within a few km of several tone sites, so the two detectors agree independently.
+- The single 1226.0 MHz tone of section 3 shows no broadband excess, which fits a pure tone.
+
+**Combined pipeline** (both detectors, merged):
+
+| Area | Detections | Tone only | Tone + broadband | Broadband only |
+|---|---|---|---|---|
+| Regional set | 738 | 491 | 68 | 179 |
+| Shiraz area | 101 | 83 | 11 | 7 |
+
+**Verdict.** The broadband detector finds the documented jamming that the tone method missed, on nearly every covering pass. It stays quiet in forested regions without reported jamming. That is the first positive control the lane has passed.
+
+**Still not shown:**
+- the published Shiraz jammer, by either detector;
+- the accuracy of positions against a surveyed emitter;
+- behaviour on horizontally polarized emitters, which raise HH more than HV and are under-detected by design.
 
 ## Reproduce
 

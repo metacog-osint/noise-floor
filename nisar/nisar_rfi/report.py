@@ -64,6 +64,12 @@ def alerts_from_events(events, state, cfg, now):
                 measure = (f'Processor RFI table: {d["band_text"]}; {int(d["peak_hit"] * 100)}% of pulses hit, '
                            f'interference {d["peak_isr_db"]} dB over the signal, {d["blocks"]} blocks '
                            f'({d["along_km"]} x {d["across_km"]} km), {"+".join(d["pols"])}, ')
+                if d.get("broadband"):
+                    measure += f'broadband HV/HH +{d["broadband"]["peak_ratio_excess_db"]} dB nearby, '
+            elif d.get("method") == "broadband":
+                measure = (f'Processor signal power: HV/HH ratio {d["peak_ratio_excess_db"]} dB above the ground\'s, '
+                           f'excess power {d["peak_excess_power_db"]} dB over the frame, {d["blocks"]} blocks '
+                           f'({d["along_km"]} x {d["across_km"]} km), ')
             else:
                 measure = (f'Cross-pol excess peak {d["peak_excess_db"]} dB over {d["area_km2"]} km², '
                            f'{"streak along range" if d["aligned_with_range"] else "not range-aligned"}, ')
@@ -84,7 +90,8 @@ def alerts_from_events(events, state, cfg, now):
 
 def observation(d):
     """One detection as an observation row (event model, DESIGN.md merged plan), ready for D1."""
-    tab = d.get("method") == "tables"
+    tab = d.get("method") in ("tables", "broadband")
+    bb = d.get("method") == "broadband"
     return {
         "source_id": "nisar_rslc_rfi_tables" if tab else "nisar_gcov_rfi", "raw_item_id": d["granule"],
         "observed_start": d["start"], "observed_end": d.get("end") or d["start"],
@@ -92,16 +99,18 @@ def observation(d):
         "h3_index": h3.latlng_to_cell(d["lat"], d["lon"], 6),
         "domain": "GNSS" if d["gnss_overlap"] else "RADAR",
         "freq_low_mhz": d["freq_low_mhz"], "freq_high_mhz": d["freq_high_mhz"],
-        "metric": "isr_db" if tab else "crosspol_excess_db", "value": d["peak_excess_db"],
-        "baseline": "processor tone-rank table" if tab else "scene HH-ratio relationship",
-        "anomaly_score": d.get("peak_hit") if tab else d["peak_z"],
+        "metric": "bb_ratio_excess_db" if bb else "isr_db" if tab else "crosspol_excess_db", "value": d["peak_excess_db"],
+        "baseline": ("scene HH-to-HV/HH power relationship" if bb else
+                     "processor tone-rank table" if tab else "scene HH-ratio relationship"),
+        "anomaly_score": d.get("peak_bb_z") if bb else d.get("peak_hit") if tab else d["peak_z"],
         "claim_text": None, "language": None, "extracted_systems": [],
         "link": d.get("url"), "confidence": d["confidence"],
         "extra": {"site": d.get("site"), "bands": d["bands"], "where": d["where"], "track": d["track"],
                   "direction": d["direction"], "frame": d["frame"], "axis_az": d["axis_az"],
                   "aligned_with_range": d["aligned_with_range"], "rfi_likelihood": d.get("rfi_likelihood"),
                   "method": d.get("method", "image"), "freq_runs_mhz": d.get("freq_runs_mhz"),
-                  "peak_hit": d.get("peak_hit"), "pols": d.get("pols"), "widespread": d.get("widespread")},
+                  "peak_hit": d.get("peak_hit"), "pols": d.get("pols"), "widespread": d.get("widespread"),
+                  "broadband": d.get("broadband"), "peak_excess_power_db": d.get("peak_excess_power_db")},
     }
 
 

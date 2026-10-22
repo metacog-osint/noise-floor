@@ -166,3 +166,7 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
   - But no HIGH or MEDIUM detection fell within 50 km of the published jammer site, though the site was inside the swath on every pass.
   - Status: plausible, not validated against ground truth; outputs private.
   - Next: a positive control with ground truth in the PROVISIONAL period.
+- **Broadband detector (21 Oct, `nisar/nisar_rfi/bbdetect.py`).**
+  - Tone-rank misses noise jammers. The broadband detector scores the processor's per-block signal power, flagging HV far above the frame's HH-to-HV/HH relationship, with an excess-power and absolute-ratio gate.
+  - On a documented L1/L2/L5 jamming area it detects on 12 of 13 covering passes, where the tone method saw nothing at the L2 centre. Forested regions without reported jamming stay near zero.
+  - Both detectors run on every table read and merge within 20 km.

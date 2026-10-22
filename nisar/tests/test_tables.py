@@ -10,7 +10,7 @@ import h5py
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from nisar_rfi import geoloc, pipeline, qa, tabdetect, tables  # noqa: E402
+from nisar_rfi import bbdetect, geoloc, pipeline, qa, tabdetect, tables  # noqa: E402
 
 WE = 7.2921150e-5          # Earth rotation, rad/s
 MU = 3.986004418e14
@@ -150,6 +150,72 @@ def test_screen_decision():
     g["qa"]["AHV"] = 444.0
     assert pipeline.screen_decision(g, state, cfg)[0]
     assert pipeline.screen_decision(dict(g, qa=None), state, cfg) == (True, "no QA score")
+
+
+def synthetic_power(orb, t0, r0, source=True, forest=True, seed=1):
+    """signalMean maps for band A HH/HV: echo with texture, HV 8 dB under HH, a thermal noise floor;
+    optionally a slant-polarized broadband source at (t0, r0) and a 'forest' patch with HV/HH of -3 dB
+    but no extra power."""
+    rng = np.random.default_rng(seed)
+    t = np.arange(t0 - 20, t0 + 20, 0.25)
+    r = np.linspace(890e3, 1050e3, 50)
+    tt, rr = np.meshgrid(t, r, indexing="ij")
+    echo = 10 ** ((60 + 4 * np.sin((rr - 890e3) / 40e3) + rng.normal(0, 1.5, tt.shape)) / 10)
+    noise = 10 ** (48 / 10)
+    hh = echo + noise
+    hv = echo * 10 ** (-8 / 10) + noise
+    if forest:
+        patch = (np.abs(tt - (t0 - 12)) < 2) & (np.abs(rr - 930e3) < 12e3)
+        hv = np.where(patch, echo * 10 ** (-3 / 10) + noise, hv)      # strong volume scattering, normal power
+    if source:
+        g = np.exp(-((tt - t0) / 1.2) ** 2 - ((rr - r0) / 18e3) ** 2)
+        src = g * 10 ** (68 / 10)
+        hh, hv = hh + 0.5 * src, hv + src                                # slant/vertical: more in V
+    f = np.linspace(1217.0, 1240.98, 64) * 1e6
+    out = {}
+    for pol, m in (("HH", hh), ("HV", hv)):
+        out[("A", pol)] = {"t": t, "r": r, "isr": np.full(m.shape, 0.5, np.float32), "mean": m.astype(np.float32),
+                           "f": f, "hits": np.zeros(m.shape + (len(f),), np.float16)}
+    return out
+
+
+def test_broadband_finds_source_not_forest():
+    orb = synthetic_orbit()
+    o = geoloc.Orbit(orb["t"], orb["pos"], orb["vel"])
+    t0, r0 = 6900.0, 990e3
+    truth = [float(v) for v in geoloc.rdr2geo(o, t0, r0, look="Left")]
+    res = bbdetect.detect(synthetic_power(orb, t0, r0), orb, "Left")
+    alerting = [c for c in res["A"] if c["confidence"] != "LOW"]
+    assert len(alerting) == 1, [(c["lat"], c["lon"], c["confidence"]) for c in res["A"]]
+    c = alerting[0]
+    assert geoloc_km(c["lat"], c["lon"], *truth) < 4.0, geoloc_km(c["lat"], c["lon"], *truth)
+    assert c["peak_ratio_excess_db"] > 6 and c["peak_excess_power_db"] > 8 and c["confidence"] == "HIGH"
+    quiet = bbdetect.detect(synthetic_power(orb, t0, r0, source=False), orb, "Left")
+    assert not [c for c in quiet["A"] if c["confidence"] != "LOW"], quiet["A"]
+
+
+def test_combine_methods():
+    tone = {"A": [{"band": "A", "lat": 10.00, "lon": 10.00, "confidence": "MEDIUM", "method": "tables"}]}
+    broad = {"A": [{"band": "A", "lat": 10.05, "lon": 10.05, "blocks": 30, "peak_ratio_excess_db": 12.0,
+                    "peak_excess_power_db": 15.0, "peak_bb_z": 20.0, "confidence": "HIGH", "method": "broadband"},
+                   {"band": "A", "lat": 11.5, "lon": 12.0, "blocks": 9, "peak_ratio_excess_db": 7.0,
+                    "peak_excess_power_db": 9.0, "peak_bb_z": 9.0, "confidence": "HIGH", "method": "broadband"},
+                   {"band": "A", "lat": 13.0, "lon": 15.0, "blocks": 3, "peak_ratio_excess_db": 3.0,
+                    "peak_excess_power_db": 2.0, "peak_bb_z": 6.5, "confidence": "LOW", "method": "broadband"}]}
+    out = pipeline.combine_methods(tone, broad)
+    a = out["A"]
+    assert len(a) == 2                                   # merged tone + separate broadband; LOW dropped
+    merged = next(c for c in a if c.get("method") == "tables")
+    assert merged["confidence"] == "HIGH" and merged["broadband"]["peak_ratio_excess_db"] == 12.0
+    assert next(c for c in a if c.get("method") == "broadband")["lat"] == 11.5
+    g = {"granule": "G", "start": "2026-10-01T00:00:00Z", "track": 1, "frame": 1, "direction": "A",
+         "stack": "001_A_001", "mode": "20+5"}
+    bbdet = pipeline.merge_table_bands({"A": [dict(c, outline=[[0, 0]], along_km=1, across_km=1, widespread=False,
+                                                   freq_runs_mhz=[], gnss_overlap=[], pols=["HH", "HV"])
+                                              for c in a if c["method"] == "broadband"]}, g, {})
+    d = bbdet[0]
+    assert "broadband" in d["band_text"] and "GPS L2" in d["gnss_overlap"] and d["freq_low_mhz"] < 1227.6 < d["freq_high_mhz"]
+    assert "noise jammer" in d["interpretation"]
 
 
 if __name__ == "__main__":

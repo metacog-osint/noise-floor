@@ -187,6 +187,13 @@ def describe_runs(runs):
 
 def interpretation(d):
     """One line on what a table detection's frequencies are consistent with. A hint, not attribution."""
+    if d.get("method") == "broadband":
+        g = d.get("gnss_overlap") or []
+        txt = (f"Broadband power across {d.get('band_text', 'the sub-band')}, with the cross-polarized channel "
+               f"{d.get('peak_ratio_excess_db')} dB above the ground's HV/HH ratio and no loud tones. ")
+        txt += ("Consistent with a noise jammer covering " + ", ".join(g) + "; a wideband radar or other emitter is also possible."
+                if g else "Consistent with a wideband emitter; no GNSS signal in this slice.")
+        return txt
     runs = d.get("freq_runs_mhz") or []
     g = d.get("gnss_overlap") or []
     narrow = bool(runs) and all(hi - lo <= 1.0 for lo, hi, _ in runs)
@@ -204,4 +211,7 @@ def interpretation(d):
         tail = "More consistent with a radar or other L-band emitter."
     if d.get("widespread"):
         tail += " Seen across much of the frame, so the position is the interference-power peak only."
+    if d.get("broadband"):
+        tail += (f" Broadband power is also raised nearby (HV/HH {d['broadband']['peak_ratio_excess_db']} dB above "
+                 "the ground's), so the source may also be wideband.")
     return f"{first}, {shape}. {tail}"
