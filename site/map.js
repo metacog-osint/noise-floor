@@ -314,6 +314,73 @@
                    : "Live: aircraft still degraded after leaving interference elsewhere are left out.")
       : "Counted only for aircraft that showed 10 m accuracy at least once that day. Space weather and SBAS outages show here.";
   }
+  // ---------- timeline: one bar per available day (selected measure), a slider and previous/next
+  var TL = {
+    jam: { key: "jam_hexes", title: "Hexes at jamming scale (10% or more of aircraft degraded), per day" },
+    acc: { key: "acc_hexes", title: "Hexes where 50% or more of 10 m-capable aircraft fell below 10 m, per day" }
+  };
+  var tlTimer = null;
+  function dayIndex(day) { for (var i = 0; i < days.length; i++) if (days[i].day === day) return i; return -1; }
+  function renderTimeline() {
+    var strip = document.getElementById("tl-strip"); if (!strip || !days.length) return;
+    var key = TL[state.measure].key, n = days.length, W = Math.max(280, strip.clientWidth), H = 56;
+    var vals = days.map(function (d) { return d[key] || 0; }), max = Math.max.apply(null, vals.concat([1]));
+    var NS = "http://www.w3.org/2000/svg", bw = W / n, cur = dayIndex(state.day);
+    document.getElementById("tl-title").textContent = TL[state.measure].title;
+    document.getElementById("tl-range").textContent = " · " + days[0].day + " to " + days[n - 1].day + " · peak " + max.toLocaleString();
+    strip.textContent = "";
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("width", W); svg.setAttribute("height", H);
+    svg.setAttribute("aria-hidden", "true");
+    days.forEach(function (d, i) {
+      var h = Math.max(vals[i] > 0 ? 1 : 0, (H - 8) * vals[i] / max), x = i * bw;
+      var r = document.createElementNS(NS, "rect");
+      r.setAttribute("x", x + (bw > 3 ? 0.5 : 0)); r.setAttribute("width", Math.max(1, bw - (bw > 3 ? 1 : 0)));
+      r.setAttribute("y", H - 6 - h); r.setAttribute("height", h);
+      r.setAttribute("class", i === cur ? "tl-bar on" : "tl-bar");
+      svg.appendChild(r);
+      if (d.note) {                                        // a named day: small mark under its bar
+        var c = document.createElementNS(NS, "rect");
+        c.setAttribute("x", x); c.setAttribute("y", H - 3); c.setAttribute("width", Math.max(2, bw)); c.setAttribute("height", 3);
+        c.setAttribute("class", "tl-mark"); svg.appendChild(c);
+      }
+    });
+    strip.appendChild(svg);
+    var tipEl = document.getElementById("tl-tip");
+    if (!tipEl) { tipEl = document.createElement("div"); tipEl.id = "tl-tip"; tipEl.className = "tl-tip"; tipEl.hidden = true; strip.parentNode.appendChild(tipEl); }
+    function at(ev) { var b = strip.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.floor((ev.clientX - b.left) / (b.width / n)))); }
+    strip.onmousemove = function (ev) {
+      var i = at(ev), d = days[i];
+      tipEl.textContent = d.day + " · " + (d[key] || 0).toLocaleString() + " hexes" + (d.note ? " · " + d.note : "") + (d.daily ? "" : " · validated");
+      tipEl.hidden = false;
+      var b = strip.getBoundingClientRect(), p = strip.parentNode.getBoundingClientRect();
+      tipEl.style.left = Math.max(0, Math.min(ev.clientX - p.left + 10, p.width - tipEl.offsetWidth)) + "px";
+      tipEl.style.top = (b.top - p.top - tipEl.offsetHeight - 4) + "px";
+    };
+    strip.onmouseleave = function () { tipEl.hidden = true; };
+    strip.onclick = function (ev) { var i = at(ev); if (days[i].day !== state.day) { document.getElementById("map-day").value = days[i].day; loadDay(days[i].day); } };
+    syncTimeline();
+  }
+  function syncTimeline() {
+    var sl = document.getElementById("tl-slider"); if (!sl || !days.length) return;
+    var i = dayIndex(state.day), d = days[i];
+    sl.max = days.length - 1; if (i >= 0) sl.value = i;
+    sl.setAttribute("aria-valuetext", state.day);
+    document.getElementById("tl-day").textContent = state.day + (d && d.daily ? "" : " · validated");
+    document.getElementById("tl-prev").disabled = i <= 0;
+    document.getElementById("tl-next").disabled = i >= days.length - 1;
+    var bars = document.querySelectorAll("#tl-strip .tl-bar");
+    for (var k = 0; k < bars.length; k++) bars[k].setAttribute("class", k === i ? "tl-bar on" : "tl-bar");
+  }
+  function stepTo(i, now) {
+    i = Math.max(0, Math.min(days.length - 1, i));
+    var day = days[i].day;
+    document.getElementById("tl-day").textContent = day + (days[i].daily ? "" : " · validated");
+    clearTimeout(tlTimer);
+    var go = function () { if (day !== state.day) { document.getElementById("map-day").value = day; loadDay(day); } };
+    if (now) go(); else tlTimer = setTimeout(go, 250);   // dragging: load once the slider rests
+  }
+
   function renderStats() {
     var d = days.filter(function (x) { return x.day === state.day; })[0];
     var el = document.getElementById("map-stats");
@@ -329,6 +396,7 @@
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true;
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
+    syncTimeline();
     fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (ev) { if (state.day !== day) return; state.ev = ev; state.evLoading = false; renderEvents(); layer.redraw(); });
     renderEvents();
@@ -346,7 +414,7 @@
     });
   }
 
-  function refresh() { state.evFocus = null; layer.redraw(); renderLegend(); renderStats(); renderTable(); renderEvents(); writeHash(); }
+  function refresh() { state.evFocus = null; layer.redraw(); renderLegend(); renderStats(); renderTable(); renderEvents(); renderTimeline(); writeHash(); }
 
   Promise.all([fetch("/data/gnss/days.json").then(function (r) { return r.json(); }),
                fetch("/data/land.json").then(function (r) { return r.json(); })]).then(function (res) {
@@ -363,7 +431,15 @@
     var sel = document.getElementById("map-day");
     var daily = days.filter(function (d) { return d.daily; }).reverse();        // newest first
     var tested = days.filter(function (d) { return !d.daily; });
-    [["Daily (automatic)", daily], ["Validated test days", tested]].forEach(function (g) {
+    var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var groups = [], seen = {};
+    daily.forEach(function (d) {
+      var m = d.day.slice(0, 7);
+      if (!seen[m]) { seen[m] = []; groups.push([MONTHS[+m.slice(5, 7) - 1] + " " + m.slice(0, 4) + " · daily", seen[m]]); }
+      seen[m].push(d);
+    });
+    groups.push(["Validated test days", tested]);
+    groups.forEach(function (g) {
       if (!g[1].length) return;
       var og = document.createElement("optgroup"); og.label = g[0];
       g[1].forEach(function (d) {
@@ -398,6 +474,13 @@
     });
     document.getElementById("map-raw").addEventListener("change", function (e) { state.raw = e.target.checked; refresh(); });
     document.getElementById("ev-show").addEventListener("change", function (e) { state.evShow = e.target.checked; layer.redraw(); });
+    var sl = document.getElementById("tl-slider");
+    sl.addEventListener("input", function () { stepTo(+sl.value, false); });
+    sl.addEventListener("change", function () { stepTo(+sl.value, true); });
+    document.getElementById("tl-prev").addEventListener("click", function () { stepTo(dayIndex(state.day) - 1, true); });
+    document.getElementById("tl-next").addEventListener("click", function () { stepTo(dayIndex(state.day) + 1, true); });
+    var tlResize;
+    window.addEventListener("resize", function () { clearTimeout(tlResize); tlResize = setTimeout(renderTimeline, 150); });
     [["ev-anom-more", "anom"], ["ev-burst-more", "burst"]].forEach(function (p) {
       document.getElementById(p[0]).addEventListener("click", function () {
         state.evAll[p[1]] = !state.evAll[p[1]]; state.evFocus = null; renderEvents(); layer.redraw();
@@ -406,6 +489,7 @@
     map.setView([35, 15], window.innerWidth < 700 ? 1.5 : 2.5);
     layer.addTo(map); renderLegend();
     loadDay(day);
+    renderTimeline();
     if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { readColors(); refresh(); });
   });
 })();

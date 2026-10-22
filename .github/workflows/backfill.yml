@@ -63,7 +63,6 @@ jobs:
           cat "$GITHUB_OUTPUT"
   process:
     needs: plan
-    if: ${{ !inputs.skip_process }}
     name: process ${{ matrix.chunk.name }}
     runs-on: ubuntu-latest
     timeout-minutes: 340
@@ -80,6 +79,7 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Process and publish ${{ matrix.chunk.days }} (no analyses)
+        if: ${{ inputs.skip_process != true }}
         env:
           GH_TOKEN: ${{ github.token }}
           DAYS: ${{ matrix.chunk.days }}

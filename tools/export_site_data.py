@@ -65,20 +65,19 @@ def write(path, obj):
 
 
 def map_day(day, path):
-    """One day's map file: hexes with 3+ aircraft. Returns (bytes, hexes with 5+ aircraft, jamming-scale hexes)."""
+    """One day's map file: hexes with 3+ aircraft. Returns (bytes, site_days.stats() counts)."""
     rows = [r for r in daily(day) if r["aircraft"] >= 3]
     obj = {"day": day, "licence": "ODbL 1.0; derived from adsb.lol",
            "cols": ["h3", "aircraft", "bad_live", "bad_raw", "capable", "capable_bad10"],
            "cells": [[r["h3"], r["aircraft"], r["bad_nacp_live"], r["bad_nacp"], r["capable"], r["cap_bad_acc10"]] for r in rows]}
-    hexes, jam = stats(obj)
-    return write(path, obj), hexes, jam
+    return write(path, obj), stats(obj)
 
 
 def map_days():
     index = []
     for day in DAYS:
-        size, hexes, jam = map_day(day, os.path.join(OUT, "gnss", f"{day}.json"))
-        index.append({"day": day, "note": NOTES.get(day, ""), "hexes": hexes, "jam_hexes": jam, "kb": round(size / 1024)})
+        size, st = map_day(day, os.path.join(OUT, "gnss", f"{day}.json"))
+        index.append({"day": day, "note": NOTES.get(day, ""), **st, "kb": round(size / 1024)})
     write(os.path.join(OUT, "gnss", "days.json"), index)
     return index
 
@@ -186,8 +185,8 @@ def land():
 
 def main():
     if len(sys.argv) == 4 and sys.argv[1] == "--map-day":
-        size, hexes, jam = map_day(sys.argv[2], sys.argv[3])
-        print(json.dumps({"day": sys.argv[2], "kb": round(size / 1024), "hexes": hexes, "jam_hexes": jam}))
+        size, st = map_day(sys.argv[2], sys.argv[3])
+        print(json.dumps({"day": sys.argv[2], "kb": round(size / 1024), **st}))
         return
     if len(sys.argv) == 4 and sys.argv[1] == "--hotspot-day":
         hotspot_day(sys.argv[2], sys.argv[3])

@@ -27,11 +27,15 @@ MEASURE = {"gross": "jam", "capable_10m": "acc"}
 
 
 def stats(obj):
-    """(hexes with 5+ aircraft, those at jamming scale): GPSJam-style share of live bad aircraft >= 10%."""
+    """Per-day counts for the map's day index and timeline strip:
+    hexes      hexes with 5 or more aircraft
+    jam_hexes  of those, GPSJam-style share of live bad aircraft >= 10% (the map's top two jamming-scale classes)
+    acc_hexes  hexes with 5 or more 10 m-capable aircraft and >= 50% of them below 10 m (top two accuracy classes)"""
     cols = obj["cols"]
-    ia, ib = cols.index("aircraft"), cols.index("bad_live")
+    ia, ib, ic, icb = (cols.index(k) for k in ("aircraft", "bad_live", "capable", "capable_bad10"))
     n5 = [c for c in obj["cells"] if c[ia] >= 5]
-    return len(n5), sum(1 for c in n5 if 100 * max(c[ib] - 1, 0) / c[ia] >= 10)
+    return {"hexes": len(n5), "jam_hexes": sum(1 for c in n5 if 100 * max(c[ib] - 1, 0) / c[ia] >= 10),
+            "acc_hexes": sum(1 for c in obj["cells"] if c[ic] >= 5 and 100 * max(c[icb] - 1, 0) / c[ic] >= 50)}
 
 
 def sbas_runs(sbas):
@@ -112,8 +116,7 @@ def entry(day, note="", daily=False):
         obj = json.load(f)
     if obj.get("day") != day:
         sys.exit(f"{path}: holds day {obj.get('day')!r}")
-    hexes, jam = stats(obj)
-    e = {"day": day, "note": note, "hexes": hexes, "jam_hexes": jam, "kb": round(os.path.getsize(path) / 1024)}
+    e = {"day": day, "note": note, **stats(obj), "kb": round(os.path.getsize(path) / 1024)}
     if daily:
         e["daily"] = True
     return e

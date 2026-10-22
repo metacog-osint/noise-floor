@@ -35,7 +35,9 @@ def main():
         idx = json.load(open(os.path.join(gnss, "days.json")))
         assert [d["day"] for d in idx] == ["2025-10-14", "2026-10-20", "2026-10-21"], idx
         assert idx[0] == {"day": "2025-10-14", "note": "EGNOS outage", "hexes": 1, "jam_hexes": 1, "kb": 1}, idx[0]
-        assert idx[2]["daily"] is True and idx[2]["hexes"] == 2 and idx[2]["jam_hexes"] == 1, idx[2]
+        assert idx[2]["daily"] is True and idx[2]["hexes"] == 2 and idx[2]["jam_hexes"] == 1 and idx[2]["acc_hexes"] == 0, idx[2]
+        # acc: 5+ capable aircraft and >= 50% of them below 10 m after the one-aircraft subtraction
+        assert S.stats(day_file("x", [["e", 9, 0, 0, 6, 4], ["f", 9, 0, 0, 6, 3], ["g", 9, 0, 0, 4, 4]]))["acc_hexes"] == 1
         assert idx[1]["jam_hexes"] == 0 and idx[1]["note"] == "", idx[1]
         assert json.load(open(os.path.join(gnss, "2025-10-14.json")))["cells"] == [["a", 10, 5, 5, 8, 1]]
         assert os.path.exists(os.path.join(gnss, "2026-10-21.json")) and not os.path.exists(os.path.join(gnss, "notes.txt"))
