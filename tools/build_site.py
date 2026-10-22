@@ -32,8 +32,8 @@ STATUS = {  # key: (label, css class, one-line meaning)
     "prototype": ("Prototype", "st-prototype", "a first result, not yet a product"),
     "planned": ("Planned", "st-planned", "designed, not built"),
 }
-NAV = [("home", "Home", ""), ("lanes", "Lanes", "lanes"), ("methods", "Methods", "methods"),
-       ("validation", "Validation", "validation"), ("sources", "Sources", "sources")]
+NAV = [("home", "Home", ""), ("map", "Map", "map"), ("charts", "Charts", "charts"), ("lanes", "Lanes", "lanes"),
+       ("methods", "Methods", "methods"), ("validation", "Validation", "validation"), ("sources", "Sources", "sources")]
 USE = {  # registry `use` values in plain words
     "ingest": "Feeds a layer", "ingest-after-ok": "After permission", "visual-only": "Visual comparison only",
     "cite-only": "Cited, not ingested", "later": "Later phase", "exclude": "Excluded", "private-watch": "Private watch only",
@@ -52,6 +52,7 @@ PAGE = """<!doctype html>
 <meta property="og:description" content="{description}">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css">
+{head}
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -90,8 +91,10 @@ def read_page(name):
 
 
 def render(meta, body, updated, narrow=False):
+    layout = meta.get("layout")
+    cls = ' class="wide"' if layout == "wide" else (' class="narrow"' if narrow else "")
     return PAGE.format(title=e(meta["title"]), description=e(meta["description"]), nav=nav_html(meta.get("nav", "")),
-                       body=body, updated=e(updated), repo=REPO, main_class=' class="narrow"' if narrow else "")
+                       body=body, updated=e(updated), repo=REPO, main_class=cls, head=meta.get("head", ""))
 
 
 def status_counts(lanes):
@@ -194,6 +197,34 @@ def sources_page(rows):
 </script>"""
 
 
+def _table(head, rows):
+    th = "".join(f"<th>{e(h)}</th>" for h in head)
+    body = "".join("<tr>" + "".join(f'<td{" class=\"num\"" if i else ""}>{e("–" if v is None else str(v))}</td>'
+                                    for i, v in enumerate(r)) + "</tr>" for r in rows)
+    return f'<div class="tw"><table><thead><tr>{th}</tr></thead><tbody>{body}</tbody></table></div>'
+
+
+def chart_fills():
+    path = os.path.join(OUT, "data", "charts.json")
+    if not os.path.exists(path):
+        sys.exit("site/data/charts.json missing: run tools/export_site_data.py first")
+    c = json.load(open(path, encoding="utf-8"))
+    hs = c["hotspots"]
+    names = list(hs)
+    return {
+        "{{TABLE:egnos}}": _table(["Hour (UTC)", "EGNOS area %", "Baseline %", "State", "Capable aircraft"],
+                                  [[r["t"], r["share"], r["base"], r["state"], r["capable"]] for r in c["egnos"]]),
+        "{{TABLE:storm}}": _table(["Hour (UTC)", "Below 10 m %", "Quiet days %", "Worse than 93 m %", "Quiet days %"],
+                                  [[r["t"], r["acc10"], r["acc10_base"], r["gross"], r["gross_base"]] for r in c["storm"]]),
+        "{{TABLE:bay}}": _table(["Minute (UTC)", "Aircraft-hexes"], [[r["t"], r["aircraft"]] for r in c["bay"] if r["aircraft"]]),
+        "{{TABLE:hotspots}}": _table(["Day"] + names, [[hs[names[0]][i]["day"]] + [hs[n][i]["share"] for n in names]
+                                                         for i in range(len(hs[names[0]]))]),
+        "{{TABLE:types}}": _table(["Type", "Post-exposure aircraft-days", "Share %", "Share of all aircraft-days %", "Ratio"],
+                                  [[r["type"], r["post_exposure"], r["pe_share"], r["all_share"], f'{r["ratio"]}×'] for r in c["types"]["rows"]]),
+        "{{TYPES_TOTAL}}": f'{c["types"]["post_exposure_total"]:,}',
+    }
+
+
 def main():
     data = json.load(open(os.path.join(SRC, "lanes.json"), encoding="utf-8"))
     rows = list(csv.DictReader(open(os.path.join(ROOT, "registry", "sources.csv"), encoding="utf-8")))
@@ -205,8 +236,9 @@ def main():
     fills = {"{{UPDATED}}": e(updated), "{{LANE_COUNT}}": str(len(data["lanes"])),
              "{{STATUS_COUNTS}}": status_counts(data["lanes"]), "{{LANE_GRID}}": lane_grid(data),
              "{{SOURCE_COUNT}}": str(len(rows))}
+    fills.update(chart_fills())
     written = []
-    for name in ("index.html", "methods.html", "validation.html", "404.html"):
+    for name in ("index.html", "map.html", "charts.html", "methods.html", "validation.html", "404.html"):
         meta, body = read_page(name)
         for k, v in fills.items():
             body = body.replace(k, v)
@@ -222,11 +254,17 @@ def main():
         {"title": "Sources · Noise Floor", "description": "Noise Floor's licence registry: every source, its licence and how it may be used.",
          "nav": "sources"}, sources_page(rows), updated))
     written += ["lanes.html", "sources.html"]
-    shutil.copy(os.path.join(SRC, "style.css"), os.path.join(OUT, "style.css"))
+    for f in ("style.css", "map.js", "charts.js"):
+        shutil.copy(os.path.join(SRC, f), os.path.join(OUT, f))
     open(os.path.join(OUT, "robots.txt"), "w", newline="\n").write("User-agent: *\nAllow: /\n")
     open(os.path.join(OUT, "_headers"), "w", newline="\n").write(
         "/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n")
-    expected = set(written) | {"style.css", "robots.txt", "_headers"}
+    for name in written:                      # a duplicate id once broke the charts page (two elements, one anchor)
+        ids = re.findall(r'\sid="([^"]+)"', open(os.path.join(OUT, name), encoding="utf-8").read())
+        dup = sorted({i for i in ids if ids.count(i) > 1})
+        if dup:
+            sys.exit(f"{name}: duplicate ids {dup}")
+    expected = set(written) | {"style.css", "map.js", "charts.js", "robots.txt", "_headers", "data"}
     stray = sorted(set(os.listdir(OUT)) - expected)
     if stray:
         sys.exit(f"unexpected files in site/: {stray} (remove them, or add them to the build)")

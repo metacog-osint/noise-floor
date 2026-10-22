@@ -1,0 +1,63 @@
+<!--{"title": "Charts · Noise Floor", "description": "Charts of the validation cases: an SBAS outage, a geomagnetic storm, minute-level GPS loss, hotspots day by day and aircraft types carrying effects downstream.", "nav": "charts", "head": "<script defer src=\"/charts.js\"></script>"}-->
+<p class="kicker">Charts</p>
+<h1>The validation cases, charted</h1>
+<p class="lede">Each chart is one test from the validation report, drawn from the processed aircraft data. Hover or use the arrow keys for values; every chart also has a table.</p>
+
+<h2 id="egnos">An SBAS outage, from aircraft alone</h2>
+<div class="chart-card">
+  <h3>EGNOS area: 10 m-capable aircraft below 10 m, hourly</h3>
+  <p class="sub">9–25 Oct 2025. The European SBAS service had an outage on 13–17 Oct; aircraft relying on it lost 10 m accuracy. An hour is flagged at 60% or more of capable aircraft across the service area. The baseline starts once five earlier days exist.</p>
+  <div class="chart" data-chart="egnos"></div>
+  <div class="chart-legend"><span><i style="background:var(--series-1)"></i>EGNOS area</span><span><i style="background:var(--series-base)"></i>Baseline (median of earlier days)</span><span><i class="box" style="background:var(--band)"></i>Flagged outage hours</span></div>
+  <details class="table-view"><summary>Table</summary>{{TABLE:egnos}}</details>
+</div>
+
+<h2 id="storm">A storm moves accuracy, not jamming-scale loss</h2>
+<div class="chart-card">
+  <h3>Northern US and southern Canada (43–55°N): 10 m-capable aircraft below 10 m</h3>
+  <p class="sub">Hourly, 11–12 Nov 2025, against the same hours on two quiet days. The G4 storm peaked around 00–06Z on 12 Nov (Kp 8.7).</p>
+  <div class="chart" data-chart="storm10"></div>
+  <div class="chart-legend"><span><i style="background:var(--series-1)"></i>11–12 Nov 2025</span><span><i style="background:var(--series-base)"></i>Quiet days (16 and 22 Oct)</span><span><i class="box" style="background:var(--band)"></i>Storm peak</span></div>
+</div>
+<div class="chart-card">
+  <h3>Same area: aircraft worse than 93 m</h3>
+  <p class="sub">The jamming-scale measure on a 0–10% scale. It stays near zero through the storm: space weather degrades accuracy to tens of metres, rarely past 93 m.</p>
+  <div class="chart" data-chart="storm93"></div>
+  <div class="chart-legend"><span><i style="background:var(--series-1)"></i>11–12 Nov 2025</span><span><i style="background:var(--series-base)"></i>Quiet days (16 and 22 Oct)</span></div>
+  <details class="table-view"><summary>Table (both charts)</summary>{{TABLE:storm}}</details>
+</div>
+
+<h2 id="bay">Minute-level timing</h2>
+<div class="chart-card">
+  <h3>Bay Area and Central Valley: aircraft-hexes with a 93 m-or-worse report, per minute</h3>
+  <p class="sub">22 Sep 2026, 17:30–20:45 UTC, 35.5–38.5°N 123.5–119.5°W. Two bursts: about 18:00Z and 19:52–20:12Z. A public post tied them to a Point Mugu NOTAM window (18:30–20:29Z); the NOTAM text itself is UNVERIFIED. Kp stayed at or below 1.7 all day.</p>
+  <div class="chart" data-chart="bay"></div>
+  <details class="table-view"><summary>Table (minutes with any report)</summary>{{TABLE:bay}}</details>
+</div>
+
+<h2 id="hotspots">Hotspots, day by day</h2>
+<div class="chart-card">
+  <h3>Share of aircraft-hexes worse than 93 m, daily, 9–25 Oct 2025</h3>
+  <p class="sub">Live counts (aircraft degraded after leaving interference elsewhere are left out). Five known interference areas and one quiet high-latitude control; all panels share a 0–60% scale.</p>
+  <div class="multiples" id="hotspot-grid"></div>
+  <details class="table-view"><summary>Table</summary>{{TABLE:hotspots}}</details>
+</div>
+
+<h2 id="types">Which aircraft types carry the effect downstream</h2>
+<div class="chart-card">
+  <h3>Over-representation among aircraft still degraded after leaving interference</h3>
+  <p class="sub">9–25 Oct 2025, {{TYPES_TOTAL}} post-exposure aircraft-days. Ratio = share of post-exposure aircraft-days ÷ share of all aircraft-days; 1× means in line with traffic. Types with at least 40 post-exposure aircraft-days. Why some types stand out is a hypothesis, not a finding: route exposure and avionics both play a part.</p>
+  <div class="chart" data-chart="types"></div>
+  <details class="table-view"><summary>Table</summary>{{TABLE:types}}</details>
+</div>
+
+<h2 id="nisar">NISAR: reading the processor's tables instead of the images</h2>
+<p>Detection maps from the NISAR lane stay private until the method is validated. What can be shown is what the method costs, measured over a 30-day regional run.</p>
+<div class="tiles">
+  <div class="tile"><div class="label">Radar image files</div><div class="value">~24 GB/day</div><div class="note">what an image-based watch would stream</div></div>
+  <div class="tile"><div class="label">Processor RFI tables</div><div class="value">~0.85 GB/day</div><div class="note">what the table method reads (measured)</div></div>
+  <div class="tile"><div class="label">First-pass screen</div><div class="value">~1.4 MB/day</div><div class="note">one small QA file per pass</div></div>
+</div>
+<p class="small">How the detectors work: <a href="/methods#nisar">Methods</a>. Validation, including what failed: <a href="/validation#nisar">Validation</a>.</p>
+
+<p class="small">Data: aggregates from the <a href="https://www.adsb.lol/">adsb.lol</a> daily archive (ODbL 1.0), published under ODbL with attribution: <a href="/data/charts.json">charts.json</a>. Method: <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">method card</a>.</p>
