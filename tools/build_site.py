@@ -32,8 +32,8 @@ STATUS = {  # key: (label, css class, one-line meaning)
     "prototype": ("Prototype", "st-prototype", "a first result, not yet a product"),
     "planned": ("Planned", "st-planned", "designed, not built"),
 }
-NAV = [("home", "Home", "index.html"), ("lanes", "Lanes", "lanes.html"), ("methods", "Methods", "methods.html"),
-       ("validation", "Validation", "validation.html"), ("sources", "Sources", "sources.html")]
+NAV = [("home", "Home", ""), ("lanes", "Lanes", "lanes"), ("methods", "Methods", "methods"),
+       ("validation", "Validation", "validation"), ("sources", "Sources", "sources")]
 USE = {  # registry `use` values in plain words
     "ingest": "Feeds a layer", "ingest-after-ok": "After permission", "visual-only": "Visual comparison only",
     "cite-only": "Cited, not ingested", "later": "Later phase", "exclude": "Excluded", "private-watch": "Private watch only",
@@ -64,7 +64,7 @@ PAGE = """<!doctype html>
 </main>
 <footer class="site"><div class="in">
 <p>A project of The Intelligence Company. Updated {updated}. <a href="{repo}">Source code</a> (MIT).</p>
-<p>ADS-B data: <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources.html">Sources</a>.</p>
+<p>ADS-B data: <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources">Sources</a>.</p>
 </div></footer>
 </body>
 </html>
@@ -107,7 +107,7 @@ def lane_grid(data):
         if not lanes:
             continue
         cards = "".join(
-            f'<div class="card">{chip(l["status"])}<h3><a href="lanes.html#{e(l["id"])}">{e(l["name"])}</a></h3>'
+            f'<div class="card">{chip(l["status"])}<h3><a href="/lanes#{e(l["id"])}">{e(l["name"])}</a></h3>'
             f'<p>{e(l["summary"])}</p></div>' for l in lanes)
         out.append(f'<h3>{e(g["name"])}</h3><div class="grid">{cards}</div>')
     return "".join(out)
@@ -215,10 +215,10 @@ def main():
         open(os.path.join(OUT, name), "w", encoding="utf-8", newline="\n").write(
             render(meta, body, updated, narrow=name in ("methods.html", "404.html")))
         written.append(name)
-    open(os.path.join(OUT, "lanes.html"), "w", encoding="utf-8", newline="\n").write(render(
+    open(os.path.join(OUT, "lanes"), "w", encoding="utf-8", newline="\n").write(render(
         {"title": "Lanes · Noise Floor", "description": "Every Noise Floor lane, built and planned: what it measures, how, which sources, and its limits.",
          "nav": "lanes"}, lanes_page(data), updated))
-    open(os.path.join(OUT, "sources.html"), "w", encoding="utf-8", newline="\n").write(render(
+    open(os.path.join(OUT, "sources"), "w", encoding="utf-8", newline="\n").write(render(
         {"title": "Sources · Noise Floor", "description": "Noise Floor's licence registry: every source, its licence and how it may be used.",
          "nav": "sources"}, sources_page(rows), updated))
     written += ["lanes.html", "sources.html"]
