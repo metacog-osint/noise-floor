@@ -38,7 +38,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   It processes each new adsb.lol day, uploads the outputs to the release `pnt-data-YYYY-MM` (ODbL; `<day>.map.json` last,
   as the done marker) and calls `deploy-site.yml`, which adds every release's map files to `site/data/gnss/`
   (`tools/site_days.py`). Rerun or fill days with Actions → daily → Run workflow (`days`, `force`; `reanalyse` reruns only the analyses,
-  with no adsb.lol download, after `pnt_analysis.py` changes). The map page's events panel reads `site/data/events/<day>.json`. GitHub disables
+  with no adsb.lol download, after `pnt_analysis.py` changes). The map page's events panel reads `site/data/events/<day>.json`;
+  the charts page's daily trend reads `site/data/trend.json` (both built at deploy for daily days). The 20 validated days are
+  in the releases too (`pnt-data-2025-10`, `-2025-11`, `-2026-09`; uploaded with `daily_job.py ... --upload-local`). GitHub disables
   scheduled workflows after 60 days without a push to the repo.
 
 ## History

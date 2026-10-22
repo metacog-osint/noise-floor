@@ -170,6 +170,7 @@ button.linkish { font: inherit; font-size: .88rem; color: var(--acc); background
 .chart-tip .r i { display: inline-block; width: 12px; height: 2px; border-radius: 1px; }
 .multiples { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .8rem 1rem; }
 .multiples h4 { margin: 0 0 .1rem; font-size: .88rem; font-weight: 600; }
+.multiples h4 .bx { display: block; font-weight: 400; font-size: .76rem; color: var(--mut); }
 details.table-view { margin-top: .5rem; }
 details.table-view summary { cursor: pointer; color: var(--acc); font-size: .88rem; }
 details.table-view .tw { max-height: 22rem; overflow: auto; }

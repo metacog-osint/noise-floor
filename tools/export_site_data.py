@@ -3,6 +3,7 @@
 
   python tools/export_site_data.py      # writes site/data/gnss/*.json, site/data/events/*.json, charts.json, land.json
   python tools/export_site_data.py --map-day 2026-10-21 OUT.json   # one day's map file (the daily workflow)
+  python tools/export_site_data.py --hotspot-day 2026-10-21 OUT.json   # one day's shares in the named areas
 
 Everything written here is derived from the adsb.lol archive and published under ODbL 1.0 with
 attribution (the site footer and map credit it). Only aggregates per H3 hex (no aircraft identifiers)
@@ -121,17 +122,29 @@ def bay():
     return [{"m": m, "t": f"{m // 60:02d}:{m % 60:02d}Z", "aircraft": per.get(m, 0)} for m in range(lo_m, hi_m + 1)]
 
 
+def region_share(rows, box):
+    """Share of aircraft-hexes in a box worse than 93 m, live (post-exposure aircraft left out)."""
+    sel = [r for r in rows if in_box(r, box)]
+    ac, bad = sum(r["aircraft"] for r in sel), sum(r["bad_nacp_live"] for r in sel)
+    return {"share": round(100 * bad / ac, 1) if ac else None, "aircraft_hexes": ac, "bad_live": bad}
+
+
 def hotspots():
     out = {name: [] for name in HOTSPOTS}
     for day in DAYS[:17]:
         rows = daily(day)
         for name in HOTSPOTS:
-            box = SUBREGIONS[name]
-            sel = [r for r in rows if in_box(r, box)]
-            ac = sum(r["aircraft"] for r in sel)
-            out[name].append({"day": day, "share": round(100 * sum(r["bad_nacp_live"] for r in sel) / ac, 1) if ac else None,
-                              "aircraft_hexes": ac})
+            s = region_share(rows, SUBREGIONS[name])
+            out[name].append({"day": day, "share": s["share"], "aircraft_hexes": s["aircraft_hexes"]})
     return out
+
+
+def hotspot_day(day, path):
+    """One day's shares in every named area (tools/validate_phase1.py SUBREGIONS), for the daily trend chart."""
+    rows = daily(day)
+    return write(path, {"day": day, "licence": "ODbL 1.0; derived from adsb.lol",
+                        "measure": "share of aircraft-hexes worse than 93 m, live",
+                        "regions": {name: {**region_share(rows, box), "box": list(box)} for name, box in SUBREGIONS.items()}})
 
 
 def types():
@@ -168,6 +181,10 @@ def main():
     if len(sys.argv) == 4 and sys.argv[1] == "--map-day":
         size, hexes, jam = map_day(sys.argv[2], sys.argv[3])
         print(json.dumps({"day": sys.argv[2], "kb": round(size / 1024), "hexes": hexes, "jam_hexes": jam}))
+        return
+    if len(sys.argv) == 4 and sys.argv[1] == "--hotspot-day":
+        hotspot_day(sys.argv[2], sys.argv[3])
+        print(open(sys.argv[3], encoding="utf-8").read())
         return
     idx = map_days()
     for day in DAYS:                                   # the map page's events panel

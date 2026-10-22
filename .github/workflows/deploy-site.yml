@@ -59,7 +59,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/daily-maps"
           for tag in $(gh release list -R "$GITHUB_REPOSITORY" -L 1000 --json tagName -q '.[].tagName | select(startswith("pnt-data-"))'); do
             gh release download "$tag" -R "$GITHUB_REPOSITORY" -D "$RUNNER_TEMP/daily-maps" --skip-existing \
-              -p '*.map.json' -p '*.anomalies.json' -p '*.bursts.json' -p '*.sbas.json' \
+              -p '*.map.json' -p '*.anomalies.json' -p '*.bursts.json' -p '*.sbas.json' -p '*.hotspots.json' \
               || echo "::warning::no files downloaded from $tag"
           done
           python3 tools/site_days.py "$RUNNER_TEMP/daily-maps"
