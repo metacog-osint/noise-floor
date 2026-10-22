@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 from shapely.geometry import Polygon, box
 
-from . import bands, cmr, detect, geometry as geo, places, product, qa, report, sites, tabdetect, tables
+from . import bands, bbdetect, cmr, detect, geometry as geo, places, product, qa, report, sites, tabdetect, tables
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, "..", ".."))
@@ -184,7 +184,14 @@ def process_granule_tables(g, cfg, fs, fetched=None):
     tab, orb, meta = fetched if fetched is not None else fetch_tables(g, cfg, fs)
     if not tab:
         return {}, meta
-    cands = tabdetect.detect(tab, orb, meta.get("look", "Left"), cfg.get("tables"))
+    look = meta.get("look", "Left")
+    cands = tabdetect.detect(tab, orb, look, cfg.get("tables"))
+    bbc = cfg.get("broadband", {})
+    if bbc.get("enabled", True):
+        bb = bbdetect.detect(tab, orb, look, {"height_m": (cfg.get("tables") or {}).get("height_m", 0.0),
+                                              **{k: v for k, v in bbc.items() if k != "enabled"}})
+        meta["broadband_candidates"] = {b: len(c) for b, c in bb.items()}
+        cands = combine_methods(cands, bb, keep_low=bbc.get("keep_low", False))
     meta["candidates"] = {b: len(c) for b, c in cands.items()}
     return cands, meta
 
@@ -201,6 +208,31 @@ def prefetch(items, cfg, fs, workers):
 
     with ThreadPoolExecutor(max_workers=max(1, workers)) as ex:
         return dict(ex.map(one, items))
+
+
+CONF = ["LOW", "MEDIUM", "HIGH"]
+
+
+def combine_methods(tone, broad, match_km=20.0, keep_low=False):
+    """Per band: a broadband candidate within match_km of a tone candidate becomes evidence on it
+    (and can raise its confidence); the rest become broadband detections (LOW ones dropped unless
+    keep_low, to keep the site table to what can alert)."""
+    out = {}
+    for band in sorted(set(tone) | set(broad)):
+        t = [dict(c) for c in tone.get(band, [])]
+        for b in broad.get(band, []):
+            near = min(t, key=lambda c: geo.km_between(c["lat"], c["lon"], b["lat"], b["lon"]), default=None)
+            if near is not None and geo.km_between(near["lat"], near["lon"], b["lat"], b["lon"]) <= match_km:
+                ev = {k: b[k] for k in ("lat", "lon", "blocks", "peak_ratio_excess_db", "peak_excess_power_db",
+                                        "peak_bb_z", "confidence")}
+                prev = near.get("broadband")
+                if prev is None or ev["blocks"] > prev["blocks"]:
+                    near["broadband"] = ev
+                near["confidence"] = max(near["confidence"], b["confidence"], key=CONF.index)
+            elif keep_low or b["confidence"] != "LOW":
+                t.append(dict(b))
+        out[band] = t
+    return out
 
 
 def merge_table_bands(cands_by_band, g, cfg, pair_km=20.0):
@@ -220,19 +252,34 @@ def merge_table_bands(cands_by_band, g, cfg, pair_km=20.0):
     for main, other, in pairs:
         d = dict(main)
         bl = sorted({main["band"]} | ({other["band"]} if other else set()))
-        runs = main["freq_runs_mhz"] + (other["freq_runs_mhz"] if other else [])
+        runs = main.get("freq_runs_mhz", []) + (other.get("freq_runs_mhz", []) if other else [])
         d["bands"] = bl
         d["freq_runs_mhz"] = runs
-        d["band_text"] = tabdetect.describe_runs(runs) or " + ".join(bl)
-        d["gnss_overlap"] = sorted(set(main["gnss_overlap"]) | set(other["gnss_overlap"] if other else []))
-        lo = [r[0] for r in runs] or [0.0]
-        hi = [r[1] for r in runs] or [0.0]
-        d["freq_low_mhz"], d["freq_high_mhz"] = min(lo), max(hi)
+        # a broadband-only band contributes its whole sub-band (no frequency detail)
+        spans = [(r[0], r[1]) for r in runs]
+        gn = set(main.get("gnss_overlap", [])) | set(other.get("gnss_overlap", []) if other else [])
+        bb_bands = [x["band"] for x in (main, other) if x and x.get("method") == "broadband"]
+        for band in bb_bands:
+            e = bands.band_edges(g.get("mode", "20+5"), band)
+            if e:
+                spans.append(e)
+                gn |= set(bands.gnss_in(*e))
+        texts = [tabdetect.describe_runs(runs)] if runs else []
+        texts += [f"band {b} broadband ({'%.0f-%.0f' % bands.band_edges(g.get('mode', '20+5'), b)} MHz)"
+                  for b in bb_bands if bands.band_edges(g.get("mode", "20+5"), b)]
+        d["band_text"] = "; ".join(t for t in texts if t) or " + ".join(bl)
+        d["gnss_overlap"] = sorted(gn)
+        d["freq_low_mhz"] = min((s[0] for s in spans), default=0.0)
+        d["freq_high_mhz"] = max((s[1] for s in spans), default=0.0)
         d["interpretation"] = tabdetect.interpretation(d)
         if other:
-            d["band_b"] = {k: other[k] for k in ("lat", "lon", "blocks", "peak_hit", "peak_isr_db", "freq_runs_mhz")}
-            d["confidence"] = max(d["confidence"], other["confidence"], key=["LOW", "MEDIUM", "HIGH"].index)
-        d["peak_excess_db"] = d.get("peak_isr_db")       # shared field name; for tables it is the ISR in dB
+            d["band_b"] = {k: other.get(k) for k in ("lat", "lon", "blocks", "peak_hit", "peak_isr_db", "freq_runs_mhz",
+                                                     "method", "peak_ratio_excess_db")}
+            d["confidence"] = max(d["confidence"], other["confidence"], key=CONF.index)
+            if other.get("broadband") and not d.get("broadband"):
+                d["broadband"] = other["broadband"]
+        # shared field: ISR in dB for tones, HV/HH ratio excess in dB for broadband-only detections
+        d["peak_excess_db"] = d.get("peak_isr_db") if main.get("method") == "tables" else main.get("peak_ratio_excess_db")
         d["mean_excess_db"] = None
         d["where"], d["country"] = places.describe(d["lat"], d["lon"])
         d.update({k: g[k] for k in ("granule", "start", "end", "track", "frame", "direction", "stack") if k in g})

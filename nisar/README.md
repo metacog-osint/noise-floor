@@ -39,12 +39,21 @@ These tables are computed on the raw data **before** mitigation, so the image fi
    - Because it is a maximum, one block with a near-zero signal estimate (open water, gaps) can push it to 10^11 or more. So it is only a coarse screen.
    - Passes with every channel below `screen.min_score` (default 10) skip tier 1, unless their frame is due a look (every `screen.every` passes, default 3).
    - Screened passes still count as clean coverage for the site logic.
-2. **Tier 1, flagged passes:** read the RSLC tables and orbit (`tables.py`), then detect (`tabdetect.py`):
+2. **Tier 1, flagged passes:** read the RSLC tables and orbit (`tables.py`), then run two detectors.
+
+   **Tones** (`tabdetect.py`):
    - Score each block by the share of pulses hit at its most-hit frequency bin, ignoring the radar's own tones. **1233.125 MHz** and **1296.002 MHz** were present in every pass we checked, in two regions, and are excluded with ±0.15 MHz.
    - Drop degenerate blocks, where the signal estimate is below 1/1000 of the median.
    - Group hot blocks (≥ 50% of pulses hit) across both polarizations into candidates.
    - Locate each candidate at the centroid of its blocks within 6 dB of the peak RFI power (ratio × signal mean). Turn that time and range into latitude and longitude from the orbit (`geoloc.py`: zero-Doppler, WGS84, configurable terrain height).
    - Report the frequency runs that were hit and the GNSS signals they fall in.
+
+   **Broadband** (`bbdetect.py`), on the per-block signal power, for noise jammers that don't stand out as tones:
+   - Per pass and band, learn the frame's relationship between HH power and the HV/HH power ratio.
+   - Flag blocks whose HV runs well above it. Natural echo is much weaker in HV; an outside vertical or slant-polarized source isn't.
+   - MEDIUM and above also need excess HV power over the frame, and HV within 1 dB of HH at the peak.
+   - Locate at the centroid of the excess HV power.
+   - A broadband candidate within 20 km of a tone candidate becomes evidence on it; the rest become `broadband` detections. There's no frequency detail: the band text names the whole sub-band.
 
 **Why one pass gives a position.** The receive beam confines an emitter's interference to part of the swath in range: about 14 of 53 range blocks on the strongest row at Shiraz. The azimuth beam confines it to a few seconds along track. So a detection is a point with an extent, not a streak needing a second geometry.
 
@@ -72,6 +81,7 @@ python -m nisar_rfi run --quiet               # one summary line, for logs other
 - `method`: `tables` or `image`. The default is `image` if any collection is BETA, otherwise `tables`.
 - `screen.min_score`, `screen.every`.
 - `tables.height_m`: terrain height for geolocation. A wrong height shifts positions across track by about h / tan(incidence), roughly 2 km per 1.5 km of height.
+- `broadband.enabled` (default true), `broadband.keep_low` (default false), plus any `bbdetect.DEFAULTS` key (e.g. `e_min_db`, `x_min_db`).
 - `workers`: parallel table reads, default 4.
 - `cache_tables`: keep each pass's tables (3–7 MB compressed) in `state_dir/cache/`, so detection can be re-run offline.
 
@@ -110,7 +120,7 @@ Everything the run writes is private: it is watch output.
 - **Frame-wide interference.** A strong emitter can light up most of a frame; such candidates are flagged `widespread`, and their position is the power peak only.
 - **The instrument-tone list is empirical.** Two tones from five passes in two regions. Re-check it if detections cluster at one frequency everywhere.
 - **The table method needs tone-rank,** so it covers PROVISIONAL products only.
-- **Broadband jamming may be missed.** Tone-rank flags loud narrowband tones. A noise jammer that raises the whole spectrum may not register, so the table method is strongest on CW and narrowband emitters. This is a hypothesis from a control-area run (see `docs/validation/nisar.md` §4).
+- **Broadband needs the cross-pol signature.** Tone-rank misses noise jammers, and the broadband detector covers them through the HV channel (`docs/validation/nisar.md` §4–5). It has no frequency detail, and it under-detects horizontally polarized sources, which raise HH more than HV.
 - **Radars hop.** Long-range L-band radars hop across 1215–1400 MHz, and NISAR's 25 MHz of slices catch only part of that. A quiet radar site is expected often.
 
 ## Code
@@ -121,7 +131,8 @@ Everything the run writes is private: it is watch output.
 | `qa.py` | Tier 0: per-channel processor scores from the QA files |
 | `tables.py` | Tier 1 reads: RSLC tone-rank tables and orbit; local cache |
 | `geoloc.py` | Radar coordinates to latitude and longitude (and back) from the orbit |
-| `tabdetect.py` | Table method: block scores, instrument tones, candidates, frequency signatures |
+| `tabdetect.py` | Table method, tones: block scores, instrument tones, candidates, frequency signatures |
+| `bbdetect.py` | Table method, broadband: HV/HH power excess on the processor's signal estimate |
 | `product.py`, `detect.py` | Image method: HDF5 reads and cross-pol scoring (BETA) |
 | `sites.py` | Sites, coverage, NEW/RETURNED/QUIET, cross-fixes (image method) |
 | `bands.py` | Sub-band edges and GNSS overlap |

@@ -161,10 +161,15 @@ function detPopup(d){
   ${d.gnss_overlap.length ? `<div class="when" style="margin:2px 0 0">In band: ${esc(d.gnss_overlap.join(', '))}</div>` : ''}
   <div class="int">${esc(d.interpretation)}</div>
   <table>
-    ${d.method === 'tables' ? `
+    ${d.method === 'broadband' ? `
+    <tr><td>HV/HH excess</td><td>${d.peak_ratio_excess_db} dB over the ground's ratio · z ${d.peak_bb_z} · ${esc(d.confidence.toLowerCase())} confidence</td></tr>
+    <tr><td>Excess power</td><td>${d.peak_excess_power_db} dB over the frame (broadband, no frequency detail)</td></tr>
+    <tr><td>Extent</td><td>${d.along_km} km along track × ${d.across_km} km across · ${d.blocks} blocks${d.widespread ? ' · widespread' : ''}</td></tr>
+    ` : d.method === 'tables' ? `
     <tr><td>Pulses hit</td><td>${Math.round(d.peak_hit * 100)}% · ${esc((d.pols || []).join('+'))} · ${esc(d.confidence.toLowerCase())} confidence</td></tr>
     <tr><td>Interference</td><td>${d.peak_isr_db} dB over the signal (processor table)</td></tr>
     <tr><td>Extent</td><td>${d.along_km} km along track × ${d.across_km} km across · ${d.blocks} blocks${d.widespread ? ' · widespread' : ''}</td></tr>
+    ${d.broadband ? `<tr><td>Broadband</td><td>HV/HH +${d.broadband.peak_ratio_excess_db} dB nearby</td></tr>` : ''}
     ` : `
     <tr><td>Cross-pol excess</td><td>peak ${d.peak_excess_db} dB · mean ${d.mean_excess_db} dB</td></tr>
     <tr><td>Anomaly</td><td>peak z ${d.peak_z} · ${esc(d.confidence.toLowerCase())} confidence</td></tr>
