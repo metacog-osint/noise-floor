@@ -265,6 +265,18 @@
     function lon(v) { return Math.abs(v).toFixed(1) + "°" + (v >= 0 ? "E" : "W"); }
     return lat(b[0]) + "–" + lat(b[1]) + ", " + lon(b[2]) + "–" + lon(b[3]);
   }
+  // the scale choice is a per-viewer convenience; storage can be blocked, so fall back to the shared default
+  var trendOwnState = null;
+  function trendOwn() {
+    if (trendOwnState === null) {
+      try { trendOwnState = localStorage.getItem("nf-trend-scale") === "own"; } catch (e) { trendOwnState = false; }
+    }
+    return trendOwnState;
+  }
+  function setTrendOwn(v) {
+    trendOwnState = v;
+    try { localStorage.setItem("nf-trend-scale", v ? "own" : "shared"); } catch (e) { /* this visit only */ }
+  }
   function trend() {
     var grid = document.getElementById("trend-grid"); if (!grid) return;
     var table = document.getElementById("trend-table");
@@ -276,7 +288,19 @@
     var days = TREND.days, names = Object.keys(TREND.regions), all = [];
     document.getElementById("trend-range").textContent = ", " + dayLabel(days[0], true) + " to " + dayLabel(days[days.length - 1], true);
     names.forEach(function (n) { TREND.regions[n].share.forEach(function (v) { if (v !== null) all.push(v); }); });
-    var ymax = Math.max(20, Math.ceil(Math.max.apply(null, all.concat([0])) / 10) * 10);   // next 10%, so the lines keep their shape
+    // shared: one scale for all, rounded up to the next 10%; own: per panel, next 10% and never below 10%, so a quiet
+    // control isn't blown up into noise that looks like a signal
+    var own = trendOwn();
+    var shared = Math.max(20, Math.ceil(Math.max.apply(null, all.concat([0])) / 10) * 10);
+    function scaleFor(r) {
+      if (!own) return shared;
+      var vals = r.share.filter(function (v) { return v !== null; });
+      return Math.max(10, Math.ceil(Math.max.apply(null, vals.concat([0])) / 10) * 10);
+    }
+    document.getElementById("trend-own").checked = own;
+    document.getElementById("trend-scale-note").textContent = own
+      ? "Each panel has its own scale (shown on its axis), so compare levels with the table, not the line heights."
+      : "All panels share one scale, so levels compare directly.";
     var ticks = [{ i: 0, label: dayLabel(days[0]), anchor: "start" }];
     if (days.length > 1) ticks.push({ i: days.length - 1, label: dayLabel(days[days.length - 1]), anchor: "end" });
     names.forEach(function (name) {
@@ -285,7 +309,8 @@
       if (r.box) { var bx = document.createElement("span"); bx.className = "bx"; bx.textContent = boxLabel(r.box); h.appendChild(bx); }
       box.className = "chart"; cell.appendChild(h); cell.appendChild(box); grid.appendChild(cell);
       lineChart(box, {
-        aria: "Daily share of aircraft-hexes worse than 93 m, " + name, height: 150, x: days, unit: "%", yMax: ymax,
+        aria: "Daily share of aircraft-hexes worse than 93 m, " + name + (own ? ", own scale 0–" + scaleFor(r) + "%" : ""),
+        height: 150, x: days, unit: "%", yMax: scaleFor(r),
         series: [{ name: name, values: r.share, color: cssVar("--series-1") }], xTicks: ticks,
         xTitle: function (i) { return dayLabel(days[i], true) + " · " + (r.aircraft_hexes[i] || 0).toLocaleString() + " aircraft-hexes"; }
       });
@@ -314,6 +339,8 @@
     trend();
   }
   trend();
+  var ownBox = document.getElementById("trend-own");
+  if (ownBox) ownBox.addEventListener("change", function () { setTrendOwn(ownBox.checked); trend(); });
   fetch("/data/trend.json").then(function (r) { return r.ok ? r.json() : false; }).catch(function () { return false; })
     .then(function (t) { TREND = t; trend(); });
   fetch("/data/charts.json").then(function (r) { return r.json(); }).then(function (j) {
