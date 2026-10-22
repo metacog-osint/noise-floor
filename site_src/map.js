@@ -171,7 +171,8 @@
     var hot = cellList.filter(function (c) { var e = evaluate(c.d); return e && typeof e.cls === "number" && e.cls >= 2; }).length;
     el.textContent = drawn.toLocaleString() + " hexes with 5 or more aircraft · " + hot.toLocaleString() + " in the top two classes";
     var a = document.getElementById("map-download"); a.href = "/data/gnss/" + state.day + ".json"; a.textContent = "Download " + state.day + " (JSON, ODbL)";
-    var note = document.getElementById("map-day-note"); note.textContent = d && d.note ? d.note : "";
+    var note = document.getElementById("map-day-note");
+    note.textContent = d && d.daily ? "Daily run: automatic, not reviewed by a person" : d && d.note ? d.note : "";
   }
   function writeHash() { history.replaceState(null, "", "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "")); }
 
@@ -206,14 +207,22 @@
     });
     readColors();
     var sel = document.getElementById("map-day");
-    days.forEach(function (d) {
-      var o = document.createElement("option"); o.value = d.day;
-      o.textContent = d.day + (d.note ? " · " + d.note : ""); sel.appendChild(o);
+    var daily = days.filter(function (d) { return d.daily; }).reverse();        // newest first
+    var tested = days.filter(function (d) { return !d.daily; });
+    [["Daily (automatic)", daily], ["Validated test days", tested]].forEach(function (g) {
+      if (!g[1].length) return;
+      var og = document.createElement("optgroup"); og.label = g[0];
+      g[1].forEach(function (d) {
+        var o = document.createElement("option"); o.value = d.day;
+        o.textContent = d.day + (d.note ? " · " + d.note : ""); og.appendChild(o);
+      });
+      sel.appendChild(og);
     });
+    var latest = days.length ? days[days.length - 1].day : null;          // days.json is sorted by day
     function fromHash() {
       var hp = {}; location.hash.replace(/^#/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) hp[p[0]] = decodeURIComponent(p[1] || ""); });
       state.measure = MEASURES[hp.m] ? hp.m : "jam"; state.raw = hp.raw === "1";
-      var d = days.some(function (x) { return x.day === hp.day; }) ? hp.day : "2025-10-23";
+      var d = days.some(function (x) { return x.day === hp.day; }) ? hp.day : latest;
       sel.value = d;
       document.querySelectorAll('input[name="measure"]').forEach(function (r) { r.checked = r.value === state.measure; });
       document.getElementById("map-raw").checked = state.raw;

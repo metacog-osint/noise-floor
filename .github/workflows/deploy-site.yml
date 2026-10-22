@@ -1,6 +1,9 @@
 name: deploy-site
-# Deploys site/ to Cloudflare Pages (project noise-floor) by direct upload after CI passes on main.
-# Replaces Cloudflare's Git-triggered builds, which have stuck in "queued" since 15 Oct 2026.
+# Deploys site/ to Cloudflare Pages (project noise-floor) by direct upload:
+#   - after CI passes on main (the commit must still be the tip of main);
+#   - when the daily workflow has published a new day, or by hand (the newest commit on main that passed CI).
+# Every deploy adds the daily map files from the pnt-data-* releases (tools/site_days.py), so a code push
+# never drops them. Replaces Cloudflare's Git-triggered builds, which stuck in "queued" from 15 Oct 2026.
 # Needs repo secrets CLOUDFLARE_PAGES_TOKEN (Cloudflare Pages: Edit only) and CLOUDFLARE_ACCOUNT_ID;
 # skips without them.
 on:
@@ -8,36 +11,67 @@ on:
     workflows: [ci]
     types: [completed]
     branches: [main]
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: deploy-site
-  cancel-in-progress: false
+  actions: read
 jobs:
   deploy:
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-site
+      cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - name: Pick the commit
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          HAVE_SECRETS: ${{ secrets.CLOUDFLARE_PAGES_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [ "$HAVE_SECRETS" != "true" ]; then
+            echo "Cloudflare secrets not set; skipping deploy"; exit 0
+          fi
+          TIP="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)"
+          if [ -n "$RUN_SHA" ]; then
+            # a slow CI run for an older commit must not roll the site back
+            if [ "$TIP" != "$RUN_SHA" ]; then
+              echo "Not the current tip of main ($TIP); skipping deploy"; exit 0
+            fi
+            SHA="$RUN_SHA"
+          else
+            SHA="$(gh run list -R "$GITHUB_REPOSITORY" -w ci -b main -e push -s success -L 1 --json headSha -q '.[0].headSha')"
+          fi
+          echo "Deploying $SHA"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - if: steps.pick.outputs.sha != ''
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-      - uses: actions/setup-node@v4
+          ref: ${{ steps.pick.outputs.sha }}
+      - name: Add the daily map files
+        if: steps.pick.outputs.sha != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/daily-maps"
+          for tag in $(gh release list -R "$GITHUB_REPOSITORY" -L 1000 --json tagName -q '.[].tagName | select(startswith("pnt-data-"))'); do
+            gh release download "$tag" -R "$GITHUB_REPOSITORY" -p '*.map.json' -D "$RUNNER_TEMP/daily-maps" --skip-existing \
+              || echo "::warning::no map files downloaded from $tag"
+          done
+          python3 tools/site_days.py "$RUNNER_TEMP/daily-maps"
+      - if: steps.pick.outputs.sha != ''
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Deploy site/ to Cloudflare Pages
+        if: steps.pick.outputs.sha != ''
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          SHA: ${{ github.event.workflow_run.head_sha }}
+          SHA: ${{ steps.pick.outputs.sha }}
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "Cloudflare secrets not set; skipping deploy"; exit 0
-          fi
-          # a slow CI run for an older commit must not roll the site back
-          HEAD_SHA="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)"
-          if [ "$HEAD_SHA" != "$SHA" ]; then
-            echo "Not the current tip of main ($HEAD_SHA); skipping deploy"; exit 0
-          fi
           npx --yes wrangler@4.151.3 pages deploy site --project-name noise-floor --branch main \
             --commit-hash "$SHA" --commit-message "deploy-site $SHA" --commit-dirty=true
