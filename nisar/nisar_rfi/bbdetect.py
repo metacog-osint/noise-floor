@@ -139,8 +139,10 @@ def detect(tables, orbit, look="Left", cfg=None):
                 ri = float(np.sum(w * r[cols]) / w.sum())
                 peak_excess_db = None
             lat, lon = (float(v) for v in geoloc.rdr2geo(orb, ti, ri, h=cfg["height_m"], look=look))
-            tb = [t[rows.min()], t[rows.min()], t[rows.max()], t[rows.max()]]
-            rb = [r[cols.min()], r[cols.max()], r[cols.max()], r[cols.min()]]
+            dt = float(np.median(np.diff(t))) / 2 if len(t) > 1 else 0.0      # pad by half a block
+            dr = float(np.median(np.diff(r))) / 2 if len(r) > 1 else 0.0
+            tb = [t[rows.min()] - dt, t[rows.min()] - dt, t[rows.max()] + dt, t[rows.max()] + dt]
+            rb = [r[cols.min()] - dr, r[cols.max()] + dr, r[cols.max()] + dr, r[cols.min()] - dr]
             olat, olon = geoloc.rdr2geo(orb, tb, rb, h=cfg["height_m"], look=look)
             outline = [[round(float(a), 4), round(float(b), 4)] for a, b in zip(olon, olat)]
             outline.append(outline[0])

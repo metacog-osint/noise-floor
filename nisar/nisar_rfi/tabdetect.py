@@ -122,8 +122,10 @@ def detect(tables, orbit, look="Left", cfg=None):
             lat, lon = geoloc.rdr2geo(orb, ti, ri, h=cfg["height_m"], look=look)
             lat, lon = float(lat), float(lon)
             # outline: geolocated corners of the candidate's bounding box in radar coordinates
-            tb = [t[rows.min()], t[rows.min()], t[rows.max()], t[rows.max()]]
-            rb = [r[cols.min()], r[cols.max()], r[cols.max()], r[cols.min()]]
+            dt = float(np.median(np.diff(t))) / 2 if len(t) > 1 else 0.0      # pad by half a block
+            dr = float(np.median(np.diff(r))) / 2 if len(r) > 1 else 0.0
+            tb = [t[rows.min()] - dt, t[rows.min()] - dt, t[rows.max()] + dt, t[rows.max()] + dt]
+            rb = [r[cols.min()] - dr, r[cols.max()] + dr, r[cols.max()] + dr, r[cols.min()] - dr]
             olat, olon = geoloc.rdr2geo(orb, tb, rb, h=cfg["height_m"], look=look)
             outline = [[round(float(a), 4), round(float(b), 4)] for a, b in zip(olon, olat)]
             outline.append(outline[0])
@@ -189,7 +191,8 @@ def interpretation(d):
     """One line on what a table detection's frequencies are consistent with. A hint, not attribution."""
     if d.get("method") == "broadband":
         g = d.get("gnss_overlap") or []
-        txt = (f"Broadband power across {d.get('band_text', 'the sub-band')}, with the cross-polarized channel "
+        span = (d.get("band_text") or "the sub-band").replace(" broadband", "")
+        txt = (f"Broadband power across {span}, with the cross-polarized channel "
                f"{d.get('peak_ratio_excess_db')} dB above the ground's HV/HH ratio and no loud tones. ")
         txt += ("Consistent with a noise jammer covering " + ", ".join(g) + "; a wideband radar or other emitter is also possible."
                 if g else "Consistent with a wideband emitter; no GNSS signal in this slice.")

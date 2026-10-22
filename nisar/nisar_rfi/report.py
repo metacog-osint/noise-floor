@@ -186,7 +186,8 @@ def write_map(state, cfg, now, path, demo=False, truth=None):
             sites.append({**{k: v for k, v in s.items() if k != "detections"}, "detections_meta": m})
     passes = [{"granule": g, **{k: v.get(k) for k in ("start", "track", "frame", "direction", "mode", "footprint",
                                                        "detections", "status")},
-               "rfi_likelihood": (v.get("rfi") or {}).get("likelihood", {})}
+               "rfi_likelihood": (v.get("rfi") or {}).get("likelihood", {}),
+               "rfi_kind": (v.get("rfi") or {}).get("kind")}
               for g, v in state["processed"].items() if v.get("start", "") >= cut and v.get("footprint")]
     mode = next((p["mode"] for p in passes if p.get("mode")), "20+5")
     bt = {f: f"{lo:.0f}–{hi:.0f} MHz" + (f" ({', '.join(bands.gnss_in(lo, hi))})" if bands.gnss_in(lo, hi) else "")

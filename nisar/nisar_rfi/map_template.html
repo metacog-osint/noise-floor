@@ -121,6 +121,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
 const DATA = /*__DATA__*/null;
 const BANDCOL = {A: getCss('--a'), B: getCss('--b'), AB: getCss('--ab')};
 function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+// processor RFI score in its own units: max interference-to-signal ratio (tone-rank) in dB, else a fraction in %
+function fmtFlag(lk, kind, sep){ return Object.entries(lk || {}).filter(([c, v]) => kind !== 'max_isr' || v > 0)
+  .map(([c, v]) => kind === 'max_isr' ? `${c} ${(10 * Math.log10(v)).toFixed(0)} dB` : `${c} ${(v * 100).toFixed(1)}%`).join(sep); }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const bandKey = b => b.length > 1 ? 'AB' : b[0];
 // Stored in UTC; shown in Central time with the zone named.
@@ -132,7 +135,7 @@ const PP = {maxWidth: 300, autoPanPaddingTopLeft: L.point(12, 175), autoPanPaddi
 
 if (DATA.demo) { document.getElementById('demo').style.display = 'block'; document.getElementById('top').style.top = 'calc(26px + env(safe-area-inset-top))'; }
 document.getElementById('t-h').textContent = `L-band RFI · ${DATA.aoi.name}`;
-document.getElementById('t-sub').textContent = `NISAR GCOV · updated ${fmtT(DATA.generated)}`;
+document.getElementById('t-sub').textContent = `NISAR L-band · updated ${fmtT(DATA.generated)}`;
 
 const map = L.map('map', {zoomControl: true, attributionControl: true, worldCopyJump: false, preferCanvas: false})
   .setView(DATA.aoi.center, 6);
@@ -154,7 +157,7 @@ function detVisible(d){ return inWindow(d.start) && d.bands.some(b => bandsOn.ha
 
 function detPopup(d){
   const k = bandKey(d.bands);
-  const lk = Object.entries(d.rfi_likelihood || {}).map(([c, v]) => `${c} ${(v * 100).toFixed(1)}%`).join(', ') || 'n/a';
+  const lk = fmtFlag(d.rfi_likelihood, d.rfi_kind, ', ') || 'n/a';
   return `<div class="pp"><h3>${esc(d.where || (d.lat + ', ' + d.lon))}</h3>
   <div class="when">${esc(fmtT(d.start))} · track ${d.track} ${d.direction === 'A' ? 'ascending' : 'descending'} · frame ${d.frame}</div>
   <div class="band"><span class="dot" style="background:${BANDCOL[k]}"></span>${esc(d.band_text)}</div>
@@ -167,7 +170,7 @@ function detPopup(d){
     <tr><td>Extent</td><td>${d.along_km} km along track × ${d.across_km} km across · ${d.blocks} blocks${d.widespread ? ' · widespread' : ''}</td></tr>
     ` : d.method === 'tables' ? `
     <tr><td>Pulses hit</td><td>${Math.round(d.peak_hit * 100)}% · ${esc((d.pols || []).join('+'))} · ${esc(d.confidence.toLowerCase())} confidence</td></tr>
-    <tr><td>Interference</td><td>${d.peak_isr_db} dB over the signal (processor table)</td></tr>
+    <tr><td>Interference</td><td>interference-to-signal ${d.peak_isr_db} dB (processor table)</td></tr>
     <tr><td>Extent</td><td>${d.along_km} km along track × ${d.across_km} km across · ${d.blocks} blocks${d.widespread ? ' · widespread' : ''}</td></tr>
     ${d.broadband ? `<tr><td>Broadband</td><td>HV/HH +${d.broadband.peak_ratio_excess_db} dB nearby</td></tr>` : ''}
     ` : `
@@ -214,6 +217,17 @@ function draw(){
   DATA.detections.filter(detVisible).sort((a, b) => a.start < b.start ? -1 : 1).forEach(d => {
     const k = bandKey(d.bands), col = BANDCOL[k];
     const op = {HIGH: .6, MEDIUM: .45, LOW: .25}[d.confidence] ?? .3;
+    if (d.method === 'tables' || d.method === 'broadband') {
+      // table detections: the box is the extent of hot blocks (can be 100+ km), the dot is the located position
+      L.polygon(d.outline.map(([x, y]) => [y, x]), {color: col, weight: .8, opacity: .35, dashArray: '2 4', fill: false,
+        interactive: false}).addTo(gDet);
+      const mk = L.circleMarker([d.lat, d.lon], {radius: {HIGH: 7, MEDIUM: 5.5, LOW: 4}[d.confidence] ?? 5,
+        color: d.method === 'broadband' ? '#fff' : '#0b0d10', weight: d.method === 'broadband' ? 1.5 : 1,
+        fillColor: col, fillOpacity: Math.min(.95, op + .35), dashArray: d.confidence === 'LOW' ? '2 2' : null})
+        .addTo(gDet).bindPopup(detPopup(d), PP);
+      detLayers[d.id] = mk;
+      return;
+    }
     const glow = L.polygon(d.outline.map(([x, y]) => [y, x]), {stroke: false, fillColor: col, fillOpacity: op, className: 'blob', interactive: false}).addTo(gDet);
     const edge = L.polygon(d.outline.map(([x, y]) => [y, x]), {color: col, weight: 1.2, opacity: .9, fill: true, fillOpacity: .01,
       dashArray: d.confidence === 'LOW' ? '3 3' : null}).addTo(gDet).bindPopup(detPopup(d), PP);
@@ -261,7 +275,7 @@ function renderSheet(){
     }).join('') || '<div class="empty">No sites in this window.</div>';
   } else if (tab === 'passes') {
     L_.innerHTML = passes.sort((a, b) => a.start < b.start ? 1 : -1).map(p => {
-      const lk = Object.entries(p.rfi_likelihood || {}).map(([c, v]) => `${c} ${(v * 100).toFixed(0)}%`).join(' ');
+      const lk = fmtFlag(p.rfi_likelihood, p.rfi_kind, ' ');
       return `<div class="row" data-pass="${esc(p.granule)}"><div class="m"><div class="t1">T${p.track} ${p.direction === 'A' ? 'asc' : 'desc'} · frame ${p.frame}</div>
       <div class="t2">${esc(p.mode || '')} MHz · processor flag ${esc(lk || 'n/a')}${p.status === 'error' ? ' · <b style="color:var(--ab)">error</b>' : ''}</div></div>
       <div class="r">${fmtT(p.start)}<br>${p.detections ? `<span class="tag active">${p.detections} det</span>` : '<span class="tag">clean</span>'}</div></div>`;
@@ -275,7 +289,7 @@ function renderSheet(){
       <p class="sub" style="color:var(--mut)">${esc(DATA.footer || '')}</p></div>`;
   }
   const focus = () => { document.getElementById('sheet').classList.add('min'); grab.setAttribute('aria-expanded', 'false'); };
-  L_.querySelectorAll('[data-det]').forEach(r => r.onclick = () => { const l = detLayers[r.dataset.det]; if (l) { focus(); map.fitBounds(l.getBounds(), {maxZoom: 9, paddingTopLeft: [16, 170], paddingBottomRight: [16, 120]}); setTimeout(() => l.openPopup(), 350); } });
+  L_.querySelectorAll('[data-det]').forEach(r => r.onclick = () => { const l = detLayers[r.dataset.det]; if (l) { focus(); if (l.getLatLng) map.setView(l.getLatLng(), 8); else map.fitBounds(l.getBounds(), {maxZoom: 9, paddingTopLeft: [16, 170], paddingBottomRight: [16, 120]}); setTimeout(() => l.openPopup(), 350); } });
   L_.querySelectorAll('[data-site]').forEach(r => r.onclick = () => { const m = siteLayers[r.dataset.site]; if (m) { focus(); map.setView(m.getLatLng(), 9); setTimeout(() => m.openPopup(), 350); } });
   L_.querySelectorAll('[data-pass]').forEach(r => r.onclick = () => { const p = DATA.passes.find(x => x.granule === r.dataset.pass); if (p) { focus(); map.fitBounds(p.footprint.map(([x, y]) => [y, x]), {paddingTopLeft: [16, 170], paddingBottomRight: [16, 120]}); } });
 }
