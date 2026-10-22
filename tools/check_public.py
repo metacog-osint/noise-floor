@@ -8,6 +8,8 @@ file, for CI). Terms are case-insensitive substrings, one per line, from the FOR
 Usage
   python tools/check_public.py          # staged files (pre-commit)
   python tools/check_public.py --all    # all tracked files
+  python tools/check_public.py --message .git/COMMIT_EDITMSG   # a commit message (commit-msg hook)
+  python tools/check_public.py --log    # every commit message in the history (CI)
 """
 import gzip, os, subprocess, sys
 
@@ -31,8 +33,27 @@ def main():
     if not ts:
         print("check_public: no term list (FORBIDDEN_TERMS or private/forbidden_terms.txt) — refusing to pass.", file=sys.stderr)
         return 1
+    if "--message" in sys.argv:              # commit-msg hook: the message being committed
+        path = sys.argv[sys.argv.index("--message") + 1]
+        text = open(path, encoding="utf-8", errors="replace").read().lower()
+        n = sum(1 for t in ts if t in text)
+        if n:
+            print(f"check_public: the commit message contains {n} private term(s); edit it and commit again.", file=sys.stderr)
+            return 1
+        return 0
+    if "--log" in sys.argv:                  # CI: every commit message in the history (needs a full clone)
+        bad = []
+        for rec in git("log", "--format=%H%x00%B%x1e").decode("utf-8", "replace").split("\x1e"):
+            sha, _, body = rec.strip().partition("\x00")
+            if sha and any(t in body.lower() for t in ts):
+                bad.append(sha[:10])
+        if bad:
+            print(f"check_public: {len(bad)} commit message(s) contain private terms: {' '.join(bad)}", file=sys.stderr)
+            return 1
+        print(f"check_public: commit messages OK ({len(git('rev-list', 'HEAD').split())} commits, {len(ts)} terms)")
+        return 0
     every = "--all" in sys.argv
-    names = (git("ls-files", "-z") if every else git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z")).decode().split("\0")
+    names =(git("ls-files", "-z") if every else git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z")).decode().split("\0")
     hits = []
     for n in filter(None, names):
         for t in ts:
