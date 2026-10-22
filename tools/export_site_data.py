@@ -2,6 +2,7 @@
 """Export public visual data for the site from the processed GNSS days (data/pnt/, gitignored).
 
   python tools/export_site_data.py      # writes site/data/gnss/*.json, site/data/charts.json, site/data/land.json
+  python tools/export_site_data.py --map-day 2026-10-21 OUT.json   # one day's map file (the daily workflow)
 
 Everything written here is derived from the adsb.lol archive and published under ODbL 1.0 with
 attribution (the site footer and map credit it). Only aggregates per H3 hex (no aircraft identifiers)
@@ -20,6 +21,7 @@ import pyarrow.parquet as pq
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 from validate_phase1 import SUBREGIONS, in_box  # noqa: E402
+from site_days import stats  # noqa: E402
 
 DAILY = os.path.join(ROOT, "data", "pnt", "daily")
 ANALYSIS = os.path.join(ROOT, "data", "pnt", "analysis")
@@ -54,17 +56,21 @@ def write(path, obj):
     return os.path.getsize(path)
 
 
+def map_day(day, path):
+    """One day's map file: hexes with 3+ aircraft. Returns (bytes, hexes with 5+ aircraft, jamming-scale hexes)."""
+    rows = [r for r in daily(day) if r["aircraft"] >= 3]
+    obj = {"day": day, "licence": "ODbL 1.0; derived from adsb.lol",
+           "cols": ["h3", "aircraft", "bad_live", "bad_raw", "capable", "capable_bad10"],
+           "cells": [[r["h3"], r["aircraft"], r["bad_nacp_live"], r["bad_nacp"], r["capable"], r["cap_bad_acc10"]] for r in rows]}
+    hexes, jam = stats(obj)
+    return write(path, obj), hexes, jam
+
+
 def map_days():
     index = []
     for day in DAYS:
-        rows = [r for r in daily(day) if r["aircraft"] >= 3]
-        cells = [[r["h3"], r["aircraft"], r["bad_nacp_live"], r["bad_nacp"], r["capable"], r["cap_bad_acc10"]] for r in rows]
-        size = write(os.path.join(OUT, "gnss", f"{day}.json"),
-                     {"day": day, "licence": "ODbL 1.0; derived from adsb.lol", "cols": ["h3", "aircraft", "bad_live", "bad_raw",
-                                                                                         "capable", "capable_bad10"], "cells": cells})
-        n5 = [r for r in rows if r["aircraft"] >= 5]
-        jam = sum(1 for r in n5 if 100 * max(r["bad_nacp_live"] - 1, 0) / r["aircraft"] >= 10)
-        index.append({"day": day, "note": NOTES.get(day, ""), "hexes": len(n5), "jam_hexes": jam, "kb": round(size / 1024)})
+        size, hexes, jam = map_day(day, os.path.join(OUT, "gnss", f"{day}.json"))
+        index.append({"day": day, "note": NOTES.get(day, ""), "hexes": hexes, "jam_hexes": jam, "kb": round(size / 1024)})
     write(os.path.join(OUT, "gnss", "days.json"), index)
     return index
 
@@ -159,6 +165,10 @@ def land():
 
 
 def main():
+    if len(sys.argv) == 4 and sys.argv[1] == "--map-day":
+        size, hexes, jam = map_day(sys.argv[2], sys.argv[3])
+        print(json.dumps({"day": sys.argv[2], "kb": round(size / 1024), "hexes": hexes, "jam_hexes": jam}))
+        return
     idx = map_days()
     charts = {"licence": "ODbL 1.0; derived from adsb.lol (data/pnt). Aggregates only.",
               "egnos": egnos(), "storm": storm(), "bay": bay(), "hotspots": hotspots(), "types": types()}

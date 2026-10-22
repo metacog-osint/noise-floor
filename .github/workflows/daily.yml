@@ -1,0 +1,48 @@
+name: daily
+# Phase 2: process each new adsb.lol day (pipeline/daily_job.py), publish the outputs as assets on this repo's
+# release pnt-data-YYYY-MM (ODbL 1.0), then redeploy the site so the map shows the day.
+# adsb.lol publishes day D at about 03:30 UTC on D+1. Each run checks the last 7 days and fills any gap.
+on:
+  schedule:
+    - cron: "40 5 * * *"     # 05:40 UTC = 00:40 CDT / 23:40 CST
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days to process: YYYY-MM-DD or START:END, space-separated. Empty = the latest missing days."
+        required: false
+        default: ""
+      force:
+        description: "Redo days that are already published"
+        type: boolean
+        default: false
+permissions:
+  contents: write    # create the monthly data releases and upload assets
+  actions: read      # the deploy job looks up the newest commit that passed CI
+concurrency:
+  group: daily
+  cancel-in-progress: false
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    outputs:
+      changed: ${{ steps.run.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Process and publish new days
+        id: run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ inputs.days }}
+          FORCE: ${{ inputs.force && '--force' || '' }}
+        run: python pipeline/daily_job.py $DAYS $FORCE
+  deploy:
+    needs: process
+    if: ${{ !cancelled() && needs.process.outputs.changed == 'true' }}
+    uses: ./.github/workflows/deploy-site.yml
+    secrets: inherit
