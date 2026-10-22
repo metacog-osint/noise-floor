@@ -76,6 +76,11 @@ def main():
         assert tr["regions"]["A"] == {"box": [1, 2, 3, 4], "share": [10.0, 12.5], "aircraft_hexes": [100, 80]}, tr
         assert tr["regions"]["B"]["share"] == [None, None] and tr["regions"]["B"]["box"] == [5, 6, 7, 8], tr
         assert S.write_trend(["2026-10-19"], src, os.path.join(tmp, "none.json")) == 0 and not os.path.exists(os.path.join(tmp, "none.json"))
+        # a missing calendar day becomes a gap, not a joined line
+        write(os.path.join(src, "2026-10-18.hotspots.json"), {"regions": {"A": {"share": 8.0, "aircraft_hexes": 90, "box": [1, 2, 3, 4]}}})
+        assert S.write_trend(["2026-10-18", "2026-10-20"], src, tp) == 2
+        tr = json.load(open(tp))
+        assert tr["days"] == ["2026-10-18", "2026-10-19", "2026-10-20"] and tr["regions"]["A"]["share"] == [8.0, None, 10.0], tr
         print("test_site_days: ok")
     finally:
         shutil.rmtree(tmp)

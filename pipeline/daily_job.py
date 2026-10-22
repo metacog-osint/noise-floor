@@ -19,8 +19,9 @@ Usage
   python pipeline/daily_job.py 2026-09-22 --raw-dir data/raw/adsblol --no-upload   # local test: no download, no upload
   python pipeline/daily_job.py 2026-10-07:2026-10-21 --reanalyse    # rerun only the analyses on published days
   python pipeline/daily_job.py 2025-10-09:2025-10-25 --upload-local # publish days already processed on this PC
+  python pipeline/daily_job.py 2025-11-01:2025-11-30 --skip-analysis  # backfill phase 1 (.github/workflows/backfill.yml)
 """
-import argparse, json, os, shutil, subprocess, sys, time, traceback
+import argparse, json, os, shutil, subprocess, sys, time, traceback, urllib.request
 from datetime import date, datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -78,6 +79,25 @@ def assets(repo, tag):
     return _ASSETS[(repo, tag)]
 
 
+def download(repo, tag, name, folder, size=None):
+    """Fetch a public release asset by its plain download link (not the REST API, so no API rate limit)."""
+    os.makedirs(folder, exist_ok=True)
+    url, dest = f"https://github.com/{repo}/releases/download/{tag}/{name}", os.path.join(folder, name)
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "noise-floor"}), timeout=120) as r, \
+                    open(dest + ".part", "wb") as f:
+                shutil.copyfileobj(r, f, 8 << 20)
+            if size is not None and os.path.getsize(dest + ".part") != size:
+                raise IOError(f"{name}: got {os.path.getsize(dest + '.part')} bytes, release says {size}")
+            os.replace(dest + ".part", dest)
+            return dest
+        except Exception:
+            if attempt == 3:
+                raise
+            time.sleep(10 * (attempt + 1))
+
+
 def download_raw(day):
     repo, tag = upstream(day)
     up = assets(repo, tag) or {}
@@ -85,12 +105,8 @@ def download_raw(day):
     if not parts:
         return None
     raw = os.path.join(WORK, day)
-    os.makedirs(raw, exist_ok=True)
-    gh("release", "download", tag, "-R", repo, "-p", f"{tag}.tar*", "-D", raw, "--clobber")
-    for n, size in parts.items():
-        got = os.path.getsize(os.path.join(raw, n))
-        if got != size:
-            raise RuntimeError(f"{n}: downloaded {got} bytes, release says {size}")
+    for n, size in sorted(parts.items()):
+        download(repo, tag, n, raw, size)
     return raw
 
 
@@ -100,9 +116,9 @@ def fetch_history(day):
     for k in range(1, A.BASE_WINDOW + 1):
         d = (d0 - timedelta(days=k)).isoformat()
         for folder, name in ((DAILY, f"{d}.hourly.parquet"), (DAILY, f"{d}.minute.parquet"), (ANALYSIS, f"{d}.sbas.json")):
-            if not os.path.exists(os.path.join(folder, name)) and name in (assets(REPO, data_tag(d)) or {}):
-                os.makedirs(folder, exist_ok=True)
-                gh("release", "download", data_tag(d), "-R", REPO, "-p", name, "-D", folder, "--clobber")
+            have = None if os.path.exists(os.path.join(folder, name)) else (assets(REPO, data_tag(d)) or {})
+            if have and name in have:
+                download(REPO, data_tag(d), name, folder, have[name])
                 got += 1
     return got
 
@@ -112,13 +128,14 @@ def outputs(day):
             + [os.path.join(ANALYSIS, f"{day}.{k}") for k in ("sbas.json", "anomalies.json", "bursts.json")])
 
 
-def upload(day):
+def upload(day, with_analysis=True):
     tag = data_tag(day)
     if assets(REPO, tag) is None:
         gh("release", "create", tag, "-R", REPO, "--title", f"GNSS degradation data, {day[:7]}",
            "--notes", NOTES.format(month=day[:7]), "--latest=false")
         _ASSETS[(REPO, tag)] = {}
-    gh("release", "upload", tag, "-R", REPO, "--clobber", *outputs(day), os.path.join(SITE, f"{day}.hotspots.json"))
+    files = outputs(day) if with_analysis else outputs(day)[:4]
+    gh("release", "upload", tag, "-R", REPO, "--clobber", *files, os.path.join(SITE, f"{day}.hotspots.json"))
     gh("release", "upload", tag, "-R", REPO, "--clobber", os.path.join(SITE, f"{day}.map.json"))   # last: marks done
     _ASSETS.pop((REPO, tag), None)
 
@@ -139,18 +156,18 @@ def analyse(day):
 def reanalyse(day, a):
     """Rerun only the analyses on a published day (after the analysis code changes): no adsb.lol download."""
     t0, tag = time.time(), data_tag(day)
+    import export_site_data as E
+    if day in E.DAYS and not a.force:     # the validated days keep the results the validation report describes
+        return {"day": day, "status": "validated day kept"}
     have = assets(REPO, tag) or {}
     if f"{day}.map.json" not in have:
         return {"day": day, "status": "not published; nothing to reanalyse"}
-    for name in (f"{day}.parquet", f"{day}.hourly.parquet", f"{day}.minute.parquet"):
+    for name in (f"{day}.hourly.parquet", f"{day}.minute.parquet"):
         if not os.path.exists(os.path.join(DAILY, name)):
-            os.makedirs(DAILY, exist_ok=True)
-            gh("release", "download", tag, "-R", REPO, "-p", name, "-D", DAILY, "--clobber")
+            download(REPO, tag, name, DAILY, have.get(name))
     hist, an = analyse(day)
-    import export_site_data as E
-    E.hotspot_day(day, os.path.join(SITE, f"{day}.hotspots.json"))
     if not a.no_upload:
-        gh("release", "upload", tag, "-R", REPO, "--clobber", *outputs(day)[4:], os.path.join(SITE, f"{day}.hotspots.json"))
+        gh("release", "upload", tag, "-R", REPO, "--clobber", *outputs(day)[4:])
         _ASSETS.pop((REPO, tag), None)
     return {"day": day, "status": "reanalysed" if not a.no_upload else "reanalysed (not uploaded)", "history_files": hist,
             "baseline_days": an.get("baseline_days"), "anomaly_region_hours": an.get("anomaly_region_hours"),
@@ -182,12 +199,12 @@ def process(day, a):
     finally:
         if not a.raw_dir and not a.keep_raw:
             shutil.rmtree(raw, ignore_errors=True)
-    hist, an = analyse(day)
+    hist, an = (0, {}) if a.skip_analysis else analyse(day)   # backfill: analyses run later, in date order
     import export_site_data as E
     size, hexes, jam = E.map_day(day, os.path.join(SITE, f"{day}.map.json"))
     E.hotspot_day(day, os.path.join(SITE, f"{day}.hotspots.json"))
     if not a.no_upload:
-        upload(day)
+        upload(day, with_analysis=not a.skip_analysis)
     return {"day": day, "status": "published" if not a.no_upload else "done (not uploaded)",
             "aircraft": s["aircraft"], "hexes_5plus": hexes, "jam_hexes": jam, "history_files": hist,
             "baseline_days": an.get("baseline_days"), "anomaly_region_hours": an.get("anomaly_region_hours"),
@@ -202,6 +219,9 @@ def main():
     ap.add_argument("--force", action="store_true", help="redo days that are already published")
     ap.add_argument("--reanalyse", action="store_true", help="rerun only the analyses on published days")
     ap.add_argument("--upload-local", action="store_true", help="publish days already processed on this machine")
+    ap.add_argument("--skip-analysis", action="store_true", help="process and publish without the analyses (backfill)")
+    ap.add_argument("--min-seconds", type=float, default=0, help="spend at least this long per day (keeps uploads "
+                    "under GitHub's content-creation limit in long runs)")
     ap.add_argument("--raw-dir", help="use local adsb.lol files instead of downloading")
     ap.add_argument("--keep-raw", action="store_true")
     ap.add_argument("--no-upload", action="store_true")
@@ -213,6 +233,7 @@ def main():
     for day in days:
         if not a.force and not a.reanalyse and not a.no_upload and f"{day}.map.json" in (assets(REPO, data_tag(day)) or {}):
             continue
+        t_day = time.time()
         try:
             r = reanalyse(day, a) if a.reanalyse else upload_local(day, a) if a.upload_local else process(day, a)
         except Exception as e:
@@ -220,6 +241,8 @@ def main():
             r, failed = {"day": day, "status": f"ERROR {e.__class__.__name__}: {e}"[:300]}, True
         print(json.dumps(r), flush=True)
         results.append(r)
+        if r["status"] in ("published", "reanalysed"):
+            time.sleep(max(0.0, a.min_seconds - (time.time() - t_day)))
     done = [r["day"] for r in results if r["status"] in ("published", "reanalysed")]
     print(json.dumps({"published": done, "checked": len(days)}))
     if os.environ.get("GITHUB_OUTPUT"):

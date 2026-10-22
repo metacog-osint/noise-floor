@@ -1,0 +1,125 @@
+name: backfill
+# Backfill the daily GNSS outputs over a date range, in two phases:
+#   1. process: one job per calendar month (two at a time by default). Each day is downloaded from adsb.lol,
+#      processed and published to release pnt-data-YYYY-MM without the analyses (pipeline/daily_job.py
+#      --skip-analysis). Days already published are skipped, so a failed or cancelled run can simply be rerun.
+#   2. analyse: the analyses in date order, so each day's baselines include the days before it (two jobs, one
+#      after the other, to stay inside the 6-hour job limit). The 20 validated days keep their published results.
+# Then the site is redeployed. Uploads are throttled to stay under GitHub's content-creation limits.
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "First day (YYYY-MM-DD)"
+        required: true
+        default: "2025-10-01"
+      end:
+        description: "Last day to process (YYYY-MM-DD)"
+        required: true
+        default: "2026-10-06"
+      max_parallel:
+        description: "Months processed at once"
+        type: number
+        default: 2
+      skip_process:
+        description: "Only rerun the analysis phase"
+        type: boolean
+        default: false
+permissions:
+  contents: write    # releases and their assets
+  actions: read      # the deploy job looks up the newest commit that passed CI
+concurrency:
+  group: backfill
+  cancel-in-progress: false
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      chunks: ${{ steps.p.outputs.chunks }}
+      analyse_a: ${{ steps.p.outputs.analyse_a }}
+      analyse_b: ${{ steps.p.outputs.analyse_b }}
+    steps:
+      - id: p
+        env:
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+        run: |
+          python3 - >> "$GITHUB_OUTPUT" <<'EOF'
+          import json, os
+          from datetime import date, datetime, timedelta, timezone
+          a, b = date.fromisoformat(os.environ["START"]), date.fromisoformat(os.environ["END"])
+          chunks, d = [], a
+          while d <= b:
+              nxt = (d.replace(day=1) + timedelta(days=32)).replace(day=1)
+              chunks.append({"name": d.strftime("%Y-%m"), "days": f"{d}:{min(b, nxt - timedelta(days=1))}"})
+              d = nxt
+          # the analyses run from the start to yesterday, so the daily days get the longer baselines too
+          last = datetime.now(timezone.utc).date() - timedelta(days=1)
+          mid = a + (last - a) / 2
+          print("chunks=" + json.dumps(chunks))
+          print(f"analyse_a={a}:{mid}")
+          print(f"analyse_b={mid + timedelta(days=1)}:{last}")
+          EOF
+          cat "$GITHUB_OUTPUT"
+  process:
+    needs: plan
+    if: ${{ !inputs.skip_process }}
+    name: process ${{ matrix.chunk.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ inputs.max_parallel }}
+      matrix:
+        chunk: ${{ fromJSON(needs.plan.outputs.chunks) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Process and publish ${{ matrix.chunk.days }} (no analyses)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ matrix.chunk.days }}
+        run: python pipeline/daily_job.py "$DAYS" --skip-analysis
+  analyse-a:
+    needs: [plan, process]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Analyses, ${{ needs.plan.outputs.analyse_a }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ needs.plan.outputs.analyse_a }}
+        run: python pipeline/daily_job.py "$DAYS" --reanalyse --min-seconds 30
+  analyse-b:
+    needs: [plan, analyse-a]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Analyses, ${{ needs.plan.outputs.analyse_b }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ needs.plan.outputs.analyse_b }}
+        run: python pipeline/daily_job.py "$DAYS" --reanalyse --min-seconds 30
+  deploy:
+    needs: analyse-b
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/deploy-site.yml
+    secrets: inherit

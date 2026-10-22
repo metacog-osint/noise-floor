@@ -51,18 +51,28 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.pick.outputs.sha }}
-      - name: Add the daily map and event files
+      # the release files are cached between deploys; only new or changed ones are downloaded
+      - name: Restore the release-file cache
+        if: steps.pick.outputs.sha != ''
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/release-files
+          key: release-files-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: release-files-
+      - name: Add the daily map, event and trend files
+        id: files
         if: steps.pick.outputs.sha != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p "$RUNNER_TEMP/daily-maps"
-          for tag in $(gh release list -R "$GITHUB_REPOSITORY" -L 1000 --json tagName -q '.[].tagName | select(startswith("pnt-data-"))'); do
-            gh release download "$tag" -R "$GITHUB_REPOSITORY" -D "$RUNNER_TEMP/daily-maps" --skip-existing \
-              -p '*.map.json' -p '*.anomalies.json' -p '*.bursts.json' -p '*.sbas.json' -p '*.hotspots.json' \
-              || echo "::warning::no files downloaded from $tag"
-          done
-          python3 tools/site_days.py "$RUNNER_TEMP/daily-maps"
+          python3 tools/fetch_release_files.py "$RUNNER_TEMP/release-files"
+          python3 tools/site_days.py "$RUNNER_TEMP/release-files"
+      - name: Save the release-file cache
+        if: steps.files.outputs.changed == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/release-files
+          key: release-files-${{ github.run_id }}-${{ github.run_attempt }}
       - if: steps.pick.outputs.sha != ''
         uses: actions/setup-node@v4
         with:
