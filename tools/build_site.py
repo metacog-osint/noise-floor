@@ -215,10 +215,10 @@ def main():
         open(os.path.join(OUT, name), "w", encoding="utf-8", newline="\n").write(
             render(meta, body, updated, narrow=name in ("methods.html", "404.html")))
         written.append(name)
-    open(os.path.join(OUT, "lanes"), "w", encoding="utf-8", newline="\n").write(render(
+    open(os.path.join(OUT, "lanes.html"), "w", encoding="utf-8", newline="\n").write(render(
         {"title": "Lanes · Noise Floor", "description": "Every Noise Floor lane, built and planned: what it measures, how, which sources, and its limits.",
          "nav": "lanes"}, lanes_page(data), updated))
-    open(os.path.join(OUT, "sources"), "w", encoding="utf-8", newline="\n").write(render(
+    open(os.path.join(OUT, "sources.html"), "w", encoding="utf-8", newline="\n").write(render(
         {"title": "Sources · Noise Floor", "description": "Noise Floor's licence registry: every source, its licence and how it may be used.",
          "nav": "sources"}, sources_page(rows), updated))
     written += ["lanes.html", "sources.html"]
@@ -226,7 +226,11 @@ def main():
     open(os.path.join(OUT, "robots.txt"), "w", newline="\n").write("User-agent: *\nAllow: /\n")
     open(os.path.join(OUT, "_headers"), "w", newline="\n").write(
         "/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n")
-    print("built:", ", ".join(written + ["style.css", "robots.txt", "_headers"]))
+    expected = set(written) | {"style.css", "robots.txt", "_headers"}
+    stray = sorted(set(os.listdir(OUT)) - expected)
+    if stray:
+        sys.exit(f"unexpected files in site/: {stray} (remove them, or add them to the build)")
+    print("built:", ", ".join(sorted(expected)))
 
 
 if __name__ == "__main__":
