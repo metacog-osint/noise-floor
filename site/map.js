@@ -76,6 +76,43 @@
   map.attributionControl.setPrefix(false);
   map.attributionControl.addAttribution('ADS-B: <a href="https://www.adsb.lol/">adsb.lol</a> contributors (ODbL 1.0) · Land: Natural Earth');
 
+  // ---------- geometry in Web Mercator units (0..1), converted once; a redraw is then scale * x + offset
+  function mercArr(pts) {                              // [[lat, lon], ...] -> Float64Array [x0, y0, x1, y1, ...]
+    var out = new Float64Array(pts.length * 2);
+    for (var i = 0; i < pts.length; i++) {
+      var s = Math.sin(Math.max(-85.0511, Math.min(85.0511, pts[i][0])) * Math.PI / 180);
+      out[2 * i] = (pts[i][1] + 180) / 360;
+      out[2 * i + 1] = 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI);
+    }
+    return out;
+  }
+  function mercBox(m) {
+    var x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+    for (var i = 0; i < m.length; i += 2) {
+      if (m[i] < x0) x0 = m[i]; if (m[i] > x1) x1 = m[i];
+      if (m[i + 1] < y0) y0 = m[i + 1]; if (m[i + 1] > y1) y1 = m[i + 1];
+    }
+    return [x0, y0, x1, y1];
+  }
+  var vw = { k: 256, ox: 0, oy: 0, w: 0, h: 0 };     // the current view: container = k * merc + offset
+  function setView(m) {
+    var k = 256 * Math.pow(2, m.getZoom()), c = m.latLngToContainerPoint([0, 0]), sz = m.getSize();
+    vw = { k: k, ox: c.x - 0.5 * k, oy: c.y - 0.5 * k, w: sz.x, h: sz.y };
+  }
+  function onScreen(bx) {
+    return !(bx[0] * vw.k + vw.ox > vw.w + 40 || bx[2] * vw.k + vw.ox < -40 || bx[1] * vw.k + vw.oy > vw.h + 40 || bx[3] * vw.k + vw.oy < -40);
+  }
+  function trace(g, m, close) {
+    var k = vw.k, ox = vw.ox, oy = vw.oy;
+    g.moveTo(m[0] * k + ox, m[1] * k + oy);
+    for (var i = 2; i < m.length; i += 2) g.lineTo(m[i] * k + ox, m[i + 1] * k + oy);
+    if (close) g.closePath();
+  }
+  function cp(lat, lon) {                              // one container point in the current view
+    var m = mercArr([[lat, lon]]);
+    return { x: m[0] * vw.k + vw.ox, y: m[1] * vw.k + vw.oy };
+  }
+
   var Canvas = L.Layer.extend({
     onAdd: function (m) {
       this._c = L.DomUtil.create("canvas", "nf-canvas leaflet-zoom-hide");
@@ -84,56 +121,65 @@
       this.redraw();
     },
     onRemove: function (m) { L.DomUtil.remove(this._c); m.off("moveend zoomend resize viewreset", this.redraw, this); },
-    redraw: function () {
+    redraw: function () {                              // requests in one task become one draw
+      if (this._queued) return;
+      this._queued = true;
+      var self = this;
+      Promise.resolve().then(function () { self._queued = false; self._draw(); });
+    },
+    _draw: function () {
       if (!this._map) return;                          // data can arrive before the layer is on the map
       var m = this._map, size = m.getSize(), dpr = window.devicePixelRatio || 1, c = this._c;
       c.width = size.x * dpr; c.height = size.y * dpr; c.style.width = size.x + "px"; c.style.height = size.y + "px";
       L.DomUtil.setPosition(c, m.containerPointToLayerPoint([0, 0]));
       var g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var b = m.getBounds().pad(0.2);
+      setView(m);
       g.fillStyle = colors.land; g.strokeStyle = colors.coast; g.lineWidth = 0.6;
-      land.forEach(function (ring) {
-        if (ring.box[0] > b.getNorth() || ring.box[1] < b.getSouth() || ring.box[2] > b.getEast() || ring.box[3] < b.getWest()) return;
-        g.beginPath(); ring.pts.forEach(function (p, i) { var q = m.latLngToContainerPoint(p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); });
-        g.closePath(); g.fill(); g.stroke();
-      });
+      g.beginPath();
+      land.forEach(function (ring) { if (onScreen(ring.mb)) trace(g, ring.m, true); });
+      g.fill(); g.stroke();
+      // one choice per view: a resolution-4 hex is about 45 km across (0.00112 of the equator), wider in Mercator nearer
+      // the poles; under 6 pixels at the view's centre, every hex is drawn as a rectangle
+      var useRects = 0.00112 / Math.max(0.2, Math.cos(m.getCenter().lat * Math.PI / 180)) * vw.k < 6;
       var byCls = { low: [], quiet: [], 0: [], 1: [], 2: [], 3: [] };
-      cellList.forEach(function (c) {
-        var e = evaluate(c.d); if (!e) return;
-        var p = c.bnd[0]; if (p[0] > b.getNorth() + 2 || p[0] < b.getSouth() - 2) return;
-        byCls[e.cls].push(c);
+      cellList.forEach(function (cl) {
+        if (!onScreen(cl.s.mb)) return;
+        var e = evaluate(cl.d); if (!e) return;
+        byCls[e.cls].push(cl);
       });
       [["low", colors.low], ["quiet", colors.quiet], [0, colors.ramp[0]], [1, colors.ramp[1]], [2, colors.ramp[2]], [3, colors.ramp[3]]]
         .forEach(function (pair) {
           g.fillStyle = pair[1]; g.beginPath();
-          byCls[pair[0]].forEach(function (c) {
-            c.bnd.forEach(function (p, i) { var q = m.latLngToContainerPoint(p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); });
-            g.closePath();
+          var small = [];
+          byCls[pair[0]].forEach(function (cl) {
+            if (useRects) small.push(cl);              // hexes a few pixels across: rectangles look the same
+            else trace(g, cl.s.m, true);
           });
           g.fill();
+          small.forEach(function (cl) {                // filling thousands of tiny polygons is slow; rectangles aren't
+            var bx = cl.s.mb, x0 = Math.floor(bx[0] * vw.k + vw.ox), y0 = Math.floor(bx[1] * vw.k + vw.oy);
+            g.fillRect(x0, y0, Math.max(1, Math.ceil(bx[2] * vw.k + vw.ox) - x0), Math.max(1, Math.ceil(bx[3] * vw.k + vw.oy) - y0));   // whole pixels: no seams
+          });
         });
       if (state.focus && cells[state.focus]) {
         g.strokeStyle = colors.focus; g.lineWidth = 2; g.beginPath();
-        cells[state.focus].bnd.forEach(function (p, i) { var q = m.latLngToContainerPoint(p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); });
-        g.closePath(); g.stroke();
+        trace(g, cells[state.focus].s.m, true); g.stroke();
       }
       var labels = [];
       if (layersOn.borders && borders.length) {
         g.save(); g.lineWidth = 0.9; g.strokeStyle = colors.border;
         [0, 1].forEach(function (cls) {
           g.setLineDash(cls ? [3, 3] : []); g.beginPath();
-          borders.forEach(function (l) {
-            if (l.cls !== cls || l.box[0] > b.getNorth() || l.box[1] < b.getSouth() || l.box[2] > b.getEast() || l.box[3] < b.getWest()) return;
-            l.pts.forEach(function (p, i) { var q = m.latLngToContainerPoint(p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); });
-          });
+          borders.forEach(function (l) { if (l.cls === cls && onScreen(l.mb)) trace(g, l.m, false); });
           g.stroke();
         });
         g.restore();
       }
+      var inView = function (q) { return q.x > -20 && q.x < vw.w + 20 && q.y > -20 && q.y < vw.h + 20; };
       if (layersOn.areas && areas.length) {
         g.save(); g.setLineDash([2, 4]); g.strokeStyle = colors.area; g.lineWidth = 1.3;
         areas.forEach(function (a) {
-          var p0 = m.latLngToContainerPoint([a[2], a[3]]), p1 = m.latLngToContainerPoint([a[1], a[4]]);
+          var p0 = cp(a[2], a[3]), p1 = cp(a[1], a[4]);
           g.strokeRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
           labels.push({ text: a[0], x: p0.x + 4, y: p0.y + 13, kind: "area" });
         });
@@ -143,8 +189,8 @@
         var z = m.getZoom(), maxRank = z < 2 ? 0 : z < 3 ? 1 : z < 4 ? 2 : z < 5 ? 3 : z < 6 ? 4 : 7;
         places.forEach(function (p) {
           if (p[3] > maxRank && !(p[4] && z >= 3.5)) return;
-          if (p[1] > b.getNorth() || p[1] < b.getSouth() || p[2] > b.getEast() || p[2] < b.getWest()) return;
-          var q = m.latLngToContainerPoint([p[1], p[2]]);
+          var q = cp(p[1], p[2]);
+          if (!inView(q)) return;
           labels.push({ text: p[0], x: q.x + 5, y: q.y + 4, dot: q, cap: !!p[4], kind: "place" });
         });
       }
@@ -152,33 +198,31 @@
         g.save(); g.setLineDash([6, 5]); g.strokeStyle = colors.test; g.lineWidth = 1.5;
         state.ev.tests.forEach(function (t) {
           var nm = t.radii_nm.FL250 || Math.max.apply(null, Object.keys(t.radii_nm).map(function (k) { return t.radii_nm[k]; }).concat([0]));
-          var c = m.latLngToContainerPoint(t.centre), top = m.latLngToContainerPoint([t.centre[0] + nm * 1.852 / 111.32, t.centre[1]]);
-          g.beginPath(); g.arc(c.x, c.y, Math.abs(c.y - top.y), 0, 2 * Math.PI); g.stroke();
+          var ctr = cp(t.centre[0], t.centre[1]), top = cp(t.centre[0] + nm * 1.852 / 111.32, t.centre[1]);
+          g.beginPath(); g.arc(ctr.x, ctr.y, Math.abs(ctr.y - top.y), 0, 2 * Math.PI); g.stroke();
         });
         g.restore();
       }
       if (state.evShow && state.ev) {
         var rows = evRows();
         var outline = function (e) {
+          if (!e.polyM) e.polyM = poly(e).map(function (loops) { return loops.map(mercArr); });
           g.beginPath();
-          poly(e).forEach(function (loops) { loops.forEach(function (loop) {
-            loop.forEach(function (p, i) { var q = m.latLngToContainerPoint(p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); });
-            g.closePath();
-          }); });
+          e.polyM.forEach(function (loops) { loops.forEach(function (loop) { trace(g, loop, true); }); });
           g.stroke();
         };
         g.strokeStyle = colors.event; g.lineWidth = 2;
         rows.anom.forEach(function (e) { if (e !== state.evFocus) outline(e); });
         rows.burst.forEach(function (e) {
           if (e === state.evFocus) return;
-          var q = m.latLngToContainerPoint([e.lat, e.lon]);
+          var q = cp(e.lat, e.lon);
           g.beginPath(); g.arc(q.x, q.y, 5, 0, 2 * Math.PI); g.fillStyle = colors.event; g.fill();
           g.lineWidth = 2; g.strokeStyle = colors.ring; g.stroke(); g.strokeStyle = colors.event;
         });
         if (state.evFocus) {
           g.strokeStyle = colors.focus; g.lineWidth = 3;
           if (state.evFocus.t0) {
-            var q = m.latLngToContainerPoint([state.evFocus.lat, state.evFocus.lon]);
+            var q = cp(state.evFocus.lat, state.evFocus.lon);
             g.beginPath(); g.arc(q.x, q.y, 7, 0, 2 * Math.PI); g.fillStyle = colors.event; g.fill(); g.stroke();
           } else outline(state.evFocus);
         }
@@ -540,6 +584,31 @@
   }
   function writeHash() { if (state.day) history.replaceState(null, "", hashFor()); }
 
+  // loaded days (last 12) and hex shapes (by H3 index, shared across days)
+  var dayCache = {}, dayOrder = [], shapes = {};
+  function fetchDay(day) {
+    if (dayCache[day]) return dayCache[day];
+    var p = fetch("/data/gnss/" + day + ".json").then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+    dayCache[day] = p; dayOrder.push(day);
+    p.catch(function () { delete dayCache[day]; });
+    while (dayOrder.length > 12) delete dayCache[dayOrder.shift()];
+    return p;
+  }
+  function shapeOf(h) {
+    var sh = shapes[h];
+    if (!sh) {
+      var bnd = h3.cellToBoundary(h), lo0 = 999, lo1 = -999;
+      bnd.forEach(function (p) { if (p[1] < lo0) lo0 = p[1]; if (p[1] > lo1) lo1 = p[1]; });
+      var mm = mercArr(bnd);
+      sh = shapes[h] = { m: mm, mb: mercBox(mm), wrap: lo1 - lo0 > 180 };   // wrap: crosses the antimeridian (skipped)
+    }
+    return sh;
+  }
+  function prefetchAround(day) {
+    var i = days.map(function (x) { return x.day; }).indexOf(day);
+    [i - 1, i + 1].forEach(function (k) { if (days[k]) fetchDay(days[k].day).catch(function () {}); });
+  }
+
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true;
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
@@ -548,13 +617,13 @@
       .then(function (ev) { if (state.day !== day) return; state.ev = ev; state.evLoading = false; renderEvents(); layer.redraw(); });
     renderEvents();
     mapEl.classList.add("loading");
-    return fetch("/data/gnss/" + day + ".json").then(function (r) { return r.json(); }).then(function (j) {
+    return fetchDay(day).then(function (j) {
+      if (state.day !== day) return;                  // a later choice won
       cells = {}; cellList = [];
       j.cells.forEach(function (d) {
-        var bnd = h3.cellToBoundary(d[0]);
-        var lons = bnd.map(function (p) { return p[1]; });
-        if (Math.max.apply(null, lons) - Math.min.apply(null, lons) > 180) return;   // skip cells across the antimeridian
-        var c = { h: d[0], d: d, bnd: bnd }; cells[d[0]] = c; cellList.push(c);
+        var sh = shapeOf(d[0]);
+        if (sh.wrap) return;
+        var c = { h: d[0], d: d, s: sh }; cells[d[0]] = c; cellList.push(c);
       });
       state.iu = (j.cols || []).indexOf("usual");
       document.getElementById("mp-chg-wrap").classList.toggle("off", state.iu < 0);
@@ -564,6 +633,7 @@
       document.querySelector('input[name="measure"][value="miss"]').disabled = state.iun < 0;
       mapEl.classList.remove("loading");
       layer.redraw(); renderStats(); renderTable(); writeHash(); if (state.hist) drawHistory();
+      setTimeout(function () { prefetchAround(day); }, 300);
     });
   }
 
@@ -668,10 +738,7 @@
   function refresh() { state.evFocus = null; layer.redraw(); renderLegend(); renderStats(); renderTable(); renderEvents(); renderTimeline(); writeHash(); }
 
   fetch("/data/borders.json").then(function (r) { return r.json(); }).then(function (j) {
-    borders = j.lines.map(function (l) {
-      var lats = l[1].map(function (p) { return p[0]; }), lons = l[1].map(function (p) { return p[1]; });
-      return { cls: l[0], pts: l[1], box: [Math.min.apply(null, lats), Math.max.apply(null, lats), Math.min.apply(null, lons), Math.max.apply(null, lons)] };
-    });
+    borders = j.lines.map(function (l) { var mm = mercArr(l[1]); return { cls: l[0], m: mm, mb: mercBox(mm) }; });
     layer.redraw();
   }).catch(function () { /* the map works without borders */ });
   fetch("/data/places.json").then(function (r) { return r.json(); }).then(function (j) {
@@ -689,9 +756,8 @@
     res[1].features.forEach(function (f) {
       var polys = f.geometry.type === "MultiPolygon" ? f.geometry.coordinates : [f.geometry.coordinates];
       polys.forEach(function (poly) {
-        var ring = poly[0], pts = ring.map(function (p) { return [p[1], p[0]]; });
-        var lats = pts.map(function (p) { return p[0]; }), lons = pts.map(function (p) { return p[1]; });
-        land.push({ pts: pts, box: [Math.min.apply(null, lats), Math.max.apply(null, lats), Math.min.apply(null, lons), Math.max.apply(null, lons)] });
+        var ring = poly[0], mm = mercArr(ring.map(function (p) { return [p[1], p[0]]; }));
+        land.push({ m: mm, mb: mercBox(mm) });
       });
     });
     readColors();

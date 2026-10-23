@@ -2,3 +2,29 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
+/style.css
+  Cache-Control: public, max-age=31536000, immutable
+/map.js
+  Cache-Control: public, max-age=31536000, immutable
+/charts.js
+  Cache-Control: public, max-age=31536000, immutable
+/home.js
+  Cache-Control: public, max-age=31536000, immutable
+/data/land.json
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/data/borders.json
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/data/places.json
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/data/gnss/2*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+/data/events/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+/data/history/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+/data/gnss/days.json
+  Cache-Control: public, max-age=300, stale-while-revalidate=3600
+/data/trend.json
+  Cache-Control: public, max-age=300, stale-while-revalidate=3600
+/data/charts.json
+  Cache-Control: public, max-age=300, stale-while-revalidate=3600
