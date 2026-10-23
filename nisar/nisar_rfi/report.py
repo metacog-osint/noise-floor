@@ -198,6 +198,18 @@ def write_map(state, cfg, now, path, demo=False, truth=None):
     vw, vs, ve, vn = view.bounds
     places = sorted(([p[0], p[1], p[2], p[4]] for p in gz["places"] if vs <= p[1] <= vn and vw <= p[2] <= ve),
                     key=lambda p: -(p[3] or 0))[:600]           # [name, lat, lon, population], largest first
+    countries = []
+    for f in gz["countries"]["features"]:                 # one label per country, inside the view
+        g = shape(f["geometry"])
+        if g.intersects(view):
+            part = g.intersection(view)
+            pt = part.representative_point()
+            countries.append((part.area, [f["properties"]["name"], round(pt.y, 2), round(pt.x, 2)]))
+    countries = [c for _, c in sorted(countries, key=lambda x: -x[0])]   # biggest first: they win label collisions
+    emitters = None
+    if cfg.get("emitters_file") and os.path.exists(cfg["emitters_file"]):
+        emitters = json.load(open(cfg["emitters_file"], encoding="utf-8"))
+        emitters = {"flag_km": emitters.get("flag_km", 20), "list": emitters.get("emitters", [])}
     aoi_geom = mapping(box(*a["bbox"])) if not a.get("polygon") else {"type": "Polygon", "coordinates": [a["polygon"]]}
     w, s_, e, n = w0, s0, e0, n0
     dets = [d for d in state["detections"] if d["start"] >= cut]
@@ -218,7 +230,7 @@ def write_map(state, cfg, now, path, demo=False, truth=None):
     data = {
         "generated": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "demo": demo, "truth": truth or [],
         "aoi": {"name": a["name"], "center": [(s_ + n) / 2, (w + e) / 2], "geojson": aoi_geom},
-        "land": land, "borders": borders, "places": places,
+        "land": land, "borders": borders, "places": places, "countries": countries, "emitters": emitters,
         "passes": passes, "detections": dets, "sites": sites, "band_text": bt,
         "footer": f"Generated {central(now.strftime('%Y-%m-%dT%H:%M'))}. NISAR data: NASA/JPL-ISRO via ASF DAAC "
                   "(NASA open data). Land and places: Natural Earth (public domain).",
