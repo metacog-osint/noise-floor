@@ -9,6 +9,7 @@ Sources:
   registry/sources.csv the licence registry (Sources page)
 Nothing private may go into site_src/: the public-repo check runs on these files like any other.
 """
+import hashlib
 import csv
 import html
 import json
@@ -90,11 +91,23 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
+ASSETS = ("style.css", "map.js", "charts.js", "home.js")
+ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
+
+
+def asset_versions():
+    for f in ASSETS:
+        ASSET_V[f] = hashlib.sha256(open(os.path.join(SRC, f), "rb").read()).hexdigest()[:10]
+
+
 def render(meta, body, updated, narrow=False):
     layout = meta.get("layout")
     cls = ' class="wide"' if layout == "wide" else (' class="narrow"' if narrow else "")
-    return PAGE.format(title=e(meta["title"]), description=e(meta["description"]), nav=nav_html(meta.get("nav", "")),
+    html = PAGE.format(title=e(meta["title"]), description=e(meta["description"]), nav=nav_html(meta.get("nav", "")),
                        body=body, updated=e(updated), repo=REPO, main_class=cls, head=meta.get("head", ""))
+    for f, v in ASSET_V.items():
+        html = html.replace(f'"/{f}"', f'"/{f}?v={v}"')
+    return html
 
 
 def status_counts(lanes):
@@ -226,6 +239,7 @@ def chart_fills():
 
 
 def main():
+    asset_versions()
     data = json.load(open(os.path.join(SRC, "lanes.json"), encoding="utf-8"))
     rows = list(csv.DictReader(open(os.path.join(ROOT, "registry", "sources.csv"), encoding="utf-8")))
     updated = data["updated"]
@@ -257,8 +271,14 @@ def main():
     for f in ("style.css", "map.js", "charts.js", "home.js"):
         shutil.copy(os.path.join(SRC, f), os.path.join(OUT, f))
     open(os.path.join(OUT, "robots.txt"), "w", newline="\n").write("User-agent: *\nAllow: /\n")
-    open(os.path.join(OUT, "_headers"), "w", newline="\n").write(
-        "/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n")
+    year, day, hour, short = ("public, max-age=31536000, immutable", "public, max-age=86400, stale-while-revalidate=604800",
+                              "public, max-age=3600, stale-while-revalidate=86400", "public, max-age=300, stale-while-revalidate=3600")
+    rules = [("/*", "X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY")]
+    rules += [(f"/{f}", f"Cache-Control: {year}") for f in ASSETS]              # always requested as /file?v=<content hash>
+    rules += [(f"/data/{f}", f"Cache-Control: {day}") for f in ("land.json", "borders.json", "places.json")]
+    rules += [(p, f"Cache-Control: {hour}") for p in ("/data/gnss/2*", "/data/events/*", "/data/history/*")]   # day files
+    rules += [(f"/data/{f}", f"Cache-Control: {short}") for f in ("gnss/days.json", "trend.json", "charts.json")]
+    open(os.path.join(OUT, "_headers"), "w", newline="\n").write("".join(f"{p}\n  {h}\n" for p, h in rules))
     for name in written:                      # a duplicate id once broke the charts page (two elements, one anchor)
         ids = re.findall(r'\sid="([^"]+)"', open(os.path.join(OUT, name), encoding="utf-8").read())
         dup = sorted({i for i in ids if ids.count(i) > 1})
