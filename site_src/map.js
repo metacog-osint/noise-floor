@@ -15,6 +15,16 @@
             breaks: [30, 50, 70, 90], classes: ["Under 30% fewer, or more", "30–50% fewer", "50–70% fewer", "70–90% fewer", "90% or more fewer"] }
   };
   var MISS_MIN = 10;                                  // the "fewer aircraft" view needs a usual count of 10 or more
+  // SBAS areas flagged on most days in the first year (GAGAN 162 of 344 days, SouthPAN 229): most aircraft there don't
+  // use the service, so their flags mark the 10 m measure as unreliable, not an outage. Listed apart from the rest.
+  var ROUTINE_SBAS = { "GAGAN (India)": true, "SouthPAN (Australia/NZ)": true };
+  function sbasSplit(runs) {
+    var main = [], routine = {};
+    (runs || []).forEach(function (s) {
+      if (ROUTINE_SBAS[s.area]) routine[s.area] = (routine[s.area] || 0) + (s.end - s.start + 1); else main.push(s);
+    });
+    return { main: main, routine: routine };
+  }
   function emeasure() { return state.measure === "acc" ? "acc" : "jam"; }    // events and the strip follow 93 m for chg
   var state = { day: null, measure: "jam", raw: false, ev: null, evShow: true, evAll: { anom: false, burst: false }, evFocus: null,
                 iu: -1, iun: -1, playing: false, hist: null };
@@ -362,7 +372,7 @@
     else parts.push("Compared with the same hour on " + ev.baseline_days + " earlier days: " + n.major + " major, " + n.notable +
                     " notable and " + n.minor + " minor anomaly events on this measure.");
     if (jam) parts.push(ev.bursts.length + " bursts" + (ev.burst_basis === "within day" ? " (judged against the day's own level: fewer than 5 earlier days)." : "."));
-    else parts.push(ev.sbas.length ? "SBAS flags: " + ev.sbas.length + "." : "No SBAS flags.");
+    else { var nS = sbasSplit(ev.sbas).main.length; parts.push(nS ? "SBAS flags: " + nS + "." : "No SBAS flags."); }
     sum.textContent = parts.join(" ");
     var testsEl = document.getElementById("ev-tests"); testsEl.textContent = "";
     if (ev.tests && ev.tests.length) {
@@ -400,14 +410,25 @@
     moreButton("ev-burst-more", "burst", rows.burst.length, rows.burstAll.length, "bursts");
 
     if (!jam) {
-      if (!ev.sbas.length) { var p0 = document.createElement("p"); p0.className = "small"; p0.textContent = "No SBAS service area was flagged on this day."; sbasEl.appendChild(p0); }
+      var sp = sbasSplit(ev.sbas), rk = Object.keys(sp.routine);
+      if (!sp.main.length) {
+        var p0 = document.createElement("p"); p0.className = "small";
+        p0.textContent = rk.length ? "No other SBAS service area was flagged on this day." : "No SBAS service area was flagged on this day.";
+        sbasEl.appendChild(p0);
+      }
       else {
         var ul = document.createElement("ul");
-        ev.sbas.forEach(function (s) {
+        sp.main.forEach(function (s) {
           var li = document.createElement("li"), w = when(state.day, s.start * 60, s.end * 60 + 59);
           li.textContent = s.area + ": " + s.state + ", " + w[0] + " (" + w[1] + ")"; ul.appendChild(li);
         });
         sbasEl.appendChild(ul);
+      }
+      if (rk.length) {
+        var pr = document.createElement("p"); pr.className = "small";
+        pr.textContent = (sp.main.length ? "Also flagged" : "Flagged") + ", as on most days: " + rk.map(function (a) { return a + " (" + sp.routine[a] + " h)"; }).join(", ") +
+          ". Most aircraft there don't use these SBAS services, so the 10 m measure is unreliable in these areas; the flag drops it there rather than signalling an outage.";
+        if (sp.main.length) sbasEl.appendChild(pr); else sbasEl.insertBefore(pr, sbasEl.firstChild);
       }
     }
   }
