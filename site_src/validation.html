@@ -36,7 +36,7 @@
     <tr><td>Spire's maritime jammer case, 14 Oct 2024</td><td>Not distinguishable from the days either side. Spire counted 3 of 53 aircraft affected, below what these methods resolve</td><td><span class="chip st-failed">Missed</span></td></tr>
     <tr><td>False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024</td><td>No GNSS degradation over the area (thin coverage)</td><td><span class="chip st-validated">Pass</span></td></tr>
     <tr><td>SBAS flags over India and Australia</td><td>Flagged on 162 and 229 of 344 days because most aircraft there don't use those services. Listed apart on the map as routine</td><td><span class="chip st-validated">Explained</span></td></tr>
-    <tr><td>Radio-horizon localizer, first version</td><td>From where aircraft lose and regain GNSS on four jammed days, the best crossing lies about 55 km NW of Baltiysk, off the western Sambia coast. A 2025 TDOA network placed one fix at Baltiysk harbour. The reach was tuned on the same days, so this isn't yet a scored fix</td><td><span class="chip st-planned">Open</span></td></tr>
+    <tr><td>Radio-horizon localizer, scored against a 2025 TDOA network (<a href="https://doi.org/10.1007/s10291-026-02061-5">Gattis, Cydejko &amp; Akos 2026</a>), settings fixed in advance</td><td>On the four days with published fixes, the top peak was 20, 37, 48 and 45 km from the day's site: 1 hit at 25 km. The sites always ranked in the top 2% of cells, but the mean miss (38 km) is no better than naming Kaliningrad city, and the two sites are only 21 km apart</td><td><span class="chip st-failed">Fail</span></td></tr>
   </tbody>
 </table></div>
 
@@ -57,7 +57,7 @@
 
 <h2 id="next">Validation still to come</h2>
 <ul>
-  <li><strong>Published localizations,</strong> such as the 2024 Baltic open-source work and the 2025 TDOA fixes, scored against the radio-horizon localizer once its reach is estimated from the data rather than tuned.</li>
+  <li><strong>A localizer that resolves sites,</strong> not just areas. It failed its first scored test against the 2025 TDOA fixes, and its positions stay off the map until it passes one: next, fits for two emitters at once and minute-level timing against the fix windows.</li>
   <li><strong>More announced test events</strong> as known positives. The FAA advisories are already a layer on the map. Jammertest 2026 showed no aircraft effect.</li>
   <li><strong>More false look-alikes,</strong> beyond the Kiruna radar fault, as cases the methods must not flag.</li>
   <li><strong>A surveyed emitter or announced test</strong> to measure NISAR position accuracy.</li>
