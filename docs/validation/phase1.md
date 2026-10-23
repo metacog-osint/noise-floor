@@ -244,6 +244,7 @@ Then:
   - The OPSGROUP-led GPS Spoofing Workgroup report (Sep 2024) warns of "a significant possibility of the GPS Receiver appearing normal to flight crew after spoofing, but in reality being contaminated with false data", and that some systems don't work correctly after spoofing even when GPS coverage returns ([AIN summary](https://ainonline.com/aviation-news/air-transport/2024-09-09/opsgroup-releases-gps-spoofing-workgroup-report)). The full report wasn't retrieved.
   - Airbus's Safety First article on GNSS interference points to an Airbus World ISI (34.36.00049) for type detail; that and the FCOM aren't public. EASA SIB 2022-02 (R3, 5 Jul 2024; R4 exists) couldn't be read: the EASA AD site was down for maintenance at the time.
   - Next: read SIB 2022-02R4 when the site is back, and ask an A350 operator or pilot contact whether the GPS stays deselected or degraded for the rest of a flight after a spoofing alert.
+- **Visibility (22 Oct 2026):** in the 9 May 2026 raw traces, A350s stayed visible with degraded positions while most other types went dark across the jammed area (verdict 34). Part of the over-representation may therefore be that A350s stay in the counts. Not yet tested.
 - The A321's 3.0× is the narrowbody exception. It isn't explained yet; it may reflect which carriers fly it on medium-haul routes near the hotspots.
 - Airbus and EASA guidance on post-spoofing GPS behaviour still hasn't been checked.
 
@@ -280,6 +281,7 @@ Then:
   - From 30 Dec to 11 Jan it looks the same: 21–34% on 699–1,085 aircraft-hexes a day.
   - Global coverage and the neighbouring areas were normal on those days.
   - Across the year the share and the aircraft count move against each other (rank correlation −0.49). Of the 40 days at or above the 90th percentile, 17 had less than half the usual count and only 5 had at least 80% of it.
+  - **The raw traces settle 9 May: aircraft flew through and lost their positions.** 293 aircraft crossed the box, against 326 a week later, but three crossings in four had no position for most of the way, against one in twenty. A350s stayed visible, with degraded positions, while other types went dark in the same hours, so it wasn't a receiver outage (verdict 34).
 - **The 02Z spike is the Baltic at night.** Over northern Europe the worst hour is 02Z or 03Z on 368 of 382 days. On the Baltic side of that box, 41–47% of aircraft-hexes are degraded at 02–03Z, against 3–4% in daytime.
 - **Malay Peninsula: closed, no local interference.** The share never passed 0.9% on any day.
 - **The Kurils and Jammertest can't validate the ADS-B lane.** adsb.lol barely covers the Kurils (median 2 aircraft-hexes a day). Over Andøya no aircraft was degraded at any hour of Jammertest week.
@@ -294,6 +296,7 @@ Then:
 | 31 | 02Z spike over northern Europe (50–60°N, 5°W–25°E), Phase 1.1 open item 4 | Worst hour 03Z on 298 days, 02Z on 70. Share 7.8% at 03Z against 0.4–0.7% by day. On every 4th day: east of 14°E and north of 53°N, 47% at 02Z and 41% at 03Z against 3.0% at 08Z and 3.7% at 14Z; the rest of the box 3.5% at 03Z against 0.2–0.3% by day. The top five 2° cells at 02–03Z are over the Baltic: off western Latvia (77%), the Gulf of Finland and the central Baltic; northern Poland comes next | **Explained: the Baltic hotspot at night.** Why nights are more than ten times worse is open |
 | 32 | Kurils / Fukuoka FIR, 22 Jul–3 Aug 2026 (43–50°N, 145–156°E) | Aircraft seen on 151 of 386 days, median 2 aircraft-hexes. In the window, 4 days had 1–2 aircraft-hexes and 9 had none; 0% throughout | **Can't test:** adsb.lol has almost no coverage there |
 | 33 | Jammertest 2026, Andøya (68.6–69.9°N, 14.0–17.8°E), as a positive control | 13–19 Sep: 130–265 aircraft-hexes a day, none degraded at any hour. The 50 W windows (plan times read as CEST): 14 Sep 12–13Z, 0% of 39; 15 Sep 07Z, 0% of 17; 15 Sep 12–14Z, 0% of 58; 18 Sep 07Z, 0% of 17 | **No effect seen; not usable as a positive control.** No hour of the week was degraded, so the time-zone reading doesn't matter |
+| 34 | 9 May 2026 in the raw traces: position loss, or traffic routed around the box? | Aircraft crossing the box: 293 (16 May: 326). Crossings seen on ADS-B 14% (80%), dark 75% (5%), MLAT only 11% (16%). A350-900s seen on 25 of 27 crossings, 92% of their points degraded | **Position loss.** Traffic was near normal; aircraft lost their ADS-B positions across the box |
 
 ## Southern Baltic: degraded, or missing?
 
@@ -311,7 +314,7 @@ Then:
 
 Denmark and northern Germany kept their usual counts on the same days, and every one of those days has all 24 hours. Aircraft went missing from this box alone, while the share rose on the Swedish coast beside it.
 
-Two readings, which this data can't yet separate:
+Two readings, which the daily tables can't separate (the raw traces settle 9 May for reading 1; next section):
 
 1. **Jamming strong enough to remove positions.** An aircraft that loses GNSS completely can stop sending a usable ADS-B position. It then drops out of the counts instead of counting as degraded; the processor uses ADS-B positions only, not MLAT. On this reading the share understates the effect.
 2. **Traffic kept out.** Airspace reserved for military activity would empty the box and leave a small, unrepresentative sample. Baltic Shield 2026, a Danish–Polish exercise, ran 8–14 May over the waters and airspace from Bornholm to the Polish coast ([Danish Defence, 4 May 2026](https://www.forsvaret.dk/en/news/2026/danske-og-polske-soldater-traner-sammen-pa-bornholm/)). No exercise is known for the holiday run.
@@ -322,12 +325,49 @@ Outside reporting fits a worse 2026 without naming these dates:
 - An aggregator summary links strong jamming at that station to a May weekend during Baltic Shield. Its sources couldn't be retrieved, so the link is unverified.
 - The 2023–24 holiday season had a similar wave over Bornholm and the southern Baltic ([Ingeniøren, 3 Jan 2024](https://ing.dk/artikel/danish-gps-expert-unusually-strong-gps-jamming-over-baltic-sea)). That shows the season, not this year.
 
+## 9 May 2026 in the raw traces
+
+**Method:** `tools/trace_box.py` on the adsb.lol archives for 8, 9 and 16 May 2026 (the Friday before, and the Saturday a week later). It follows every aircraft that sent ADS-B in a wider region (52–60°N, 8–26°E) at or above 10,000 ft. Each crossing of the box (5 minutes or more inside it) is sorted by what receivers saw there:
+- **seen:** mostly ADS-B positions;
+- **MLAT only:** positions, but mostly from multilateration;
+- **dark:** gaps of over 4 minutes cover at least half the crossing;
+- **dark, long gap:** a single gap of over 45 minutes whose straight line crosses the box.
+
+| | 8 May | 9 May | 16 May |
+|---|---|---|---|
+| ADS-B aircraft in the region | 1,985 | 1,721 | 1,808 |
+| Aircraft that crossed the box | 324 | 293 | 326 |
+| Crossings | 558 | 467 | 593 |
+| Seen | 70% | 14% | 80% |
+| MLAT only | 0% | 11% | 16% |
+| Dark | 19% | 53% | 4% |
+| Dark, long gap | 11% | 22% | 1% |
+| ADS-B points with NACp < 8 on seen crossings | 9.5% | 51% | 5.5% |
+
+- **Traffic still flew through.** 293 aircraft crossed the box on 9 May, against 326 a week later (10% fewer). Routing around the box explains little of the drop.
+- **Their positions went.** Three crossings in four were dark, against one in twenty on 16 May. In every hour from 04Z to 18Z, most crossings had no ADS-B position (dark or MLAT only). The result holds above 20,000 ft (seen 15% against 78%) and with an 8-minute gap rule (seen 16% against 80%).
+- **It isn't a receiver outage.** A350-900s stayed visible on 25 of their 27 crossings while other types went dark in the same hours. At 05Z, 2 A350s were seen, against 3 of 38 other aircraft. At 14Z it was 3 of 3 A350s against 1 of 49 other aircraft. MLAT positions inside the box (50 crossings, mostly 13–15Z) also show that receivers were hearing aircraft there.
+- **Where positions stop and resume:**
+  - Gaps mostly start around 54–56°N 14°E (aircraft arriving from the west, near Bornholm), 57°N 17°E (from the north, east of Öland) and 55°N 20°E (from the east).
+  - They end around 55°N 19–20°E, 58–59°N 17°E and 55°N 12–13°E.
+  - So the affected area is wider than the box: roughly 14–20°E, from the Polish coast to about 58°N. These cells show where receivers last and next heard a position, not where a jammer is.
+- **8 May, the exercise's first day, was partly affected.** 30% of crossings were dark, mostly at 03–09Z and 18–22Z; there were few at 10–17Z. MLAT barely covered the box that day, so some of those dark crossings might have been MLAT-only on another day.
+
+**What this means for the measure:**
+- On a day like this the daily share is computed over the few aircraft that keep a position, and they're a biased sample. The 49.5% on 9 May mostly reflects them.
+- **A350s keep broadcasting a degraded position where most types go dark.**
+  - On 9 May, 92% of A350 points inside the box had NACp < 8, while B737-800s, A320neos and A220-300s went dark on 84–88% of their crossings.
+  - Even on 16 May, 51% of A350 points in the box were degraded, against 0–10% for the other common types.
+  - The cause isn't verified. An inertial or hybrid position source feeding ADS-B is one possibility.
+  - This bears on the A350 post-exposure pattern (verdict 27). Part of the 19× over-representation may be that A350s stay visible while degraded, where other types drop out of the counts. That is a hypothesis, not yet tested.
+
 ## Next
 
-1. **Read the raw traces for 9 May 2026 over the box.** Do aircraft enter, lose their position and reappear on the far side (reading 1), or does traffic route around the box (reading 2)?
-2. **A missing-aircraft measure:** aircraft-hexes against the hex's usual count, on the map and in the trend. A loss of coverage would then show up instead of hiding the effect. Until then the daily trend's Baltic panel carries the same caveat.
+1. ~~Read the raw traces for 9 May 2026~~ **Done:** position loss (verdict 34). Next, the same check on the holiday run (2 Jan 2026) and February (1 and 24 Feb), to see whether they're the same.
+2. **A missing-aircraft measure** is now the priority: aircraft-hexes against the hex's usual count, or dark crossings as above, on the map and in the trend. On days like 9 May the share hides most of the effect. Until then the daily trend's Baltic panel carries that caveat.
 3. **Why the Baltic is worse at night.** There are two hypotheses, both untested. Night traffic is mostly long-haul and cargo at cruise level, which sees a ground jammer from farther away. Or the jammers run harder at night. Splitting the night share by altitude band and aircraft type would separate them.
 4. **Positive controls for the ADS-B lane** remain the announced US tests: WSMR is verified and Point Mugu is confirmed. The Kurils and Jammertest don't work for this lane.
+5. **Test the A350 visibility hypothesis.** For each type, compare dark crossings with degraded-but-visible crossings through known jamming, then recompute the post-exposure type table counting dark aircraft.
 
 Sources for this section (retrieved 22 Oct 2026):
 - Danish Defence, "Danish and Polish forces will be training together on Bornholm", 4 May 2026: [forsvaret.dk](https://www.forsvaret.dk/en/news/2026/danske-og-polske-soldater-traner-sammen-pa-bornholm/).
