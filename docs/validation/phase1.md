@@ -304,6 +304,7 @@ Then:
 | 39 | False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024 (66.5–69.5°N, 17–25°E) | 0.0% and 1.0% degraded, against 0.0% on 27 Feb (88–104 aircraft-hexes a day) | **Pass.** A weather-radar artefact leaves no GNSS signal (coverage there is thin) |
 | 40 | Radio-horizon localizer, first version (southern Baltic; 9 May, 2 Jan, 1 Feb, 24 Feb 2026) | Stacked best crossing at 55.10°N 19.52°E, offshore about 55 km NW of Baltiysk, with NACp events at 80% of the radio horizon. Day by day, every top peak lies within about 20–80 km of the western Sambia peninsula | **Points at the Sambia coast, not yet a fix.** The reach scale was tuned on the same days and moves the peak by up to about 50 km |
 | 41 | Localizer against the 2025 TDOA fixes (Gattis, Cydejko & Akos 2026), scored with settings fixed in advance | Top peak 20 km from the Baltiysk-harbour fix on 3 Apr; 37, 48 and 45 km from the coastal-site fix on 15 Apr, 17 Apr and 21 Jun (1 hit of 4 at 25 km; 0 of 2 in the interference windows). The target cell always ranked in the top 2% of 3,496 cells. Mean miss 38 km, against 38 km for naming Kaliningrad city and 52 km for the centroid of onsets | **Fail.** It finds the area but not the site: the two TDOA sites are 21 km apart, finer than the localizer resolves |
+| 42 | Localizer v2 on five held-out Apr–Jun 2025 days (method frozen in 38a495e before they were downloaded) | Top peak 20.4, 24.7, 30.1 and 17.9 km from the nearest TDOA site (3 hits of 4 at 25 km; 11 Jun untested, 76 onsets on a partial day). Mean 23 km, against 38 km for Kaliningrad city and 96 km for the onset centroid | **Pass on the rule, area-level only.** The peaks sit about 20 km east of both sites, so a fixed guess there would do as well, and the test can't tell which site was active |
 
 ## Southern Baltic: degraded, or missing?
 
@@ -479,6 +480,34 @@ Next for the localizer:
   - Ducting, which breaks the horizon assumption.
 
 What would help next: separate concurrent emitters (two-source fits), use onset timing against the TDOA windows at minute resolution, and weight by the crossing angle between arcs. Until the localizer passes a test like this, its positions stay off the public map.
+
+
+## Localizer v2 and a held-out test
+
+**What changed (developed on the four scored days, which are now development data, not tests):**
+- **Why v1 couldn't resolve the sites.** Measured from the true site, only 40–50% of onsets head towards it, so about half come from something else. Those that do head towards it reach it at a spread of distances: the middle half spans about 0.15 of the horizon, roughly ±35 km for a single event. Counting the onsets in the fullest reach window rewards whichever subset happens to line up.
+- **New score (`--score lr`, now the default):** for each cell, the likelihood that its onsets come from one reach band plus a uniform background, against background alone. It rewards a tight band, not just a large count.
+- **Tried and dropped:**
+  - Greedy two-emitter fits put the second source far away, or on the first with another reach.
+  - Fitting only onsets within 60–120 minutes of the fix times left 81–471 onsets and wandered more.
+- **Development results with v2:** top peak 20, 26, 48 and 22 km from the day's site; 20, 5, 28 and 20 km from the nearest site. On 9 May and 2 Jan 2026 it lands 19 and 9 km from the coastal site. On 1 and 24 Feb 2026 the short-reach Łeba solution still wins.
+
+**The held-out test.** The days and rule were fixed by date before any of these days was downloaded: 25 Apr, 15 May, 25 May, 11 Jun and 15 Jun 2025. adsb.lol has only temporary archives from 28 May to 10 Jun, so 11 Jun stands in for 5 Jun. The method was frozen in commit 38a495e. The paper reports both sites active on many days in this period, so a hit means the top peak lies within 25 km of either site.
+
+| Day | Top peak | Nearest site | Kaliningrad city | Onset centroid | Hit |
+|---|---|---|---|---|---|
+| 25 Apr | 54.70°N 20.20°E (reach 0.60) | 20.4 km (Baltiysk) | 38.4 km | 98 km | Yes |
+| 15 May | 54.50°N 20.20°E (reach 0.52) | 24.7 km (Baltiysk) | 38.4 km | 15 km | Yes |
+| 25 May | 54.70°N 20.36°E (reach 0.62) | 30.1 km | 38.4 km | 83 km | No |
+| 11 Jun | 76 onsets (partial archive) | | | | Untested |
+| 15 Jun | 54.90°N 20.20°E (reach 0.74) | 17.9 km (coastal) | 38.4 km | 187 km | Yes |
+
+- **3 hits of 4 tested days**, mean 23 km. That beats both baselines fixed in advance: naming Kaliningrad city (38 km, never a hit) and the onset centroid (96 km).
+- **Area-level only:**
+  - All four peaks sit in a tight cluster around 54.70°N 20.24°E. That is about 20 km east of both sites, across the Vistula Lagoon from Baltiysk.
+  - A fixed guess at that point would score about as well every day. The test therefore shows a stable, slightly biased pointer to the western Kaliningrad coast, not day-by-day tracking.
+  - Both sites can be active on the same day, and they are only 21 km apart, so a lenient rule like this one can't tell which was active.
+- **Next:** find out why the peaks sit east of the sites. Traffic geometry, receiver delay at onset and ducting are possible causes. Then test against days with a single known active site and time.
 
 ## Next
 
