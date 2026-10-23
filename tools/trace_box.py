@@ -7,6 +7,7 @@ When a box's ADS-B aircraft count collapses, this tells the two readings apart:
 
   python tools/trace_box.py extract <raw_dir> <day>      # raw archive parts -> data/trace_box/<day>.jsonl.gz
   python tools/trace_box.py report <day> [<day> ...]     # crossings, gaps and MLAT per day
+  python tools/trace_box.py night <day> [<day> ...]      # night vs day degraded share by altitude, type, arrival state
 
 Defaults: the southern Baltic lead box (54.8-57N, 15-19E) inside a region of 52-60N, 8-26E. Override with
 --box / --region lat0,lat1,lon0,lon1. Only airborne points at or above --min-alt feet (default 10,000) count, and
@@ -236,12 +237,57 @@ def report(day, b, min_alt, gap_s, join_s, adsb_only=True):
     print("  by type, 8+ crossings:", "; ".join(rows))
 
 
+NARROW = {"A20N", "A21N", "A319", "A320", "A321", "B737", "B738", "B739", "B38M", "B39M", "BCS1", "BCS3", "E190", "E195",
+          "E290", "E295", "CRJ7", "CRJ9", "AT75", "AT76", "DH8D", "E170", "E175", "E75L"}
+BANDS = ((10000, 20000, "FL100-195"), (20000, 30000, "FL200-295"), (30000, 10 ** 6, "FL300+"))
+NIGHT, DAY = {22, 23, 0, 1, 2, 3, 4}, set(range(8, 18))
+
+
+def night(day, area):
+    """Night (22-04Z) against day (08-17Z) inside an area: degraded share (NACp < 8) of ADS-B aircraft-minutes by
+    altitude band; and at FL300+, by narrowbody or not, and by whether the aircraft was already degraded at its first
+    ADS-B point in the extract (carried in from elsewhere, or first heard inside the area already degraded)."""
+    tot = defaultdict(lambda: [0, 0])
+    with gzip.open(os.path.join(OUT, f"{day}.jsonl.gz"), "rt", encoding="utf-8") as f:
+        for line in f:
+            a = json.loads(line)
+            pts = sorted((p for p in a["pts"] if p[4] == "a" and p[5] is not None and isinstance(p[3], (int, float))),
+                         key=lambda p: p[0])
+            if not pts:
+                continue
+            arrived = "arrived degraded" if pts[0][5] < 8 else "arrived healthy"
+            grp = "narrowbody" if a["type"] in NARROW else "other types"
+            minutes = set()
+            for p in pts:
+                if not inside(p[1], p[2], area):
+                    continue
+                m = int(p[0] // 60)
+                if m in minutes:
+                    continue
+                minutes.add(m)
+                h = (m // 60) % 24
+                per = "night" if h in NIGHT else "day" if h in DAY else None
+                b = next((name for lo, hi, name in BANDS if lo <= p[3] < hi), None)
+                if not per or not b:
+                    continue
+                keys = [(per, b)] + ([(per, grp), (per, arrived)] if b == "FL300+" else [])
+                for k in keys:
+                    tot[k][0] += 1; tot[k][1] += p[5] < 8
+    print(f"{day}: night (22-04Z) vs day (08-17Z), degraded share of ADS-B aircraft-minutes in {area}")
+    for k in [b[2] for b in BANDS] + ["narrowbody", "other types", "arrived healthy", "arrived degraded"]:
+        n, d = tot[("night", k)], tot[("day", k)]
+        label = k if k.startswith("FL") else "FL300+, " + k
+        print(f"  {label:28} night {100 * n[1] / n[0] if n[0] else 0:5.1f}% of {n[0]:6d}   day {100 * d[1] / d[0] if d[0] else 0:5.1f}% of {d[0]:6d}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["extract", "report"])
+    ap.add_argument("cmd", choices=["extract", "report", "night"])
     ap.add_argument("args", nargs="+")
     ap.add_argument("--box", type=parse_box, default=BOX)
     ap.add_argument("--region", type=parse_box, default=REGION)
+    ap.add_argument("--area", type=parse_box, default=(53.0, 60.0, 14.0, 26.0),
+                    help="night: the area compared (default the Baltic side of the 02Z test, 53-60N 14-26E)")
     ap.add_argument("--min-alt", type=int, default=10000)
     ap.add_argument("--gap", type=float, default=4.0, help="minutes without a position that count as a gap")
     ap.add_argument("--max-join", type=float, default=45.0, help="longest gap (minutes) still joined into one track")
@@ -252,6 +298,9 @@ def main():
     if a.cmd == "extract":
         raw_dir, day = a.args
         extract(raw_dir, day, a.region, a.workers)
+    elif a.cmd == "night":
+        for day in a.args:
+            night(day, a.area)
     else:
         for day in a.args:
             report(day, a.box, a.min_alt, a.gap * 60, a.max_join * 60, adsb_only=not a.all_aircraft)

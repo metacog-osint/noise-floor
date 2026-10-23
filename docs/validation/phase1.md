@@ -297,6 +297,8 @@ Then:
 | 32 | Kurils / Fukuoka FIR, 22 Jul–3 Aug 2026 (43–50°N, 145–156°E) | Aircraft seen on 151 of 386 days, median 2 aircraft-hexes. In the window, 4 days had 1–2 aircraft-hexes and 9 had none; 0% throughout | **Can't test:** adsb.lol has almost no coverage there |
 | 33 | Jammertest 2026, Andøya (68.6–69.9°N, 14.0–17.8°E), as a positive control | 13–19 Sep: 130–265 aircraft-hexes a day, none degraded at any hour. The 50 W windows (plan times read as CEST): 14 Sep 12–13Z, 0% of 39; 15 Sep 07Z, 0% of 17; 15 Sep 12–14Z, 0% of 58; 18 Sep 07Z, 0% of 17 | **No effect seen; not usable as a positive control.** No hour of the week was degraded, so the time-zone reading doesn't matter |
 | 34 | 9 May 2026 in the raw traces: position loss, or traffic routed around the box? | Aircraft crossing the box: 293 (16 May: 326). Crossings seen on ADS-B 14% (80%), dark 75% (5%), MLAT only 11% (16%). A350-900s seen on 25 of 27 crossings, 92% of their points degraded | **Position loss.** Traffic was near normal; aircraft lost their ADS-B positions across the box |
+| 35 | The holiday and February surges in the raw traces (2 Jan, 1 Feb, 24 Feb 2026; control 17 Jan) | Aircraft crossing the box: 306, 286, 211 (control 257). Dark crossings 50%, 44%, 44% (5%); seen 29%, 53%, 52% (92%). A350-900s seen on 78–94% of crossings, 69–89% of their points degraded (control: 97% seen, 25% degraded) | **Same mechanism as 9 May, weaker.** Position loss with traffic still crossing |
+| 36 | Why the Baltic is worse at night (53–60°N, 14–26°E; 16 May, 8 May, 17 Jan) | Not altitude: at FL300+ the night share is 31–43% against 3–7% by day, and the altitude mix changes little (FL300+ carries 71–83% of traffic at night, 70–76% by day). Partly carried in: at night 36–41% of FL300+ aircraft-minutes come from aircraft already degraded at their first ADS-B point in the region, against 11–16% by day. But aircraft that arrived healthy are also degraded 10–15% of the time at night against 1–4% by day | **Mostly local.** The interference over the Baltic is stronger or wider at night; night routing isn't ruled out |
 
 ## Southern Baltic: degraded, or missing?
 
@@ -361,11 +363,45 @@ Outside reporting fits a worse 2026 without naming these dates:
   - The cause isn't verified. An inertial or hybrid position source feeding ADS-B is one possibility.
   - This bears on the A350 post-exposure pattern (verdict 27). Part of the 19× over-representation may be that A350s stay visible while degraded, where other types drop out of the counts. That is a hypothesis, not yet tested.
 
+
+## The January and February surges in the raw traces
+
+The same check on 2 Jan (holiday run), 1 Feb and 24 Feb 2026, with 17 Jan (a quiet Saturday) as the control:
+
+| | 2 Jan | 1 Feb | 24 Feb | 17 Jan (control) |
+|---|---|---|---|---|
+| Box share (daily tables) | 34.0% on 821 aircraft-hexes | 23.4% on 1,507 | 25.7% on 982 | 3.7% on 2,169 |
+| Aircraft that crossed the box | 306 | 286 | 211 | 257 |
+| Seen | 29% | 53% | 52% | 92% |
+| MLAT only | 20% | 4% | 4% | 3% |
+| Dark (incl. long gaps) | 50% | 44% | 44% | 5% |
+| ADS-B points with NACp < 8 on seen crossings | 30% | 23% | 22% | 4% |
+
+- **The same mechanism as 9 May, a little weaker.** As many aircraft crossed as on the control day (more on 2 Jan), and close to half of the crossings were dark.
+- **A350s stayed visible again:** seen on 90%, 78% and 94% of their crossings, with 89%, 69% and 89% of their points degraded. On the control day 25% of their points were degraded. Across the four jammed days, the A350 is the type most often seen degraded rather than dark. That is a partial test of the visibility hypothesis; recounting the post-exposure type table with dark aircraft is still to do.
+- Positions mostly stopped within 53–58°N, 14–22°E on all three days (1° cells of the last ADS-B point). That is the same area as on 9 May.
+
+## Why the Baltic is worse at night (partial)
+
+`tools/trace_box.py night` on three days without a surge (16 May, 8 May and 17 Jan) compares night (22–04Z) with day (08–17Z) over the Baltic side of the 02Z test (53–60°N, 14–26°E). It uses ADS-B aircraft-minutes and raw NACp, before the post-exposure tag.
+
+| FL300+ | 16 May night / day | 8 May | 17 Jan |
+|---|---|---|---|
+| All aircraft | 30.7% / 7.2% | 42.7% / 6.8% | 36.8% / 3.3% |
+| Narrowbodies | 9.1% / 4.1% | 13.0% / 4.5% | 19.4% / 1.6% |
+| Other types | 56.9% / 16.2% | 61.4% / 12.4% | 45.2% / 7.1% |
+| Arrived healthy | 10.5% / 3.8% | 14.5% / 3.7% | 12.1% / 1.2% |
+| Arrived degraded | 66.2% / 28.7% | 82.6% / 23.8% | 80.5% / 20.6% |
+
+- **Not altitude.** The night excess holds within each altitude band, and the altitude mix changes little: FL300+ carries 71–83% of traffic at night and 70–76% by day.
+- **Partly carried in.** At cruise, widebodies and other non-narrowbody types make up 45–67% of night traffic, against 25–30% by day. Many of these aircraft are already degraded at their first position in the region, whether they degraded farther east or were first heard inside the jammed area.
+- **Mostly local.** Aircraft that arrived healthy are degraded 3–10 times more often at night than by day on all three days. So the interference itself looks stronger or wider at night. A different night route mix, closer to Kaliningrad and the Russian border, isn't ruled out. That needs a route-by-route comparison.
+
 ## Next
 
-1. ~~Read the raw traces for 9 May 2026~~ **Done:** position loss (verdict 34). Next, the same check on the holiday run (2 Jan 2026) and February (1 and 24 Feb), to see whether they're the same.
-2. **A missing-aircraft measure** is now the priority: aircraft-hexes against the hex's usual count, or dark crossings as above, on the map and in the trend. On days like 9 May the share hides most of the effect. Until then the daily trend's Baltic panel carries that caveat.
-3. **Why the Baltic is worse at night.** There are two hypotheses, both untested. Night traffic is mostly long-haul and cargo at cruise level, which sees a ground jammer from farther away. Or the jammers run harder at night. Splitting the night share by altitude band and aircraft type would separate them.
+1. ~~Read the raw traces for 9 May 2026~~ **Done:** position loss (verdict 34). January and February show the same (verdict 35).
+2. ~~A missing-aircraft measure~~ **Done (22 Oct 2026):** the map's "Fewer aircraft than usual" view (each hex's count against its 14-day median), and hollow dots on the daily trend for days under half the area's usual aircraft-hexes.
+3. **Why the Baltic is worse at night: partly answered** (verdict 36). It's not altitude, it's partly carried in, and mostly local. Left: a route-by-route comparison, and more days.
 4. **Positive controls for the ADS-B lane** remain the announced US tests: WSMR is verified and Point Mugu is confirmed. The Kurils and Jammertest don't work for this lane.
 5. **Test the A350 visibility hypothesis.** For each type, compare dark crossings with degraded-but-visible crossings through known jamming, then recompute the post-exposure type table counting dark aircraft.
 
