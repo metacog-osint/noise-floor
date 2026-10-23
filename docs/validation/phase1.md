@@ -303,6 +303,7 @@ Then:
 | 38 | Spire's maritime jammer case, 14 Oct 2024 (map centred near 55.2°N 17.2°E; area tested 54.9–55.6°N, 16.5–18.0°E) | Share 10.8% on 342 aircraft-hexes, against 13.9% and 13.4% on 13 and 15 Oct. Dark crossings 11% (18 of 168), against 7% and 5% | **Not detected.** Spire counted 3 of 53 aircraft affected in its main hex, which is below what the daily share or the crossing test can resolve |
 | 39 | False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024 (66.5–69.5°N, 17–25°E) | 0.0% and 1.0% degraded, against 0.0% on 27 Feb (88–104 aircraft-hexes a day) | **Pass.** A weather-radar artefact leaves no GNSS signal (coverage there is thin) |
 | 40 | Radio-horizon localizer, first version (southern Baltic; 9 May, 2 Jan, 1 Feb, 24 Feb 2026) | Stacked best crossing at 55.10°N 19.52°E, offshore about 55 km NW of Baltiysk, with NACp events at 80% of the radio horizon. Day by day, every top peak lies within about 20–80 km of the western Sambia peninsula | **Points at the Sambia coast, not yet a fix.** The reach scale was tuned on the same days and moves the peak by up to about 50 km |
+| 41 | Localizer against the 2025 TDOA fixes (Gattis, Cydejko & Akos 2026), scored with settings fixed in advance | Top peak 20 km from the Baltiysk-harbour fix on 3 Apr; 37, 48 and 45 km from the coastal-site fix on 15 Apr, 17 Apr and 21 Jun (1 hit of 4 at 25 km; 0 of 2 in the interference windows). The target cell always ranked in the top 2% of 3,496 cells. Mean miss 38 km, against 38 km for naming Kaliningrad city and 52 km for the centroid of onsets | **Fail.** It finds the area but not the site: the two TDOA sites are 21 km apart, finer than the localizer resolves |
 
 ## Southern Baltic: degraded, or missing?
 
@@ -439,6 +440,45 @@ Next for the localizer:
 - Use pairwise intersections with a crossing-angle filter instead of arc votes.
 - Separate concurrent jammers (St Petersburg and Kaliningrad both reach this region).
 - Score it on days the TDOA paper covers (Apr–Jun 2025, before the backfill).
+
+
+## The localizer against the 2025 TDOA fixes (pre-registered)
+
+**Known answers.** Gattis, Cydejko & Akos (GPS Solutions 30:96, 2026, CC BY) ran a TDOA network of GNSS IF samplers around the Gulf of Gdańsk in April–June 2025. Their map figures give two sites, 21 km apart:
+- **C, a coastal facility** on the west shore of the Sambia peninsula at 54.8303°N 19.9483°E. Fixes on 17 Apr at 13:57Z and 21 Jun at 18:09Z agree to within 70 m. The text says the 15 Apr results and 21 Jun at 21:26Z point to the same place, 50 m from suspect antennas.
+- **B, Baltiysk military harbour** at 54.6392°N 19.9005°E: a jammer fixed on 3 Apr at 15:24Z.
+- The paper also notes reception beyond the radio horizon, likely through sea ducting. That matters for any horizon-based method.
+
+**Method changes, made on 2026 days only and fixed before any 2025 day was processed:**
+- **Reach fitted, not tuned (`--fit`).** For each candidate cell, the reach fraction is whatever most onsets agree on, and the cell scores the number that agree. On 9 May 2026 this returns 0.79, matching the earlier hand-tuned 0.8.
+- **Onsets only.** Recoveries lag while receivers re-acquire, so they sit farther out. Recovery-only fits were noise on every 2026 day, and requiring onsets and recoveries to share a reach made the results worse.
+- With these settings the 2026 surge days put the top peak 17 km from site C on both 9 May and 2 Jan, at the same cell (54.90°N 19.72°E, reach 0.77–0.79). Those are the days the settings were chosen on, so they don't count as a test.
+- On 1 and 24 Feb a short-reach solution near Łeba on the Polish coast (reach 0.51–0.57) won instead. It's unexplained: an artefact of short arcs crossing dense traffic, or a second source.
+
+**The test** (3 Apr, 15 Apr, 17 Apr and 21 Jun 2025; aircraft at 20,000 ft or above; hit = top peak within 25 km of the day's site):
+
+| Day | Site | Top peak | Distance | Site's cell rank (of 3,496) | Hit |
+|---|---|---|---|---|---|
+| 3 Apr | B | 54.60°N 20.20°E (reach 0.51) | 20 km | 27 | Yes |
+| 15 Apr | C | 54.50°N 20.04°E (reach 0.55) | 37 km | 24 | No (18 km from B) |
+| 17 Apr | C | 54.40°N 19.88°E (reach 0.57) | 48 km | 59 | No |
+| 17 Apr, 11–23Z | C | 54.30°N 19.88°E | 59 km | 58 | No |
+| 21 Jun | C | 54.50°N 20.36°E (reach 0.63) | 45 km | 7 | No |
+| 21 Jun, 16–22Z | C | 55.10°N 20.68°E | 56 km | 41 | No |
+
+- **1 hit of 4 days; 0 of 2 in the interference windows. A fail on the pre-registered rule.**
+- **The area is right:** every day's site ranks in the top 2% of cells, and every top peak is within about 60 km of both sites.
+- **The site isn't resolved:**
+  - The mean miss is 38 km, no better than naming Kaliningrad city (38 km from the sites). The centroid of onset positions does worse (52 km).
+  - Resampling the events moves the top peak by a median of 15–21 km, the same order as the 21 km between the two sites.
+- **A consistent bias:** in 2025 the peaks sit south of both sites (54.3–54.6°N), with shorter fitted reaches (0.51–0.63) and fewer onsets (689–1,311 a day, against 2,943 on 9 May 2026).
+- Possible causes, not tested:
+  - Power-limited reach on lighter days.
+  - Traffic geometry: most onsets come from aircraft approaching from the south and west.
+  - Two sites active on the same day, merging into one peak between them.
+  - Ducting, which breaks the horizon assumption.
+
+What would help next: separate concurrent emitters (two-source fits), use onset timing against the TDOA windows at minute resolution, and weight by the crossing angle between arcs. Until the localizer passes a test like this, its positions stay off the public map.
 
 ## Next
 
