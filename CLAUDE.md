@@ -40,7 +40,11 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   (`tools/site_days.py`). Rerun or fill days with Actions → daily → Run workflow (`days`, `force`; `reanalyse` reruns only the analyses,
   with no adsb.lol download, after `pnt_analysis.py` changes). The map page's events panel reads `site/data/events/<day>.json`;
   the charts page's daily trend reads `site/data/trend.json` (both built at deploy for daily days). The 20 validated days are
-  in the releases too (`pnt-data-2025-10`, `-2025-11`, `-2026-09`; uploaded with `daily_job.py ... --upload-local`). GitHub disables
+  in the releases too (`pnt-data-2025-10`, `-2025-11`, `-2026-09`; uploaded with `daily_job.py ... --upload-local`).
+- **Backfill (22–23 Oct 2026):** `.github/workflows/backfill.yml` (Run workflow: `start`, `end`) filled 1 Oct 2025 – 6 Oct 2026.
+  Phase 1 processes one month per job, two at a time (`--skip-analysis`); phase 2 runs the analyses in date order
+  (`--reanalyse --min-seconds 30`); then the site redeploys. Reruns skip published days. Gaps are at the source: adsb.lol
+  has no archive for 31 Dec 2025 or 6 May 2026, its 5 May archive holds no traces, and 7 May covers about 6 hours. Deploys fetch only changed release files (`tools/fetch_release_files.py`, cached). GitHub disables
   scheduled workflows after 60 days without a push to the repo.
 
 ## History
