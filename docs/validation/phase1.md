@@ -302,6 +302,7 @@ Then:
 | 37 | SBAS flags over the year (344 days with analysis files on 22 Oct 2026) | Days with any flagged hour: EGNOS 6 (all in the 13–17 Oct 2025 outage), WAAS CONUS 3 (storm days in Jan 2026), WAAS Canada 13, KASS 20, MSAS 72, **GAGAN 162, SouthPAN 229** | **GAGAN and SouthPAN flags are routine:** most aircraft there don't use those services, so the 10 m measure is unreliable in those areas. The flag already drops it there (the 93 m measure is unaffected). The map now lists those two apart as routine instead of as probable service problems |
 | 38 | Spire's maritime jammer case, 14 Oct 2024 (map centred near 55.2°N 17.2°E; area tested 54.9–55.6°N, 16.5–18.0°E) | Share 10.8% on 342 aircraft-hexes, against 13.9% and 13.4% on 13 and 15 Oct. Dark crossings 11% (18 of 168), against 7% and 5% | **Not detected.** Spire counted 3 of 53 aircraft affected in its main hex, which is below what the daily share or the crossing test can resolve |
 | 39 | False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024 (66.5–69.5°N, 17–25°E) | 0.0% and 1.0% degraded, against 0.0% on 27 Feb (88–104 aircraft-hexes a day) | **Pass.** A weather-radar artefact leaves no GNSS signal (coverage there is thin) |
+| 40 | Radio-horizon localizer, first version (southern Baltic; 9 May, 2 Jan, 1 Feb, 24 Feb 2026) | Stacked best crossing at 55.10°N 19.52°E, offshore about 55 km NW of Baltiysk, with NACp events at 80% of the radio horizon. Day by day, every top peak lies within about 20–80 km of the western Sambia peninsula | **Points at the Sambia coast, not yet a fix.** The reach scale was tuned on the same days and moves the peak by up to about 50 km |
 
 ## Southern Baltic: degraded, or missing?
 
@@ -418,6 +419,26 @@ These days come before the backfill. They were processed locally with the same p
 Sources for this section (retrieved 23 Oct 2026):
 - Spire Global, "GNSS interference report: Russia 2024/2025 – Part 1 of 4: Kaliningrad & the Baltic Sea", 27 Jun 2025: [spire.com](https://spire.com/blog/space-reconnaissance/gnss-interference-report-russia/).
 - Yle News, "Military exercise apparently disrupts weather images from Lapland", 6 Mar 2024 (updated 7 Mar): [yle.fi](https://yle.fi/a/74-20077924).
+
+
+## Radio-horizon localizer: first version
+
+`tools/horizon_fix.py` re-derives the published radio-horizon method (Schäfer et al., "Jammer on the Horizon", ION GNSS+ 2023; the 2024 Baltic open-source work in `docs/research/2026-10-14-baltic-jammer-2024.md`) from the trace extracts.
+- An aircraft's last good position before it degrades, or its first good position after it recovers, should lie about one radio horizon from the jammer: r = 4.12·(√h_aircraft + √h_jammer) km, with heights in metres.
+- Each such event votes for the cells on its circle, ahead of the aircraft for an onset and behind it for a recovery (±60°, ±20 km).
+- Where the arcs cross is the candidate.
+
+What the first runs show:
+- **Gaps are mostly coverage.** Counting position gaps as onsets puts the raw peaks at coverage edges over Sweden and the North Sea, and a quiet day (16 May) votes almost as strongly there. With NACp drops and recoveries only, the quiet-day background falls by about 90% (17 Jan: 990 events against 1,784–2,943 on jammed days).
+- **The full horizon overshoots.** At r × 1.0 the top peaks ring Kaliningrad at 60–100 km in several directions. That is what arcs do when the jammer's reach is shorter than the horizon: they cross beyond it. At 80% of the horizon the vote is sharpest on every day: 263 votes against 156 for the next peak on 9 May. At 60% and 45% the peaks drift west and flatten.
+- **Stacked over the four jammed days at 80%:** the best crossing is at 55.10°N 19.52°E, over the sea about 55 km NW of Baltiysk and about 35 km off the western Sambia coast. Resampling the events moves it by a median of 11 km (90% within 23 km). That spread is statistical only: across scales of 0.75–0.85 the day-by-day peaks move by up to about 50 km.
+- **Context, not a score.** The 2025 TDOA network on the Polish coast placed one fix at Baltiysk harbour (Gattis, Cydejko & Akos, GPS Solutions 30:96, 2026). The localizer agrees to within about 55 km, which is no better than its own model error. Spire's 2024 maritime case is another reason not to assume a land site.
+
+Next for the localizer:
+- Estimate the reach from the data instead of tuning it, for example from the distribution of onset distances.
+- Use pairwise intersections with a crossing-angle filter instead of arc votes.
+- Separate concurrent jammers (St Petersburg and Kaliningrad both reach this region).
+- Score it on days the TDOA paper covers (Apr–Jun 2025, before the backfill).
 
 ## Next
 
