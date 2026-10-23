@@ -11,6 +11,7 @@ and reports, for named boxes:
   python tools/leads_year.py baltic|malay|north02|kurils|jammertest
   python tools/leads_year.py coverage                 # southern Baltic: share against aircraft count, neighbours
   python tools/leads_year.py night                    # 02-03Z over northern Europe: Baltic side against the rest
+  python tools/leads_year.py spire2024|kiruna2024      # 2024 validation-set days (processed locally first; see below)
 """
 import json, os, statistics, sys, urllib.request
 from collections import defaultdict
@@ -246,6 +247,7 @@ def hourly_rows_ll(day):
 
 
 def main():
+    global CACHE
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd == "fetch":
         fetch()
@@ -272,6 +274,19 @@ def main():
         coverage()
     elif cmd == "night":
         night()
+    elif cmd in ("spire2024", "kiruna2024"):
+        # days before the backfill: process them first with
+        #   python pipeline/pnt_daily.py <day> --raw <archive folder> --out data/pnt/validation2024
+        CACHE = os.path.join(ROOT, "data", "pnt", "validation2024")
+        if cmd == "spire2024":         # Spire: maritime source, 14 Oct 2024; its map centres near 55.2N 17.2E
+            boxes = {"spire_area": (54.9, 55.6, 16.5, 18.0), "south_baltic": BOXES["south_baltic"]}
+            days_ = ["2024-10-13", "2024-10-14", "2024-10-15"]
+        else:                          # Kiruna weather-radar fault and exercise chaff, 5-6 Mar 2024 (not GNSS)
+            boxes = {"kiruna_area": (66.5, 69.5, 17.0, 25.0)}
+            days_ = ["2024-02-27", "2024-03-05", "2024-03-06"]
+        for d in days_:
+            print(d, "  ".join(f"{k}: {v[0]:.1f}% of {v[1]} aircraft-hexes" if (v := daily_share(d, b)) else f"{k}: no data"
+                               for k, b in boxes.items()))
     else:
         sys.exit(__doc__)
 
