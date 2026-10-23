@@ -154,7 +154,7 @@ map.attributionControl.addAttribution('NISAR: NASA/JPL-ISRO via ASF DAAC · Natu
 map.createPane('borders'); map.getPane('borders').style.zIndex = 160; map.getPane('borders').style.pointerEvents = 'none';
 const layerOn = Object.assign({borders: true, places: true}, (() => { try { return JSON.parse(localStorage.getItem('nf-nisar-layers') || '{}'); } catch (e) { return {}; } })());
 const gBorders = L.geoJSON(DATA.borders || {type: 'FeatureCollection', features: []}, {pane: 'borders', interactive: false,
-  style: f => ({color: '#5d6b80', weight: 1, opacity: 0.85, dashArray: f.properties && f.properties.d ? '4 4' : null})});
+  style: f => ({color: '#ffffff', weight: 1.3, opacity: 0.8, dashArray: f.properties && f.properties.d ? '5 4' : null})});   // white reads on the dark basemap
 const gPlaces = L.layerGroup();
 function drawPlaces(){
   gPlaces.clearLayers();
