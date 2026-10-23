@@ -91,6 +91,11 @@
       });
       el("path", { d: d, fill: "none", stroke: s.color, "stroke-width": s.width || 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
     });
+    (o.marks || []).forEach(function (i) {          // hollow dots on the first series (e.g. low-coverage days)
+      var v = o.series[0].values[i];
+      if (v === null || v === undefined) return;
+      el("circle", { cx: X(i), cy: Y(Math.min(v, ymax)), r: 4, fill: cssVar("--surface-chart"), stroke: o.series[0].color, "stroke-width": 2 }, svg);
+    });
     var xh = el("line", { class: "xhair", y1: m.t, y2: m.t + ih, x1: -10, x2: -10, visibility: "hidden" }, svg);
     var dots = o.series.map(function (s) { return el("circle", { r: 4, fill: s.color, stroke: cssVar("--surface-chart"), "stroke-width": 2, visibility: "hidden" }, svg); });
     var hit = el("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent", tabindex: 0 }, svg);
@@ -277,6 +282,22 @@
     trendOwnState = v;
     try { localStorage.setItem("nf-trend-scale", v ? "own" : "shared"); } catch (e) { /* this visit only */ }
   }
+  // days with under half the area's usual aircraft-hexes (median of its previous 14 days with data, at least 7 of them
+  // and a median of 200 or more): strong jamming can stop aircraft sending a position, so the share that day comes
+  // from the aircraft that kept one
+  function lowCoverage(ah) {
+    var idx = [], pct = {}, prev = [];
+    ah.forEach(function (v, i) {
+      if (prev.length >= 7 && v !== null && v !== undefined) {
+        var s = prev.slice().sort(function (a, b) { return a - b; }), k = s.length >> 1;
+        var med = s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2;
+        if (med >= 200 && v < 0.5 * med) { idx.push(i); pct[i] = Math.round(100 * v / med); }
+      }
+      if (v !== null && v !== undefined) { prev.push(v); if (prev.length > 14) prev.shift(); }
+    });
+    return { idx: idx, pct: pct };
+  }
+
   function trend() {
     var grid = document.getElementById("trend-grid"); if (!grid) return;
     var table = document.getElementById("trend-table");
@@ -312,11 +333,15 @@
       h.textContent = name;
       if (r.box) { var bx = document.createElement("span"); bx.className = "bx"; bx.textContent = boxLabel(r.box); h.appendChild(bx); }
       box.className = "chart"; cell.appendChild(h); cell.appendChild(box); grid.appendChild(cell);
+      var low = lowCoverage(r.aircraft_hexes);
       lineChart(box, {
         aria: "Daily share of aircraft-hexes worse than 93 m, " + name + (own ? ", own scale 0–" + scaleFor(r) + "%" : ""),
         height: 150, x: days, unit: "%", yMax: scaleFor(r),
-        series: [{ name: name, values: r.share, color: cssVar("--series-1") }], xTicks: ticks,
-        xTitle: function (i) { return dayLabel(days[i], true) + " · " + (r.aircraft_hexes[i] || 0).toLocaleString() + " aircraft-hexes"; }
+        series: [{ name: name, values: r.share, color: cssVar("--series-1") }], xTicks: ticks, marks: low.idx,
+        xTitle: function (i) {
+          return dayLabel(days[i], true) + " · " + (r.aircraft_hexes[i] || 0).toLocaleString() + " aircraft-hexes" +
+            (low.pct[i] !== undefined ? " (" + low.pct[i] + "% of usual: low coverage)" : "");
+        }
       });
     });
     var thead = document.createElement("thead"), hr = document.createElement("tr");
