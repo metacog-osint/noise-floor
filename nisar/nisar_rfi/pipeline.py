@@ -25,6 +25,8 @@ def load_config(path=None):
     cfg = json.load(open(path))
     for k, d in (("state_dir", "private/nisar/state"), ("out_dir", "private/nisar/out")):
         cfg[k] = os.path.normpath(os.path.join(REPO, cfg.get(k, d)))     # relative to the repo root
+    if cfg.get("emitters_file"):                                          # known emitters for the map (private)
+        cfg["emitters_file"] = os.path.normpath(os.path.join(REPO, cfg["emitters_file"]))
     # tables need tone-rank (PROVISIONAL); BETA products only support the image method
     cols = cfg.get("collections", ["NISAR_L2_GCOV_PROVISIONAL_V1"])
     cfg.setdefault("method", "image" if any("BETA" in c for c in cols) else "tables")

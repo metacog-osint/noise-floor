@@ -6,6 +6,7 @@
 <title>L-band RFI Watch</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script>
 <style>
 :root{
   --bg:#0b0e13; --panel:rgba(16,20,27,.92); --line:#263040; --fg:#e7ebf0; --mut:#8b97a8;
@@ -34,6 +35,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
 .chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:999px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:30px}
 .chip.on{color:var(--fg);border-color:#3b4a60;background:#1a2230}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+[hidden]{display:none!important}
+.clabel{color:#8796ab;font-size:12px;font-weight:650;letter-spacing:.18em;text-transform:uppercase;white-space:nowrap;text-shadow:0 0 3px #0d1219,0 0 3px #0d1219;pointer-events:none}
+.clabel span{position:absolute;left:0;top:0;transform:translate(-50%,-50%)}
+.emit{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:12px solid #f5b942;filter:drop-shadow(0 0 2px #000)}
+.emit.low{border-bottom-color:#c99a3c;opacity:.75}
+.tl{display:block;margin:6px 0 2px}
+.tl .ax{stroke:#3b4a60;stroke-width:1}
+.tl .on{fill:#e7ecf2}
+.tl .off{fill:none;stroke:#8796ab;stroke-width:1.2}
+.adsb{margin-top:8px;padding-top:6px;border-top:1px solid var(--line);font-size:12.5px}
+.adsb button{appearance:none;border:1px solid var(--line);background:#1a2230;color:var(--fg);border-radius:6px;padding:4px 8px;font:inherit;font-size:12px;cursor:pointer}
+.tag.radar{background:#3a2f12;color:#f5b942;border-color:#5c4a1a}
+.exports{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.exports button{appearance:none;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer}
 .plabel{color:#c9d1dc;font-size:11px;white-space:nowrap;text-shadow:0 0 3px #0d1219,0 0 3px #0d1219,0 0 2px #0d1219;pointer-events:none}
 .plabel::before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;background:#c9d1dc;margin-right:4px;vertical-align:middle}
 #demo{position:fixed;left:0;right:0;top:0;z-index:1001;background:repeating-linear-gradient(45deg,#3a2a05,#3a2a05 10px,#2c2004 10px,#2c2004 20px);color:#fcd34d;font-size:11.5px;font-weight:650;text-align:center;padding:3px 8px calc(3px);letter-spacing:.03em;display:none}
@@ -109,6 +124,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
     <button class="chip on" data-band="B" aria-pressed="true"><span class="dot" style="background:var(--b)"></span>B</button>
     <button class="chip on" data-layer="borders" aria-pressed="true">Borders</button>
     <button class="chip on" data-layer="places" aria-pressed="true">Places</button>
+    <button class="chip on" data-layer="passes" aria-pressed="true">Passes</button>
+    <button class="chip on" data-layer="emitters" aria-pressed="true">Known radars</button>
+    <button class="chip" id="conf-chip" title="Lowest confidence shown">Min: low</button>
+    <button class="chip on" id="adsb-chip" hidden aria-pressed="true">ADS-B ×</button>
   </div>
 </div>
 <div id="sheet" class="card min">
@@ -152,7 +171,29 @@ L.geoJSON(DATA.land, {pane: 'land', interactive: false,
 map.attributionControl.addAttribution('NISAR: NASA/JPL-ISRO via ASF DAAC · Natural Earth');
 // country borders and place names, each switchable from the filter bar (remembered per browser)
 map.createPane('borders'); map.getPane('borders').style.zIndex = 160; map.getPane('borders').style.pointerEvents = 'none';
-const layerOn = Object.assign({borders: true, places: true}, (() => { try { return JSON.parse(localStorage.getItem('nf-nisar-layers') || '{}'); } catch (e) { return {}; } })());
+const layerOn = Object.assign({borders: true, places: true, passes: true, emitters: true, minConf: 1}, (() => { try { return JSON.parse(localStorage.getItem('nf-nisar-layers') || '{}'); } catch (e) { return {}; } })());
+const CONF = {LOW: 1, MEDIUM: 2, HIGH: 3}, CONF_NAME = {1: 'low', 2: 'medium', 3: 'high'};
+const saveLayers = () => { try { localStorage.setItem('nf-nisar-layers', JSON.stringify(layerOn)); } catch (e) {} };
+function kmBetween(a, b, c, d){ const r = Math.PI / 180, h = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742 * Math.asin(Math.min(1, Math.sqrt(h))); }
+const EMIT = (DATA.emitters && DATA.emitters.list) || [], EMIT_KM = (DATA.emitters && DATA.emitters.flag_km) || 20;
+function nearEmitter(lat, lon){ let best = null; EMIT.forEach(e => { const k = kmBetween(lat, lon, e.lat, e.lon); if (k <= EMIT_KM && (!best || k < best.km)) best = {e, km: k}; }); return best; }
+const gEmit = L.layerGroup(), gCountry = L.layerGroup(), gAdsb = L.layerGroup().addTo(map);
+EMIT.forEach(e => L.marker([e.lat, e.lon], {icon: L.divIcon({className: '', html: `<div class="emit ${e.confidence === 'LOW' ? 'low' : ''}"></div>`, iconSize: [14, 12], iconAnchor: [7, 8]}), title: e.name})
+  .bindPopup(`<div class="pp"><h3>${esc(e.name)} · ${esc(e.country)}</h3><div class="when">Known L-band radar: ${esc(e.type)}</div><div class="int">Fixed air-surveillance radar (nominal 1215–1400 MHz, frequency-agile). Detections within ${EMIT_KM} km are flagged as possibly this radar. Position confidence ${esc(e.confidence.toLowerCase())}.</div></div>`, {maxWidth: 300}).addTo(gEmit));
+function drawCountries(){
+  gCountry.clearLayers();
+  const z = map.getZoom();
+  if (z > 6.5 || z < 3) return;
+  const placed = [];                                  // pixel boxes already used; biggest countries come first
+  (DATA.countries || []).forEach(c => {
+    const p = map.latLngToContainerPoint([c[1], c[2]]), w = c[0].length * 10 + 8, h = 18;
+    const r = [p.x - w / 2, p.y - h / 2, p.x + w / 2, p.y + h / 2];
+    if (placed.some(q => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) return;
+    placed.push(r);
+    L.marker([c[1], c[2]], {interactive: false, keyboard: false,
+      icon: L.divIcon({className: 'clabel', html: `<span>${esc(c[0])}</span>`, iconSize: [0, 0], iconAnchor: [0, 0]})}).addTo(gCountry);
+  });
+}
 const gBorders = L.geoJSON(DATA.borders || {type: 'FeatureCollection', features: []}, {pane: 'borders', interactive: false,
   style: f => ({color: '#ffffff', weight: 1.3, opacity: 0.8, dashArray: f.properties && f.properties.d ? '5 4' : null})});   // white reads on the dark basemap
 const gPlaces = L.layerGroup();
@@ -168,14 +209,85 @@ function drawPlaces(){
 function applyLayers(){
   layerOn.borders ? gBorders.addTo(map) : gBorders.remove();
   layerOn.places ? gPlaces.addTo(map) : gPlaces.remove();
+  layerOn.places ? gCountry.addTo(map) : gCountry.remove();
+  layerOn.emitters ? gEmit.addTo(map) : gEmit.remove();
+  document.getElementById('conf-chip').textContent = 'Min: ' + CONF_NAME[layerOn.minConf];
+  document.getElementById('conf-chip').classList.toggle('on', layerOn.minConf > 1);
   document.querySelectorAll('[data-layer]').forEach(x => { const on = !!layerOn[x.dataset.layer]; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
 }
-map.on('zoomend moveend', () => { if (layerOn.places) drawPlaces(); });
-drawPlaces(); applyLayers();
+map.on('zoomend moveend', () => { if (layerOn.places) { drawPlaces(); drawCountries(); } });
+drawPlaces(); drawCountries(); applyLayers();
 document.querySelectorAll('[data-layer]').forEach(b => b.onclick = () => {
-  layerOn[b.dataset.layer] = !layerOn[b.dataset.layer];
-  try { localStorage.setItem('nf-nisar-layers', JSON.stringify(layerOn)); } catch (e) {}
-  if (layerOn.places) drawPlaces(); applyLayers(); });
+  layerOn[b.dataset.layer] = !layerOn[b.dataset.layer]; saveLayers();
+  if (layerOn.places) { drawPlaces(); drawCountries(); } applyLayers();
+  if (b.dataset.layer === 'passes') draw(); });
+document.getElementById('conf-chip').onclick = () => { layerOn.minConf = layerOn.minConf % 3 + 1; saveLayers(); applyLayers(); draw(); };
+document.getElementById('adsb-chip').onclick = () => { gAdsb.clearLayers(); document.getElementById('adsb-chip').hidden = true; };
+
+// ADS-B cross-check: aircraft GNSS degradation near a NISAR detection on the pass date, from the public map's day files
+const PUB = 'https://noisefloor.theintelligence.company', adsbCache = {};
+function adsbCheck(btn){
+  const day = btn.dataset.day, lat = +btn.dataset.lat, lon = +btn.dataset.lon, out = btn.parentNode;
+  out.innerHTML = 'Checking aircraft data for ' + esc(day) + '…';
+  (adsbCache[day] ? Promise.resolve(adsbCache[day]) : fetch(`${PUB}/data/gnss/${day}.json`).then(r => r.ok ? r.json() : null))
+    .then(j => {
+      adsbCache[day] = j;
+      if (!j) { out.innerHTML = `No aircraft data published for ${esc(day)} yet (the public map updates the morning after).`; return; }
+      const c = j.cols, ih = c.indexOf('h3'), ia = c.indexOf('aircraft'), ib = c.indexOf('bad_live');
+      const near = [];
+      j.cells.forEach(x => { const p = h3.cellToLatLng(x[ih]); const k = kmBetween(lat, lon, p[0], p[1]); if (k <= 150) near.push({x, k, n: x[ia], s: x[ia] >= 5 ? 100 * Math.max(x[ib] - 1, 0) / x[ia] : null}); });
+      const judged = near.filter(z => z.s !== null), jam = judged.filter(z => z.s >= 10), within50 = judged.filter(z => z.k <= 50);
+      const mx = judged.reduce((m, z) => z.s > m.s ? z : m, {s: -1});
+      gAdsb.clearLayers();
+      near.forEach(z => { if (z.s === null) return;
+        const col = z.s >= 25 ? '#ff7a2f' : z.s >= 10 ? '#ffa45c' : z.s >= 2 ? '#ffd1a8' : '#5d6b80';
+        L.polygon(h3.cellToBoundary(z.x[ih]), {color: col, weight: .6, fillColor: col, fillOpacity: z.s >= 2 ? .45 : .12, interactive: false}).addTo(gAdsb); });
+      document.getElementById('adsb-chip').hidden = !gAdsb.getLayers().length;
+      const link = `<a href="${PUB}/map#day=${esc(day)}&m=jam&v=${lat.toFixed(2)},${lon.toFixed(2)},7" target="_blank" rel="noopener">Open the public map ↗</a>`;
+      if (!judged.length) { out.innerHTML = `<b>${esc(day)}:</b> no hex within 150 km had 5 or more aircraft, so ADS-B can't say anything here. ${link}`; return; }
+      out.innerHTML = `<b>${esc(day)}:</b> ${jam.length} of ${judged.length} hexes within 150 km at jamming scale (10%+ of aircraft degraded)` +
+        (within50.length ? `; within 50 km ${within50.filter(z => z.s >= 10).length} of ${within50.length}` : '') +
+        (mx.s >= 0 ? `; worst ${mx.s.toFixed(0)}% at ${mx.k.toFixed(0)} km` : '') +
+        `. Daily totals, not the pass time. ${link}`;
+    }).catch(() => { out.innerHTML = 'Could not read the public aircraft data.'; });
+}
+const adsbBlock = (day, lat, lon) => `<div class="adsb"><button class="adsb-btn" data-day="${esc(day)}" data-lat="${lat}" data-lon="${lon}">Check aircraft GNSS on ${esc(day)}</button></div>`;
+map.on('popupopen', e => { const el = e.popup.getElement(); if (el) el.querySelectorAll('.adsb-btn').forEach(b => b.onclick = () => adsbCheck(b)); });
+
+// site timeline: every pass that covered the site, filled when it detected
+function siteTimeline(s){
+  const cov = (s.coverage || []).slice().sort((a, b) => a.start < b.start ? -1 : 1);
+  if (!cov.length) return '';
+  const t0 = new Date(cov[0].start), t1 = new Date(cov[cov.length - 1].start), span = Math.max(1, t1 - t0), W = 260, H = 26;
+  const x = t => 8 + (W - 16) * ((new Date(t) - t0) / span);
+  const marks = cov.map(c => c.active ? `<circle class="on" cx="${x(c.start).toFixed(1)}" cy="13" r="3.6"><title>${esc(fmtT(c.start))}: detected</title></circle>`
+                                      : `<circle class="off" cx="${x(c.start).toFixed(1)}" cy="13" r="3.2"><title>${esc(fmtT(c.start))}: covered, nothing</title></circle>`).join('');
+  return `<svg class="tl" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Passes over this site"><line class="ax" x1="8" x2="${W - 8}" y1="13" y2="13"/>${marks}</svg>
+    <div class="when" style="margin:0">${esc(fmtT(cov[0].start))} → ${esc(fmtT(cov[cov.length - 1].start))} · filled = detected, hollow = covered with nothing</div>`;
+}
+
+// exports of what the map holds (private: they stay with you)
+function download(name, text, type){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+const csvCell = v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+function exportSitesCsv(){
+  const rows = [['id', 'lat', 'lon', 'status', 'first_seen_utc', 'last_seen_utc', 'active_passes', 'covering_passes', 'bands', 'fix_lat', 'fix_lon', 'fix_err_km', 'where', 'near_known_radar']];
+  DATA.sites.forEach(s => { const cov = s.coverage || [], ne = nearEmitter(s.lat, s.lon);
+    rows.push([s.id, s.lat, s.lon, s.status, s.first_seen, s.last_seen, cov.filter(c => c.active).length, cov.length, (s.bands_seen || []).join('+'),
+      s.fix ? s.fix.lat : '', s.fix ? s.fix.lon : '', s.fix ? s.fix.error_km : '', s.where || '', ne ? `${ne.e.name} (${ne.km.toFixed(0)} km)` : '']); });
+  download('nisar-sites.csv', rows.map(r => r.map(csvCell).join(',')).join('\n'), 'text/csv');
+}
+function exportDetsCsv(){
+  const rows = [['id', 'start_utc', 'lat', 'lon', 'bands', 'confidence', 'method', 'track', 'direction', 'frame', 'site', 'where', 'near_known_radar']];
+  DATA.detections.forEach(d => { const ne = nearEmitter(d.lat, d.lon);
+    rows.push([d.id, d.start, d.lat, d.lon, d.bands.join('+'), d.confidence, d.method || 'image', d.track, d.direction, d.frame, d.site || '', d.where || '', ne ? `${ne.e.name} (${ne.km.toFixed(0)} km)` : '']); });
+  download('nisar-detections.csv', rows.map(r => r.map(csvCell).join(',')).join('\n'), 'text/csv');
+}
+function exportKml(){
+  const pm = (name, desc, lat, lon) => `<Placemark><name>${esc(name)}</name><description>${esc(desc)}</description><Point><coordinates>${lon},${lat},0</coordinates></Point></Placemark>`;
+  const sites = DATA.sites.map(s => pm(s.id, `${s.status}; ${(s.coverage || []).filter(c => c.active).length}/${(s.coverage || []).length} passes; bands ${(s.bands_seen || []).join('+')}; last ${s.last_seen}`, s.lat, s.lon)).join('');
+  const dets = DATA.detections.map(d => pm(`${d.start.slice(0, 16)}Z ${d.bands.join('+')}`, `${d.confidence}; ${d.method || 'image'}; site ${d.site || ''}`, d.lat, d.lon)).join('');
+  download('nisar-watch.kml', `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>NISAR L-band watch</name><Folder><name>Sites</name>${sites}</Folder><Folder><name>Detections</name>${dets}</Folder></Document></kml>`, 'application/vnd.google-earth.kml+xml');
+}
 L.geoJSON(DATA.aoi.geojson, {interactive: false, style: {color: '#5b6b82', weight: 1, dashArray: '2 6', fill: false}}).addTo(map);
 
 const gPass = L.layerGroup().addTo(map), gDet = L.layerGroup().addTo(map), gSite = L.layerGroup().addTo(map),
@@ -183,7 +295,7 @@ const gPass = L.layerGroup().addTo(map), gDet = L.layerGroup().addTo(map), gSite
 const detLayers = {}, siteLayers = {};
 
 function inWindow(t){ return (gen - new Date(t)) / 864e5 <= windowDays; }
-function detVisible(d){ return inWindow(d.start) && d.bands.some(b => bandsOn.has(b)); }
+function detVisible(d){ return inWindow(d.start) && d.bands.some(b => bandsOn.has(b)) && (CONF[d.confidence] || 1) >= (layerOn.minConf || 1); }
 
 function detPopup(d){
   const k = bandKey(d.bands);
@@ -211,8 +323,10 @@ function detPopup(d){
     `}
     <tr><td>Processor flag</td><td>${esc(lk)}</td></tr>
     <tr><td>Site</td><td>${esc(d.site || '')}${d.ignored ? ' · ignored: ' + esc(d.ignored) : ''}</td></tr>
+    ${(n => n ? `<tr><td>Known radar</td><td>${esc(n.e.name)}, ${esc(n.e.type)}, ${n.km.toFixed(0)} km away: may be this radar</td></tr>` : '')(nearEmitter(d.lat, d.lon))}
   </table>
-  ${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">Granule in Vertex ↗</a>` : ''}</div>`;
+  ${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">Granule in Vertex ↗</a>` : ''}
+  ${adsbBlock(d.start.slice(0, 10), d.lat, d.lon)}</div>`;
 }
 
 function sitePopup(s){
@@ -225,7 +339,9 @@ function sitePopup(s){
     <tr><td>Bands seen</td><td>${esc(s.bands_seen.join(', '))}</td></tr>
     <tr><td>Geometries</td><td>${esc(s.geometries.join(', '))}</td></tr>
     <tr><td>Cross-fix</td><td>${s.fix ? `${s.fix.lat}, ${s.fix.lon} ± ${s.fix.error_km} km (${s.fix.crossing_deg}° crossing)` : 'needs two crossing geometries'}</td></tr>
-  </table></div>`;
+    ${(n => n ? `<tr><td>Known radar</td><td>${esc(n.e.name)}, ${n.km.toFixed(0)} km away: may be this radar</td></tr>` : '')(nearEmitter(s.lat, s.lon))}
+  </table>${siteTimeline(s)}
+  ${(() => { const last = (s.coverage || []).filter(c => c.active).map(c => c.start).sort().pop() || s.last_seen; return adsbBlock(last.slice(0, 10), s.lat, s.lon); })()}</div>`;
 }
 
 function draw(){
@@ -234,7 +350,7 @@ function draw(){
   const showLabels = map.getZoom() >= 6;
   // passes, newest on top
   const passes = DATA.passes.filter(p => inWindow(p.start)).sort((a, b) => a.start < b.start ? -1 : 1);
-  passes.forEach(p => {
+  if (layerOn.passes) passes.forEach(p => {
     const age = (gen - new Date(p.start)) / 864e5, op = Math.max(.25, 1 - age / Math.max(windowDays, 1));
     const poly = L.polygon(p.footprint.map(([x, y]) => [y, x]), {color: getCss('--pass'), weight: 1, opacity: op * .8,
       dashArray: '4 4', fillColor: getCss('--pass'), fillOpacity: .025, interactive: false}).addTo(gPass);
@@ -295,7 +411,7 @@ function renderSheet(){
     L_.innerHTML = `<div class="lg" style="padding:6px 12px 2px"><span><span class="dot" style="background:var(--a)"></span>A only</span><span><span class="dot" style="background:var(--b)"></span>B only</span><span><span class="dot" style="background:var(--ab)"></span>A + B</span></div>` +
       (dets.map(d => `<div class="row" data-det="${d.id}"><span class="dot" style="margin-top:5px;background:${BANDCOL[bandKey(d.bands)]}"></span>
       <div class="m"><div class="t1">${esc(d.where || d.lat + ', ' + d.lon)}</div><div class="t2">${esc(d.band_text)}${d.gnss_overlap.length ? ' · ' + esc(d.gnss_overlap.join(', ')) : ''}</div></div>
-      <div class="r">${fmtT(d.start)}<br><span class="tag">${esc(d.confidence)}</span></div></div>`).join('') || '<div class="empty">Nothing in this window.</div>');
+      <div class="r">${fmtT(d.start)}<br><span class="tag">${esc(d.confidence)}</span>${nearEmitter(d.lat, d.lon) ? ' <span class="tag radar">radar?</span>' : ''}</div></div>`).join('') || '<div class="empty">Nothing in this window.</div>');
   } else if (tab === 'sites') {
     L_.innerHTML = sites.sort((a, b) => a.last_seen < b.last_seen ? 1 : -1).map(s => {
       const isNew = newSites.includes(s), cov = s.coverage || [];
@@ -316,7 +432,12 @@ function renderSheet(){
       <p><b>How.</b> Unpolarized interference raises cross-pol (HV) relative to co-pol (HH) far beyond what the ground itself produces. Each pass is scored against its own scene, smoothed along the radar range direction (interference streaks run cross-track), and grouped into sites across passes.</p>
       <p><b>Reading it.</b> Blob = one pass. Ring = site (pulsing = first seen in the last 3 days, grey = quiet on recent passes). ⌖ = cross-fix from two crossing geometries. Dashed outlines = imaged frames, labelled with acquisition time.</p>
       <p><b>Limits.</b> Snapshots, not continuous: each spot is imaged every few days. Locations are blob-level. Jammers that only cover GPS L1 do not appear. Products are processed with an RFI filter, which can weaken weak signatures. These are leads for triage, not findings.</p>
+      <p><b>Tools.</b> ▲ = known L-band air-surveillance radar (private list); detections within ${EMIT_KM} km are tagged "radar?". Click a site for its pass timeline. "Check aircraft GNSS" reads the public ADS-B map for the pass date and draws the hexes within 150 km (daily totals, not the pass time).</p>
+      <div class="exports"><button id="x-sites">Sites (CSV)</button><button id="x-dets">Detections (CSV)</button><button id="x-kml">Sites and detections (KML)</button></div>
       <p class="sub" style="color:var(--mut)">${esc(DATA.footer || '')}</p></div>`;
+    document.getElementById('x-sites').onclick = exportSitesCsv;
+    document.getElementById('x-dets').onclick = exportDetsCsv;
+    document.getElementById('x-kml').onclick = exportKml;
   }
   const focus = () => { document.getElementById('sheet').classList.add('min'); grab.setAttribute('aria-expanded', 'false'); };
   L_.querySelectorAll('[data-det]').forEach(r => r.onclick = () => { const l = detLayers[r.dataset.det]; if (l) { focus(); if (l.getLatLng) map.setView(l.getLatLng(), 8); else map.fitBounds(l.getBounds(), {maxZoom: 9, paddingTopLeft: [16, 170], paddingBottomRight: [16, 120]}); setTimeout(() => l.openPopup(), 350); } });
@@ -337,9 +458,10 @@ const toggleSheet = () => { const s = document.getElementById('sheet'); s.classL
 grab.onclick = toggleSheet; grab.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSheet(); } };
 let lastZ = map.getZoom(); map.on('zoomend', () => { const z = map.getZoom(); if ((z >= 6) !== (lastZ >= 6)) draw(); lastZ = z; });
 draw();
-if (DATA.detections.length) {
-  const b = L.latLngBounds(DATA.detections.filter(detVisible).map(d => [d.lat, d.lon]));
-  if (b.isValid()) map.fitBounds(b.pad(0.4), {maxZoom: 8, paddingTopLeft: [16, 150], paddingBottomRight: [16, 130]});
+{ // open on the watch area; fall back to the detections when there is no area outline
+  let b = DATA.aoi && DATA.aoi.geojson ? L.geoJSON(DATA.aoi.geojson).getBounds() : null;
+  if (!b || !b.isValid()) b = L.latLngBounds(DATA.detections.filter(detVisible).map(d => [d.lat, d.lon])).pad(0.2);
+  if (b.isValid()) map.fitBounds(b, {maxZoom: 8, paddingTopLeft: [16, 150], paddingBottomRight: [16, 130], animate: false});
 }
 </script>
 </body>
