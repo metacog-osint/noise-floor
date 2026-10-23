@@ -11,8 +11,9 @@ the grid cells on its circle arc; where many arcs cross is the candidate.
   python tools/horizon_fix.py <day> [<day> ...] [--control <day>] [--grid lat0,lat1,lon0,lon1]
   python tools/horizon_fix.py <day> --fit --nacp-only [--hours 16-22] [--target name:lat,lon]   # reach fitted, scored
 
---fit (onsets only by default) fits the reach jointly with the location instead of assuming one; it is the mode
-scored against the 2025 TDOA fixes in docs/validation/phase1.md (verdict 41: it finds the area, not the site).
+--fit (onsets only by default) fits the reach jointly with the location instead of assuming one. Its default score
+(lr) is the likelihood that a cell's onsets come from one reach band plus a uniform background; the first scored
+version (count: onsets in the fullest reach window) failed against the 2025 TDOA fixes (verdict 41).
 
 Input: data/trace_box/<day>.jsonl.gz from tools/trace_box.py extract (ADS-B points with NACp). This is a first
 version: a jammer whose power, not the horizon, limits its reach puts the arcs too far out, and coverage gaps add
@@ -81,7 +82,7 @@ def vote(evs, grid, step, tol_km, cone):
     return lat, lon, votes
 
 
-def fit(evs, grid, step, cone, kmin=0.3, kmax=1.3, dk=0.02, win=0.05, both=False):
+def fit(evs, grid, step, cone, kmin=0.3, kmax=1.3, dk=0.02, win=0.05, both=False, score="count"):
     """Reach estimated from the data. For each candidate cell, take the events whose heading points at it (onsets
     ahead, recoveries behind, +-cone) and the ratio q = distance / radio horizon of each; the reach fraction k is the
     value most of them agree on (the fullest window of +-win in q). The cell's score is how many agree. No reach is
@@ -95,8 +96,9 @@ def fit(evs, grid, step, cone, kmin=0.3, kmax=1.3, dk=0.02, win=0.05, both=False
     p1, l1, r, want, ons = (E[:, k] for k in range(5))
     ons = ons.astype(bool)
     bins = np.arange(kmin, kmax + dk / 2, dk)
+    KS = np.arange(kmin, kmax + 1e-9, dk)
     w = int(round(2 * win / dk)) + 1
-    score, kbest = np.zeros((len(lat), len(lon))), np.zeros((len(lat), len(lon)))
+    score_arr, kbest = np.zeros((len(lat), len(lon))), np.zeros((len(lat), len(lon)))
     for i, la in enumerate(np.radians(lat)):
         for j, lo in enumerate(np.radians(lon)):
             dl = lo - l1
@@ -106,6 +108,22 @@ def fit(evs, grid, step, cone, kmin=0.3, kmax=1.3, dk=0.02, win=0.05, both=False
             if not m.any():
                 continue
             q = d / r
+            if score == "lr":                    # one reach band (normal) plus a uniform background, against background only
+                qq = q[m]
+                qq = qq[(qq >= kmin) & (qq <= kmax)]
+                if len(qq) < 5:
+                    continue
+                best = (-1e9, 0.0)
+                for sig in (0.04, 0.07):
+                    nz = np.exp(-0.5 * ((qq[:, None] - KS[None, :]) / sig) ** 2) / (sig * 2.5066)   # n x K
+                    for f in (0.3, 0.6):
+                        ll = np.log(f * nz + (1 - f) / (kmax - kmin)).sum(0) - len(qq) * math.log(1 / (kmax - kmin))
+                        b = int(ll.argmax())
+                        if ll[b] > best[0]:
+                            best = (ll[b], KS[b])
+                score_v, k_v = best
+                score_arr[i, j], kbest[i, j] = score_v, k_v
+                continue
             if both:
                 ho = np.convolve(np.histogram(q[m & ons], bins=bins)[0], np.ones(w), mode="same")
                 hr = np.convolve(np.histogram(q[m & ~ons], bins=bins)[0], np.ones(w), mode="same")
@@ -113,8 +131,19 @@ def fit(evs, grid, step, cone, kmin=0.3, kmax=1.3, dk=0.02, win=0.05, both=False
             else:
                 h = np.convolve(np.histogram(q[m], bins=bins)[0], np.ones(w), mode="same")
             b = int(h.argmax())
-            score[i, j], kbest[i, j] = h[b], (bins[b] + bins[b + 1]) / 2
-    return lat, lon, score, kbest
+            score_arr[i, j], kbest[i, j] = h[b], (bins[b] + bins[b + 1]) / 2
+    return lat, lon, score_arr, kbest
+
+
+def explained(evs, la, lo, k, cone, win=0.05, kmax=1.3):
+    """Mask of events that a source at (la, lo) with reach fraction k accounts for: heading at it and q within +-win of k."""
+    out = []
+    for e in evs:
+        d = km(e[0], e[1], la, lo)
+        want = e[3] if e[4] == "onset" else (e[3] + 180) % 360
+        off = abs((bearing(e[:2], (la, lo)) - want + 180) % 360 - 180)
+        out.append(off <= cone and d <= kmax * e[2] and abs(d / e[2] - k) <= win)
+    return out
 
 
 def cell_of(lat, lon, la, lo):
@@ -161,6 +190,11 @@ def main():
     ap.add_argument("--stack", action="store_true", help="add all the days into one vote map (with a bootstrap spread)")
     ap.add_argument("--fit", action="store_true", help="estimate the reach from the data, jointly with the location")
     ap.add_argument("--hours", help="UTC hours to keep, e.g. 16-22 (events outside are dropped)")
+    ap.add_argument("--score", choices=["count", "lr"], default="lr",
+                    help="--fit: count = onsets in the fullest reach window; lr = likelihood ratio of one reach band plus background")
+    ap.add_argument("--sources", type=int, default=1, help="--fit: emitters to find (greedy: each removes the onsets it explains)")
+    ap.add_argument("--around", action="append", default=[],
+                    help="--fit: keep onsets within N minutes of a UTC time, as HH:MM/N (repeatable); overrides --hours")
     ap.add_argument("--kinds", choices=["all", "onset", "recovery"], default="onset",
                     help="--fit: which events to use (default onsets: recoveries lag while receivers re-acquire)")
     ap.add_argument("--target", action="append", default=[], help="name:lat,lon to score against (repeatable)")
@@ -177,14 +211,34 @@ def main():
         h0, h1 = (int(x) for x in a.hours.split("-")) if a.hours else (0, 23)
         targets = [(t.split(":")[0], *(float(x) for x in t.split(":")[1].split(","))) for t in a.target]
         for day in a.days:
-            evs = [e for e in events(day, a.min_alt, a.gap * 60, a.h_tx, a.nacp_only) if h0 <= int(e[5] % 86400 // 3600) <= h1
-                   and a.kinds in ("all", e[4])]
-            lat, lon, s, k = fit(evs, a.grid, a.step, a.cone)
-            print(f"{day} ({h0:02d}-{h1:02d}Z): {len(evs)} events")
+            evs = [e for e in events(day, a.min_alt, a.gap * 60, a.h_tx, a.nacp_only) if a.kinds in ("all", e[4])]
+            if a.around:
+                wins = [(int(w.split("/")[0][:2]) * 60 + int(w.split("/")[0][3:5]), int(w.split("/")[1])) for w in a.around]
+                evs = [e for e in evs if any(abs((e[5] % 86400) / 60 - c) <= n for c, n in wins)]
+                label = ", ".join(a.around)
+            else:
+                evs = [e for e in evs if h0 <= int(e[5] % 86400 // 3600) <= h1]
+                label = f"{h0:02d}-{h1:02d}Z"
+            lat, lon, s, k = fit(evs, a.grid, a.step, a.cone, score=a.score)
+            print(f"{day} ({label}): {len(evs)} events")
+            if a.sources > 1:
+                rest, found = list(evs), []
+                for n_src in range(a.sources):
+                    la_, lo_, s_ = (peaks(*fit(rest, a.grid, a.step, a.cone, score=a.score)[:3], n=1) or [(None, None, 0)])[0]
+                    if la_ is None or s_ < 10:
+                        break
+                    kk = fit(rest, a.grid, a.step, a.cone, score=a.score)[3][cell_of(lat, lon, la_, lo_)]
+                    found.append((la_, lo_, s_, kk))
+                    m = explained(rest, la_, lo_, kk, a.cone)
+                    rest = [e for e, x in zip(rest, m) if not x]
+                for n_src, (la_, lo_, s_, kk) in enumerate(found, 1):
+                    near = "; ".join(f"{name} {km(la_, lo_, tla, tlo):.0f} km" for name, tla, tlo in targets)
+                    print(f"  source {n_src}: {la_:.2f}N {lo_:.2f}E, score {s_:.0f}, reach {kk:.2f} ({nearest(la_, lo_)}){'; ' + near if near else ''}")
+                continue
             top = peaks(lat, lon, s)
             for la, lo, n in top:
                 i, j = cell_of(lat, lon, la, lo)
-                print(f"  {la:.2f}N {lo:.2f}E: {n:.0f} agreeing, reach {k[i, j]:.2f} of the horizon ({nearest(la, lo)})")
+                print(f"  {la:.2f}N {lo:.2f}E: score {n:.0f}, reach {k[i, j]:.2f} of the horizon ({nearest(la, lo)})")
             for name, tla, tlo in targets:
                 i, j = cell_of(lat, lon, tla, tlo)
                 rank = int((s > s[i, j]).sum()) + 1
@@ -195,7 +249,7 @@ def main():
                 ds = []
                 for _ in range(a.boot):
                     pick = [evs[q] for q in rng.integers(0, len(evs), len(evs))]
-                    bl, bo, _ = peaks(*fit(pick, a.grid, a.step, a.cone)[:3], n=1)[0]
+                    bl, bo, _ = peaks(*fit(pick, a.grid, a.step, a.cone, score=a.score)[:3], n=1)[0]
                     ds.append(km(top[0][0], top[0][1], bl, bo))
                 ds.sort()
                 print(f"  bootstrap ({a.boot}): top peak moves a median {ds[len(ds) // 2]:.0f} km, 90% within {ds[int(0.9 * (len(ds) - 1))]:.0f} km")
