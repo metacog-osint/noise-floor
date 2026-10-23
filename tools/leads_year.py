@@ -9,8 +9,11 @@ and reports, for named boxes:
 
   python tools/leads_year.py fetch                    # download/refresh the cache (plain release links)
   python tools/leads_year.py baltic|malay|north02|kurils|jammertest
+  python tools/leads_year.py coverage                 # southern Baltic: share against aircraft count, neighbours
+  python tools/leads_year.py night                    # 02-03Z over northern Europe: Baltic side against the rest
 """
 import json, os, statistics, sys, urllib.request
+from collections import defaultdict
 from datetime import date, timedelta
 
 import pyarrow.parquet as pq
@@ -26,6 +29,9 @@ BOXES = {   # (lat0, lat1, lon0, lon1)
     "north_europe": (50.0, 60.0, -5.0, 25.0),        # the 02Z lead
     "kurils": (43.0, 50.0, 145.0, 156.0),            # Kuril Islands, Fukuoka/Anchorage FIR edge (FAA report window)
     "andoya": (68.6, 69.9, 14.0, 17.8),              # Jammertest test areas on Andoya
+    "s_sweden_land": (56.0, 59.5, 12.0, 15.5),       # neighbours for the coverage check
+    "denmark": (54.5, 57.5, 8.0, 12.5),
+    "n_germany": (52.0, 54.0, 8.0, 13.0),
 }
 
 
@@ -148,6 +154,97 @@ def window_report(box_name, windows):
               f"other days same hours: median {med:.1f}%, p95 {p95:.1f}% (n={len(others)})")
 
 
+def box_counts(day, names):
+    """{name: (aircraft, bad)} for several boxes from one read of the day's table, plus the global aircraft total."""
+    p = os.path.join(CACHE, f"{day}.parquet")
+    if not os.path.exists(p):
+        return None, 0
+    rows = pq.read_table(p, columns=["lat", "lon", "aircraft", "bad_nacp_live"]).to_pylist()
+    out = {}
+    for n in names:
+        b = BOXES[n]
+        a = sum(r["aircraft"] for r in rows if inbox(r["lat"], r["lon"], b))
+        out[n] = (a, sum(r["bad_nacp_live"] for r in rows if inbox(r["lat"], r["lon"], b)))
+    return out, sum(r["aircraft"] for r in rows)
+
+
+def spearman(x, y):
+    def ranks(v):
+        o = sorted(range(len(v)), key=lambda i: v[i]); r = [0] * len(v)
+        for i, j in enumerate(o):
+            r[j] = i
+        return r
+    a, b = ranks(x), ranks(y); ma, mb = statistics.mean(a), statistics.mean(b)
+    return sum((p - ma) * (q - mb) for p, q in zip(a, b)) / (sum((p - ma) ** 2 for p in a) * sum((q - mb) ** 2 for q in b)) ** 0.5
+
+
+def coverage():
+    """Is a high southern-Baltic share a day of degraded aircraft, or of missing ones?"""
+    s = {d: v for d in days() if (v := daily_share(d, BOXES["south_baltic"]))}
+    ds = sorted(s); med_ac = statistics.median(s[d][1] for d in ds)
+    vals = sorted(s[d][0] for d in ds); p90 = vals[int(0.9 * (len(vals) - 1))]
+    print(f"south_baltic: {len(ds)} days; median aircraft-hexes {med_ac:.0f}; Spearman rho share vs aircraft-hexes "
+          f"{spearman([s[d][0] for d in ds], [s[d][1] for d in ds]):.2f}")
+    hi = [d for d in ds if s[d][0] >= p90]
+    print(f"  days at or above p90 ({p90:.1f}%): {len(hi)}; coverage under half the median: "
+          f"{sum(1 for d in hi if s[d][1] < 0.5 * med_ac)}; at least 80% of it: {sum(1 for d in hi if s[d][1] >= 0.8 * med_ac)}")
+    runs, cur = [], []                                  # consecutive days with data; days without a table don't break a run
+    for d in ds + [""]:
+        if d and s[d][0] >= p90:
+            cur.append(d); continue
+        if len(cur) >= 3:
+            runs.append(f"{cur[0]}..{cur[-1]} ({len(cur)} days with data)")
+        cur = []
+    print("  runs of 3+ days at or above p90:", ", ".join(runs))
+    m = defaultdict(list)
+    for d in ds:
+        m[d[:7]].append(s[d])
+    print("  monthly median share / aircraft-hexes:", ", ".join(
+        f"{k} {statistics.median(x[0] for x in v):.1f}%/{statistics.median(x[1] for x in v):.0f}" for k, v in sorted(m.items())))
+    names = ["south_baltic", "s_sweden_land", "denmark", "n_germany"]
+    print("  day         global   " + "  ".join(f"{n:>20}" for n in names))
+    for d in ["2026-05-08", "2026-05-09", "2026-05-10", "2026-05-11", "2026-05-12", "2026-01-02", "2026-01-08", "2026-01-12"]:
+        c, g = box_counts(d, names)
+        if c:
+            print(f"  {d} {g:>8}   " + "  ".join(f"{100 * c[n][1] / c[n][0] if c[n][0] else 0:6.1f}% of {c[n][0]:>6}" for n in names))
+
+
+def night(step=4):
+    """02-03Z over northern Europe: split into the Baltic side (east of 14E, north of 53N) and the rest; top 2-degree cells."""
+    box = BOXES["north_europe"]
+    part = {k: (defaultdict(int), defaultdict(int)) for k in ("baltic_side", "rest")}
+    cells = defaultdict(lambda: [0, 0]); n = 0
+    for d in days()[::step]:
+        rows = hourly_rows_ll(d)
+        if not rows:
+            continue
+        n += 1
+        for lat, lon, h, a, b in rows:
+            if not inbox(lat, lon, box):
+                continue
+            k = "baltic_side" if (lon >= 14 and lat >= 53) else "rest"
+            part[k][0][h] += a; part[k][1][h] += b
+            if h in (2, 3):
+                c = cells[(int(lat // 2) * 2, int(lon // 2) * 2)]; c[0] += a; c[1] += b
+    print(f"north_europe split, every {step}th day ({n} days)")
+    for k, (a, b) in part.items():
+        print(f"  {k:12}", " ".join(f"{h:02d}Z {100 * b[h] / a[h]:.1f}%" for h in (0, 1, 2, 3, 4, 5, 8, 14, 22) if a[h]))
+    tot = sum(c[1] for c in cells.values())
+    print(f"  02-03Z top 2-degree cells (of {tot} degraded aircraft-hexes):")
+    for (la, lo), (a, b) in sorted(cells.items(), key=lambda kv: -kv[1][1])[:8]:
+        print(f"    {la}-{la + 2}N {lo}-{lo + 2}E: {100 * b / a:.0f}% of {a}, {100 * b / tot:.0f}% of the degraded")
+
+
+def hourly_rows_ll(day):
+    """[(lat, lon, hour, aircraft, bad_live)] for every hex-hour of the day."""
+    dp, hp = os.path.join(CACHE, f"{day}.parquet"), os.path.join(CACHE, f"{day}.hourly.parquet")
+    if not (os.path.exists(dp) and os.path.exists(hp)):
+        return None
+    ll = {r["h3"]: (r["lat"], r["lon"]) for r in pq.read_table(dp, columns=["h3", "lat", "lon"]).to_pylist()}
+    return [(*ll[r["h3"]], r["hour"], r["aircraft"], r["bad_nacp_live"])
+            for r in pq.read_table(hp, columns=["h3", "hour", "aircraft", "bad_nacp_live"]).to_pylist() if r["h3"] in ll]
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd == "fetch":
@@ -162,9 +259,19 @@ def main():
         s = rank_report("kurils", [])
         win = [(d, v[0]) for d, v in sorted(s.items()) if "2026-07-15" <= d <= "2026-08-10"]
         print("  15 Jul - 10 Aug 2026:", ", ".join(f"{d[5:]} {v:.1f}" for d, v in win))
+        print(f"  coverage: aircraft on {len(s)} of {len(days())} days, median {statistics.median(v[1] for v in s.values()):.0f} aircraft-hexes;"
+              " 22 Jul - 3 Aug:", ", ".join(f"{d[5:]} {s[d][1] if d in s else 0}" for d in days() if "2026-07-22" <= d <= "2026-08-03"))
     elif cmd == "jammertest":
         # 50 W tests from the NPRA transmission plan, local times (CEST, UTC+2) taken as given: hours in UTC below
         window_report("andoya", [("2026-09-14", 12, 13), ("2026-09-15", 7, 7), ("2026-09-15", 12, 14), ("2026-09-18", 7, 7)])
+        for d in [f"2026-09-{x}" for x in range(13, 20)]:        # the whole week, any hour
+            rows = hourly_rows(d, BOXES["andoya"]) or []
+            bad = sorted({h for h, a, b in rows if b})
+            print(f"  {d}: {sum(r[1] for r in rows)} aircraft-hexes, {sum(r[2] for r in rows)} degraded; hours with any: {bad or 'none'}")
+    elif cmd == "coverage":
+        coverage()
+    elif cmd == "night":
+        night()
     else:
         sys.exit(__doc__)
 
