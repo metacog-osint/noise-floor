@@ -300,6 +300,8 @@ Then:
 | 35 | The holiday and February surges in the raw traces (2 Jan, 1 Feb, 24 Feb 2026; control 17 Jan) | Aircraft crossing the box: 306, 286, 211 (control 257). Dark crossings 50%, 44%, 44% (5%); seen 29%, 53%, 52% (92%). A350-900s seen on 78–94% of crossings, 69–89% of their points degraded (control: 97% seen, 25% degraded) | **Same mechanism as 9 May, weaker.** Position loss with traffic still crossing |
 | 36 | Why the Baltic is worse at night (53–60°N, 14–26°E; 16 May, 8 May, 17 Jan) | Not altitude: at FL300+ the night share is 31–43% against 3–7% by day, and the altitude mix changes little (FL300+ carries 71–83% of traffic at night, 70–76% by day). Partly carried in: at night 36–41% of FL300+ aircraft-minutes come from aircraft already degraded at their first ADS-B point in the region, against 11–16% by day. But aircraft that arrived healthy are also degraded 10–15% of the time at night against 1–4% by day | **Mostly local.** The interference over the Baltic is stronger or wider at night; night routing isn't ruled out |
 | 37 | SBAS flags over the year (344 days with analysis files on 22 Oct 2026) | Days with any flagged hour: EGNOS 6 (all in the 13–17 Oct 2025 outage), WAAS CONUS 3 (storm days in Jan 2026), WAAS Canada 13, KASS 20, MSAS 72, **GAGAN 162, SouthPAN 229** | **GAGAN and SouthPAN flags are routine:** most aircraft there don't use those services, so the 10 m measure is unreliable in those areas. The flag already drops it there (the 93 m measure is unaffected). The map now lists those two apart as routine instead of as probable service problems |
+| 38 | Spire's maritime jammer case, 14 Oct 2024 (map centred near 55.2°N 17.2°E; area tested 54.9–55.6°N, 16.5–18.0°E) | Share 10.8% on 342 aircraft-hexes, against 13.9% and 13.4% on 13 and 15 Oct. Dark crossings 11% (18 of 168), against 7% and 5% | **Not detected.** Spire counted 3 of 53 aircraft affected in its main hex, which is below what the daily share or the crossing test can resolve |
+| 39 | False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024 (66.5–69.5°N, 17–25°E) | 0.0% and 1.0% degraded, against 0.0% on 27 Feb (88–104 aircraft-hexes a day) | **Pass.** A weather-radar artefact leaves no GNSS signal (coverage there is thin) |
 
 ## Southern Baltic: degraded, or missing?
 
@@ -397,6 +399,25 @@ The same check on 2 Jan (holiday run), 1 Feb and 24 Feb 2026, with 17 Jan (a qui
 - **Not altitude.** The night excess holds within each altitude band, and the altitude mix changes little: FL300+ carries 71–83% of traffic at night and 70–76% by day.
 - **Partly carried in.** At cruise, widebodies and other non-narrowbody types make up 45–67% of night traffic, against 25–30% by day. Many of these aircraft are already degraded at their first position in the region, whether they degraded farther east or were first heard inside the jammed area.
 - **Mostly local.** Aircraft that arrived healthy are degraded 3–10 times more often at night than by day on all three days. So the interference itself looks stronger or wider at night. A different night route mix, closer to Kaliningrad and the Russian border, isn't ruled out. That needs a route-by-route comparison.
+
+
+## Validation set: two 2024 cases
+
+These days come before the backfill. They were processed locally with the same pipeline (`python pipeline/pnt_daily.py <day> --raw <archive folder> --out data/pnt/validation2024`) and scored with `tools/leads_year.py spire2024` and `kiruna2024`, plus `tools/trace_box.py report` for the crossings.
+
+- **Spire, 14 Oct 2024 (verdict 38): not detected.**
+  - Spire put the source on a vessel. The most affected hexes were open water with no gradient toward land, and 3 of 53 aircraft in the main hex lost GNSS integrity and accuracy entirely. The article gives no emitter position; its GPSJam link for the day centres near 55.2°N 17.2°E.
+  - Our share there was lower on 14 Oct than on the days either side. Dark crossings were slightly higher (11% against 5–7%), on small numbers.
+  - An event that touches a few aircraft is below what the daily tables resolve. It doesn't contradict Spire.
+  - Across the whole southern Baltic box, 96% of crossings were seen on all three days. That makes October 2024 a useful quiet reference for the 2026 surges.
+- **Kiruna, 5–6 Mar 2024 (verdict 39): pass.**
+  - From 5 Mar a faulty weather radar at Kiruna drew a sphere hundreds of kilometres across on Finnish weather maps, and chaff from a military exercise over Lapland showed as rain (Yle).
+  - Aircraft over the area showed no GNSS degradation, so a weather-radar artefact doesn't leak into this measure. Few aircraft fly there (about 100 aircraft-hexes a day).
+- **Still to score:** the 2025 Baltic TDOA fixes (Gattis et al., Apr–Jun 2025), which need the radio-horizon localizer. The Rostov claim (Jul 2021) predates the adsb.lol archive.
+
+Sources for this section (retrieved 23 Oct 2026):
+- Spire Global, "GNSS interference report: Russia 2024/2025 – Part 1 of 4: Kaliningrad & the Baltic Sea", 27 Jun 2025: [spire.com](https://spire.com/blog/space-reconnaissance/gnss-interference-report-russia/).
+- Yle News, "Military exercise apparently disrupts weather images from Lapland", 6 Mar 2024 (updated 7 Mar): [yle.fi](https://yle.fi/a/74-20077924).
 
 ## Next
 
