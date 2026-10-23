@@ -133,7 +133,7 @@ Each run's `data/pnt/daily/<day>.summary.json` records the input files, their SH
    - It spanned 04–19Z over 62 region-hours, with matching 10 m events beside it.
    - This reads as a day-long expansion of the Baltic interference footprint.
    - **Checked 22 Oct 2026:** no public report ties an event to that date. Swedish, Polish and Lithuanian reporting describes the 2025 Baltic interference as near-continuous and growing (the Swedish Transport Agency counted 733 incidents in 2025 up to late August, against 495 in all of 2024), but nothing names 23 Oct. It stays a lead. The backfill to 1 Oct 2025 makes it testable against the whole year: is 23 Oct unusual for the southern Baltic, or an ordinary bad day?
-   - **Tested against the year (22 Oct 2026): an ordinary bad day** (87th percentile of 382). See "Full-year lead tests", verdict 28.
+   - **Tested against the year (22 Oct 2026): an ordinary bad day** (87th percentile of 383). See "Full-year lead tests", verdict 28.
 2. **New Mexico, 03–08Z on 23 and 24 Oct 2025: verified, a scheduled GPS test.**
    - On the 10 m measure, 54–55% of capable aircraft were below 10 m in the worst region-hours, against a near-zero baseline, near White Sands at night local time.
    - **Match:** FAA flight advisory **WSMRNM GPS 25-16 (Revision 1)**, released 2 Oct 2025, scheduled GPS interference testing centred at 33°38′20″N 106°34′11″W, daily 0300–1100Z on **7–10, 14–17 and 21–24 Oct 2025**. GPS (including WAAS and ADS-B) "may not be available" out to 363 NM at FL400 and 242 NM at 10,000 ft. NOTAMs were published separately; they weren't retrieved.
@@ -271,18 +271,18 @@ Then:
 
 # Full-year lead tests (22 Oct 2026)
 
-**Data:** the published history from 1 Oct 2025 to 21 Oct 2026: 382 days with tables. Four days have none: 31 Dec 2025 and 6 and 27 May 2026 were never published, and the 5 May 2026 table is empty. 7 May 2026 covers only 6 hours. **Measure:** the share of aircraft-hexes worse than 93 m per named box, on live counts (post-exposure aircraft removed). **Tool:** `tools/leads_year.py` (boxes and windows are in the script; `baltic`, `coverage`, `malay`, `north02`, `night`, `kurils`, `jammertest`). Figures are from a run on 22 Oct 2026; later runs include more days.
+**Data:** the published history from 1 Oct 2025 to 21 Oct 2026: 383 days with tables. Three days have none: adsb.lol published no archive for 31 Dec 2025 or 6 May 2026, and its 5 May 2026 archive holds no trace files (an empty table). 7 May 2026 covers only 6 hours (adsb.lol's archive for it is about a third of a normal day). **Measure:** the share of aircraft-hexes worse than 93 m per named box, on live counts (post-exposure aircraft removed). **Tool:** `tools/leads_year.py` (boxes and windows are in the script; `baltic`, `coverage`, `malay`, `north02`, `night`, `kurils`, `jammertest`). Figures are from a run on 22 Oct 2026; later runs include more days.
 
 ## Bottom line
 
-- **Lead 1 is closed: 23 Oct 2025 was an ordinary bad day for the southern Baltic.** It ranks 50th of 382 days (87th percentile). The box is at or above its 90th percentile (14.1%) on 40 of the 382 days.
+- **Lead 1 is closed: 23 Oct 2025 was an ordinary bad day for the southern Baltic.** It ranks 50th of 383 days (87th percentile). The box is at or above its 90th percentile (14.1%) on 40 of the 383 days.
 - **The worst Baltic days are days when aircraft go missing.**
-  - On 9–11 May 2026 the box reached 39–50%, but held only 416–498 aircraft-hexes a day, against a median of 2,283.
+  - On 9–11 May 2026 the box reached 39–50%, but held only 416–498 aircraft-hexes a day, against a median of 2,287.
   - From 30 Dec to 11 Jan it looks the same: 21–34% on 699–1,085 aircraft-hexes a day.
   - Global coverage and the neighbouring areas were normal on those days.
   - Across the year the share and the aircraft count move against each other (rank correlation −0.49). Of the 40 days at or above the 90th percentile, 17 had less than half the usual count and only 5 had at least 80% of it.
   - **The raw traces settle 9 May: aircraft flew through and lost their positions.** 293 aircraft crossed the box, against 326 a week later, but three crossings in four had no position for most of the way, against one in twenty. A350s stayed visible, with degraded positions, while other types went dark in the same hours, so it wasn't a receiver outage (verdict 34).
-- **The 02Z spike is the Baltic at night.** Over northern Europe the worst hour is 02Z or 03Z on 368 of 382 days. On the Baltic side of that box, 41–47% of aircraft-hexes are degraded at 02–03Z, against 3–4% in daytime.
+- **The 02Z spike is the Baltic at night.** Over northern Europe the worst hour is 02Z or 03Z on 369 of 383 days. On the Baltic side of that box, 41–47% of aircraft-hexes are degraded at 02–03Z, against 3–4% in daytime.
 - **Malay Peninsula: closed, no local interference.** The share never passed 0.9% on any day.
 - **The Kurils and Jammertest can't validate the ADS-B lane.** adsb.lol barely covers the Kurils (median 2 aircraft-hexes a day). Over Andøya no aircraft was degraded at any hour of Jammertest week.
 
@@ -290,10 +290,10 @@ Then:
 
 | # | Check | Result | Verdict |
 |---|---|---|---|
-| 28 | Lead 1: was 23 Oct 2025 unusual for the southern Baltic (54.8–57°N, 15–19°E)? | 12.9% on 1,846 aircraft-hexes; rank 50 of 382, 87th percentile. Year: median 5.5%, 90th percentile 14.1%, max 49.5% | **Closed: not unusual** |
+| 28 | Lead 1: was 23 Oct 2025 unusual for the southern Baltic (54.8–57°N, 15–19°E)? | 12.9% on 1,846 aircraft-hexes; rank 50 of 383, 87th percentile. Year: median 5.5%, 90th percentile 14.1%, max 49.5% | **Closed: not unusual** |
 | 29 | Southern Baltic surges | Runs of 3+ days at or above the 90th percentile: 28 Dec–11 Jan (14 days with data; 31 Dec has no table), 31 Jan–4 Feb, 21–25 Feb, 9–12 May. Monthly median share: 3.9–4.5% Oct–Dec 2025, 6.2% Jan, **14.1% Feb**, 4.3–5.0% Mar–Apr, 6.4–10.5% May–Aug, 4.9–5.2% Sep–Oct 2026 | **New lead**, with a coverage caveat (below) |
 | 30 | Malay Peninsula (1–7°N, 99–104.5°E), the onset cluster in verdict 21 | Median 0.3%, 90th percentile 0.5%, max 0.9% | **Closed: no local interference.** v1.4's onset list (verdict 25) no longer ranks it |
-| 31 | 02Z spike over northern Europe (50–60°N, 5°W–25°E), Phase 1.1 open item 4 | Worst hour 03Z on 298 days, 02Z on 70. Share 7.8% at 03Z against 0.4–0.7% by day. On every 4th day: east of 14°E and north of 53°N, 47% at 02Z and 41% at 03Z against 3.0% at 08Z and 3.7% at 14Z; the rest of the box 3.5% at 03Z against 0.2–0.3% by day. The top five 2° cells at 02–03Z are over the Baltic: off western Latvia (77%), the Gulf of Finland and the central Baltic; northern Poland comes next | **Explained: the Baltic hotspot at night.** Why nights are more than ten times worse is open |
+| 31 | 02Z spike over northern Europe (50–60°N, 5°W–25°E), Phase 1.1 open item 4 | Worst hour 03Z on 298 days, 02Z on 71. Share 7.8% at 03Z against 0.4–0.7% by day. On every 4th day: east of 14°E and north of 53°N, 47% at 02Z and 41% at 03Z against 3.0% at 08Z and 3.7% at 14Z; the rest of the box 3.5% at 03Z against 0.2–0.3% by day. The top five 2° cells at 02–03Z are over the Baltic: off western Latvia (77%), the Gulf of Finland and the central Baltic; northern Poland comes next | **Explained: the Baltic hotspot at night.** Why nights are more than ten times worse is open |
 | 32 | Kurils / Fukuoka FIR, 22 Jul–3 Aug 2026 (43–50°N, 145–156°E) | Aircraft seen on 151 of 386 days, median 2 aircraft-hexes. In the window, 4 days had 1–2 aircraft-hexes and 9 had none; 0% throughout | **Can't test:** adsb.lol has almost no coverage there |
 | 33 | Jammertest 2026, Andøya (68.6–69.9°N, 14.0–17.8°E), as a positive control | 13–19 Sep: 130–265 aircraft-hexes a day, none degraded at any hour. The 50 W windows (plan times read as CEST): 14 Sep 12–13Z, 0% of 39; 15 Sep 07Z, 0% of 17; 15 Sep 12–14Z, 0% of 58; 18 Sep 07Z, 0% of 17 | **No effect seen; not usable as a positive control.** No hour of the week was degraded, so the time-zone reading doesn't matter |
 | 34 | 9 May 2026 in the raw traces: position loss, or traffic routed around the box? | Aircraft crossing the box: 293 (16 May: 326). Crossings seen on ADS-B 14% (80%), dark 75% (5%), MLAT only 11% (16%). A350-900s seen on 25 of 27 crossings, 92% of their points degraded | **Position loss.** Traffic was near normal; aircraft lost their ADS-B positions across the box |
@@ -312,7 +312,7 @@ Then:
 | 2 Jan 2026 | 34.0% | 821 | 2.5% of 3,580 | 2.29 M |
 | 8 Jan | 31.5% | 779 | 3.2% of 3,350 | 2.14 M |
 | 12 Jan | 5.2% | 2,110 | 0.9% of 3,574 | 2.14 M |
-| Year median | 5.5% | 2,283 | | |
+| Year median | 5.5% | 2,287 | | |
 
 Denmark and northern Germany kept their usual counts on the same days, and every one of those days has all 24 hours. Aircraft went missing from this box alone, while the share rose on the Swedish coast beside it.
 
