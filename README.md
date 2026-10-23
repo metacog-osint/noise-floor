@@ -14,6 +14,7 @@ This is an open-source picture of where the electromagnetic spectrum is being co
   - It tags aircraft whose avionics stay latched after crossing a jammed area.
   - It matches an FAA-announced GPS interference test at White Sands (Oct 2025) day by day.
 - **Phase 2 runs every day** in GitHub Actions: each new adsb.lol day is processed about 06:00 UTC and published to the [map](https://noisefloor.theintelligence.company/map) and [charts](https://noisefloor.theintelligence.company/charts), with the day's anomalies, bursts, SBAS flags and announced GPS tests. History goes back to 1 Oct 2025. Every day's outputs are downloadable from the [data releases](https://github.com/metacog-osint/noise-floor/releases) (ODbL).
+- **The year of history** (validation notes, verdicts 28–37) shows that the worst southern-Baltic days are days when aircraft *lose* their ADS-B positions rather than report degraded ones. On 9 May 2026, three in four aircraft crossing that area went dark, so the map also has a "Fewer aircraft than usual" view. It also shows that the Baltic is much worse at night, mostly from local interference.
 
 ## What it measures
 

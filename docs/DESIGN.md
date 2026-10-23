@@ -155,6 +155,9 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
   (about 3 MB a day, ODbL). It needs no new service and no billing, and the files are public downloads. The earlier days a
   baseline needs (30 days back) are fetched from there. R2 stays an option if the history outgrows releases.
 - **Site deploys** add the map files from every release at deploy time, so daily data never goes into git.
+- **Backfill to 1 Oct 2025** (22–23 Oct 2026, `.github/workflows/backfill.yml`): one month per job, two at a time, then
+  the analyses in date order. About 1.3 TB downloaded and discarded; about 3 MB a day kept. The map has a time slider
+  over the whole history, and the charts page's daily trend covers it too.
 
 ### Progress (21 Oct 2026)
 
