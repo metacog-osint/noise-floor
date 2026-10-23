@@ -37,6 +37,7 @@
         <label><input type="radio" name="measure" value="jam" checked> Jamming-scale (93 m)</label>
         <label><input type="radio" name="measure" value="acc"> Accuracy (10 m)</label>
         <label id="mp-chg-wrap"><input type="radio" name="measure" value="chg"> Change from usual (93 m)</label>
+        <label id="mp-miss-wrap"><input type="radio" name="measure" value="miss"> Fewer aircraft than usual</label>
       </fieldset>
       <fieldset class="mp-group"><legend>Layers</legend>
         <label><input type="checkbox" id="lyr-borders" checked> Country borders</label>
@@ -114,6 +115,7 @@
 <ul>
   <li><strong>Click a hex</strong> to see the history of the area around it (an H3 resolution-3 cell, about 12,000 km²): its share for every day since 1 October 2025, with the days an anomaly event covered it. Click a point on that chart to open the day.</li>
   <li><strong>Change from usual</strong> colours each hex by how far today's share sits above its own median over its previous 14 days with traffic. Persistent hotspots fade, so new or growing activity stands out. Hexes with fewer than 5 such days show as low coverage.</li>
+  <li><strong>Fewer aircraft than usual</strong> compares each hex's aircraft count with its median over the previous 14 days. Strong jamming can stop aircraft sending a position at all, and then they vanish from the map instead of showing as degraded: on 9 May 2026 three in four aircraft crossing the southern Baltic lost their ADS-B position (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">validation notes</a>, verdict 34). Weekends, holidays, airspace closures and receiver outages lower counts too, so read it alongside the other views. Try 2026-05-09.</li>
   <li><strong>Play</strong> (▶ under the strip) steps through the days one by one; any other control stops it.</li>
   <li><strong>Hexes</strong> are H3 resolution 4, about 1,770 km² each. A hex is coloured only when 5 or more aircraft were in it that day; 3–4 show as low coverage, and 1–2 are left out.</li>
   <li><strong>Share</strong> follows the formula GPSJam publishes: one bad aircraft is subtracted, so a single faulty receiver never colours a hex.</li>

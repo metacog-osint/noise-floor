@@ -10,11 +10,14 @@
     acc: { label: "Accuracy loss (worse than 10 m, capable aircraft)", unit: "of 10 m-capable aircraft degraded",
            breaks: [10, 25, 50, 75], classes: ["Under 10%", "10–25%", "25–50%", "50–75%", "75% or more"] },
     chg: { label: "Change from usual (93 m)", unit: "points above the hex's usual share",
-           breaks: [5, 10, 25, 50], classes: ["Under 5 points above usual", "5–10 points", "10–25 points", "25–50 points", "50 points or more"] }
+           breaks: [5, 10, 25, 50], classes: ["Under 5 points above usual", "5–10 points", "10–25 points", "25–50 points", "50 points or more"] },
+    miss: { label: "Fewer aircraft than usual", unit: "fewer aircraft than the hex's usual count",
+            breaks: [30, 50, 70, 90], classes: ["Under 30% fewer, or more", "30–50% fewer", "50–70% fewer", "70–90% fewer", "90% or more fewer"] }
   };
+  var MISS_MIN = 10;                                  // the "fewer aircraft" view needs a usual count of 10 or more
   function emeasure() { return state.measure === "acc" ? "acc" : "jam"; }    // events and the strip follow 93 m for chg
   var state = { day: null, measure: "jam", raw: false, ev: null, evShow: true, evAll: { anom: false, burst: false }, evFocus: null,
-                iu: -1, playing: false, hist: null };
+                iu: -1, iun: -1, playing: false, hist: null };
   var EV_ROWS = { anom: 15, burst: 10 };
   var TIER = { major: "Major", notable: "Notable", minor: "Minor" };
   var days = [], cells = {}, cellList = [], land = [], colors = {}, borders = [], places = [], areas = [];
@@ -35,6 +38,13 @@
   // value and class for a cell under the current measure; null = not drawn
   function evaluate(c) {
     var n, bad;
+    if (state.measure === "miss") {                  // today's aircraft against the hex's usual count
+      var u = state.iun >= 0 ? c[state.iun] : null;
+      if (u === null || u === undefined || u < MISS_MIN) return null;
+      var drop = 100 * (1 - c[1] / u), bm = MEASURES.miss.breaks, km = 0;
+      while (km < bm.length && drop >= bm[km]) km++;
+      return { cls: km === 0 ? "quiet" : km - 1, share: drop, n: c[1], bad: c[2], usual: u, today: c[1] };
+    }
     if (state.measure === "acc") { n = c[4]; bad = c[5]; }
     else { n = c[1]; bad = state.raw && state.measure === "jam" ? c[3] : c[2]; }
     if (n < 3) return null;
@@ -201,7 +211,10 @@
       lines.push(["10 m-capable aircraft", d[4]]);
       lines.push(["Worse than 10 m", d[5]]);
     }
-    if (state.measure === "chg" && e && e.share !== null) {
+    if (state.measure === "miss") {
+      lines.push(["Usual aircraft (14-day median)", e ? e.usual : "under " + MISS_MIN + " or not enough history"]);
+      if (e) lines.push(["Change", e.share >= 0 ? Math.round(e.share) + "% fewer" : Math.round(-e.share) + "% more"]);
+    } else if (state.measure === "chg" && e && e.share !== null) {
       lines.push(["Share today", e.today.toFixed(1) + "%"]);
       lines.push(["Usual (14-day median)", e.usual.toFixed(1) + "%"]);
       lines.push(["Change", (e.share >= 0 ? "+" : "") + e.share.toFixed(1) + " points"]);
@@ -257,7 +270,8 @@
     body.textContent = "";
     rows.forEach(function (x) {
       var ll = h3.cellToLatLng(x.c.h), tr = document.createElement("tr");
-      var shareText = state.measure === "chg" ? "+" + x.e.share.toFixed(1) + " pts (" + x.e.today.toFixed(0) + "% vs " + x.e.usual.toFixed(0) + "%)" : x.e.share.toFixed(1) + "%";
+      var shareText = state.measure === "chg" ? "+" + x.e.share.toFixed(1) + " pts (" + x.e.today.toFixed(0) + "% vs " + x.e.usual.toFixed(0) + "%)"
+        : state.measure === "miss" ? Math.round(x.e.share) + "% fewer (" + x.e.today + " vs " + x.e.usual + ")" : x.e.share.toFixed(1) + "%";
       [ll[0].toFixed(1) + ", " + ll[1].toFixed(1), x.e.n, x.e.bad, shareText].forEach(function (v, i) {
         var td = document.createElement("td"); td.textContent = v; if (i) td.className = "num"; tr.appendChild(td);
       });
@@ -402,14 +416,17 @@
   function renderLegend() {
     var m = MEASURES[state.measure], el = document.getElementById("map-legend");
     el.textContent = "";
-    var items = [["low", "Low coverage (3–4 aircraft)"], ["quiet", m.classes[0]]].concat(m.classes.slice(1).map(function (t, i) { return [i, t]; }));
+    var items = (state.measure === "miss" ? [] : [["low", "Low coverage (3–4 aircraft)"]])
+      .concat([["quiet", m.classes[0]]]).concat(m.classes.slice(1).map(function (t, i) { return [i, t]; }));
     items.forEach(function (it) {
       var s = document.createElement("span"), sw = document.createElement("i");
       sw.style.background = it[0] === "low" ? colors.low : it[0] === "quiet" ? colors.quiet : colors.ramp[it[0]];
       s.appendChild(sw); s.appendChild(document.createTextNode(it[1])); el.appendChild(s);
     });
     var cap = document.getElementById("map-measure-note");
-    cap.textContent = state.measure === "chg"
+    cap.textContent = state.measure === "miss"
+      ? "Aircraft in the hex today against its median over its previous 14 days (days without traffic count as zero; shown where that median is 10 or more). Strong jamming can stop aircraft sending a position at all, so they vanish instead of showing as degraded. Weekends, holidays, airspace closures and receiver outages also lower counts."
+      : state.measure === "chg"
       ? "Today's jamming-scale share minus the hex's own median over its previous 14 days with traffic (live counts). Persistent hotspots fade; new or growing activity stands out."
       : state.measure === "jam"
       ? (state.raw ? "Raw: includes aircraft still degraded after leaving interference (comparable with GPSJam)."
@@ -489,7 +506,8 @@
     var el = document.getElementById("map-stats");
     var drawn = cellList.filter(function (c) { var e = evaluate(c.d); return e && e.share !== null; }).length;
     var hot = cellList.filter(function (c) { var e = evaluate(c.d); return e && typeof e.cls === "number" && e.cls >= 2; }).length;
-    el.textContent = drawn.toLocaleString() + " hexes with 5 or more aircraft · " + hot.toLocaleString() + " in the top two classes";
+    el.textContent = drawn.toLocaleString() + (state.measure === "miss" ? " hexes with a usual count of " + MISS_MIN + " or more" : " hexes with 5 or more aircraft") +
+      " · " + hot.toLocaleString() + " in the top two classes";
     var a = document.getElementById("map-download"); a.href = "/data/gnss/" + state.day + ".json"; a.textContent = "Download " + state.day + " (JSON, ODbL)";
     var note = document.getElementById("map-day-note");
     note.textContent = d && d.daily ? "Daily run: automatic, not reviewed by a person" : d && d.note ? d.note : "";
@@ -520,6 +538,9 @@
       state.iu = (j.cols || []).indexOf("usual");
       document.getElementById("mp-chg-wrap").classList.toggle("off", state.iu < 0);
       document.querySelector('input[name="measure"][value="chg"]').disabled = state.iu < 0;
+      state.iun = (j.cols || []).indexOf("usual_n");
+      document.getElementById("mp-miss-wrap").classList.toggle("off", state.iun < 0);
+      document.querySelector('input[name="measure"][value="miss"]').disabled = state.iun < 0;
       mapEl.classList.remove("loading");
       layer.redraw(); renderStats(); renderTable(); writeHash(); if (state.hist) drawHistory();
     });
