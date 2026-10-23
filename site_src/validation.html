@@ -22,6 +22,24 @@
 <p>Over 17 days, A350-900s were 24.9% of aircraft-days still degraded after leaving interference, against 1.3% of traffic (19.4×). A380s were 19.2× and 777-300ERs 4.7×; most narrowbodies were near 1×. 777-300ERs fly the same long-haul corridors as A350s, so aircraft type seems to matter beyond route. This is a hypothesis: one possibility is avionics rejecting GPS for the rest of a flight after spoofing exposure. Public guidance, checked on 22 Oct 2026, supports the general mechanism but not the type pattern: the 2024 industry GPS Spoofing Workgroup report warns that a receiver can look normal after spoofing while still holding false data, but no public document describes A350 or A380 behaviour. Airbus's type documentation isn't public.</p>
 <p><a href="/charts">These cases as charts</a> · <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">Full validation report</a></p>
 
+<h3 id="year">A year of data (1 Oct 2025 – 21 Oct 2026)</h3>
+<p>The daily pipeline was backfilled to 1 October 2025, so leads from the test days could be checked against a whole year. Some checks also used the raw adsb.lol traces, following each aircraft through an area.</p>
+<div class="tw"><table>
+  <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Was 23 Oct 2025 unusual for the southern Baltic?</td><td>12.9% degraded, 87th percentile of 383 days: a bad day, not an unusual one</td><td><span class="chip st-validated">Closed</span></td></tr>
+    <tr><td>What happens on the worst Baltic days?</td><td>On 9 May 2026 about as many aircraft crossed the southern Baltic as a week later (293 against 326), but three crossings in four lost their ADS-B position, against one in twenty. 2 Jan, 1 Feb and 24 Feb 2026 show the same, a little weaker. Strong jamming removes aircraft instead of marking them degraded, so the map now has a "Fewer aircraft than usual" view</td><td><span class="chip st-validated">Found</span></td></tr>
+    <tr><td>Why is the Baltic worse at night?</td><td>Over northern Europe the worst hour is 02Z or 03Z on 369 of 383 days. It isn't the altitude mix, and only partly aircraft arriving already degraded: aircraft that arrived healthy are degraded 3–10 times more often at night than by day</td><td><span class="chip st-partial">Partly</span></td></tr>
+    <tr><td>Malay Peninsula onset cluster</td><td>Never above 0.9% degraded on any day: no local interference</td><td><span class="chip st-validated">Closed</span></td></tr>
+    <tr><td>Kurils / Fukuoka FIR, Jul–Aug 2026 (pilot reports via <a href="https://ops.group/blog/gps-trouble-on-the-north-pacific-routes/">OPSGROUP</a>)</td><td>adsb.lol barely covers the area (median 2 aircraft-hexes a day)</td><td><span class="chip st-planned">Can't test</span></td></tr>
+    <tr><td>Jammertest 2026, Andøya, as a known positive</td><td>No aircraft degraded at any hour of the test week, including the 50 W windows</td><td><span class="chip st-planned">No effect</span></td></tr>
+    <tr><td>Spire's maritime jammer case, 14 Oct 2024</td><td>Not distinguishable from the days either side. Spire counted 3 of 53 aircraft affected, below what these methods resolve</td><td><span class="chip st-failed">Missed</span></td></tr>
+    <tr><td>False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024</td><td>No GNSS degradation over the area (thin coverage)</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>SBAS flags over India and Australia</td><td>Flagged on 162 and 229 of 344 days because most aircraft there don't use those services. Listed apart on the map as routine</td><td><span class="chip st-validated">Explained</span></td></tr>
+    <tr><td>Radio-horizon localizer, first version</td><td>From where aircraft lose and regain GNSS on four jammed days, the best crossing lies about 55 km NW of Baltiysk, off the western Sambia coast. A 2025 TDOA network placed one fix at Baltiysk harbour. The reach was tuned on the same days, so this isn't yet a scored fix</td><td><span class="chip st-planned">Open</span></td></tr>
+  </tbody>
+</table></div>
+
 <h2 id="nisar">L-band emitters from NISAR</h2>
 <div class="tw"><table>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
@@ -39,9 +57,9 @@
 
 <h2 id="next">Validation still to come</h2>
 <ul>
-  <li><strong>Published localizations,</strong> such as the 2024 Baltic open-source work, scored as known positives.</li>
-  <li><strong>More announced test events</strong> (Jammertest in Norway, further US test notices) as known positives, and a planned-test exclusion layer from the public FAA flight advisories.</li>
-  <li><strong>Known false look-alikes,</strong> such as radar faults, as cases the methods must not flag.</li>
+  <li><strong>Published localizations,</strong> such as the 2024 Baltic open-source work and the 2025 TDOA fixes, scored against the radio-horizon localizer once its reach is estimated from the data rather than tuned.</li>
+  <li><strong>More announced test events</strong> as known positives. The FAA advisories are already a layer on the map. Jammertest 2026 showed no aircraft effect.</li>
+  <li><strong>More false look-alikes,</strong> beyond the Kiruna radar fault, as cases the methods must not flag.</li>
   <li><strong>A surveyed emitter or announced test</strong> to measure NISAR position accuracy.</li>
 </ul>
 <p>Each case is checked against its source before it's scored.</p>

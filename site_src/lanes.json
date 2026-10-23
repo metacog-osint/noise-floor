@@ -464,7 +464,7 @@
       "data": [
         "adsb.lol daily archive (ODbL; derived data published under ODbL with attribution)"
       ],
-      "notes": "Live: every day from 1 Oct 2025, with a time slider and a per-day strip, with each day's anomalies, bursts and SBAS flags listed and outlined, a daily trend chart of the known hotspots, the 20 validated days, and the full outputs of every processed day (per hex, hour and minute; SBAS flags, anomalies and bursts) in the data releases, all under ODbL. Daily runs are automatic and not reviewed by a person. Planned: ad-hoc queries in the browser (DuckDB-WASM), with no server. Static files on the free tier: no servers and no database bill.",
+      "notes": "Live: every day from 1 Oct 2025, with a time slider and a per-day strip, four views (jamming-scale, accuracy, change from usual, fewer aircraft than usual), each day's anomalies, bursts and SBAS flags listed and outlined, a daily trend chart of the known hotspots, the 20 validated days, and the full outputs of every processed day (per hex, hour and minute; SBAS flags, anomalies and bursts) in the data releases, all under ODbL. Daily runs are automatic and not reviewed by a person. Planned: ad-hoc queries in the browser (DuckDB-WASM), with no server. Static files on the free tier: no servers and no database bill.",
       "links": [
         [
           "Map",
