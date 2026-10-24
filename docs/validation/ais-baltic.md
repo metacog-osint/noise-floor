@@ -57,7 +57,7 @@ durations (`--preset plan`: dark gap 6 h, rendezvous 2 h, loiter 6 h).
 - **Other detectors** (counts; context in the private event lists): 861 rendezvous pairs, nearly all in ports,
   anchorages or moored together; 215 loitering runs over 6 hours; 1 dark gap over 6 hours; 76 single-vessel circles, read
   as real manoeuvres or vessels without a reported heading; 3 IMO numbers with a bad check digit (one a test transponder);
-  48 destination texts classed unusual, all route or service descriptions on inspection of the first ones.
+  48 destination texts classed unusual; the eight printed first were all ferry-route descriptions (the rest unread).
 - Still one day, with no ground truth beyond the consistency checks above. Kaliningrad and Narva Bay remain uncovered.
 
 ## 1. Data
