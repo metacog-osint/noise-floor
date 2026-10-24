@@ -158,7 +158,7 @@
       "data": [
         "adsb.lol daily archive"
       ],
-      "notes": "A held-out test on 12 days fixed in advance passed all five pre-registered checks (24 Oct 2026). Spoofing and jamming are mostly separate signals. Maps show where receivers were told they were, not where a transmitter is. Offset tracks with no jump are missed; no coverage over Iraq and almost none over Iran. Not on the public map yet.",
+      "notes": "A held-out test on 12 days fixed in advance passed all five pre-registered checks (24 Oct 2026). Version 0.4 adds a 'replay' class for feeds re-sending old positions (found over northern Florida, 6 Mar 2024), with the held-out results unchanged. Spoofing and jamming are mostly separate signals. Maps show where receivers were told they were, not where a transmitter is. Offset tracks with no jump are missed; no coverage over Iraq and almost none over Iran. Not on the public map yet.",
       "links": [
         [
           "Validation",
