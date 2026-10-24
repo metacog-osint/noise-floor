@@ -196,6 +196,24 @@ dark).
 | M6 | Public **Sea** map with licence-clean layers; private view for the rest | Live page; method card |
 | M7 | Optional feeder kit (AIS, VHF and DSC on one Raspberry Pi) for partners | Tom's decision |
 
+**Progress (23 Oct 2026).** M1 detection is built (`tools/ship_detect.py`), ahead of the M0 accounts. Microsoft's
+Planetary Computer serves Sentinel-1 GRD anonymously, so no Copernicus account was needed.
+- **Revisit:** over 60 days (29 Aug – 22 Oct 2026), focus area 2 had 19 Sentinel-1 passes, all from Sentinel-1D. Only one
+  relative orbit covers all of the area's open water: descending, about 22:47 UTC (06:47 local), every 12 days. The other
+  three tracks cover 12%, 56% and 60% of it.
+- **Detection:** a two-parameter CFAR on VV at 20 m (k = 6), with a Natural Earth land mask buffered by 400 m plus an
+  image-based mask. Minimum length is 30 m, and detections within 200 m are merged (sidelobes of bright ships). A full pass
+  gives 2,100–3,500 detections over about 10,400 km² of sea, with a median length of 66–80 m.
+- **Threshold sensitivity** on the newest pass: 5,403 detections at k = 5, 3,480 at k = 6, 2,125 at k = 8 and 1,659 at k = 10.
+  The count flattens above k ≈ 8–10, so at k = 6 some of the low-contrast detections are probably clutter.
+- **Fixed against moving:** across the four full passes, 382 detections recur within 60 m on 60% or more of passes. These
+  are fixed structures, moorings and long-stay anchored ships. Another 1,770–3,200 per pass are movers.
+- **Not done yet:**
+  - AIS (needs Tom's aisstream key), so detection rate and false alarms aren't calibrated.
+  - No Sentinel-2 cross-check.
+  - Azimuth ghosts aren't removed.
+  - Outputs stay private.
+
 ## 14. Open decisions for Tom
 
 1. Go ahead now, or wait on the open question of pausing new lanes until NISAR passes a ground-truth test? (Recommendation:
