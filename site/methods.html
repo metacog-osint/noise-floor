@@ -46,6 +46,11 @@
   <li><strong>Minute bursts:</strong> aircraft counts per minute, to time short events.</li>
   <li><strong>Announced tests:</strong> US GPS interference tests from the FAA's public flight advisories (window, centre and radius by altitude), read every morning. An anomaly or burst inside a test's window and widest radius is tagged as consistent with that test instead of counted as an incident. It matched the White Sands test of October 2025 day by day, and the Point Mugu test behind the 22 Sep 2026 Bay Area GPS loss.</li>
 </ul>
+<h3>Known biases</h3>
+<ul>
+  <li><strong>Aircraft that go dark drop out.</strong> In strong jamming many aircraft stop sending positions at all, so the degraded share understates how bad it is. The map's "Fewer aircraft than usual" view shows the gap.</li>
+  <li><strong>A350s and A380s over-report.</strong> They keep sending positions flagged as poor where other types go dark, and their degraded spells last 4–8 times longer. Australia reported to ICAO in 2025 that these types flag their accuracy as zero when a single satellite is marked degraded. Their reports can dominate shares and minute bursts far from any jammer, especially in the overnight long-haul wave. Counting them apart is the next method change.</li>
+</ul>
 <p><a href="/map">See it on the map</a> · <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">Full method card</a>: every parameter, and what the numbers can't tell you.</p>
 
 <h2 id="nisar">L-band emitters from NISAR radar</h2>
