@@ -14,8 +14,8 @@
   - During the June 2025 Israel–Iran war, aircraft were shown near Bandar Abbas and Asaluyeh. Windward reported ships' AIS positions moved to the same two places in the same week.
 - **MLAT, the only independent truth in the data, agrees.** Where MLAT positions exist, 90% of episodes are confirmed (MLAT 20 km or more from the ADS-B position). MLAT also shows what the detector misses: offset tracks with no jump, mostly over Poland and central Europe in 2025–2026. At least 43% of the positions MLAT shows as false are flagged.
 - **Spoofing and jamming are mostly separate.** Per hex and day, spoofing share and jamming share correlate weakly (Spearman 0.18–0.38). Every day has hexes with one and not the other. The Black Sea is mostly jammed (13.6% of aircraft-hours, against 0.2% spoofed); Egypt and Jordan are mostly spoofed, with clean NACp.
-- **Not validated yet, and not ready for publishing:**
-  - Three method versions were tuned on these same days. A held-out test is next.
+- **Held-out test passed (24 Oct 2026).** On 12 days fixed by date rule and never used for tuning, all five pre-registered checks passed: controls 0.002%, Middle East 0.39%, Baltic and western Russia 0.81%, MLAT confirmation 91.5%, and the Beirut-to-Amman switch on the 2024 dates (section "Held-out test").
+- **Still not published:**
   - Iraq has no adsb.lol coverage and Iran almost none.
   - 24% of episodes can't be located.
   - The control false alarms include one unexplained cluster over Florida.
@@ -224,6 +224,24 @@ build or tune this detector.
 
 H4 is deliberately modest. In-sample, most of the top spoofed-to cells (73 of 106) aren't within 25 km of any named point, so
 "matches the published points" holds for the top point of the main regions, not for every cluster.
+
+**Result (scored 24 Oct 2026, about 09:40 UTC): all five checks pass.**
+
+| # | Pass if | Held-out (12 days) | Result |
+|---|---|---|---|
+| H1 | ≤ 0.01% | 0.002% of 15.2 million control aircraft-hours | Pass |
+| H2 | each ≥ 0.2% and ≥ 20× controls | Middle East 0.39% (194×); Baltic and western Russia 0.81% (407×) | Pass |
+| H3 | ≥ 75% | 530 of 579 MLAT-testable episodes confirmed (91.5%) | Pass |
+| H4 | ≥ 25% | 25 of 63 top cells within 25 km of a named point (40%) | Pass |
+| H5 | Beirut, Beirut, Amman | Beirut airport 1 km (40 aircraft) on 20 Feb 2024; Beirut 1 km (414) on 20 Jun 2024; Amman airport 3 km (245) on 20 Oct 2024 | Pass |
+
+- The known regions read lower than in-sample (0.39% against 0.61%, 0.81% against 1.04%), but far above the pass marks.
+- **Points seen on held-out days that the published list doesn't name** (unverified, for follow-up):
+  - near Moscow Sheremetyevo, on four of the five days from May 2025;
+  - a point near Dawei, Myanmar, on seven days (67 km from the town);
+  - points in the Tel Aviv area on 20 Jun 2025, during the Israel–Iran war, beside the Asaluyeh point (6 km) that Windward reported for ships;
+  - a new point east of St Petersburg on 20 Jun 2026 (57 aircraft).
+- What the test does and doesn't show: the frozen method generalises to days it never saw, at region level and for the main published points. It doesn't test position accuracy beyond the MLAT cross-check, or offset-track spoofing, which v0.3 misses.
 
 ## 6. Next
 
