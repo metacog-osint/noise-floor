@@ -277,8 +277,8 @@ def minute_series(day, level):
             _MS[key] = None
         elif level == "2":
             s = defaultdict(lambda: [0] * 1440)
-            for r in rows:   # live: leave out aircraft whose degradation is latched from earlier in the flight
-                s[parent(r["h3"])][r["minute"]] += r["bad_nacp"] - r.get("latched", 0)
+            for r in rows:   # live: leave out latched aircraft, and (v1.5) A350/A380 degradation set apart
+                s[parent(r["h3"])][r["minute"]] += r["bad_nacp"] - r.get("latched", 0) - (r.get("heavy_apart") or 0)
             _MS[key] = dict(s)
         else:
             base = minute_series(day, "2")
@@ -340,7 +340,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("days", nargs="+")
     ap.add_argument("--no-kp", action="store_true")
+    ap.add_argument("--daily", help="folder of pnt_daily outputs (default data/pnt/daily)")
+    ap.add_argument("--out", help="folder for the analysis files (default data/pnt/analysis)")
     a = ap.parse_args()
+    global DAILY, OUT
+    DAILY, OUT = a.daily or DAILY, a.out or OUT
     os.makedirs(OUT, exist_ok=True)
     cache = {}
 

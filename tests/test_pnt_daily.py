@@ -138,6 +138,45 @@ def test_day():
         shutil.rmtree(tmp)
 
 
+def test_heavy_apart():
+    """--heavy-apart (v1.5): A350/A380 gross-bad hex-hours count only when other peers are bad too."""
+    import h3
+    hx = [h3.str_to_int(h3.latlng_to_cell(50.0 + k, 10.0, P.RES)) for k in range(4)]
+    bad, good = [10, 10, 10, 10], [10, 0, 0, 0]
+
+    def rec(typ, cells_bad):
+        cells = {(h, 3): list(bad if b else good) for h, b in cells_bad}
+        bad_minutes = sorted((h, 3 * 60 + 5) for h, b in cells_bad if b)
+        return cells, (10 * len(cells), 10 * sum(b for _, b in cells_bad), 0.0, 0.0, 0, 3600, typ, True), bad_minutes
+
+    recs = [
+        rec("A359", [(hx[0], 1)]), rec("B738", [(hx[0], 0)]), rec("A320", [(hx[0], 0)]), rec("A321", [(hx[0], 0)]),   # isolated
+        rec("A359", [(hx[1], 1)]), rec("B738", [(hx[1], 1)]), rec("A320", [(hx[1], 1)]), rec("A321", [(hx[1], 0)]),   # corroborated
+        rec("A359", [(hx[2], 1)]), rec("A388", [(hx[2], 1)]), rec("B738", [(hx[2], 0)]), rec("A320", [(hx[2], 0)]),   # heavies only
+        rec("A35K", [(hx[3], 1)]),                                                                                    # no peers
+    ]
+    tot = P.hex_hour_totals(recs, P.HEAVY_TYPES)
+    apart, diag = P.heavy_apart_cells(recs, tot)
+    assert apart[0] == {(hx[0], 3)} and apart[4] == set(), apart
+    assert apart[8] == {(hx[2], 3)} and apart[9] == {(hx[2], 3)}, "A350 and A380 must not vouch for each other"
+    assert apart[12] == {(hx[3], 3)} and diag["apart_peers_unjudged"] == 1, diag
+    assert diag["apart_hex_hours"] == 4 and diag["kept_corroborated_hex_hours"] == 1, diag
+    latched = [set() for _ in recs]
+    daily, hourly, minute = P.aggregate(recs, set(), latched, apart)
+    d = {h: daily[h] for h in hx}
+    # [aircraft, gross, nic, acc, capable, cap acc-bad, latched, live gross, heavy apart]
+    assert d[hx[0]][1] == 1 and d[hx[0]][7] == 0 and d[hx[0]][8] == 1, d[hx[0]]
+    assert d[hx[1]][1] == 3 and d[hx[1]][7] == 3 and d[hx[1]][8] == 0, d[hx[1]]
+    assert d[hx[2]][1] == 2 and d[hx[2]][7] == 0 and d[hx[2]][8] == 2, d[hx[2]]
+    assert minute[(hx[2], 185)] == [2, 0, 2] and minute[(hx[1], 185)] == [3, 0, 0], minute
+    # without the option nothing is set apart and the bad counts are v1.4's
+    daily14, _, minute14 = P.aggregate(recs, set(), latched)
+    assert daily14[hx[0]][7] == 1 and daily14[hx[0]][8] == 0 and minute14[(hx[2], 185)] == [2, 0, 0]
+    assert P.hex_hour_totals(recs)[(hx[2], 3)] == [4, 2] and tot[(hx[2], 3)] == [4, 0]
+
+
 if __name__ == "__main__":
     test_day()
     print("PASS test_day")
+    test_heavy_apart()
+    print("PASS test_heavy_apart")
