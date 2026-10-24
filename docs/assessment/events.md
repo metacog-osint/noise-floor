@@ -4,6 +4,8 @@
 
 ## Bottom line
 
+> **Update, 24 Oct 2026 (later the same night).** CYGNSS now covers 33 days: the six below, 21 held-out days chosen by date rule, and 6 FAA-test days (`docs/validation/cygnss.md`, sections 8–9). The CYGNSS held-out check of rule S3 held (93 m observations near a raised field 58.4% against 20.6% for random land). Rebuilt register: 169,927 observations, 61,080 events, **587 "Multiple sources"** (98 on the six days below, 311 on the held-out days, 178 on the FAA days), none in a control box. Rule P1 now needs at least one time-resolved (non-CYGNSS) effect inside the test window: CYGNSS cells are timed only to the day, and before this fix 15 CYGNSS-only events were marked `planned`. The numbers below are from the six-day build.
+
 Every input item becomes an **observation**. Observations on the same UTC day fuse into **events**. Each event is graded on five independent fields, and every grade is stored with the rule that set it and the observations behind it.
 
 The run covers 385 days (1 Oct 2025 – 22 Oct 2026, UTC): 94,651 observations fused into 52,260 events.

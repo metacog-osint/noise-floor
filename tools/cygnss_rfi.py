@@ -64,11 +64,13 @@ header and never printed or written.
 
 Usage
   python tools/cygnss_rfi.py fetch 2026-05-10 2026-05-16          # CMR search + OPeNDAP subset into data/cygnss/l1/<day>/
-  python tools/cygnss_rfi.py grid 2026-05-10 2026-05-16 [--res 3] # data/cygnss/grid/<day>.r3.parquet
+  python tools/cygnss_rfi.py grid 2026-05-10 2026-05-16 [--res 3] # data/cygnss/grid/<day>.r3.parquet, plus
+                                                                   # <day>.r3.passes.parquet (per cell and pass)
   python tools/cygnss_rfi.py validate 2026-05-10 2026-05-16 [--res 3] [--figures [--map-days 2026-05-10]]
   python tools/cygnss_rfi.py all 2026-05-10 2026-05-16            # fetch, grid, validate
   python tools/cygnss_rfi.py pass 2026-05-10 --sc 4 --hours 17.45 17.80   # one pass, per antenna, with gaps
-validate compares with the aircraft tables data/pnt/year/<day>.parquet and writes data/cygnss/validation_r<res>.json.
+validate compares with the aircraft tables data/pnt/year/<day>.parquet and writes data/cygnss/validation_r<res>.json
+(or --out). Held-out, same-hour and FAA-test checks: tools/cygnss_checks.py.
 """
 import argparse
 import json
@@ -136,6 +138,7 @@ HOT_MIN_N = 30
 BASE_PASSES = 3
 MIN_DDM = 10             # DDMs per cell to write it
 PASS_SECONDS = 600       # samples of one spacecraft within 10 minutes count as one overpass
+PASS_MIN_DDM = 5         # DDMs of one pass in one cell for a pass-cell row (the per-pass table)
 
 ELEVATED_DB = 1.0        # a priori: a cell is "elevated" at a median excess of 1 dB (26% more noise power)
 PAIR_MIN_DDM = 20
@@ -528,11 +531,44 @@ def grid(day, res=3):
              "dropout": round(m / (p + m), 4) if p + m >= DROP_MIN_SAMPLES else None}
         out.append(r)
     write_rows(os.path.join(GRID_DIR, f"{day}.r{res}.parquet"), out)
+    # Per pass: the same excess, split by spacecraft and 10-minute bucket, for same-hour comparisons. Leaves the
+    # cell table above unchanged.
+    write_rows(os.path.join(GRID_DIR, f"{day}.r{res}.passes.parquet"),
+               pass_cells(ucell, cid2, d["sc"][ok], d["t"][ok], ex))
     nmiss, npres = len(d["miss_lat"]), len(d["sub_lat"])
     print(f"{day}: {nfiles} spacecraft, {len(ex):,} DDMs, {len(rows):,} res-{res} cells with {MIN_DDM}+ DDMs "
           f"(baseline left out {100 * hot_share:.1f}% of DDMs in hot res-2 cells); "
           f"missing samples {nmiss:,} of {nmiss + npres:,} ({100 * nmiss / max(nmiss + npres, 1):.2f}%)")
     return out
+
+
+def pass_cells(ucell, cid, sc, t, ex, min_n=PASS_MIN_DDM):
+    """Median excess per (cell, pass): a pass is one spacecraft in one PASS_SECONDS bucket of the UTC day, as grid()
+    counts overpasses. Rows: h3, sc, bucket, t_mid (mean seconds since 00 UTC), n, med_db. Pass-cells with fewer
+    than `min_n` DDMs are left out."""
+    bucket = (np.asarray(t) // PASS_SECONDS).astype(np.int64)
+    key = (np.asarray(cid).astype(np.int64) * 100 + np.asarray(sc).astype(np.int64)) * 1000 + bucket
+    uk, gid = np.unique(key, return_inverse=True)
+    if not len(uk):
+        return []
+    med, ug, _, cnt, _ = group_median(np.asarray(ex, dtype=float), gid)
+    tsum = np.bincount(gid, weights=np.asarray(t, dtype=float), minlength=len(uk))
+    n = np.bincount(gid, minlength=len(uk))
+    rows = []
+    for g in ug:
+        if n[g] < min_n:
+            continue
+        k = int(uk[g])
+        rows.append({"h3": ucell[k // 100000], "sc": int(k // 1000 % 100), "bucket": int(k % 1000),
+                     "t_mid": round(float(tsum[g] / n[g]), 1), "n": int(n[g]), "med_db": round(float(med[g]), 3)})
+    return rows
+
+
+def read_passes(day, res=3):
+    """The per-pass table written by grid(), as a list of dicts (None if absent)."""
+    import pyarrow.parquet as pq
+    p = os.path.join(GRID_DIR, f"{day}.r{res}.passes.parquet")
+    return pq.read_table(p).to_pylist() if os.path.exists(p) else None
 
 
 def write_rows(path, rows):
@@ -662,7 +698,7 @@ def region_table(g, ac):
     return regions
 
 
-def validate(days, res=3, figures=False, map_days=None):
+def validate(days, res=3, figures=False, map_days=None, out=None):
     grids = {d: read_grid(d, res) for d in days}
     missing = [d for d, g in grids.items() if g is None]
     if missing:
@@ -740,7 +776,7 @@ def validate(days, res=3, figures=False, map_days=None):
         }
         if figures:
             figure_box([(r["med_db"], s) for r, s, _ in pooled if noise_ok(r)], res)
-    path = os.path.join(DATA, f"validation_r{res}.json")
+    path = out or os.path.join(DATA, f"validation_r{res}.json")
     json.dump(report, open(path, "w"), indent=1)
     print(f"wrote {os.path.relpath(path, ROOT)}")
     return report
@@ -1004,6 +1040,7 @@ def main(argv=None):
     ap.add_argument("--stride", type=int, default=2, help="keep every n-th 0.5 s sample when fetching (default 2)")
     ap.add_argument("--figures", action="store_true", help="write PNGs to docs/validation/img/")
     ap.add_argument("--map-days", nargs="*", help="with --figures: days to map (default: all)")
+    ap.add_argument("--out", help="validate: JSON path (default data/cygnss/validation_r<res>.json)")
     ap.add_argument("--sc", type=int, default=4, help="pass: spacecraft number (1-8)")
     ap.add_argument("--hours", type=float, nargs=2, default=(17.45, 17.85), help="pass: UTC window, decimal hours")
     a = ap.parse_args(argv)
@@ -1020,7 +1057,7 @@ def main(argv=None):
         for d in a.days:
             grid(d, a.res)
     if a.cmd in ("validate", "all"):
-        validate(a.days, a.res, a.figures, a.map_days)
+        validate(a.days, a.res, a.figures, a.map_days, a.out)
 
 
 if __name__ == "__main__":
