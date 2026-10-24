@@ -95,6 +95,18 @@
 <p>Region-scale interference shows clearly: 82% of bursts were flagged over the Gulf, 21–35% in the two busy test areas, none in the control. Site positions stay private.</p>
 <p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/s1-rfi.md">Full Sentinel-1 RFI report</a></p>
 
+<h2 id="radar">Interference spokes in weather radar (prototype)</h2>
+<p>A transmitter in a weather radar's band paints a thin line along one bearing. One day of open German and Finnish radar data (23 Oct 2026, 29 radars):</p>
+<div class="tw"><table>
+  <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Finds a known source: the sun</td><td>Found in 43 of 54 sweeps with the sun in the beam, to within 0.23° of its computed bearing; 8 of the 11 misses were in rain</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Detections are real spokes, not weather</td><td>Of 36 random clear-air detections reviewed by eye, 31 were spokes, 4 ambiguous and 1 rain (one reviewer, not blind)</td><td><span class="chip st-partial">Partly</span></td></tr>
+    <tr><td>Locates an emitter by crossing bearings from several radars</td><td>One three-radar crossing, against 2.7 expected by chance</td><td><span class="chip st-failed">Not yet</span></td></tr>
+  </tbody>
+</table></div>
+<p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/radar-spokes.md">Full weather-radar report</a></p>
+
 <h2 id="next">Validation still to come</h2>
 <ul>
   <li><strong>A localizer that resolves sites,</strong> not just areas. It failed its first scored test against the 2025 TDOA fixes, and its positions stay off the map until it passes one: two-emitter fits and fix-window timing were tried and dropped, and a heading-balanced third version improved on the second but didn't beat a constant guess. Next: days with a single known active site, scored at about 10 km.</li>

@@ -279,17 +279,22 @@
       "id": "weather-radar",
       "group": "emitters",
       "name": "Weather-radar spokes",
-      "status": "planned",
-      "phase": "Phase 5",
+      "status": "prototype",
+      "phase": "Phase 5 (prototype, Oct 2026)",
       "summary": "Interference spokes in open weather-radar data, as evidence of nearby emitters.",
       "what": "A strong emitter in a weather radar's band paints a thin radial spoke on its scans. National services publish the scans.",
-      "how": "Detect spokes, triangulate where several radars see the same source, and track persistence.",
+      "how": "tools/radar_spokes.py reads the unfiltered lowest sweep from German (DWD) and Finnish (FMI) radars, finds rays whose range-corrected power stays level along range (the signature of a transmitter, not weather), separates the sun and rain, groups spokes into persistent sources and crosses bearings between radars. First day (23 Oct 2026, 29 radars): 101 sources, the sun found to within 0.23°, and bearing crossings no better than chance, so no emitter located yet.",
       "data": [
         "FMI radar (CC BY 4.0)",
-        "DWD radar (open-data terms UNVERIFIED)"
+        "DWD radar (CC BY 4.0)"
       ],
-      "notes": "C-band, so it complements the L-band NISAR lane.",
-      "links": []
+      "notes": "Most sources are steady, narrow, weak and seen by one radar only, which matches published descriptions of outdoor Wi-Fi links in the band. That is a pattern, not an identification; nothing here points to military activity. C-band, so it complements the L-band NISAR lane.",
+      "links": [
+        [
+          "First results",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/radar-spokes.md"
+        ]
+      ]
     },
     {
       "id": "spaceborne",
