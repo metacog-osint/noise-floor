@@ -243,10 +243,11 @@ Then:
 - **Guidance check (22 Oct 2026): partial.** Public sources support the mechanism, not the type pattern.
   - The OPSGROUP-led GPS Spoofing Workgroup report (Sep 2024) warns of "a significant possibility of the GPS Receiver appearing normal to flight crew after spoofing, but in reality being contaminated with false data", and that some systems don't work correctly after spoofing even when GPS coverage returns ([AIN summary](https://ainonline.com/aviation-news/air-transport/2024-09-09/opsgroup-releases-gps-spoofing-workgroup-report)). The full report wasn't retrieved.
   - Airbus's Safety First article on GNSS interference points to an Airbus World ISI (34.36.00049) for type detail; that and the FCOM aren't public. EASA SIB 2022-02 (R3, 5 Jul 2024; R4 exists) couldn't be read: the EASA AD site was down for maintenance at the time.
-  - Next: read SIB 2022-02R4 when the site is back, and ask an A350 operator or pilot contact whether the GPS stays deselected or degraded for the rest of a flight after a spoofing alert.
+  - **EASA SIB 2022-02R4 (issued 3 Jul 2026, corrected 22 Jul 2026), read 23 Oct 2026.** EASA's site was still in maintenance, so the text was read from a third-party copy of the PDF (the official link is [ad.easa.europa.eu](https://ad.easa.europa.eu/blob/EASA_SIB_2022_02R4.pdf/SIB_2022-02R4_1)). It lists "temporary or non-recoverable" GNSS degradation, misleading position "later in the flight after having exited the affected area", and corrupted ADS-B among the effects. It names no aircraft type.
+  - Still open: ask an A350 operator or pilot contact whether the GPS stays deselected or degraded for the rest of a flight after a spoofing alert.
 - **Visibility and reporting (tested 23 Oct 2026, verdict 43):** A350s stay visible with degraded positions where other types go dark, and their degraded episodes last 4–8 times longer. A documented A350/A380 behaviour fits: the AESS sets NACp to zero when the ADIRU marks one satellite as degraded (ICAO CNS SG/29 IP/05, June 2025). The type pattern is therefore most likely a reporting artefact. See "A350s in the raw traces" below.
 - The A321's 3.0× is the narrowbody exception. It isn't explained yet; it may reflect which carriers fly it on medium-haul routes near the hotspots.
-- Airbus and EASA guidance on post-spoofing GPS behaviour still hasn't been checked.
+- EASA's bulletin supports post-exit effects in general but has no type detail. Airbus's type documentation isn't public.
 
 ## Verdicts
 
