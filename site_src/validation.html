@@ -73,6 +73,18 @@
 <p>About 80% of the cells CYGNSS flags have no aircraft coverage: the Red Sea, Iran, Iraq, Myanmar, Sudan and the Arabian Sea. It covers only about 38°N to 38°S, so not the Baltic. Its satellites also stop returning data for minutes at a time over Iraq, Iran and the Levant; the cause isn't confirmed.</p>
 <p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/cygnss.md">Full CYGNSS validation report</a></p>
 
+<h2 id="s1rfi">C-band interference from Sentinel-1 (prototype)</h2>
+<p>Sentinel-1 radar products carry the processor's own reports of radio interference in each burst. Read alone, without the imagery, they show where C-band emitters such as military radars were heard.</p>
+<div class="tw"><table>
+  <thead><tr><th>Check (set before any area was run)</th><th>Result</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Quiet control (Gibson Desert, Western Australia)</td><td>56 products, 3,276 bursts, none flagged, no sites</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Sites line up with radar locations published by Bellingcat (2022): Rostov-on-Don, Pogonovo/Liski, Negev</td><td>A site lay within 30 km of the published point in two areas (16 and 25 km), but the points themselves ranked low within each busy area; Pogonovo/Liski was quiet. Reports place an emitter only to tens of kilometres</td><td><span class="chip st-failed">Fail</span></td></tr>
+  </tbody>
+</table></div>
+<p>Region-scale interference shows clearly: 82% of bursts were flagged over the Gulf, 21–35% in the two busy test areas, none in the control. Site positions stay private.</p>
+<p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/s1-rfi.md">Full Sentinel-1 RFI report</a></p>
+
 <h2 id="next">Validation still to come</h2>
 <ul>
   <li><strong>A localizer that resolves sites,</strong> not just areas. It failed its first scored test against the 2025 TDOA fixes, and its positions stay off the map until it passes one: two-emitter fits and fix-window timing were tried and dropped, and a heading-balanced third version improved on the second but didn't beat a constant guess. Next: days with a single known active site, scored at about 10 km.</li>

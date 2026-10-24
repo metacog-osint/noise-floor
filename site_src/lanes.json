@@ -254,16 +254,21 @@
       "id": "sentinel1",
       "group": "emitters",
       "name": "Sentinel-1 RFI board",
-      "status": "planned",
-      "phase": "Phase 5",
+      "status": "prototype",
+      "phase": "Phase 5 (prototype, Oct 2026)",
       "summary": "C-band emitters from the interference reports in Sentinel-1 radar products.",
       "what": "Sentinel-1 Level-1 products carry per-burst radio-frequency-interference annotations. Mapped over time, they show persistent and new C-band emitters.",
-      "how": "Same pattern as the NISAR lane: read only the annotations, never the imagery, and group detections into sites across passes.",
+      "how": "Reads only the RFI reports in each Sentinel-1 product (a few hundred kB per pass, never the imagery). Each burst report is placed on the ground from the product's geolocation grid, and passes from different orbits are combined on one grid. A site is where most viewing directions agree, persistently across passes.",
       "data": [
-        "Copernicus Sentinel-1 (free, including commercial use)"
+        "Copernicus Sentinel-1 L1 GRD annotations via Microsoft Planetary Computer (free, including commercial use; attribution)"
       ],
-      "notes": "Needs a Copernicus Data Space account.",
-      "links": []
+      "notes": "Run privately on three published cases and a quiet control (Oct 2026). The control stayed silent, and region-scale C-band interference shows clearly. Its sites didn't line up with the published radar locations, because the reports place an emitter only to tens of kilometres. Outputs stay private until a known emitter validates positions. No account needed.",
+      "links": [
+        [
+          "Validation",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/s1-rfi.md"
+        ]
+      ]
     },
     {
       "id": "weather-radar",
