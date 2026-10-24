@@ -237,7 +237,7 @@ H4 is deliberately modest. In-sample, most of the top spoofed-to cells (73 of 10
 
 - The known regions read lower than in-sample (0.39% against 0.61%, 0.81% against 1.04%), but far above the pass marks.
 - **Points seen on held-out days that the published list doesn't name** (unverified, for follow-up):
-  - near Moscow Sheremetyevo, on four of the five days from May 2025;
+  - near Moscow Sheremetyevo (2 km), on four of the six days from May 2025 (the published source names only Moscow);
   - a point near Dawei, Myanmar, on seven days (67 km from the town);
   - points in the Tel Aviv area on 20 Jun 2025, during the Israel–Iran war, beside the Asaluyeh point (6 km) that Windward reported for ships;
   - a new point east of St Petersburg on 20 Jun 2026 (57 aircraft).
