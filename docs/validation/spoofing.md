@@ -203,6 +203,28 @@ Using the jamming processor's daily tables (13 days: the 2024 set and the 2026 b
 - **Self-reported fields.** Emitter category, ground speed and geometric altitude come from the aircraft. A wrong category can put a slow aircraft into the test.
 - **Unverified.** The Florida cluster and the White Sands dates. Points that don't match a published place are leads, not findings.
 
+## Held-out test (pre-registered 24 Oct 2026, about 07:00 UTC, before any of these days was processed)
+
+**Method frozen** at v0.3 (`tools/spoof_day.py` as committed in 898da3f). No parameter changes until the test is scored.
+
+**Days, by date rule:** the 20th of February, June and October from 2024 to June 2026 (2024-02-20, 2024-06-20, 2024-10-20,
+2025-02-20, 2025-06-20, 2025-10-20, 2026-02-20, 2026-06-20), plus four days already on disk that were chosen by date for the
+localizer test and never used for spoofing (2025-04-10, 2025-04-20, 2025-05-10, 2025-05-20). None of the twelve was used to
+build or tune this detector.
+
+**Checks, with the in-sample value (22 days) for reference:**
+
+| # | Check | Pass if | In-sample |
+|---|---|---|---|
+| H1 | Controls: pooled active share of aircraft-hours in the six control regions | ≤ 0.01% | 0.002% |
+| H2 | Known regions: pooled active share in the Middle East and in the Baltic and western Russia groups | each ≥ 0.2% and ≥ 20× the control share | 0.61%, 1.04% |
+| H3 | MLAT: episodes confirmed by MLAT, of those MLAT can test | ≥ 75% | 90% (963 of 1,072) |
+| H4 | Spoofed-to points: top res-6 cells per day with ≥ 5 aircraft that lie within 25 km of a named published point | ≥ 25% | 31% (33 of 106) |
+| H5 | Timing: in the eastern Mediterranean, the named point with the most aircraft among each day's top cells | Beirut on 20 Feb and 20 Jun 2024, Amman on 20 Oct 2024 (OPSGROUP dates the switch to 24 Aug 2024) | Beirut Feb–Mar 2024, Amman Oct 2024 |
+
+H4 is deliberately modest. In-sample, most of the top spoofed-to cells (73 of 106) aren't within 25 km of any named point, so
+"matches the published points" holds for the top point of the main regions, not for every cluster.
+
 ## 6. Next
 
 1. **Held-out test, rules fixed first:** v0.3 frozen, on days not used here (for example from the Oct 2025 – Oct 2026 backfill period), scored on the same checks.
