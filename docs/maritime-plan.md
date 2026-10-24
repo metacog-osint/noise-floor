@@ -142,6 +142,19 @@ Start with four, named here; exact boxes are private config.
 3. **Strait of Hormuz and the Gulf of Oman:** already on the GNSS trend; a spoofing hot spot; shadow-fleet traffic.
 4. **Bab el-Mandeb and the southern Red Sea.**
 
+**Sentinel-1 revisit, 25 Aug – 24 Oct 2026** (Planetary Computer catalogue; only Sentinel-1C and -1D appear):
+
+| Area | Passes in 60 days | Note |
+|---|---|---|
+| Spratlys | 5 | One descending track, every 12 days |
+| Scarborough Shoal | 10 | Two descending tracks |
+| Singapore Strait and Johor | 19 | Only one track covers all the open water, every 12 days |
+| Strait of Hormuz and Gulf of Oman | about 1 a day | Larger area, several tracks in both directions |
+| Bab el-Mandeb | about 1 a day | Larger area, several tracks in both directions |
+
+Radar coverage of the open South China Sea is sparse. Dark-ship counts at the Spratlys would rest on about one image every
+12 days, so that area is better suited to case studies than to a daily layer.
+
 Candidate fifth: the Taiwan Strait (cable incidents, exercises). The wider South China Sea and Indian Ocean follow once
 one method is validated.
 
