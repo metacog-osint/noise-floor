@@ -413,14 +413,14 @@
       "group": "assessment",
       "name": "Events and grading",
       "status": "prototype",
-      "phase": "Phase 6 (v0.1, Oct 2026)",
+      "phase": "Phase 6 (v0.2, Oct 2026)",
       "summary": "Fusing lanes into events, each graded on five fields.",
       "what": "An event joins what the lanes saw in one place and time window. It is graded on signal type, support, localization, attribution and verdict.",
       "how": "tools/events.py turns lane outputs into observations (ADS-B anomalies, bursts, all-day jamming-scale regions and SBAS flags; FAA announced GPS tests; GFZ Kp storms) and fuses them per UTC day: same or adjacent H3 res-2 region, overlapping or adjacent hours, no two members more than 600 km apart. Exclusion checks (announced test, space weather) set the verdict. Every grade stores its rule and the observations behind it.",
       "data": [
         "All lanes"
       ],
-      "notes": "First run, 1 Oct 2025 – 22 Oct 2026: 50,678 events. Every announced-test tag on the map comes out 'planned', 10 m-only effects at storm time come out 'benign_natural' where the rules allow, and the persistent hotspots are EFFECT, single-source, open. 'Multiple sources' needs a second independent sensor lane, such as CYGNSS, and nothing can be 'deliberate_suspected' until an interference-warning feed exists. The register is private. Grades describe evidence strength. They don't name perpetrators.",
+      "notes": "First run, 1 Oct 2025 – 22 Oct 2026: about 52,000 events. Every announced-test tag on the map comes out 'planned', 10 m-only effects at storm time come out 'benign_natural' where the rules allow, and the persistent hotspots are EFFECT, single-source, open. Since v0.2, CYGNSS is a second, independent sensor: on its six processed days, 98 events had an aircraft 93 m signal and a raised CYGNSS noise field agreeing within 300 km, so they reach 'Multiple sources' (none in quiet control areas). Nothing can be 'deliberate_suspected' until an interference-warning feed exists. The register is private. Grades describe evidence strength. They don't name perpetrators.",
       "links": [
         [
           "Method and results",

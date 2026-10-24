@@ -243,6 +243,88 @@ def test_verdict_precedence_and_invariants():
     assert a == b and a[0].startswith("EV-20260310-")
 
 
+# ---------------------------------------------------------------- CYGNSS (second sensor family)
+ME = h3.latlng_to_cell(26.0, 52.0, 2)          # inside the CYGNSS band (|lat| <= ~38)
+
+
+def cyg_row(lat, lon, n=40, med=2.0, dropout=None, cell=None):
+    c = cell or h3.latlng_to_cell(lat, lon, 3)
+    la, lo = h3.cell_to_latlng(c)
+    return {"h3": c, "lat": la, "lon": lo, "n": n, "passes": 4, "med_db": med, "p90_db": None if med is None else med + 0.5,
+            "frac1": 0.8, "land": 1.0, "dropout": dropout}
+
+
+def cyg_disk(lat, lon, k, med, n=40):
+    """Rows for every res-3 cell within k rings of the point, all with the same median excess."""
+    return [cyg_row(0, 0, n=n, med=med, cell=c) for c in sorted(h3.grid_disk(h3.latlng_to_cell(lat, lon, 3), k))]
+
+
+def run_cyg(adsb_obs, rows, kp="quiet"):
+    k = kp_series() if kp == "quiet" else kp
+    obs = adsb_obs + E.cygnss_observations(DAY, rows, "test") + E.kp_observations(DAY, k)
+    return E.build_day(DAY, obs, k, E.cygnss_field(rows)), obs
+
+
+def test_cygnss_observations():
+    rows = [cyg_row(25, 55, n=20, med=1.0),            # exactly at both thresholds: noise
+            cyg_row(25, 57, n=19, med=3.0),            # too few DDMs
+            cyg_row(25, 59, n=40, med=0.99),           # below 1 dB
+            cyg_row(25, 61, n=5, med=None, dropout=0.5),   # dropout at the threshold
+            cyg_row(25, 63, n=40, med=0.2, dropout=0.49)]
+    out = E.cygnss_observations(DAY, rows)
+    assert [o["kind"] for o in out] == ["cygnss_noise", "cygnss_dropout"], [o["kind"] for o in out]
+    o = out[0]
+    assert o["family"] == "cygnss" and o["sensor"] and o["signal_type"] == "EFFECT" and o["measure"] == "rf"
+    assert o["cells"] == [h3.cell_to_parent(rows[0]["h3"], 2)] and (o["t0"], o["t1"], o["time_res"]) == (0, 1439, "day")
+    f = E.cygnss_field(rows)                           # judged cells only (20+ DDMs)
+    assert sum(len(v) for v in f.values()) == 3
+
+
+def test_cygnss_multiple_sources():
+    lat, lon = ll(ME)
+    gross = from_file(anomalies=[anomaly(ME, 10, 11, "jam")])
+    # a raised neighbourhood: every res-3 cell within ~2 rings at +2 dB
+    ev, obs = run_cyg(list(gross), cyg_disk(lat, lon, 2, 2.0))
+    e = [x for x in effects(ev) if x["effect_measure"] == "gross"][0]
+    assert field(e, "support") == "Multiple sources" and rule(e, "support") == "S3", e["grades"]["support"]
+    basis = set(e["grades"]["support"][3])
+    assert all(o["detail"]["n"] >= E.CYG_MIN_DDM for o in obs if o["id"] in basis and o["family"] == "cygnss")
+    assert field(e, "verdict") == "open"               # two sensors agreeing is support, not a verdict
+    # one raised cell in a quiet neighbourhood: linked and fused, but the field median is below 1 dB -> no S3
+    rows = cyg_disk(lat, lon, 3, 0.0)
+    rows[[r["h3"] for r in rows].index(h3.latlng_to_cell(lat, lon, 3))]["med_db"] = 3.0
+    ev, obs = run_cyg(list(gross), rows)
+    e = [x for x in effects(ev) if x["effect_measure"] == "gross"][0]
+    raised = [o["id"] for o in obs if o["kind"] == "cygnss_noise"]
+    assert raised and raised[0] in e["members"] and field(e, "support") == "Single-source, unverified"
+    assert "no pair agrees" in e["grades"]["support"][2]
+    # a 10 m-only ADS-B observation never makes Multiple sources with CYGNSS (it pairs at the chance rate)
+    ev, _ = run_cyg(from_file(anomalies=[anomaly(ME, 10, 11, "acc")]), cyg_disk(lat, lon, 2, 2.0))
+    assert "Multiple sources" not in [field(x, "support") for x in effects(ev)]
+
+
+def test_cygnss_fusion_distance():
+    lat, lon = ll(ME)
+    gross = from_file(anomalies=[anomaly(ME, 10, 11, "jam")])
+    near_ = [cyg_row(lat + 250 / 111.2, lon)]          # ~250 km north: links (300 km rule), and its field is raised
+    ev, _ = run_cyg(list(gross), near_)
+    assert len(effects(ev)) == 1 and field(effects(ev)[0], "support") == "Multiple sources"
+    far_ = [cyg_row(lat + 420 / 111.2, lon)]           # ~420 km: no link, two events, no S3
+    ev, _ = run_cyg(list(gross), far_)
+    assert len(effects(ev)) == 2 and all(field(x, "support") == "Single-source, unverified" for x in effects(ev))
+    # dropouts are placed by the spacecraft: they never fuse with ADS-B and never count toward support
+    drop = [cyg_row(lat, lon, n=5, med=None, dropout=0.9)]
+    ev, _ = run_cyg(list(gross), drop)
+    assert len(effects(ev)) == 2
+    d = [x for x in effects(ev) if x["effect_measure"] == "dropout"][0]
+    assert field(d, "support") == "Single-source, unverified" and "don't count" in d["grades"]["support"][2]
+    # CYGNSS alone is one sensor family; storms never excuse an RF observation
+    ev, _ = run_cyg([], cyg_disk(lat, lon, 1, 2.0), kp_series({"09": 8.667}))
+    e = effects(ev)[0]
+    assert field(e, "support") == "Single-source, unverified" and field(e, "verdict") == "open" and e["effect_measure"] == "rf"
+    assert e["exclusions"]["space_weather"][0] == "not_applicable" and e["open_hint"] is None
+
+
 # ---------------------------------------------------------------- level check
 def test_level_observations():
     kids = sorted(h3.cell_to_children(C0, 4))

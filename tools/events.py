@@ -41,7 +41,7 @@ sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 from pnt_analysis import SBAS_AREAS  # noqa: E402  (one source of truth for the SBAS boxes)
 
-VERSION = "events v0.1"
+VERSION = "events v0.2"
 EVENTS_DIR = os.path.join(ROOT, "data", "events")
 REGISTER = os.path.join(EVENTS_DIR, "register.sqlite")
 INPUTS = os.path.join(EVENTS_DIR, "inputs")
@@ -50,6 +50,7 @@ SITE_EVENTS = os.path.join(ROOT, "site", "data", "events")
 ANALYSIS = os.path.join(ROOT, "data", "pnt", "analysis")
 DAILY_DIRS = [os.path.join(ROOT, "data", "pnt", "daily"), os.path.join(ROOT, "data", "pnt", "year")]
 FAA_FILE = os.path.join(ROOT, "data", "declared", "faa_gps_tests.json")
+CYGNSS_GRID = os.path.join(ROOT, "data", "cygnss", "grid")
 PLACES = os.path.join(ROOT, "site", "data", "places.json")
 SITE_URL = "https://noisefloor.theintelligence.company"
 KP_URL = "https://kp.gfz.de/app/json/?start={0}T00:00:00Z&end={1}T23:59:59Z&index=Kp"
@@ -71,6 +72,14 @@ KP_PAD_H = 3              # storm effects lag and outlast the 3-hourly index: lo
 MLAT_GATE = ((8.0, 0.0), (7.0, 40.0), (5.0, 50.0))   # (Kp at least, |geomagnetic latitude| at least, degrees)
 DIPOLE_POLE = (80.8, -72.7)   # approximate geomagnetic north pole (centred dipole, 2025 epoch): coarse gate only
 SBAS_UNRELIABLE = ("GAGAN (India)", "SouthPAN (Australia/NZ)")   # method card: flag fires most days there
+# CYGNSS lane (tools/cygnss_rfi.py, docs/validation/cygnss.md): the values that lane fixed before its validation
+CYG_MIN_DDM = 20          # DDMs in a res-3 cell for its noise value to count (PAIR_MIN_DDM there)
+CYG_ELEVATED_DB = 1.0     # median noise-floor excess that makes a cell "elevated" (ELEVATED_DB there)
+CYG_DROPOUT = 0.5         # share of expected samples missing that makes a cell "drop out" (DROPOUT_SHARE there)
+BEAM_LINK_KM = 300        # beam-scale observations link by distance, not by cell adjacency (see fuse)
+BEAM_KINDS = ("cygnss_noise",)          # located only to an antenna beam a few hundred km wide
+APART_KINDS = ("cygnss_dropout",)       # located by the spacecraft, not the beam: fuse only with their own kind
+NO_SUPPORT_KINDS = ("cygnss_dropout",)  # recorded, but never counted toward support
 
 SUPPORT = ("Single-source, unverified", "Partially corroborated", "Multiple sources")
 SIGNAL = ("EFFECT", "WARNING", "NATURAL")
@@ -80,6 +89,7 @@ TIER_RANK = {None: 0, "minor": 1, "notable": 2, "major": 3}
 
 SOURCES = {   # family -> (source text, sensor?)  Sensors in one family are not independent of each other.
     "adsb": ("adsb.lol daily archive through the PNT processor (ODbL 1.0)", True),
+    "cygnss": ("NASA CYGNSS L1 SDR V3.2 DDM noise floor through tools/cygnss_rfi.py (NASA open data)", True),
     "faa": ("FAA SPANS flight advisory, announced GPS test (US public domain)", False),
     "gfz_kp": ("GFZ Potsdam Kp index (CC BY 4.0)", False),
 }
@@ -151,13 +161,20 @@ class UF:
         return list(g.values())
 
 
-_DISK = {}
+_DISK, _LLC = {}, {}
 
 
-def disk(cell):
-    if cell not in _DISK:
-        _DISK[cell] = set(h3.grid_disk(cell, FUSE_RING))
-    return _DISK[cell]
+def disk(cell, k=None):
+    k = FUSE_RING if k is None else k
+    if (cell, k) not in _DISK:
+        _DISK[(cell, k)] = set(h3.grid_disk(cell, k))
+    return _DISK[(cell, k)]
+
+
+def cell_ll(cell):
+    if cell not in _LLC:
+        _LLC[cell] = h3.cell_to_latlng(cell)
+    return _LLC[cell]
 
 
 def in_area(area, lat, lon):
@@ -234,6 +251,51 @@ def level_observations(day, rows, ref=""):
             out.append(obs(day, "adsb_level", "EFFECT", "adsb", 0, 1439, "day", lat, lon, [reg], measure="gross",
                            detail=det, ref=ref, key=reg))
     return out
+
+
+def cygnss_observations(day, rows, ref=""):
+    """CYGNSS cells (H3 res 3, from tools/cygnss_rfi.py) for the day. `cygnss_noise`: CYG_MIN_DDM or more DDMs and a
+    median noise-floor excess of at least CYG_ELEVATED_DB. `cygnss_dropout`: half or more of the cell's expected
+    samples missing (the lane computes this only for cells with 30+ expected samples, by sub-satellite point). Both
+    fuse through the cell's res-2 parent; the grid is daily, so the time resolution is the day."""
+    out = []
+    for r in rows:
+        par = h3.cell_to_parent(r["h3"], REGION_RES)
+        rd = lambda k, n=2: None if r.get(k) is None else round(r[k], n)  # noqa: E731
+        det = {"res3": r["h3"], "n": r.get("n"), "passes": r.get("passes"), "med_db": rd("med_db"), "p90_db": rd("p90_db"),
+               "frac1": rd("frac1"), "land": rd("land"), "dropout": rd("dropout", 3)}
+        if (r.get("n") or 0) >= CYG_MIN_DDM and r.get("med_db") is not None and r["med_db"] >= CYG_ELEVATED_DB:
+            out.append(obs(day, "cygnss_noise", "EFFECT", "cygnss", 0, 1439, "day", r["lat"], r["lon"], [par],
+                           measure="rf", detail=det, ref=ref, key="noise|" + r["h3"]))
+        if r.get("dropout") is not None and r["dropout"] >= CYG_DROPOUT:
+            out.append(obs(day, "cygnss_dropout", "EFFECT", "cygnss", 0, 1439, "day", r["lat"], r["lon"], [par],
+                           measure="dropout", detail=det, ref=ref, key="drop|" + r["h3"]))
+    return out
+
+
+def cygnss_field(rows):
+    """Every judged CYGNSS cell of the day (CYG_MIN_DDM+ DDMs), indexed by res-2 parent: {parent: [(lat, lon, med_db)]}.
+    Rule S3 reads the field around an ADS-B observation, not just the raised cells."""
+    field = defaultdict(list)
+    for r in rows:
+        if (r.get("n") or 0) >= CYG_MIN_DDM and r.get("med_db") is not None:
+            field[h3.cell_to_parent(r["h3"], REGION_RES)].append((r["lat"], r["lon"], r["med_db"]))
+    return dict(field)
+
+
+def local_cygnss(o, field):
+    """(median excess, cells) of the judged CYGNSS cells within BEAM_LINK_KM of an observation's anchor points."""
+    pts = anchors(o)
+    vals = []
+    for c in {c2 for c in o["cells"] for c2 in disk(c, 2)}:
+        for la, lo, v in field.get(c, ()):
+            if min(km(a, (la, lo)) for a in pts) <= BEAM_LINK_KM:
+                vals.append(v)
+    vals.sort()
+    if not vals:
+        return None, 0
+    m = len(vals) // 2
+    return round(vals[m] if len(vals) % 2 else (vals[m - 1] + vals[m]) / 2, 2), len(vals)
 
 
 _WIN = {}
@@ -343,7 +405,7 @@ def sbas_storm(o, kp):
 # ---------------------------------------------------------------- fusion
 def consistent(o, f):
     """Distance (km) if H3 observation o overlaps announced test f in time and lies within its widest radius."""
-    if not o["cells"] or o["signal_type"] != "EFFECT" or o["lat"] is None:
+    if not o["cells"] or o["signal_type"] != "EFFECT" or o["lat"] is None or o["kind"] in APART_KINDS:
         return None
     if not any(o["t0"] <= w1 and o["t1"] >= w0 for w0, w1 in f["detail"]["windows"]):
         return None
@@ -351,41 +413,90 @@ def consistent(o, f):
     return round(d) if d <= f["detail"]["radius_km"] else None
 
 
+def anchors(o):
+    """Points that place an observation for the distance rules: a beam-scale or spacecraft-located cell is its own
+    centre; other located observations add the centres of their res-2 cells to their centroid."""
+    if o["kind"] in BEAM_KINDS or o["kind"] in APART_KINDS:
+        return [(o["lat"], o["lon"])]
+    return [(o["lat"], o["lon"])] + [cell_ll(c) for c in o["cells"]]
+
+
+def linked(o, p):
+    """Do two located observations of one UTC day link? Used by the fusion and by rule S3.
+      both cell-located   a cell of one within grid distance FUSE_RING of a cell of the other (res 2)
+      beam-scale (CYGNSS) the beam cell's centre within BEAM_LINK_KM of the other's centroid or res-2 cell centres
+      CYGNSS dropouts     only with other dropouts, centres within BEAM_LINK_KM
+    and in every case spans that overlap or are at most FUSE_GAP_MIN minutes apart (day-level spans always overlap)."""
+    if not o["cells"] or not p["cells"] or gap(o, p) > FUSE_GAP_MIN:
+        return False
+    apart = (o["kind"] in APART_KINDS, p["kind"] in APART_KINDS)
+    if any(apart):
+        return all(apart) and km((o["lat"], o["lon"]), (p["lat"], p["lon"])) <= BEAM_LINK_KM
+    if o["kind"] in BEAM_KINDS or p["kind"] in BEAM_KINDS:
+        return min(km(a, b) for a in anchors(o) for b in anchors(p)) <= BEAM_LINK_KM
+    near = set().union(*(disk(c) for c in o["cells"]))
+    return any(c in near for c in p["cells"])
+
+
+def agree(a, b):
+    """Rule S3's pairwise test for observations from two families. Both must link (`linked`). For ADS-B with a
+    beam-scale CYGNSS cell, the ADS-B side must be on the 93 m measure (the one the CYGNSS lane was validated against)
+    and the judged CYGNSS cells within BEAM_LINK_KM of it must have a median excess of at least CYG_ELEVATED_DB, so
+    one raised cell in an otherwise quiet neighbourhood isn't enough (see docs/assessment/events.md, chance rates)."""
+    if not linked(a, b):
+        return False
+    for x, y in ((a, b), (b, a)):
+        if y["kind"] in BEAM_KINDS and x["family"] == "adsb":
+            med = x["detail"].get("cyg_local_med")
+            return x["measure"] == "gross" and med is not None and med >= CYG_ELEVATED_DB
+    return True
+
+
 def fuse(observations):
     """Events for one UTC day, as lists of observation indices. Sensor observations fuse; notices attach.
-      H3 observations    linked when a cell of one is within grid distance FUSE_RING of a cell of the other (res 2)
-                         and their spans overlap or are at most FUSE_GAP_MIN minutes apart. Links are taken closest
-                         first, and two groups merge only if every pair of member centroids stays within
-                         MAX_EVENT_KM, so a chain of adjacent regions can't grow into one continent-wide event.
-      SBAS runs          linked when in the same service area and at most FUSE_GAP_MIN minutes apart.
-      announced tests    never fuse anything. Each attaches to every event holding an H3 EFFECT observation consistent
-                         with it (inside a window and within the widest radius); with none, it is its own event.
-      Kp storms          never linked: each is its own NATURAL event (Kp is planetary, not local)."""
+      located observations  linked by `linked` (cell adjacency, or a distance rule for beam-scale CYGNSS cells).
+                            Links are taken closest first, and two groups merge only if every pair of member
+                            centroids stays within MAX_EVENT_KM, so a chain of adjacent regions can't grow into one
+                            continent-wide event.
+      SBAS runs             linked when in the same service area and at most FUSE_GAP_MIN minutes apart.
+      announced tests       never fuse anything. Each attaches to every event holding a located EFFECT observation
+                            consistent with it (inside a window and within the widest radius); with none, it is its own
+                            event.
+      Kp storms             never linked: each is its own NATURAL event (Kp is planetary, not local)."""
     n = len(observations)
     uf = UF(n)
-    pts = {i: [(o["lat"], o["lon"])] for i, o in enumerate(observations)}
     index = defaultdict(list)
     for i, o in enumerate(observations):
         for c in o["cells"]:
             index[c].append(i)
-    links = []
+    cand = set()
     for i, o in enumerate(observations):
         if not o["cells"]:
             continue
+        ring = 2 if o["kind"] in BEAM_KINDS or o["kind"] in APART_KINDS else FUSE_RING   # 300 km can span 2 rings
         near = set()
         for c in o["cells"]:
-            for c2 in disk(c):
+            for c2 in disk(c, ring):
                 near.update(index.get(c2, ()))
-        for j in near:
-            p = observations[j]
-            if j > i and gap(o, p) <= FUSE_GAP_MIN:
-                links.append((km((o["lat"], o["lon"]), (p["lat"], p["lon"])), max(gap(o, p), 0), i, j))
-    for d, _, i, j in sorted(links):
+        cand.update((min(i, j), max(i, j)) for j in near if j != i)
+    links = []
+    for i, j in cand:
+        o, p = observations[i], observations[j]
+        if linked(o, p):
+            links.append((km((o["lat"], o["lon"]), (p["lat"], p["lon"])), max(gap(o, p), 0), i, j))
+    pts = {i: [(o["lat"], o["lon"])] for i, o in enumerate(observations)}
+    rad = dict.fromkeys(range(n), 0.0)        # farthest member from the group's first point (a cheap bound)
+    for _, _, i, j in sorted(links):
         ri, rj = uf.root(i), uf.root(j)
-        if ri == rj or any(km(a, b) > MAX_EVENT_KM for a in pts[ri] for b in pts[rj]):
+        if ri == rj:
             continue
-        uf.join(ri, rj)
-        pts[uf.root(ri)] = pts[ri] + pts[rj]
+        d0 = km(pts[ri][0], pts[rj][0])
+        if d0 > MAX_EVENT_KM or (d0 + rad[ri] + rad[rj] > MAX_EVENT_KM and
+                                 any(km(a, b) > MAX_EVENT_KM for a in pts[ri] for b in pts[rj])):
+            continue
+        uf.join(ri, rj)                       # rj stays the root and keeps its first point
+        rad[rj] = max([rad[rj]] + [km(pts[rj][0], q) for q in pts[ri]])
+        pts[rj] = pts[rj] + pts[ri]
     sb = [i for i, o in enumerate(observations) if o["kind"] == "adsb_sbas"]
     for a in sb:
         for b in sb:
@@ -427,20 +538,44 @@ def grade(members, day_obs, kp):
     else:
         grades["signal_type"] = ("NATURAL", "T3", "a space-weather alert only (Kp)", ids(naturals))
 
-    # support
-    sensor_fams = sorted({o["family"] for o in effects if o["sensor"]})
+    # support: S3 needs observations from two independent sensor families that link directly (rule `linked`),
+    # not merely through a chain of other members
+    counting = [o for o in effects if o["sensor"] and o["kind"] not in NO_SUPPORT_KINDS]
+    sensor_fams = sorted({o["family"] for o in counting})
     corrob = sorted({o["family"] for o in warnings if o["family"] not in sensor_fams})
+    pairs = []
     if len(sensor_fams) >= 2:
-        grades["support"] = (SUPPORT[2], "S3", f"independent sensor families agree in time and space: {', '.join(sensor_fams)}",
-                             ids(effects))
+        by_fam = defaultdict(list)
+        for o in counting:
+            by_fam[o["family"]].append(o)
+        for x, f1 in enumerate(sensor_fams):
+            for f2 in sensor_fams[x + 1:]:
+                pairs += [(a, b) for a in by_fam[f1] for b in by_fam[f2] if agree(a, b)]
+    dropped = sum(1 for o in effects if o["kind"] in NO_SUPPORT_KINDS)
+    note = (f"; {dropped} CYGNSS dropout cell(s) recorded but not counted (placed by the spacecraft, not the beam)"
+            if dropped else "")
+    if pairs:
+        fams = sorted({a["family"] for a, _ in pairs} | {b["family"] for _, b in pairs})
+        grades["support"] = (SUPPORT[2], "S3", f"independent sensor families agree in time and space: {' + '.join(fams)} "
+                             f"({len(pairs)} agreeing pair(s): linked on the same UTC day, and for ADS-B with CYGNSS a "
+                             f"93 m observation whose CYGNSS cells within {BEAM_LINK_KM} km have a median excess >= "
+                             f"{CYG_ELEVATED_DB:g} dB){note}", sorted({o["id"] for pr in pairs for o in pr}))
     elif sensor_fams and corrob:
-        grades["support"] = (SUPPORT[1], "S2", f"one sensor family ({sensor_fams[0]}) plus an independent notice that "
-                             f"matches in time and place ({', '.join(corrob)})", ids(effects + warnings))
+        grades["support"] = (SUPPORT[1], "S2", f"sensor family {' + '.join(sensor_fams)} plus an independent notice that "
+                             f"matches in time and place ({', '.join(corrob)}){note}", ids(counting + warnings))
     else:
-        why = ("one source" if not sensor_fams else f"one observation from one sensor family ({sensor_fams[0]})"
-               if len(effects) == 1 else f"one sensor family ({sensor_fams[0]}): its {len(effects)} observations come "
-               "from one aggregator, so they are not independent")
-        grades["support"] = (SUPPORT[0], "S1", why, ids(members))
+        if len(sensor_fams) >= 2:
+            why = (f"{' and '.join(sensor_fams)} both in the event, but no pair agrees (rule S3: for ADS-B with "
+                   f"CYGNSS, a 93 m observation whose CYGNSS cells within {BEAM_LINK_KM} km have a median excess "
+                   f">= {CYG_ELEVATED_DB:g} dB, with a raised cell linked to it)")
+        elif not sensor_fams:
+            why = "one source" if not effects else "only observations that don't count toward support"
+        elif len(counting) == 1:
+            why = f"one observation from one sensor family ({sensor_fams[0]})"
+        else:
+            why = (f"one sensor family ({sensor_fams[0]}): its {len(counting)} observations come from one source, so "
+                   "they are not independent")
+        grades["support"] = (SUPPORT[0], "S1", why + note, ids(members))
 
     # localization
     grades["localization_error_km"] = (None, "L0", "no fix: no localization method feeds this lane yet", [])
@@ -468,6 +603,9 @@ def grade(members, day_obs, kp):
             context += ids(runs)
             excl["space_weather"] = ("benign_natural", "N1", {"kp_max": k, "why": "10 m-only effect inside an SBAS area "
                                      "flagged at storm time, same or adjacent hour", "observations": ids(runs)})
+        elif not measures & {"gross", "capable"}:
+            excl["space_weather"] = ("not_applicable", "N-", {"kp_max": k, "why": "CYGNSS evidence only: the noise "
+                                     "floor measures RF power, which the Kp rules don't address"})
         elif k is None:
             excl["space_weather"] = ("unknown", "N-", {"why": "Kp unavailable for this time"})
         elif k >= STORM_KP:
@@ -478,9 +616,12 @@ def grade(members, day_obs, kp):
                 natural = "N2"
                 excl["space_weather"] = ("benign_natural", "N2", {"kp_max": k, "mlat": ml, "gate_deg": need,
                                          "why": "10 m-only effect during a storm, poleward of the latitude gate"})
-            elif not cap_only:
+            elif "gross" in measures:
                 excl["space_weather"] = ("storm_partial", "N-", {"kp_max": k, "why": "storm in progress, but the event "
                                          "includes worse-than-93 m loss, which storms rarely cause in our validation"})
+            elif not cap_only:
+                excl["space_weather"] = ("storm_partial", "N-", {"kp_max": k, "why": "storm in progress, but the event "
+                                         "includes CYGNSS RF evidence, which the Kp rules don't explain"})
             elif not located:
                 excl["space_weather"] = ("storm_partial", "N-", {"kp_max": k, "why": "SBAS flag only partly at storm "
                                          "time (rule N1 needs every flagged hour within 3 h of Kp >= 5)"})
@@ -558,7 +699,8 @@ def grade(members, day_obs, kp):
 
     tier = max((o["detail"].get("tier") for o in effects), key=lambda t: TIER_RANK.get(t, 0), default=None)
     em = ("both" if {"gross", "capable"} <= measures else "gross" if "gross" in measures
-          else "capable" if "capable" in measures else None)
+          else "capable" if "capable" in measures else "rf" if "rf" in measures
+          else "dropout" if "dropout" in measures else None)
     return {"grades": grades, "exclusions": excl, "context": sorted(set(context)), "lat": lat, "lon": lon,
             "t0": t0, "t1": t1, "open_hint": hint, "tier": tier, "effect_measure": em}
 
@@ -584,6 +726,11 @@ def summary(members, g):
                          f"{max(o['detail'].get('excess') or 0 for o in xs):g} pts")
     if c["adsb_burst"]:
         parts.append(f"{c['adsb_burst']} burst(s), peak {max(o['detail']['peak_aircraft'] or 0 for o in members if o['kind'] == 'adsb_burst')} aircraft")
+    if c["cygnss_noise"]:
+        cy = [o for o in members if o["kind"] == "cygnss_noise"]
+        parts.append(f"{len(cy)} CYGNSS cell(s) with a raised noise floor, max median +{max(o['detail']['med_db'] for o in cy):g} dB")
+    if c["cygnss_dropout"]:
+        parts.append(f"{c['cygnss_dropout']} CYGNSS dropout cell(s)")
     if c["adsb_level"]:
         parts.append(f"{c['adsb_level']} region(s) at jamming scale all day "
                      f"({sum(o['detail']['jam_hexes'] for o in members if o['kind'] == 'adsb_level')} hexes)")
@@ -601,8 +748,13 @@ def event_id(day, members):
     return f"EV-{day.replace('-', '')}-" + h("|".join(sorted(o["id"] for o in members)))[:8]
 
 
-def build_day(day, observations, kp):
-    """Fuse one day's observations and grade each event. Returns a list of event dicts."""
+def build_day(day, observations, kp, field=None):
+    """Fuse one day's observations and grade each event. Returns a list of event dicts. `field` (cygnss_field) lets
+    rule S3 read the CYGNSS neighbourhood of each ADS-B observation; the result is kept in the observation's detail."""
+    if field:
+        for o in observations:
+            if o["family"] == "adsb" and o["cells"]:
+                o["detail"]["cyg_local_med"], o["detail"]["cyg_local_n"] = local_cygnss(o, field)
     seen = Counter()
     for o in observations:            # identical inputs would collide: keep ids unique and stable
         seen[o["id"]] += 1
@@ -655,6 +807,14 @@ def level_input(day):
     return None, None
 
 
+def cygnss_input(day):
+    p = os.path.join(CYGNSS_GRID, f"{day}.r3.parquet")
+    if not os.path.exists(p):
+        return None, None
+    import pyarrow.parquet as pq
+    return pq.read_table(p).to_pylist(), os.path.relpath(p, ROOT).replace(os.sep, "/")
+
+
 def faa_tests():
     if not os.path.exists(FAA_FILE):
         return None
@@ -679,7 +839,8 @@ def available_days():
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS day_inputs(day TEXT PRIMARY KEY, events_src TEXT, level_src TEXT, n_anomalies INT,
-  n_bursts INT, n_sbas INT, n_level INT, n_tests INT, n_kp INT, kp TEXT, built_at TEXT);
+  n_bursts INT, n_sbas INT, n_level INT, n_tests INT, n_kp INT, kp TEXT, built_at TEXT, cygnss_src TEXT,
+  n_cygnss INT, n_cygnss_dropout INT);
 CREATE TABLE IF NOT EXISTS observations(id TEXT PRIMARY KEY, day TEXT, kind TEXT, signal_type TEXT, family TEXT,
   source TEXT, sensor INT, start_utc TEXT, end_utc TEXT, time_res TEXT, lat REAL, lon REAL, cells TEXT, area TEXT,
   measure TEXT, detail TEXT, ref TEXT);
@@ -697,6 +858,7 @@ CREATE TABLE IF NOT EXISTS episodes(id TEXT PRIMARY KEY, region TEXT, first_day 
   events INT, lat REAL, lon REAL);
 CREATE INDEX IF NOT EXISTS ev_day ON events(day);
 CREATE INDEX IF NOT EXISTS ob_day ON observations(day);
+CREATE INDEX IF NOT EXISTS ob_kind ON observations(kind);
 CREATE INDEX IF NOT EXISTS eo_obs ON event_observations(observation_id);
 """
 
@@ -705,7 +867,13 @@ def connect(path=None):
     path = path or REGISTER
     os.makedirs(os.path.dirname(path), exist_ok=True)
     db = sqlite3.connect(path)
+    db.execute("PRAGMA journal_mode=WAL")       # far fewer syncs: the register lives on a USB drive
+    db.execute("PRAGMA synchronous=NORMAL")
     db.executescript(SCHEMA)
+    have = {r[1] for r in db.execute("PRAGMA table_info(day_inputs)")}
+    for col, typ in (("cygnss_src", "TEXT"), ("n_cygnss", "INT"), ("n_cygnss_dropout", "INT")):
+        if col not in have:                       # registers built by v0.1
+            db.execute(f"ALTER TABLE day_inputs ADD COLUMN {col} {typ}")
     return db
 
 
@@ -731,10 +899,12 @@ def write_day(db, day, observations, events, inputs):
             (e["id"], k, None if v[0] is None else str(v[0]), v[1], v[2], json.dumps(v[3])) for k, v in e["grades"].items()])
         db.executemany("INSERT INTO exclusions VALUES (?,?,?,?,?)", [
             (e["id"], k, v[0], v[1], json.dumps(v[2], ensure_ascii=False)) for k, v in e["exclusions"].items()])
-    db.execute("INSERT OR REPLACE INTO day_inputs VALUES (?,?,?,?,?,?,?,?,?,?,?)", (
-        day, inputs.get("events_src"), inputs.get("level_src"), *(sum(1 for o in observations if o["kind"] == k) for k in (
-            "adsb_anomaly", "adsb_burst", "adsb_sbas", "adsb_level", "faa_test", "kp_storm")), inputs.get("kp"),
-        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")))
+    n = Counter(o["kind"] for o in observations)
+    db.execute("INSERT OR REPLACE INTO day_inputs (day, events_src, level_src, n_anomalies, n_bursts, n_sbas, n_level, "
+               "n_tests, n_kp, kp, built_at, cygnss_src, n_cygnss, n_cygnss_dropout) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        day, inputs.get("events_src"), inputs.get("level_src"), n["adsb_anomaly"], n["adsb_burst"], n["adsb_sbas"],
+        n["adsb_level"], n["faa_test"], n["kp_storm"], inputs.get("kp"), datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
+        inputs.get("cygnss_src"), n["cygnss_noise"], n["cygnss_dropout"]))
 
 
 def episodes(db):
@@ -753,7 +923,7 @@ def episodes(db):
     db.execute("DROP TABLE IF EXISTS episodes")
     db.execute("CREATE TABLE episodes(id TEXT PRIMARY KEY, region TEXT, first_day TEXT, last_day TEXT, days INT, "
                "events INT, lat REAL, lon REAL)")
-    db.execute("UPDATE events SET episode_id=NULL, episode_days=NULL, episode_index=NULL")
+    db.execute("UPDATE events SET episode_id=NULL, episode_days=NULL, episode_index=NULL WHERE episode_id IS NOT NULL")
     best = {}                                   # event id -> (index so far, total, episode id)
     for region, rows in per_region.items():
         rows.sort()
@@ -788,6 +958,7 @@ def cmd_build(a):
     for day in days:
         ev, ev_src = events_input(day)
         rows, lv_src = level_input(day)
+        cyg, cy_src = cygnss_input(day)
         if ev is None and rows is None:
             print(f"{day}: no inputs, skipped")
             continue
@@ -796,11 +967,13 @@ def cmd_build(a):
             observations += observations_from_events_file(day, ev, ev_src)
         if rows is not None:
             observations += level_observations(day, rows, lv_src)
+        if cyg is not None:
+            observations += cygnss_observations(day, cyg, cy_src)
         observations += faa_observations(day, tests if tests is not None else ev.get("tests", []) if ev else [])
         observations += kp_observations(day, kp)
         kmax = kp_max(kp, day, 0, 1439, pad_h=0)
-        events = build_day(day, observations, kp)
-        write_day(db, day, observations, events, {"events_src": ev_src, "level_src": lv_src,
+        events = build_day(day, observations, kp, cygnss_field(cyg) if cyg is not None else None)
+        write_day(db, day, observations, events, {"events_src": ev_src, "level_src": lv_src, "cygnss_src": cy_src,
                                                    "kp": None if kmax is None else f"max {kmax:.1f}"})
         tot["days"] += 1
         tot["observations"] += len(observations)
@@ -813,7 +986,8 @@ def cmd_build(a):
     db.execute("INSERT OR REPLACE INTO meta VALUES ('parameters', ?)", (json.dumps({
         "REGION_RES": REGION_RES, "FUSE_RING": FUSE_RING, "FUSE_GAP_MIN": FUSE_GAP_MIN, "MAX_EVENT_KM": MAX_EVENT_KM, "LEVEL_MIN_AIRCRAFT": LEVEL_MIN_AIRCRAFT,
         "LEVEL_SHARE": LEVEL_SHARE, "LEVEL_MIN_HEXES": LEVEL_MIN_HEXES, "STORM_KP": STORM_KP, "KP_PAD_H": KP_PAD_H,
-        "MLAT_GATE": MLAT_GATE, "EPISODE_GAP_DAYS": EPISODE_GAP_DAYS, "DIPOLE_POLE": DIPOLE_POLE, "SBAS_UNRELIABLE": SBAS_UNRELIABLE}),))
+        "MLAT_GATE": MLAT_GATE, "EPISODE_GAP_DAYS": EPISODE_GAP_DAYS, "CYG_MIN_DDM": CYG_MIN_DDM,
+        "CYG_ELEVATED_DB": CYG_ELEVATED_DB, "CYG_DROPOUT": CYG_DROPOUT, "BEAM_LINK_KM": BEAM_LINK_KM, "DIPOLE_POLE": DIPOLE_POLE, "SBAS_UNRELIABLE": SBAS_UNRELIABLE}),))
     db.commit()
     print(f"built {tot['days']} day(s): {tot['observations']} observations, {tot['events']} events -> "
           f"{os.path.relpath(REGISTER, ROOT)}" + ("" if kp else "  (no Kp file: run `fetch` first)"))
@@ -893,6 +1067,11 @@ def describe_obs(r):
         s = f"jamming scale all day: {det['jam_hexes']} of {det['hexes_5plus']} hexes, share {det['share']}%"
     elif kind == "adsb_sbas":
         s = f"SBAS {det['state']}, {r['area']}" + (" (unreliable area)" if det.get("unreliable_area") else "")
+    elif kind == "cygnss_noise":
+        s = (f"CYGNSS noise floor, median +{det['med_db']} dB (p90 +{det['p90_db']}), {det['n']} DDMs on {det['passes']} "
+             f"pass(es), res-3 cell")
+    elif kind == "cygnss_dropout":
+        s = f"CYGNSS data dropout: {100 * det['dropout']:.0f}% of expected samples missing (by sub-satellite point)"
     elif kind == "faa_test":
         s = f"announced test {det['test_id']}, {det['place']}, radius {det['radius_km']:.0f} km, windows " + ", ".join(
             f"{hhmm(a)}-{hhmm(b)}Z" for a, b in det["windows"])
@@ -951,7 +1130,8 @@ def cmd_show(a):
         return
     print(f"{a.day} (UTC). Inputs: events {inp['events_src']}; level {inp['level_src']}; {inp['n_anomalies']} anomaly "
           f"events, {inp['n_bursts']} bursts, {inp['n_sbas']} SBAS runs, {inp['n_level']} level regions, "
-          f"{inp['n_tests']} announced tests, {inp['n_kp']} Kp storm runs; Kp {inp['kp'] or 'unavailable'}")
+          f"{inp['n_tests']} announced tests, {inp['n_kp']} Kp storm runs; Kp {inp['kp'] or 'unavailable'}"
+          + (f"; CYGNSS {inp['n_cygnss']} raised cells, {inp['n_cygnss_dropout']} dropout cells" if inp["cygnss_src"] else ""))
     evs = db.execute("SELECT * FROM events WHERE day=?", (a.day,)).fetchall()
     c = Counter((e["signal_type"], e["verdict"]) for e in evs)
     print(f"{len(evs)} events: " + ", ".join(f"{k[0]}/{k[1]} {n}" for k, n in sorted(c.items())))
@@ -980,10 +1160,13 @@ def cmd_stats(a):
         c = dict(db.execute("SELECT verdict, COUNT(*) FROM events WHERE signal_type=? GROUP BY verdict", (s,)))
         print(f"  {s:<8} " + "  ".join(f"{v}: {c.get(v, 0)}" for v in VERDICT))
     print("\nEFFECT events by measure and verdict:")
-    for m in ("gross", "both", "capable"):
+    for m in ("gross", "both", "capable", "rf", "dropout"):
         c = dict(db.execute("SELECT verdict, COUNT(*) FROM events WHERE signal_type='EFFECT' AND effect_measure=? "
                             "GROUP BY verdict", (m,)))
         print(f"  {m:<8} " + "  ".join(f"{v}: {c.get(v, 0)}" for v in VERDICT))
+    s3 = db.execute("SELECT day, COUNT(*) FROM events WHERE support='Multiple sources' GROUP BY day").fetchall()
+    if s3:
+        print("Multiple sources by day:", dict(s3))
     print("open events by hint:", dict(db.execute("SELECT COALESCE(open_hint, 'none'), COUNT(*) FROM events "
                                                   "WHERE verdict='open' GROUP BY 1 ORDER BY 2 DESC")))
     print("\nby month (UTC):  events | EFFECT WARNING NATURAL | open benign_natural planned deliberate_suspected | "
