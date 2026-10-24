@@ -161,7 +161,7 @@ def lanes_page(data):
 <tr><td>3. SATCOM v1</td><td>GEO threat board, interference register, satellite-internet health, L-band risk overlay</td><td>""" + chip("planned") + """</td></tr>
 <tr><td>4. Spoofing and maritime</td><td>ADS-B spoofing detectors, AIS layers, declared-warning layers</td><td>""" + chip("planned") + """</td></tr>
 <tr><td>5. Emitters</td><td>Sentinel-1 RFI board, weather-radar spokes</td><td>""" + chip("planned") + """</td></tr>
-<tr><td>6. Assessment</td><td>Event model and grading, exclusion layers, community lane, daily status and weekly assessment</td><td>""" + chip("planned") + """ (community collection running)</td></tr>
+<tr><td>6. Assessment</td><td>Event model and grading, exclusion layers, community lane, daily status and weekly assessment</td><td>""" + chip("planned") + """ (events and grading v0.1 running privately; community collection running)</td></tr>
 <tr><td>7. Extensions</td><td>Spaceborne and network GNSS; NISAR L-band emitters (pulled forward)</td><td>""" + chip("partial") + """ NISAR</td></tr>
 </tbody></table></div>""")
     return "\n".join(parts)
