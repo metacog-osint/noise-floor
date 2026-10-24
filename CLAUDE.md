@@ -29,6 +29,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
 - `tools/sun_transit.py`: sun-outage windows for GEO satellites from fixed receivers (`--daily`, `--start`, `--end`,
   `--threshold`). Checked against a separately written calculator: Tehran windows and times agree.
 - `tools/check_public.py`: pre-commit check for private terms.
+- **Maritime lane (planned 23 Oct 2026, not built):** read `docs/maritime-plan.md` first (sources, detectors D1–D13, database, validation,
+  build steps M0–M7, open decisions). Private handoff and watch configuration are listed in `CLAUDE.local.md`.
 - **The public site `site/` is generated.** Edit `site_src/` (page bodies, `lanes.json`) and run `python tools/build_site.py`;
   the Sources page comes from `registry/sources.csv`. CI fails if `site/` is out of step. Cloudflare Pages deploys `site/` from `main`.
   **Deploys run from GitHub Actions** (`.github/workflows/deploy-site.yml`): after CI passes on `main`, `site/` is uploaded

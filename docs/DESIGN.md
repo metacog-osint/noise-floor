@@ -128,10 +128,14 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
 1. **Foundation:** as above. Repo, licence registry (merge both research docs), PNT processor v1 on three frozen days, method card, and a validation report against known hotspots and GPSJam maps (visual) for the same dates.
 2. **Daily and backfill, plus the declared lane:** daily job, backfill, static map live. Port emso-watch's pollers to Worker cron, with ntfy alerts. **Status 22 Oct 2026:** daily job, backfill and map done in GitHub Actions; announced US GPS tests from FAA advisories on the public map; the pollers run daily on Tom's PC with a private digest (`collectors/watch.py`). Worker cron and ntfy wait for Tom's OK (new services).
 3. **SATCOM v1:** GEO threat board and the ITU RRB interference register.
-4. **Spoofing and maritime:** ADS-B spoofing detectors, AIS (Digitraffic, Kystverket), declared-warning layers.
+4. **Spoofing and maritime:** ADS-B spoofing detectors, AIS (Digitraffic, Kystverket), declared-warning layers. **Extended 23 Oct 2026** by the maritime lane plan (`docs/maritime-plan.md`): vessels and their signals in the South China Sea and Indian Ocean, led by one validated method (dark ships and phantom tracks).
 5. **Emitters:** Sentinel-1 RFI board and weather-radar spokes.
 6. **Assessment:** event fusion and grading, attribution and exclusion layers, community lane, Claude digests, private dashboard behind Access.
 7. **Extensions:** spaceborne and network GNSS (CYGNSS, NISAR, COSMIC-2, CORS/IGS, SMOS/SMAP).
+
+### Maritime lane plan (23 Oct 2026)
+
+**Plan: `docs/maritime-plan.md`.** A vessel-focused lane and a separate Sea map, starting in four focus areas of the South China Sea and Indian Ocean. It combines AIS behaviour, ships seen by radar satellites while silent on AIS, RF emitters at sea, GNSS interference footprints, HF signal metadata and declared activity, with a private database of vessels, identities, observations, signals and behaviour events. Limits: no open AIS feed in the region (aisstream kept private until its terms are clear) and no free view of per-vessel SATCOM. First milestone: dark ships and phantom tracks validated at one focus area. Open decisions are in Section 14 of the plan.
 
 ### Decisions still open (supersedes items 2 and 3 above)
 

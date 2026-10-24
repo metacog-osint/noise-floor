@@ -17,6 +17,11 @@
       "intro": "Open data can't see satcom jamming directly, so this half is built from orbits, outages, the official record and predictable natural effects."
     },
     {
+      "id": "maritime",
+      "name": "Vessels at sea",
+      "intro": "Ships and the signals around them: what radar satellites see that AIS doesn't, behaviour that suggests hiding or pressure, and emitters at sea."
+    },
+    {
       "id": "assessment",
       "name": "Context and assessment",
       "intro": "Turning lane outputs into graded events with a stated basis, and keeping natural and benign explanations in view."
@@ -121,19 +126,23 @@
       "id": "horizon",
       "group": "pnt",
       "name": "Radio-horizon jammer localizer",
-      "status": "planned",
-      "phase": "Next build",
-      "summary": "Narrow down where a jammer sits from the first position at which each aircraft lost GNSS.",
+      "status": "prototype",
+      "phase": "Prototype",
+      "summary": "Narrow down where a jammer sits from where aircraft lose and regain GNSS.",
       "what": "A jammer on the ground can only reach aircraft above its radio horizon. Each aircraft's first jammed position and altitude define a horizon circle, and where many circles' edges meet points to the source area.",
-      "how": "Reuses the processor's per-aircraft exposure tracking. The method follows the open-source work that placed the 2024 Baltic jammer in Kaliningrad from aircraft data alone.",
+      "how": "tools/horizon_fix.py fits the jammer's reach from the data and scores candidate cells by how tightly aircraft onsets agree. Scored against a 2025 TDOA network's fixes in Kaliningrad: the first version failed; the second, frozen before five held-out days, was within 25 km of a known site on 3 of 4 days.",
       "data": [
         "adsb.lol daily archive"
       ],
-      "notes": "Gives an area, not a site: the 2024 work was confident about the country, not an exact location.",
+      "notes": "Gives an area, not a site: its peaks sit about 20 km east of both known sites, and two sites 21 km apart can't be told apart. Positions stay off the public map.",
       "links": [
         [
           "Research note",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/research/2026-10-14-baltic-jammer-2024.md"
+        ],
+        [
+          "Validation (verdicts 40–42)",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md"
         ]
       ]
     },
@@ -498,6 +507,30 @@
       ],
       "notes": "Event and alert state will move to Cloudflare D1 (free tier).",
       "links": []
+    },
+    {
+      "id": "vessels",
+      "group": "maritime",
+      "name": "Vessels, dark ships and signals at sea",
+      "status": "planned",
+      "phase": "Planned (Oct 2026)",
+      "summary": "Find vessels that hide, transfer cargo at sea or press others near contested features, and the emitters they carry, starting in the South China Sea and Indian Ocean.",
+      "what": "Combines ships seen by radar satellites while silent on AIS (dark ships), AIS tracks with no ship under them (phantom tracks), ship-to-ship transfers, identity changes, spoofed tracks, behaviour over undersea cables, RF emitters at sea and HF signal metadata, with weather and declared activity as context.",
+      "how": "First one method, validated and written up: Sentinel-1 ship detections matched against AIS at one focus area. Then behaviour detectors, context layers and a separate Sea map with licence-clean layers only.",
+      "data": [
+        "Copernicus Sentinel-1 and -2",
+        "VIIRS night lights (licence to confirm)",
+        "AIS (aisstream, private until its terms are clear)",
+        "Declared warnings",
+        "Public HF receivers (metadata only)"
+      ],
+      "notes": "No open AIS feed covers this region and no free source sees per-vessel satellite communications. Communications content is never published.",
+      "links": [
+        [
+          "Plan",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/maritime-plan.md"
+        ]
+      ]
     }
   ]
 }
