@@ -3,3 +3,4 @@ orjson
 pyarrow
 tzdata>=2024.1
 pypdf>=5.1
+paho-mqtt>=2.0    # collectors/digitraffic_ais.py (Digitraffic AIS over MQTT)
