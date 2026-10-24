@@ -19,6 +19,11 @@ Method (docs/method-card.md):
     live gross-bad AND, in the hex-hours where it is bad and has >= 2 peers, >= 75% have peers mostly good
     (< 25% of peers bad), judged over >= 3 such hex-hours.
   * Hex score, as GPSJam publishes it: 100 * max(bad - 1, 0) / (good + bad).
+  * Option --heavy-apart (v1.5; off by default): A350 and A380 (A359, A35K, A388) report NACp 0 whenever one satellite
+    is flagged degraded and stay degraded far longer than other types (verdict 43; ICAO CNS SG/29 IP/05). With the option,
+    their gross-bad hex-hours count as interference only when their peers are bad too (>= PEER_BAD_MAX of >= PEER_MIN
+    peers, these types not counting as bad peers). Uncorroborated ones go to `heavy_apart` and are left out of
+    `bad_nacp_live`, the minute counts' live total, post-exposure and the peer tests. `bad_nacp` stays raw.
 
 Input is the day's tar, or its split parts (.tar.aa, .tar.ab ...), read as one stream without unpacking. The raw
 bytes are SHA-256 hashed during the same pass, for provenance.
@@ -29,10 +34,14 @@ Output (in --out, default data/pnt/daily):
   YYYY-MM-DD.hourly.parquet  h3, hour, aircraft, bad_nacp, bad_nic, bad_acc10, capable, cap_bad_acc10, latched, bad_nacp_live
   YYYY-MM-DD.minute.parquet  h3, minute (0-1439), bad_nacp, latched (aircraft with a gross-bad / latched report that
                              minute; nonzero rows only)
+  With --heavy-apart, the daily, hourly and minute tables also carry heavy_apart (aircraft whose gross-bad reports there
+  were set apart), and the summary's method_version is 1.5.
   YYYY-MM-DD.summary.json    inputs, hashes, counts, timings, method parameters, suspect and latch diagnostics
 
 Usage
   python pipeline/pnt_daily.py 2025-10-16 --raw <folder with v2025.10.16-planes-readsb-prod-0.tar*>
+  python pipeline/pnt_daily.py 2025-10-16 --raw <folder> --heavy-apart --out data/pnt/daily_v15 --compare-out data/pnt/daily
+      (one read, both versions: v1.5 to --out and v1.4 to --compare-out)
 """
 import argparse, gzip, hashlib, io, json, math, os, sys, tarfile, time
 from collections import Counter, defaultdict
@@ -55,6 +64,7 @@ PEER_BAD_MAX = 0.25   # peers "mostly good" below this bad share
 SUSPECT_ANOMALOUS_FRAC = 0.75
 SUSPECT_MIN_JUDGED = 3
 POST_MIN_KM = 300.0   # post-exposure reports must be at least this far from the exposure point
+HEAVY_TYPES = frozenset({"A359", "A35K", "A388"})   # --heavy-apart: NACp 0 on one degraded satellite (verdict 43)
 BATCH = 400           # trace files per worker task
 
 # cell layout: [reports, gross bad, nic bad, acc bad]
@@ -191,11 +201,13 @@ def is_bad(c, k):
     return c[k] * 2 >= c[R]
 
 
-def hex_hour_totals(recs):
-    tot = defaultdict(lambda: [0, 0])   # (hex, hour) -> [aircraft, gross-bad aircraft]
-    for cells, *_ in recs:
+def hex_hour_totals(recs, ignore=frozenset()):
+    """(hex, hour) -> [aircraft, gross-bad aircraft]. Aircraft of types in `ignore` count as aircraft but never as bad."""
+    tot = defaultdict(lambda: [0, 0])
+    for cells, meta, _ in recs:
+        can_be_bad = meta[6] not in ignore
         for key, c in cells.items():
-            t = tot[key]; t[0] += 1; t[1] += is_bad(c, G)
+            t = tot[key]; t[0] += 1; t[1] += can_be_bad and is_bad(c, G)
     return tot
 
 
@@ -217,10 +229,14 @@ def centre(hx):
     return _CENTRE[hx]
 
 
-def resolve_post_exposure(recs, tot):
-    """Per record: the set of (hex, hour) cells that are post-exposure. Returns (cells per record, diagnostics)."""
+def resolve_post_exposure(recs, tot, skip=frozenset()):
+    """Per record: the set of (hex, hour) cells that are post-exposure. Returns (cells per record, diagnostics).
+    Types in `skip` get none (with --heavy-apart their uncorroborated cells are set apart instead)."""
     out, regions, types, unjudged, n_aircraft = [], Counter(), Counter(), 0, 0
     for cells, meta, bad_minutes in recs:
+        if meta[6] in skip:
+            out.append(set())
+            continue
         first = {}
         for hx, m in bad_minutes:
             key = (hx, m // 60)
@@ -258,13 +274,39 @@ def resolve_post_exposure(recs, tot):
     return out, diag
 
 
+def heavy_apart_cells(recs, tot):
+    """--heavy-apart: per record, the (hex, hour) cells where an A350/A380 is gross-bad without corroboration (peers
+    mostly good, or too few peers to judge). `tot` must leave these types out of the bad counts. Returns (cells, diag)."""
+    out, types, healthy, unjudged, kept, n_aircraft = [], Counter(), 0, 0, 0, 0
+    for cells, meta, _ in recs:
+        apart = set()
+        if meta[6] in HEAVY_TYPES:
+            for key, c in cells.items():
+                if not is_bad(c, G):
+                    continue
+                ok = peers_mostly_good(tot, key, False)   # this aircraft isn't in tot's bad count
+                if ok is False:
+                    kept += 1
+                    continue
+                apart.add(key); healthy += ok is True; unjudged += ok is None
+            if apart:
+                n_aircraft += 1; types[meta[6]] += 1
+        out.append(apart)
+    diag = {"types": sorted(HEAVY_TYPES), "aircraft_with_apart_cells": n_aircraft, "apart_hex_hours": healthy + unjudged,
+            "apart_peers_healthy": healthy, "apart_peers_unjudged": unjudged, "kept_corroborated_hex_hours": kept,
+            "aircraft_by_type": dict(types.most_common()),
+            "note": "v1.5: A350/A380 gross-bad hex-hours count as interference only when peers are bad too"}
+    return out, diag
+
+
 def live(c, pe_cell):
     """Gross-bad reports in a cell that count as live (none, in a post-exposure cell)."""
     return 0 if pe_cell else c[G]
 
 
-def find_suspects(recs, tot, latched):
-    """Peer test on live reports. Returns a set of record indexes to drop and a diagnostic list."""
+def find_suspects(recs, tot, latched, ignore=frozenset()):
+    """Peer test on live reports. Returns a set of record indexes to drop and a diagnostic list. `latched`: per record,
+    the cells whose gross-bad reports aren't live (post-exposure, and with --heavy-apart the set-apart cells)."""
     drop, where = set(), []
     for i, (cells, meta, _) in enumerate(recs):
         used, _, slat, slon, t0, t1, typ, _ = meta
@@ -275,7 +317,7 @@ def find_suspects(recs, tot, latched):
         for key, c in cells.items():
             if not is_bad(c, G) or key in latched[i]:
                 continue
-            ok = peers_mostly_good(tot, key, True)
+            ok = peers_mostly_good(tot, key, typ not in ignore)
             if ok is None:
                 continue
             judged += 1; anomalous += ok
@@ -285,38 +327,43 @@ def find_suspects(recs, tot, latched):
     return drop, where
 
 
-def aggregate(recs, drop, latched):
-    # hex (or (hex, hour)) -> [aircraft, gross, nic, acc, capable, capable acc-bad, latched, live gross]
-    daily = defaultdict(lambda: [0] * 8)
-    hourly = defaultdict(lambda: [0] * 8)
-    minute = defaultdict(lambda: [0, 0])          # (hex, minute) -> [aircraft gross-bad, aircraft latched]
+def aggregate(recs, drop, latched, apart=None):
+    # hex (or (hex, hour)) -> [aircraft, gross, nic, acc, capable, capable acc-bad, latched, live gross, heavy apart]
+    daily = defaultdict(lambda: [0] * 9)
+    hourly = defaultdict(lambda: [0] * 9)
+    minute = defaultdict(lambda: [0, 0, 0])       # (hex, minute) -> [aircraft gross-bad, latched, heavy apart]
+    no_apart = set()
 
-    def add(t, c, cap, lat_reports):
+    def add(t, c, cap, lat_reports, apart_reports):
         acc = is_bad(c, A)
         t[0] += 1; t[1] += is_bad(c, G); t[2] += is_bad(c, N); t[3] += acc
         if cap:
             t[4] += 1; t[5] += acc
-        lat = lat_reports * 2 >= c[R] and lat_reports > 0
-        t[6] += lat
-        t[7] += (c[G] - lat_reports) * 2 >= c[R] and c[G] - lat_reports > 0
+        t[6] += lat_reports * 2 >= c[R] and lat_reports > 0
+        t[8] += apart_reports * 2 >= c[R] and apart_reports > 0
+        live_reports = c[G] - lat_reports - apart_reports
+        t[7] += live_reports * 2 >= c[R] and live_reports > 0
 
     for i, (cells, meta, bad_minutes) in enumerate(recs):
         if i in drop:
             continue
         cap, lc = meta[7], latched[i]
+        ac = apart[i] if apart is not None else no_apart
         per_hex = defaultdict(lambda: [0, 0, 0, 0])
         per_hex_lat = defaultdict(int)
+        per_hex_apart = defaultdict(int)
         for (hx, hour), c in cells.items():
             lr = c[G] if (hx, hour) in lc else 0
-            add(hourly[(hx, hour)], c, cap, lr)
+            ar = c[G] if (hx, hour) in ac else 0
+            add(hourly[(hx, hour)], c, cap, lr, ar)
             ph = per_hex[hx]
             for k in range(4):
                 ph[k] += c[k]
-            per_hex_lat[hx] += lr
+            per_hex_lat[hx] += lr; per_hex_apart[hx] += ar
         for hx, c in per_hex.items():   # daily: the aircraft's reports in the hex over the whole day
-            add(daily[hx], c, cap, per_hex_lat[hx])
+            add(daily[hx], c, cap, per_hex_lat[hx], per_hex_apart[hx])
         for hx, m in bad_minutes:
-            x = minute[(hx, m)]; x[0] += 1; x[1] += (hx, m // 60) in lc
+            x = minute[(hx, m)]; x[0] += 1; x[1] += (hx, m // 60) in lc; x[2] += (hx, m // 60) in ac
     return daily, hourly, minute
 
 
@@ -324,7 +371,9 @@ def score(bad, n):
     return round(100 * max(bad - 1, 0) / n, 2)
 
 
-def run(day, raw_dir, out_dir, workers):
+def run(day, raw_dir, out_dir, workers, heavy_apart=False, also=None):
+    """Process one day into out_dir. also: optional (out_dir, heavy_apart) for a second output set from the same read,
+    for like-for-like comparisons. Returns the summary of the first set."""
     parts = day_parts(raw_dir, day)
     day0 = int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())
     t0 = time.time()
@@ -337,11 +386,25 @@ def run(day, raw_dir, out_dir, workers):
                 st[k] += v
     chain = stream.raw
     t_read = time.time() - t0
-    tot = hex_hour_totals(recs)
-    latched, latch_diag = resolve_post_exposure(recs, tot)
-    drop, where = find_suspects(recs, tot, latched)
-    daily, hourly, minute = aggregate(recs, drop, latched)
+    s = finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, workers)
+    if also:
+        finish(day, also[0], also[1], recs, st, chain, parts, t0, t_read, workers)
+    return s
+
+
+def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, workers):
+    ignore = HEAVY_TYPES if heavy_apart else frozenset()
+    tot = hex_hour_totals(recs, ignore)
+    latched, latch_diag = resolve_post_exposure(recs, tot, ignore)
+    if heavy_apart:
+        apart, apart_diag = heavy_apart_cells(recs, tot)
+        excluded = [lc | ac for lc, ac in zip(latched, apart)]
+    else:
+        apart, apart_diag, excluded = None, None, latched
+    drop, where = find_suspects(recs, tot, excluded, ignore)
+    daily, hourly, minute = aggregate(recs, drop, latched, apart)
     secs = time.time() - t0
+    extra = (lambda rows, i: {"heavy_apart": [v[i] for _, v in rows]}) if heavy_apart else (lambda rows, i: {})
 
     import pyarrow as pa, pyarrow.parquet as pq
     rows = sorted(daily.items())
@@ -363,6 +426,7 @@ def run(day, raw_dir, out_dir, workers):
         "latched": [v[6] for _, v in rows],
         "bad_nacp_live": [v[7] for _, v in rows],
         "score_live": [score(v[7], v[0]) for _, v in rows],
+        **extra(rows, 8),
     }), os.path.join(out_dir, f"{day}.parquet"), compression="zstd")
     hrows = sorted(hourly.items())
     pq.write_table(pa.table({
@@ -376,6 +440,7 @@ def run(day, raw_dir, out_dir, workers):
         "cap_bad_acc10": [v[5] for _, v in hrows],
         "latched": [v[6] for _, v in hrows],
         "bad_nacp_live": [v[7] for _, v in hrows],
+        **extra(hrows, 8),
     }), os.path.join(out_dir, f"{day}.hourly.parquet"), compression="zstd")
     mrows = sorted(minute.items())
     pq.write_table(pa.table({
@@ -383,9 +448,10 @@ def run(day, raw_dir, out_dir, workers):
         "minute": pa.array([m for (_, m), _ in mrows], pa.int16()),
         "bad_nacp": pa.array([v[0] for _, v in mrows], pa.int32()),
         "latched": pa.array([v[1] for _, v in mrows], pa.int32()),
+        **({"heavy_apart": pa.array([v[2] for _, v in mrows], pa.int32())} if heavy_apart else {}),
     }), os.path.join(out_dir, f"{day}.minute.parquet"), compression="zstd")
     summary = {
-        "day": day, "method_version": METHOD_VERSION, "inputs": [os.path.basename(p) for p in parts],
+        "day": day, "method_version": "1.5" if heavy_apart else METHOD_VERSION, "inputs": [os.path.basename(p) for p in parts],
         "input_bytes": chain.nbytes, "input_sha256": chain.sha.hexdigest(),
         "seconds": round(secs, 1), "seconds_read": round(t_read, 1), "workers": workers,
         "hexes": len(rows), "hex_hours": len(hrows), "aircraft": len(recs), "avionics_suspects": len(drop),
@@ -400,9 +466,11 @@ def run(day, raw_dir, out_dir, workers):
                                "min_judged_hex_hours": SUSPECT_MIN_JUDGED},
                    "post_exposure": {"exposure": "first bad hex-hour with >= peer_min peers, >= peer_bad_max of them bad",
                                      "min_km_from_exposure": POST_MIN_KM, "tagged_if_peers_mostly_good": True},
+                   "heavy_apart": sorted(HEAVY_TYPES) if heavy_apart else None,
                    "score": "100*max(bad-1,0)/(good+bad)"},
         "source": "adsb.lol globe_history (ODbL 1.0)",
         "latching": latch_diag,
+        **({"heavy_apart": apart_diag} if heavy_apart else {}),
         "type_counts_all": dict(Counter(m[6] or "?" for _, m, _ in recs).most_common()),   # all types (was top 80)
         "avionics_suspect_centroids": sorted(where),   # [mean lat, mean lon, hours, type]; no identifiers
     }
@@ -416,8 +484,10 @@ def main():
     ap.add_argument("--raw", required=True, help="folder holding the day's adsb.lol tar or split parts")
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "pnt", "daily"))
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
+    ap.add_argument("--heavy-apart", action="store_true", help="v1.5: A350/A380 degradation counts only when peers agree")
+    ap.add_argument("--compare-out", help="also write the other setting (with or without --heavy-apart) here, same read")
     a = ap.parse_args()
-    s = run(a.day, a.raw, a.out, a.workers)
+    s = run(a.day, a.raw, a.out, a.workers, a.heavy_apart, (a.compare_out, not a.heavy_apart) if a.compare_out else None)
     print(json.dumps({k: s[k] for k in ("day", "seconds", "files", "aircraft", "avionics_suspects", "hexes", "hex_hours", "reports_used")}
                      | {"latched_aircraft": s["latching"]["latched_aircraft"]}))
 
