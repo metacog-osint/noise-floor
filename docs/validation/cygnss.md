@@ -735,6 +735,8 @@ at 0.0–0.5 dB with no aircraft degraded.
 Reproduce: `python tools/cygnss_rfi.py fetch|grid <days>`, then `python tools/cygnss_rfi.py validate <all days> --out
 data/cygnss/validation_year_r3.json`.
 
+**Pre-registered check of the spoofing explanation (written 24 Oct 2026, about 19:55 UTC, before any of these days was downloaded).** If spoofing keeps the Gulf noise floor raised after June while aircraft NACp reads clean, the aircraft spoofing detector should see more of it then. Days by rule: the 15th of July, August, September and October 2026 (after the surge) against the 15th of November and December 2025 and January 2026 (before it, CYGNSS 1.5–1.6 dB). Measure: `tools/spoof_day.py` v0.4 active share of aircraft-hours in its Gulf region, pooled over each set. Supported if the after-set share is at least 3 times the before-set share and at least 0.1 percentage points higher; otherwise not supported. Either way it says nothing about emitters at sea or low-power interference.
+
 Sources for section 10 (retrieved 24 Oct 2026): UT Austin Radionavigation Laboratory, "Hundreds of Ships in Middle East
 Struggle Against GNSS Interference" (https://radionavlab.ae.utexas.edu/?p=5268); Focal Point Positioning, "GPS jamming
 and spoofing: What the Gulf reveals about the scale of the problem"
