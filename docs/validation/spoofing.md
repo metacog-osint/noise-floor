@@ -1,6 +1,6 @@
 # ADS-B spoofing detector: validation (24 Oct 2026)
 
-**Lane:** adsb-spoofing (planned). **Code:** `tools/spoof_day.py` v0.3, tests in `tests/test_spoof_day.py`. **Data:** 22 full adsb.lol days (ODbL), Feb 2024 – May 2026. **Outputs:** `data/spoofing/` (gitignored; the event files hold ICAO addresses and stay local). **Known answers:** public reporting of where, when and to which points aircraft were spoofed (section 3). It is region-and-period evidence; no source gives day-level ground truth.
+**Lane:** adsb-spoofing (planned). **Code:** `tools/spoof_day.py` v0.4 (v0.3 for the held-out test), tests in `tests/test_spoof_day.py`. **Data:** 22 full adsb.lol days (ODbL), Feb 2024 – May 2026. **Outputs:** `data/spoofing/` (gitignored; the event files hold ICAO addresses and stay local). **Known answers:** public reporting of where, when and to which points aircraft were spoofed (section 3). It is region-and-period evidence; no source gives day-level ground truth.
 
 ## Bottom line
 
@@ -269,6 +269,33 @@ WSMRNM 25-05 Rev 2 (https://www.faasafety.gov/files/notices/2025/May/WSMRNM_25-0
 WSMRNM 25-30 (https://www.faasafety.gov/files/notices/2025/Apr/WSMRNM_25-30_GPS_Flight_Advisory.pdf);
 WSMRNM 25-41 (https://www.faasafety.gov/files/notices/2025/Mar/WSMRNM_25-41_GPS_Flight_Advisory.pdf, search summary only);
 EGLNFL 24-02 (https://www.faasafety.gov/files/notices/2024/Mar/EGLNFL_24-02_GPS_Flight_Advisory.pdf, search summary only).
+
+## v0.4: a replay class (24 Oct 2026)
+
+**Why.** The Florida control cluster (above) was a feed re-sending positions about 20 minutes old, which the v0.3 tests
+read as excursions and loiters. v0.4 adds a **replay** class, decided before the other classes. An episode is replay
+when at least 60% of its positions lie within 3 km and 1,000 ft of the aircraft's own trusted position 2 minutes to 3
+hours earlier, flown at 150 kt or more, at a near-constant lag (interquartile spread of lags ≤ 180 s), and no other aircraft that
+isn't itself a replay candidate was shown within 5 km within an hour. Replay episodes are left out of every map and peer
+count.
+
+**Two fixes found while checking it,** before the final run:
+- The first version also caught real spoofing to Amman, Beirut and Cairo airports, at cruise altitude. Aircraft spoofed
+  twice to the same point had unflagged positions there from the first time (for example with no ground speed reported),
+  so the second hold "matched their own earlier track". Fix: only earlier positions flown at 150 kt or more count.
+- A few still matched at spoofing points, probably aircraft spoofed back near an airport they had climbed out of. Fix: a
+  spoofing point is shared by other aircraft, a replay retraces one aircraft's own track, so an episode with another
+  aircraft shown within 5 km within an hour isn't replay.
+
+**Effect, final v0.4 on all 34 days:**
+- 51 in-sample episodes become replay: 34 over northern Florida on 6 Mar 2024, the rest scattered (1–2 on some days). None
+  lies within 10 km of a named spoofing point.
+- Known regions are unchanged: in-sample active share Middle East 0.606%, Baltic and western Russia 1.036% (v0.3: 0.606%,
+  1.037%). Controls fall from 0.002% to 0.001%.
+- The held-out checks give the same results as v0.3: all five pass (controls 0.002%, Middle East 0.386%, Baltic 0.812%,
+  MLAT 91.5%, Beirut–Beirut–Amman).
+- Caveat: the rule was designed after seeing the Florida case, and its thresholds weren't tuned on other days. The
+  held-out days show it doesn't disturb the checks.
 
 ## 6. Next
 

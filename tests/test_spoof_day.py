@@ -66,6 +66,23 @@ def test_fixed_point_spoof():
     assert any(r["flags"]["geo_step"]) and any(r["flags"]["geo_sat"])
 
 
+def test_replay_info():
+    """v0.4: positions re-sent ~20 min late retrace the aircraft's own track (replay); a fixed-point hold doesn't."""
+    t0 = DAY0 + 3600
+    track = fly(t0, 60, 50.0, 5.0)
+    stale = [(p[0] + 20 * 60 + 5, *p[1:]) for p in track[:30]]          # the first 5 min re-sent 20 min later
+    pts = sorted(track + stale, key=lambda p: p[0])
+    A, M, r = analyse(trace("aaa009", pts))
+    grid = S.replay_grid(A, r["trusted"])
+    ep = [i for i, p in enumerate(A) if any(abs(p[0] - s[0]) < 0.01 and abs(p[1] - s[1]) < 1e-9 for s in stale)]
+    share, lag, iqr = S.replay_info(A, grid, ep)
+    assert share > 0.9 and abs(lag - 1205) < 30 and iqr <= S.REPLAY_IQR_S, (share, lag, iqr)
+    pts2, _ = spoofed_flight()
+    A2, M2, r2 = analyse(trace("aaa010", pts2))
+    share2, _, _ = S.replay_info(A2, S.replay_grid(A2, r2["trusted"]), r2["episodes"][0])
+    assert share2 == 0.0, share2
+
+
 def test_realistic_excursion():
     """Positions shifted 100 km north for 10 min at normal speed, then back: an excursion, not slow."""
     t0 = DAY0 + 7200

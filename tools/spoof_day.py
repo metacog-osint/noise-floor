@@ -22,8 +22,14 @@ Per aircraft (ADS-B airborne positions, type adsb_icao, any ADS-B version, every
   An episode is a run of slow, loiter or excursion positions (gaps under 15 min), at least 2 positions over 20 s. Its
   victim location is where the aircraft really was during the episode: the last trusted position before it and the
   first after (each within 60 min) joined by a great circle, sampled each minute over the episode's own span; else one
-  of them if within 15 min; else MLAT positions. Each episode is classed active, post (post-exposure), isolated or
-  unlocated (see classify()). Maps should use spoofed_active.
+  of them if within 15 min; else MLAT positions. Each episode is classed active, post (post-exposure), isolated,
+  unlocated or (v0.4) replay (see classify()). Maps should use spoofed_active.
+  replay (v0.4): most of the episode's positions retrace the aircraft's own earlier trusted track flown at speed
+  (within 3 km and 1,000 ft, 2 min to 3 h earlier, at >= 150 kt) at a near-constant lag: a feed re-sending old
+  positions, not spoofing. Not replay if another aircraft (not itself a replay candidate) was shown within 5 km
+  within an hour: spoofing points are shared, replays retrace one aircraft's own track. Found on
+  6 Mar 2024 over northern Florida (34 of 37 flagged positions were the aircraft's own positions ~20 min earlier).
+  Replay episodes are left out of every map and peer count.
 Supporting indicators (tested, reported, not used to build episodes):
   geo        geometric minus baro altitude jumps by >= 1,000 ft within 60 s (geo_step), or sits at the ADS-B
              encoding limit, |diff| >= 3,100 ft (geo_sat); and per hex-hour, an aircraft whose median diff is >= 1,500 ft
@@ -64,7 +70,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 import pnt_daily as P                       # noqa: E402  (Chain, day_parts, batches: same archive handling)
 
-VERSION = "0.3"
+VERSION = "0.4"
 RES, RES2, RES_PT = 4, 2, 6                 # maps, regional maps, spoofed-to points
 MIN_ALT_FT = 1000
 SAMPLE_S = 30.0                             # hex-hour tables: at most one trusted report per aircraft per 30 s
@@ -87,6 +93,8 @@ KIN_DT_S, KIN_MIN_KM, KIN_KT, KIN_DEG, KIN_MIN_BAD = (25.0, 90.0), 0.5, 100.0, 4
 GEO_STEP_FT, GEO_STEP_S, GEO_SAT_FT, GEO_PEER_FT, GEO_PEER_MIN = 1000, 60.0, 3100, 1500, 4
 GEO_FLAG_MIN = 2                            # geo_flag column: trusted points with geo_step or geo_sat in the hex-hour
 NACP_BAD, NACP_CLEAN = 8, 8
+REPLAY_KM, REPLAY_ALT_FT, REPLAY_LAG_S = 3.0, 1000, (120.0, 10800.0)   # v0.4 stale-replay test (see replay_info)
+REPLAY_SHARE, REPLAY_IQR_S, REPLAY_MIN_GS_KT, REPLAY_SHARED_KM = 0.6, 180.0, 150.0, 5.0
 KT_PER_KMS = 1943.844                       # 1 km/s in knots
 # trusted-cell layout: [reports, v2 reports, v2 NACp < 8, kin pairs, kin bad, geo diff sum, geo n]  (+ geo list kept apart)
 TR, V2, V2B, KP, KB = range(5)
@@ -330,6 +338,46 @@ def analyse(A, M, cat):
             "episodes": episodes, "mlat": mlat, "unresolved": unresolved}
 
 
+def replay_grid(A, trusted):
+    """Trusted points with an altitude and a ground speed of at least REPLAY_MIN_GS_KT, binned on a 0.05-degree grid, for
+    replay_info. Only points where the aircraft was really moving count: a replay retraces a track flown at speed, while
+    an aircraft spoofed twice to one point can have unflagged positions at that point from the first time."""
+    grid = defaultdict(list)
+    for j, p in enumerate(A):
+        if trusted[j] and isinstance(p[ALT], (int, float)) and p[GS] is not None and p[GS] >= REPLAY_MIN_GS_KT:
+            grid[(math.floor(p[LAT] * 20), math.floor(p[LON] * 20))].append(j)
+    return grid
+
+
+def replay_info(A, grid, ep):
+    """(share, median lag s, lag IQR s): the share of an episode's points within REPLAY_KM and REPLAY_ALT_FT of the
+    aircraft's own trusted position REPLAY_LAG_S earlier. Stale-data replay gives a high share at a near-constant lag;
+    spoofing to a fixed point or a circle doesn't retrace the aircraft's own track."""
+    lags = []
+    for i in ep:
+        p = A[i]
+        if not isinstance(p[ALT], (int, float)):
+            continue
+        gx, gy = math.floor(p[LAT] * 20), math.floor(p[LON] * 20)
+        best = None
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for j in grid.get((gx + dx, gy + dy), ()):
+                    q = A[j]
+                    lag = p[T] - q[T]
+                    if not REPLAY_LAG_S[0] <= lag <= REPLAY_LAG_S[1] or abs(q[ALT] - p[ALT]) > REPLAY_ALT_FT:
+                        continue
+                    d = fkm(p[LAT], p[LON], q[LAT], q[LON])
+                    if d <= REPLAY_KM and (best is None or d < best[0]):
+                        best = (d, lag)
+        if best:
+            lags.append(best[1])
+    if not lags:
+        return 0.0, None, None
+    lags.sort()
+    return len(lags) / len(ep), lags[len(lags) // 2], lags[(3 * len(lags)) // 4] - lags[len(lags) // 4]
+
+
 def victim_track(A, trusted, ep, M):
     """Where the aircraft really was during an episode: [(t, lat, lon)], and how it was found."""
     t0, t1 = A[ep[0]][T], A[ep[-1]][T]
@@ -413,8 +461,10 @@ def score_trace(raw, day0):
     geo_med = {k: statistics.median(v) for k, v in geo.items() if v}
 
     episodes = []
+    rgrid = replay_grid(A, trusted) if r["episodes"] else None
     for ep in r["episodes"]:
         vt, before, after, how = victim_track(A, trusted, ep, M)
+        rshare, rlag, riqr = replay_info(A, rgrid, ep)
         vcells = sorted({(cell(la, lo, RES), h) for t, la, lo in vt if (h := hour(t)) is not None})
         fcells = sorted({(cell(A[i][LAT], A[i][LON], RES), h) for i in ep if (h := hour(A[i][T])) is not None})
         pts6 = sorted({cell(A[i][LAT], A[i][LON], RES_PT) for i in ep})
@@ -435,6 +485,7 @@ def score_trace(raw, day0):
             "clean_share": round(sum(1 for x in nacps if x >= NACP_CLEAN) / len(nacps), 2) if nacps else None,
             "nic_median": statistics.median(nics) if nics else None,
             "geo_hits": geo_hits, "mlat_pairs": len(ml), "mlat_dis": sum(1 for x in ml if x[1] >= MLAT_KM),
+            "replay_share": round(rshare, 2), "replay_lag_s": rlag, "replay_iqr_s": riqr,
             "vcells": vcells, "fcells": fcells,
             # reference location for the post-exposure rule: where the aircraft was, else where it was shown
             "ref": ([round(statistics.median(x[1] for x in vt), 4), round(statistics.median(x[2] for x in vt), 4)]
@@ -519,17 +570,41 @@ def classify(recs):
       post       no such peer, and the same aircraft had an earlier episode (ended >= POST_GAP_S before) >= POST_MIN_KM
                  away: false positions carried on after leaving a spoofed area (receiver still contaminated);
       isolated   no peer and no earlier episode: unexplained (exposure not seen, a local source, or a false alarm);
-      unlocated  no victim location.
+      unlocated  no victim location;
+      replay     (v0.4, decided first) most positions retrace the aircraft's own earlier track at a near-constant lag:
+                 stale data, not spoofing. Replay episodes count neither as peers nor as earlier episodes.
     The peer rule mirrors the jamming processor's: real interference affects many aircraft in an area at once."""
+    for r in recs:
+        for e in r["episodes"]:
+            e["replay"] = (e.get("replay_share", 0) >= REPLAY_SHARE and e.get("replay_iqr_s") is not None
+                           and e["replay_iqr_s"] <= REPLAY_IQR_S)
+    # A spoofing point is shared: other aircraft (not replay candidates) shown within REPLAY_SHARED_KM within an hour
+    # make it spoofing, whatever the track match (e.g. an aircraft spoofed back to the airport it climbed out of).
+    grid = defaultdict(list)
+    for r in recs:
+        for e in r["episodes"]:
+            if not e["replay"] and e.get("false_lat") is not None:
+                grid[(math.floor(e["false_lat"] * 10), math.floor(e["false_lon"] * 10))].append((r["icao"], e))
+    for r in recs:
+        for e in r["episodes"]:
+            if not e["replay"] or e.get("false_lat") is None:
+                continue
+            gx, gy = math.floor(e["false_lat"] * 10), math.floor(e["false_lon"] * 10)
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    for icao, o in grid.get((gx + dx, gy + dy), ()):
+                        if (icao != r["icao"] and abs(o["t0"] - e["t0"]) <= 3600
+                                and km(e["false_lat"], e["false_lon"], o["false_lat"], o["false_lon"]) <= REPLAY_SHARED_KM):
+                            e["replay"] = False
     for r in recs:
         eps = r["episodes"]
         for i, e in enumerate(eps):
             e["cand_post"] = any(p["t1"] <= e["t0"] - POST_GAP_S and km(*p["ref"], *e["ref"]) >= POST_MIN_KM
-                                 for p in eps[:i])
+                                 for p in eps[:i] if not p["replay"])
     near = defaultdict(set)                 # (res-2 cell, hour) -> aircraft with a non-post episode located there
     for r in recs:
         for e in r["episodes"]:
-            if not e["cand_post"]:
+            if not e["cand_post"] and not e["replay"]:
                 for hx, h in e["vcells"]:
                     near[(parent(hx, RES2), h)].add(r["icao"])
     for r in recs:
@@ -541,7 +616,8 @@ def classify(recs):
                     ps |= near.get((p2, h + dh), set())
             ps.discard(r["icao"])
             e["peers"] = len(ps)
-            e["class"] = ("unlocated" if not e["vcells"] else "active" if ps else "post" if e["cand_post"] else "isolated")
+            e["class"] = ("replay" if e["replay"] else "unlocated" if not e["vcells"] else "active" if ps
+                          else "post" if e["cand_post"] else "isolated")
 
 
 def aggregate(recs):
