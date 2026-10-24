@@ -408,6 +408,8 @@ The same check on 2 Jan (holiday run), 1 Feb and 24 Feb 2026, with 17 Jan (a qui
 - **Mostly local.** Aircraft that arrived healthy are degraded 3–10 times more often at night than by day on all three days. So the interference itself looks stronger or wider at night. A different night route mix, closer to Kaliningrad and the Russian border, isn't ruled out. That needs a route-by-route comparison.
 
 
+**More days, 23 Oct 2026.** Ten Apr–Jun 2025 days (the localizer days) with the same comparison. Nights were worse on every day: at FL300+, 11.7–41.4% of aircraft-minutes were degraded at night against 5.2–16.2% by day. Aircraft that arrived healthy were also worse at night on all ten days (3.9–18.6% against 2.4–8.9%). But the gap depends on aircraft type. **Narrowbodies: 5.1–22.7% at night against 4.5–12.8% by day** (1.1–2.4 times). **Other types: 15.6–70.8% against 7.1–29.1%.** The overnight wave is widebody-heavy, and A350s stay degraded far longer than other types (verdict 43), so part of the night excess is the traffic mix. Narrowbodies alone still show it on every day. June nights at 55°N are short and partly twilight, so 22–04Z isn't fully dark then.
+
 ## Validation set: two 2024 cases
 
 These days come before the backfill. They were processed locally with the same pipeline (`python pipeline/pnt_daily.py <day> --raw <archive folder> --out data/pnt/validation2024`) and scored with `tools/leads_year.py spire2024` and `kiruna2024`, plus `tools/trace_box.py report` for the crossings.
