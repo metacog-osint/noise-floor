@@ -165,17 +165,22 @@
       "id": "ais",
       "group": "pnt",
       "name": "Spoofing at sea (AIS)",
-      "status": "planned",
-      "phase": "Phase 4",
+      "status": "prototype",
+      "phase": "Phase 4 (prototype, Oct 2026)",
       "summary": "Ship position reports that jump, circle or land ashore.",
       "what": "Ships broadcast GNSS-derived positions over AIS. Spoofed fixes appear as impossible tracks, ships placed on land and clusters in patterns.",
-      "how": "Open AIS feeds in the Baltic and along the Norwegian coast, screened with the same effect-first approach as the aircraft lane.",
+      "how": "A collector records Finland's open AIS stream (Digitraffic), and detectors flag impossible speeds, course swinging against a fixed heading, positions on land, and many ships reported on one spot. The same detectors also look for rendezvous, loitering, going dark and identity changes, for the maritime lane.",
       "data": [
         "Digitraffic AIS (CC BY 4.0)",
         "Kystverket AIS (NLOD; licence text not yet read)"
       ],
-      "notes": "Coverage is regional, not worldwide.",
-      "links": []
+      "notes": "First 1.9-hour sample, 24 Oct 2026: 7 ships under five flags, really in the eastern Gulf of Finland, reported positions on one small circle in inland north-western Russia at 71–80 knots, which points to their GNSS being spoofed rather than false AIS. Coverage is regional, with none of Kaliningrad. Vessel identities stay private.",
+      "links": [
+        [
+          "First results",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/ais-baltic.md"
+        ]
+      ]
     },
     {
       "id": "declared",
