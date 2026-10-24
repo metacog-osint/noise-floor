@@ -285,19 +285,24 @@
       "id": "spaceborne",
       "group": "emitters",
       "name": "Spaceborne and network GNSS",
-      "status": "planned",
-      "phase": "Phase 7",
+      "status": "prototype",
+      "phase": "Prototype (CYGNSS, Oct 2026)",
       "summary": "GNSS reflectometry, radio occultation, ground reference networks and L-band radiometers.",
       "what": "CYGNSS GNSS-reflectometry has been used to localize a jammer (the Shiraz case). COSMIC-2 radio-occultation amplitude can indicate ground jamming power. CORS/IGS ground stations record degradation at fixed sites, and SMOS/SMAP map 1.4 GHz interference.",
-      "how": "Each as its own lane, cross-checked against the aircraft and radar lanes.",
+      "how": "CYGNSS first: the noise floor in each delay-Doppler map, against a same-day baseline for the same spacecraft, antenna and land/sea mix (tools/cygnss_rfi.py). On six days it separated aircraft-jammed from aircraft-clean areas with AUC 0.98, caught 98% of jammed cells at a threshold fixed in advance, and stayed quiet over control areas. About 80% of the areas it flags have no aircraft coverage, such as the Red Sea, Iran and Myanmar. Ground reference stations are next.",
       "data": [
         "NASA CYGNSS",
         "UCAR COSMIC-2",
         "CORS/IGS networks",
         "ESA SMOS, NASA SMAP (licences UNVERIFIED for these products)"
       ],
-      "notes": "Licences are checked and recorded before any of these feeds a layer.",
-      "links": []
+      "notes": "Location is coarse: the antenna beam is a few hundred km wide, so the map says where satellites were exposed, not where a transmitter is. Coverage is within about 38° of the equator (no Baltic). Not on the public map yet. Licences are checked before any other product here feeds a layer.",
+      "links": [
+        [
+          "CYGNSS validation",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/cygnss.md"
+        ]
+      ]
     },
     {
       "id": "lf-vlf",

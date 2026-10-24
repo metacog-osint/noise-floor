@@ -59,6 +59,20 @@
 <p>Detection locations outside the published case stay private until the method is validated.</p>
 <p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/nisar.md">Full NISAR validation report</a></p>
 
+<h2 id="cygnss">GNSS interference from orbit (CYGNSS)</h2>
+<p>NASA's CYGNSS satellites listen to GPS reflections from the sea. The noise in each measurement, ahead of any reflection, rises when a jammer is in the antenna beam. Tested on six days in 2026 against the aircraft map:</p>
+<div class="tw"><table>
+  <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Separates aircraft-jammed areas (10% or more of aircraft degraded) from clean ones (under 2%)</td><td>AUC 0.98 over 11,463 cell-days; at a 1 dB threshold fixed in advance, 98% of jammed cells caught and 16% of clean cells flagged (5% at 2 dB). The positives come from four regions, three-quarters from the Gulf</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Quiet controls (central Pacific, South Atlantic, interior Brazil, Australia, southern Africa)</td><td>0.8% of control cells read 1 dB or more</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Tracks change over time</td><td>Persian Gulf: aircraft 0.5% degraded in January and February, 39–53% in May, 2.4% in October; CYGNSS 1.9–2.0, 3.6–4.2 and 3.5 dB, in the same order</td><td><span class="chip st-partial">Illustrative</span></td></tr>
+    <tr><td>Position of an emitter</td><td>Not tested. The beam is a few hundred km wide, so the map shows exposure, not a transmitter site</td><td><span class="chip st-planned">Open</span></td></tr>
+  </tbody>
+</table></div>
+<p>About 80% of the cells CYGNSS flags have no aircraft coverage: the Red Sea, Iran, Iraq, Myanmar, Sudan and the Arabian Sea. It covers only about 38°N to 38°S, so not the Baltic. Its satellites also stop returning data for minutes at a time over Iraq, Iran and the Levant; the cause isn't confirmed.</p>
+<p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/cygnss.md">Full CYGNSS validation report</a></p>
+
 <h2 id="next">Validation still to come</h2>
 <ul>
   <li><strong>A localizer that resolves sites,</strong> not just areas. It failed its first scored test against the 2025 TDOA fixes, and its positions stay off the map until it passes one: two-emitter fits and fix-window timing were tried and dropped, and a heading-balanced third version improved on the second but didn't beat a constant guess. Next: days with a single known active site, scored at about 10 km.</li>
