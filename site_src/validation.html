@@ -44,6 +44,19 @@
   </tbody>
 </table></div>
 
+<h2 id="spoofing">GNSS spoofing from ADS-B (prototype)</h2>
+<p>Spoofed aircraft report positions they can't physically have flown: near-zero ground speed at altitude, circles or a fixed point at altitude, jumps to another track and back. Tested on 22 days, Feb 2024 – May 2026, against public reporting of where and when aircraft were spoofed:</p>
+<div class="tw"><table>
+  <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Places aircraft were shown match published spoofing points</td><td>Beirut airport within 1 km (early 2024), Amman 3 km (Oct 2024, up to 695 aircraft a day), Cairo 9 km, Smolensk 9 km, Moscow Sheremetyevo 2 km; Beirut gave way to Amman between the 2024 dates, as OPSGROUP reported</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Independent check with multilateration (MLAT) positions</td><td>90% of the episodes MLAT can test are confirmed; at least 43% of the positions MLAT shows as false are caught. Offset tracks with no jump are missed</td><td><span class="chip st-partial">Partly</span></td></tr>
+    <tr><td>Quiet controls (six regions, 25.6 million aircraft-hours)</td><td>0.002% of aircraft-hours flagged; one unexplained cluster over northern Florida on 6 Mar 2024</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Held-out days with the method frozen</td><td>Not yet run: three versions were tuned on these 22 days</td><td><span class="chip st-planned">Open</span></td></tr>
+  </tbody>
+</table></div>
+<p>Spoofing and jamming are mostly separate: the Black Sea is mostly jammed, Egypt and Jordan mostly spoofed with clean accuracy values. Not on the public map until the held-out test passes. <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/spoofing.md">Full spoofing report</a></p>
+
 <h2 id="nisar">L-band emitters from NISAR</h2>
 <div class="tw"><table>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>

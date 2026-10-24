@@ -150,16 +150,21 @@
       "id": "adsb-spoofing",
       "group": "pnt",
       "name": "ADS-B spoofing detection",
-      "status": "planned",
-      "phase": "Phase 4",
+      "status": "prototype",
+      "phase": "Phase 4 (prototype, Oct 2026)",
       "summary": "Aircraft fed false positions: jumps, convergence on false points, altitude mismatches.",
       "what": "Spoofing shows up as position jumps, many aircraft converging on the same false point, and divergence between GNSS (geometric) and barometric altitude.",
-      "how": "Published detection methods applied to the same daily ADS-B stream, with the same peer and post-exposure logic.",
+      "how": "tools/spoof_day.py looks for positions an aircraft can't have flown: near-zero ground speed at altitude, staying in one spot at altitude, and jumps to a separate track and back. It doesn't rely on accuracy values: 61% of spoofing episodes kept good NACp. Over 22 days, the places aircraft were shown match published spoofing points (Beirut within 1 km, Amman 3 km, Moscow Sheremetyevo 2 km) and change when sources say they did; MLAT confirms 90% of the episodes it can test; six quiet control regions stay at 0.002% of aircraft-hours.",
       "data": [
         "adsb.lol daily archive"
       ],
-      "notes": "Kept separate from jamming in outputs, because the operational effect differs.",
-      "links": []
+      "notes": "Tuned on the same 22 days, so a held-out test comes before anything is published. Spoofing and jamming are mostly separate signals. Maps show where receivers were told they were, not where a transmitter is. No coverage over Iraq and almost none over Iran.",
+      "links": [
+        [
+          "Validation",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/spoofing.md"
+        ]
+      ]
     },
     {
       "id": "ais",
