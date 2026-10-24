@@ -218,13 +218,19 @@ Planetary Computer serves Sentinel-1 GRD anonymously, so no Copernicus account w
   image-based mask. Minimum length is 30 m, and detections within 200 m are merged (sidelobes of bright ships). A full pass
   gives 2,100–3,500 detections over about 10,400 km² of sea, with a median length of 66–80 m.
 - **Threshold sensitivity** on the newest pass: 5,403 detections at k = 5, 3,480 at k = 6, 2,125 at k = 8 and 1,659 at k = 10.
-  The count flattens above k ≈ 8–10, so at k = 6 some of the low-contrast detections are probably clutter.
+  The count flattens above k ≈ 8–10.
+- **Checked against Sentinel-2 (24 Oct; `docs/validation/ships-s1.md`): at k = 6 most detections are clutter.** Optical images confirm
+  only 13–31% of them (chance-corrected, within 500 m; a lower bound, since optical passes are 4–8 hours away and ships move).
+  Low-contrast blobs in patchy sea, land leaks and azimuth ghosts make up most of the rest. A 10 dB contrast floor, dropping
+  ghosts and a Sentinel-2 land mask (new flags; the defaults are unchanged) raise that to 42–51%, a gain that held on two
+  held-out pairs, and cut the 22 Oct pass from 3,480 to 1,459 detections. Recall for vessels of 100 m or more is about
+  0.5–0.8, from only 30 vessels. The detection counts above use the original setting.
 - **Fixed against moving:** across the four full passes, 382 detections recur within 60 m on 60% or more of passes. These
   are fixed structures, moorings and long-stay anchored ships. Another 1,770–3,200 per pass are movers.
 - **Not done yet:**
   - AIS (needs Tom's aisstream key), so detection rate and false alarms aren't calibrated.
-  - No Sentinel-2 cross-check.
-  - Azimuth ghosts aren't removed.
+  - Make the recommended flags the default, then rerun `persist` (the fixed-site set would change).
+  - A clutter-aware CFAR to replace the contrast floor, tested on held-out passes.
   - Outputs stay private.
 
 ## 14. Open decisions for Tom

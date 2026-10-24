@@ -32,6 +32,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
 - **Maritime lane (planned 23 Oct 2026; M1 started 24 Oct):** read `docs/maritime-plan.md` first (sources, detectors D1–D13, database, validation,
   build steps M0–M7, open decisions). Private handoff and watch configuration are listed in `CLAUDE.local.md`.
   `tools/ship_detect.py` finds ships in Sentinel-1 GRD (Planetary Computer, anonymous); boxes come from private config.
+  `tools/s2_check.py` checks its detections against Sentinel-2 (`docs/validation/ships-s1.md`: at the default k = 6 most are clutter;
+  use `--min-contrast 10 --ghosts drop --landmask` for better precision).
 - **Lanes added 23–24 Oct 2026 (prototypes; each has a write-up in `docs/validation/` or `docs/assessment/`):**
   `tools/cygnss_rfi.py` (CYGNSS noise floor, needs `EARTHDATA_TOKEN`; held-out checks in `tools/cygnss_checks.py`), `tools/s1_rfi.py` (Sentinel-1 RFI annotations),
   `tools/events.py` (observations → graded events, private register in `data/events/`), `collectors/digitraffic_ais.py` and
