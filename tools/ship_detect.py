@@ -15,9 +15,13 @@ plus a quick-look PNG.
 --area reads a focus-area box from the private watch config (private/watch/maritime.json); boxes are never written to
 tracked files. Outputs go to private/maritime/s1/ (gitignored).
 
-Limits (first version): GRD amplitude is not radiometrically calibrated here (fine for a relative test); the land mask
-is Natural Earth 10 m, which misses recent reclamation, so a buffer is applied; fixed structures and anchored ships both
-show as targets; ambiguities from very bright targets and azimuth ghosts are not removed.
+Options added 24 Oct 2026 after the Sentinel-2 check (docs/validation/ships-s1.md); all off by default, so the original
+behaviour is unchanged: --min-contrast 10 (drop low-contrast clutter blobs), --ghosts drop (azimuth ghosts of bright
+targets), --landmask <npz> (an S2-derived land mask from tools/s2_check.py watermask, applied after the CFAR test).
+
+Limits: GRD amplitude is not radiometrically calibrated here (fine for a relative test); the default land mask is Natural
+Earth 10 m, which misses recent reclamation and small islands, so a buffer is applied; fixed structures and anchored ships
+both show as targets; the Gaussian CFAR test passes low-contrast blobs in patchy low-wind sea.
 """
 import argparse, json, math, os, sys, time
 from datetime import datetime, timedelta, timezone
@@ -77,10 +81,11 @@ def land_geoms():
     return out
 
 
-def read_box(item, box, res, pol="vv"):
+def read_box(item, box, res, pol="vv", info=None):
     """The box from one scene on a UTM grid at res metres: (array float32 of DN, transform, crs, valid mask).
     GRD files carry control points (GCPs), not a map transform. Each output pixel is mapped back to the scene's
-    row/column through the GCPs, and only the window covering the box is read (at a matching overview level)."""
+    row/column through the GCPs, and only the window covering the box is read (at a matching overview level).
+    If `info` is a dict, the along-track bearing (direction of increasing image row, degrees from north) is stored in it."""
     import rasterio
     from rasterio.warp import transform_bounds, transform as warp_xy
     from rasterio.transform import from_origin, GCPTransformer
@@ -109,6 +114,13 @@ def read_box(item, box, res, pol="vv"):
             inside = (R >= 0) & (R < src.height) & (C >= 0) & (C < src.width)
             if not inside.any():
                 return np.zeros((h, w), np.float32), tr, crs, np.zeros((h, w), bool)
+            if info is not None:                         # along-track direction from the row gradient where covered
+                iy, ix = np.nonzero(inside[::step, ::step])
+                cy, cx = int(np.median(iy)) * step, int(np.median(ix)) * step
+                cy, cx = min(max(cy, 1), h - 2), min(max(cx, 1), w - 2)
+                d_east = (R[cy, cx + 1] - R[cy, cx - 1]) / 2.0
+                d_north = -(R[cy + 1, cx] - R[cy - 1, cx]) / 2.0
+                info["along_bearing"] = (math.degrees(math.atan2(d_east, d_north)) + 360) % 360
             r0, r1 = int(max(R[inside].min(), 0)), int(min(R[inside].max() + 1, src.height))
             c0, c1 = int(max(C[inside].min(), 0)), int(min(C[inside].max() + 1, src.width))
             src_px = 10.0                                # IW GRDH pixel spacing, metres
@@ -122,11 +134,11 @@ def read_box(item, box, res, pol="vv"):
     return a, tr, crs, a > 0
 
 
-def read_pass(frames, box, res, pol="vv"):
+def read_pass(frames, box, res, pol="vv", info=None):
     """One acquisition can need two adjacent frames to cover the box: warp each to the same grid and combine."""
     out = None
     for it in frames:
-        a, tr, crs, valid = read_box(it, box, res, pol)
+        a, tr, crs, valid = read_box(it, box, res, pol, info)
         out = (a, tr, crs) if out is None else (np.where(valid & (out[0] == 0), a, out[0]), tr, crs)
     a, tr, crs = out
     return a, tr, crs, a > 0
@@ -212,7 +224,7 @@ def cfar(intensity, sea, guard=7, ring=31, k=6.0, min_px=2):
     return out
 
 
-def merge_nearby(dets, radius_px):
+def merge_nearby(dets, radius_px, keep_peak=False):
     """Bright ships leave cross-shaped sidelobes and break into pieces; keep the brightest detection within radius_px
     and fold the rest into it (non-maximum suppression)."""
     if not dets:
@@ -228,9 +240,71 @@ def merge_nearby(dets, radius_px):
         for j in tree.query_ball_point(xy[i], radius_px):
             if j != i:
                 gone.add(j)
-    for d in keep:
-        d.pop("peak", None)
+    if not keep_peak:
+        for d in keep:
+            d.pop("peak", None)
     return keep
+
+
+GHOST_ALONG_M = (4300.0, 6300.0)   # IW azimuth-ambiguity offsets seen in these passes (lambda R PRF / 2V, about 4.7-5.7 km)
+GHOST_ACROSS_M = 200.0
+GHOST_DB = 20.0                    # source at least this much brighter (peak intensity); S1 IW ambiguity ratio is about -22 dB
+
+
+def ghost_sources(dets, along_bearing, res, along=GHOST_ALONG_M, across=GHOST_ACROSS_M, db=GHOST_DB):
+    """Azimuth ghosts: a very bright target repeats, faintly and smeared, a few km either way along the satellite track.
+    For each detection (pixel coordinates, with 'peak' intensity), return the index of a detection at least `db` brighter
+    that sits `along` metres away along track and within `across` metres across track, or None."""
+    out = [None] * len(dets)
+    if not dets or along_bearing is None:
+        return out
+    from scipy.spatial import cKDTree
+    b = math.radians(along_bearing)
+    u = np.array([math.sin(b), math.cos(b)])                          # along track, (east, north)
+    xy = np.array([(d["x"] * res, -d["y"] * res) for d in dets])       # metres, east and north
+    pk = np.array([d["peak"] for d in dets])
+    tree, ratio = cKDTree(xy), 10 ** (db / 10)
+    for i in np.nonzero(pk >= ratio * pk.min())[0]:                   # only targets bright enough to cast a ghost
+        for j in tree.query_ball_point(xy[i], along[1] + across):
+            if j == i or pk[i] < ratio * pk[j]:
+                continue
+            v = xy[j] - xy[i]
+            a, c = abs(float(v @ u)), abs(float(v[0] * u[1] - v[1] * u[0]))
+            if along[0] <= a <= along[1] and c <= across and (out[j] is None or pk[i] > pk[out[j]]):
+                out[j] = int(i)
+    return out
+
+
+def detect_array(a, tr, crs, valid, box, res, k=6.0, buffer_m=400.0, min_len=30, along_bearing=None, ghosts="keep",
+                 extra_land=None, min_contrast_db=None):
+    """The detection steps on one warped pass (as used by `detect`). Returns (detections in pixel coordinates with
+    'peak' intensity, sea mask). ghosts: 'keep' (original behaviour), 'flag' (add 'ghost_of') or 'drop'.
+    extra_land: optional boolean land mask on the same grid (for example from Sentinel-2). Detections on it (or within
+    40 m) are dropped after the CFAR test, so the ring statistics stay as they were.
+    min_contrast_db: optional floor on the peak's contrast over the ring's sea mean (10 log10 peak_ratio). Low-contrast
+    blobs in patchy low-wind sea pass a Gaussian CFAR test but are rarely vessels (docs/validation/ships-s1.md)."""
+    sea = water_mask(a.shape, tr, crs, int(round(buffer_m / res)), box) & valid
+    sea &= ~image_land(a, valid, res)                   # coastline data misses reclamation, piers and river banks
+    inten = a * a
+    dets = merge_nearby(cfar(inten, sea, k=k), 200 / res, keep_peak=True)
+    dets = [d for d in dets if d["length_px"] * res >= min_len]
+    if min_contrast_db is not None:
+        dets = [d for d in dets if 10 * math.log10(max(d["peak_ratio"], 1e-9)) >= min_contrast_db]
+    if ghosts != "keep":                                # before the land filter: bright targets on land cast ghosts too
+        src = ghost_sources(dets, along_bearing, res)
+        if ghosts == "drop":
+            dets = [d for d, s in zip(dets, src) if s is None]
+        else:
+            for d, s in zip(dets, src):
+                if s is not None:
+                    d["ghost_of"] = (dets[s]["x"], dets[s]["y"])   # pixel position of the bright source
+    if extra_land is not None:
+        from scipy.ndimage import binary_dilation
+        near = binary_dilation(extra_land, iterations=2)
+        H, W = near.shape
+        dets = [d for d in dets if not near[min(max(int(round(d["y"])), 0), H - 1), min(max(int(round(d["x"])), 0), W - 1)]]
+        sea = sea & ~near
+    return dets, sea
 
 
 def to_lonlat(dets, tr, crs, res):
@@ -259,26 +333,52 @@ def quicklook(a, sea, dets_px, path):
     img.save(path)
 
 
-def detect_scene(group, box, res, k, buffer_m, max_ships_png=True, min_len=30):
+def load_extra_land(path, tr, shape):
+    """A land mask saved by tools/s2_check.py (watermask), resampled by nearest neighbour onto this pass's grid."""
+    z = np.load(path)
+    land, t2 = z["land"], z["transform"]                 # t2 = (left, top, res)
+    ys = (tr.f + (np.arange(shape[0]) + 0.5) * tr.e - t2[1]) / -t2[2]
+    xs = (tr.c + (np.arange(shape[1]) + 0.5) * tr.a - t2[0]) / t2[2]
+    yi, xi = np.floor(ys).astype(int), np.floor(xs).astype(int)
+    ok_y, ok_x = (yi >= 0) & (yi < land.shape[0]), (xi >= 0) & (xi < land.shape[1])
+    out = np.zeros(shape, bool)
+    out[np.ix_(ok_y, ok_x)] = land[np.ix_(yi[ok_y], xi[ok_x])]
+    return out
+
+
+def detect_scene(group, box, res, k, buffer_m, max_ships_png=True, min_len=30, ghosts="keep", landmask=None, out_dir=None,
+                 min_contrast_db=None):
     item = group["frames"][0]
-    a, tr, crs, valid = read_pass(group["frames"], box, res)
+    out_dir = out_dir or OUT
+    info = {}
+    a, tr, crs, valid = read_pass(group["frames"], box, res, info=info)
     if valid.mean() < 0.05:
         return None
-    sea = water_mask(a.shape, tr, crs, int(round(buffer_m / res)), box) & valid
-    sea &= ~image_land(a, valid, res)                   # coastline data misses reclamation, piers and river banks
-    inten = a * a
-    dets = merge_nearby(cfar(inten, sea, k=k), 200 / res)
-    dets = [d for d in dets if d["length_px"] * res >= min_len]
+    extra = load_extra_land(landmask, tr, a.shape) if landmask else None
+    dets, sea = detect_array(a, tr, crs, valid, box, res, k, buffer_m, min_len, info.get("along_bearing"), ghosts, extra,
+                             min_contrast_db)
     px = [(d["x"], d["y"]) for d in dets]
     dets = to_lonlat(dets, tr, crs, res)
-    os.makedirs(OUT, exist_ok=True)
+    for d in dets:
+        d.pop("peak", None)
+    if ghosts == "flag":                                # pixel position of the bright source -> lat, lon
+        from rasterio.warp import transform as warp_xy
+        for d in dets:
+            if "ghost_of" in d:
+                gx, gy = d["ghost_of"]
+                lo, la = warp_xy(crs, "EPSG:4326", [tr.c + (gx + 0.5) * tr.a], [tr.f + (gy + 0.5) * tr.e])
+                d["ghost_of"] = [round(la[0], 5), round(lo[0], 5)]
+    os.makedirs(out_dir, exist_ok=True)
     rec = {"scene": item["id"], "frames": [f["id"] for f in group["frames"]], "time": item["properties"]["datetime"], "orbit": item["properties"].get("sat:orbit_state"),
            "res_m": res, "k": k, "land_buffer_m": buffer_m, "min_length_m": min_len, "merge_m": 200, "sea_km2": round(float(sea.sum()) * res * res / 1e6, 1),
            "valid_frac": round(float(valid.mean()), 3), "detections": dets,
            "licence": "Contains modified Copernicus Sentinel data (via Microsoft Planetary Computer)"}
-    json.dump(rec, open(os.path.join(OUT, item["id"] + ".json"), "w", encoding="utf-8"), indent=1)
+    if ghosts != "keep" or landmask or min_contrast_db is not None:
+        rec.update({"ghosts": ghosts, "along_bearing": round(info.get("along_bearing", float("nan")), 2),
+                    "extra_landmask": os.path.basename(landmask) if landmask else None, "min_contrast_db": min_contrast_db})
+    json.dump(rec, open(os.path.join(out_dir, item["id"] + ".json"), "w", encoding="utf-8"), indent=1)
     if max_ships_png:
-        quicklook(a, sea, px, os.path.join(OUT, item["id"] + ".png"))
+        quicklook(a, sea, px, os.path.join(out_dir, item["id"] + ".png"))
     return rec
 
 
@@ -338,14 +438,22 @@ def main():
     ap.add_argument("--buffer", type=float, default=400.0, help="land buffer, metres")
     ap.add_argument("--max", type=int, default=10, help="most scenes to process")
     ap.add_argument("--radius", type=float, default=60.0); ap.add_argument("--share", type=float, default=0.6)
+    ap.add_argument("--ghosts", choices=["keep", "flag", "drop"], default="keep",
+                    help="azimuth-ghost candidates: keep (original behaviour), flag (add ghost_of) or drop")
+    ap.add_argument("--landmask", help="extra land mask (.npz from tools/s2_check.py watermask): detections on it, or "
+                    "within 40 m, are dropped after the CFAR test")
+    ap.add_argument("--out", help="output folder (default private/maritime/s1)")
+    ap.add_argument("--min-contrast", type=float, help="drop detections whose peak is less than this many dB above the ring's "
+                    "sea mean (off by default: original behaviour)")
     a = ap.parse_args()
     if a.cmd == "persist":
         return persist(a.radius, a.share)
     box = area_box(a.area) if a.area else tuple(float(v) for v in a.box.split(","))
     end = datetime.now(timezone.utc); start = end - timedelta(days=a.days)
     items = search(box, start, end)
-    if a.scene:
-        items = [it for it in items if it["id"] == a.scene]
+    if a.scene:                                         # the whole acquisition that frame belongs to (it may need 2 frames)
+        keep = [g for g in passes(items) if any(f["id"] == a.scene for f in g["frames"])]
+        items = [f for g in keep for f in g["frames"]]
     if a.cmd == "search":
         acq = sorted({it["properties"]["datetime"][:16] for it in items})
         print(f"{len(items)} frames, {len(acq)} acquisitions in {a.days} days "
@@ -359,7 +467,8 @@ def main():
             break
         t0 = time.time(); it = g["frames"][0]
         try:
-            rec = detect_scene(g, box, a.res, a.k, a.buffer)
+            rec = detect_scene(g, box, a.res, a.k, a.buffer, ghosts=a.ghosts, landmask=a.landmask, out_dir=a.out,
+                               min_contrast_db=a.min_contrast)
         except Exception as e:
             print(f"{it['id']}: failed ({type(e).__name__}: {e})"); continue
         if rec is None:
