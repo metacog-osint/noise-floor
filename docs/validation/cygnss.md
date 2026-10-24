@@ -723,7 +723,7 @@ at 0.0–0.5 dB with no aircraft degraded.
   inland points and airports (sources below). Causes and attribution are outside this lane.
 - **"The Gulf stays raised after June" is a slow fade, not a plateau.** CYGNSS decays from 3.9 dB (June) to 2.5 dB
   (October) while the aircraft share falls from 21% to 1.4%, and stays above the October 2025–February 2026 level.
-  Candidates, none tested: spoofing, which raises the noise floor without lowering aircraft NACp (the aircraft spoofing
+  Candidates: spoofing, which raises the noise floor without lowering aircraft NACp (supported by the pre-registered check below) (the aircraft spoofing
   detector found an inland UAE point on 20 Jun 2026; reports describe ship spoofing in the area); emitters CYGNSS hears
   over water that aircraft routes avoid; and lower-power interference below what aircraft receivers flag.
 - **The Levant, Iraq and Myanmar sit at a steady 2.6–4.0 dB all year** while the aircraft share moves from 0.1% to 27%. In
@@ -736,6 +736,8 @@ Reproduce: `python tools/cygnss_rfi.py fetch|grid <days>`, then `python tools/cy
 data/cygnss/validation_year_r3.json`.
 
 **Pre-registered check of the spoofing explanation (written 24 Oct 2026, about 19:55 UTC, before any of these days was downloaded).** If spoofing keeps the Gulf noise floor raised after June while aircraft NACp reads clean, the aircraft spoofing detector should see more of it then. Days by rule: the 15th of July, August, September and October 2026 (after the surge) against the 15th of November and December 2025 and January 2026 (before it, CYGNSS 1.5–1.6 dB). Measure: `tools/spoof_day.py` v0.4 active share of aircraft-hours in its Gulf region, pooled over each set. Supported if the after-set share is at least 3 times the before-set share and at least 0.1 percentage points higher; otherwise not supported. Either way it says nothing about emitters at sea or low-power interference.
+
+**Result (24 Oct 2026, about 22:00 UTC): supported.** Before the surge the Gulf active spoofing share was 0.000% on all three days (98,056 aircraft-hours); after it, 0.178% (135,862 aircraft-hours), with spoofing on every one of the four days (0.36%, 0.09%, 0.24% and 0.05% for 15 July, August, September and October 2026). Both conditions are met. The tool's aircraft degraded share in the same box went from 1.2% to 3.3%. What this shows: aircraft spoofing persisted in the Gulf through the months when CYGNSS stayed raised and was absent before the surge. What it doesn't show: that spoofing alone accounts for the CYGNSS level. The shares are small, and spoofing that leaves aircraft unaffected (ships, other targets) wouldn't show in aircraft data at all.
 
 Sources for section 10 (retrieved 24 Oct 2026): UT Austin Radionavigation Laboratory, "Hundreds of Ships in Middle East
 Struggle Against GNSS Interference" (https://radionavlab.ae.utexas.edu/?p=5268); Focal Point Positioning, "GPS jamming
