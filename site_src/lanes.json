@@ -439,7 +439,7 @@
       "data": [
         "All lanes"
       ],
-      "notes": "First run, 1 Oct 2025 – 22 Oct 2026: about 52,000 events. Every announced-test tag on the map comes out 'planned', 10 m-only effects at storm time come out 'benign_natural' where the rules allow, and the persistent hotspots are EFFECT, single-source, open. Since v0.2, CYGNSS is a second, independent sensor: over its 33 processed days, 587 events had an aircraft 93 m signal and a raised CYGNSS noise field agreeing within 300 km, so they reach 'Multiple sources' (none in quiet control areas). Nothing can be 'deliberate_suspected' until an interference-warning feed exists. The register is private. Grades describe evidence strength. They don't name perpetrators.",
+      "notes": "1 Oct 2025 – 22 Oct 2026: about 160,000 events. Every announced-test tag on the map comes out 'planned', 10 m-only effects at storm time come out 'benign_natural' where the rules allow, and the persistent hotspots are EFFECT, single-source, open. Since v0.2, CYGNSS is a second, independent sensor. With a full year of CYGNSS, 8,632 events have an aircraft 93 m signal and a raised CYGNSS noise field agreeing within 300 km, so they reach 'Multiple sources', in every month. Nothing can be 'deliberate_suspected' until an interference-warning feed exists. The register is private. Grades describe evidence strength. They don't name perpetrators.",
       "links": [
         [
           "Method and results",

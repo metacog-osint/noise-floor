@@ -457,7 +457,8 @@ def fuse(observations):
       located observations  linked by `linked` (cell adjacency, or a distance rule for beam-scale CYGNSS cells).
                             Links are taken closest first, and two groups merge only if every pair of member
                             centroids stays within MAX_EVENT_KM, so a chain of adjacent regions can't grow into one
-                            continent-wide event.
+                            continent-wide event. A beam-scale (CYGNSS) link never merges two groups that both hold
+                            time-resolved observations: CYGNSS cells attach to an event, they don't bridge two.
       SBAS runs             linked when in the same service area and at most FUSE_GAP_MIN minutes apart.
       announced tests       never fuse anything. Each attaches to every event holding a located EFFECT observation
                             consistent with it (inside a window and within the widest radius); with none, it is its own
@@ -486,15 +487,20 @@ def fuse(observations):
             links.append((km((o["lat"], o["lon"]), (p["lat"], p["lon"])), max(gap(o, p), 0), i, j))
     pts = {i: [(o["lat"], o["lon"])] for i, o in enumerate(observations)}
     rad = dict.fromkeys(range(n), 0.0)        # farthest member from the group's first point (a cheap bound)
+    beamish = lambda o: o["kind"] in BEAM_KINDS or o["kind"] in APART_KINDS   # noqa: E731
+    timed = {i: not beamish(o) for i, o in enumerate(observations)}           # group holds a time-resolved observation
     for _, _, i, j in sorted(links):
         ri, rj = uf.root(i), uf.root(j)
         if ri == rj:
             continue
+        if (beamish(observations[i]) or beamish(observations[j])) and timed[ri] and timed[rj]:
+            continue                          # a CYGNSS cell may join one event, never bridge two
         d0 = km(pts[ri][0], pts[rj][0])
         if d0 > MAX_EVENT_KM or (d0 + rad[ri] + rad[rj] > MAX_EVENT_KM and
                                  any(km(a, b) > MAX_EVENT_KM for a in pts[ri] for b in pts[rj])):
             continue
         uf.join(ri, rj)                       # rj stays the root and keeps its first point
+        timed[rj] = timed[ri] or timed[rj]
         rad[rj] = max([rad[rj]] + [km(pts[rj][0], q) for q in pts[ri]])
         pts[rj] = pts[rj] + pts[ri]
     sb = [i for i, o in enumerate(observations) if o["kind"] == "adsb_sbas"]
@@ -643,9 +649,11 @@ def grade(members, day_obs, kp):
         hits = [(f, d) for f, d in hits if d is not None]
         if hits:
             match[o["id"]] = [{"test": f["detail"]["test_id"], "km": d, "obs": f["id"]} for f, d in hits]
-    timed = any(o["id"] in match and not o["kind"].startswith("cygnss") for o in effects)
-    if effects and h3eff and len(match) == len(effects) and timed:   # CYGNSS cells are timed only to the day, so they
-        planned = "P1"                                                # can't on their own place an effect inside a window
+    # CYGNSS cells are timed only to the day: they can't place an effect inside a test window, so P1 is decided on the
+    # time-resolved effects alone (at least one, all inside a window and radius); CYGNSS cells in the event ride along.
+    timed_eff = [o for o in effects if not o["kind"].startswith("cygnss")]
+    if timed_eff and h3eff and all(o["id"] in match for o in timed_eff):
+        planned = "P1"
         excl["planned_test"] = ("planned", "P1", {"matches": match})
     elif match:
         excl["planned_test"] = ("partial", "P-", {"matches": match, "why": f"{len(match)} of {len(effects)} effect "
