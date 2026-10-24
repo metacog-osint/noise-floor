@@ -82,7 +82,18 @@ def vote(evs, grid, step, tol_km, cone):
     return lat, lon, votes
 
 
-def fit(evs, grid, step, cone, kmin=0.3, kmax=1.3, dk=0.02, win=0.05, both=False, score="count"):
+def heading_weights(evs, sectors=12):
+    """Weight each event by 1 / (events in its heading sector), normalised to mean 1: every approach direction counts
+    the same in total."""
+    if not evs:
+        return np.zeros(0)
+    sec = np.array([int((e[3] % 360) // (360 / sectors)) for e in evs])
+    counts = np.bincount(sec, minlength=sectors).astype(float)
+    w = 1.0 / counts[sec]
+    return w * len(w) / w.sum()
+
+
+def fit(evs, grid, step, cone, kmin=0.3, kmax=1.3, dk=0.02, win=0.05, both=False, score="count", balance=False):
     """Reach estimated from the data. For each candidate cell, take the events whose heading points at it (onsets
     ahead, recoveries behind, +-cone) and the ratio q = distance / radio horizon of each; the reach fraction k is the
     value most of them agree on (the fullest window of +-win in q). The cell's score is how many agree. No reach is
@@ -95,6 +106,7 @@ def fit(evs, grid, step, cone, kmin=0.3, kmax=1.3, dk=0.02, win=0.05, both=False
                    e[4] == "onset") for e in evs]) if evs else np.zeros((0, 5))
     p1, l1, r, want, ons = (E[:, k] for k in range(5))
     ons = ons.astype(bool)
+    W = heading_weights(evs) if balance else np.ones(len(evs))
     bins = np.arange(kmin, kmax + dk / 2, dk)
     KS = np.arange(kmin, kmax + 1e-9, dk)
     w = int(round(2 * win / dk)) + 1
@@ -109,15 +121,15 @@ def fit(evs, grid, step, cone, kmin=0.3, kmax=1.3, dk=0.02, win=0.05, both=False
                 continue
             q = d / r
             if score == "lr":                    # one reach band (normal) plus a uniform background, against background only
-                qq = q[m]
-                qq = qq[(qq >= kmin) & (qq <= kmax)]
+                sel = m & (q >= kmin) & (q <= kmax)
+                qq, ww = q[sel], W[sel]
                 if len(qq) < 5:
                     continue
                 best = (-1e9, 0.0)
                 for sig in (0.04, 0.07):
                     nz = np.exp(-0.5 * ((qq[:, None] - KS[None, :]) / sig) ** 2) / (sig * 2.5066)   # n x K
                     for f in (0.3, 0.6):
-                        ll = np.log(f * nz + (1 - f) / (kmax - kmin)).sum(0) - len(qq) * math.log(1 / (kmax - kmin))
+                        ll = (ww[:, None] * np.log(f * nz + (1 - f) / (kmax - kmin))).sum(0) - ww.sum() * math.log(1 / (kmax - kmin))
                         b = int(ll.argmax())
                         if ll[b] > best[0]:
                             best = (ll[b], KS[b])
@@ -190,6 +202,7 @@ def main():
     ap.add_argument("--stack", action="store_true", help="add all the days into one vote map (with a bootstrap spread)")
     ap.add_argument("--fit", action="store_true", help="estimate the reach from the data, jointly with the location")
     ap.add_argument("--hours", help="UTC hours to keep, e.g. 16-22 (events outside are dropped)")
+    ap.add_argument("--balance", action="store_true", help="--fit: weight onsets so every heading sector counts the same")
     ap.add_argument("--score", choices=["count", "lr"], default="lr",
                     help="--fit: count = onsets in the fullest reach window; lr = likelihood ratio of one reach band plus background")
     ap.add_argument("--sources", type=int, default=1, help="--fit: emitters to find (greedy: each removes the onsets it explains)")
@@ -219,15 +232,15 @@ def main():
             else:
                 evs = [e for e in evs if h0 <= int(e[5] % 86400 // 3600) <= h1]
                 label = f"{h0:02d}-{h1:02d}Z"
-            lat, lon, s, k = fit(evs, a.grid, a.step, a.cone, score=a.score)
+            lat, lon, s, k = fit(evs, a.grid, a.step, a.cone, score=a.score, balance=a.balance)
             print(f"{day} ({label}): {len(evs)} events")
             if a.sources > 1:
                 rest, found = list(evs), []
                 for n_src in range(a.sources):
-                    la_, lo_, s_ = (peaks(*fit(rest, a.grid, a.step, a.cone, score=a.score)[:3], n=1) or [(None, None, 0)])[0]
+                    la_, lo_, s_ = (peaks(*fit(rest, a.grid, a.step, a.cone, score=a.score, balance=a.balance)[:3], n=1) or [(None, None, 0)])[0]
                     if la_ is None or s_ < 10:
                         break
-                    kk = fit(rest, a.grid, a.step, a.cone, score=a.score)[3][cell_of(lat, lon, la_, lo_)]
+                    kk = fit(rest, a.grid, a.step, a.cone, score=a.score, balance=a.balance)[3][cell_of(lat, lon, la_, lo_)]
                     found.append((la_, lo_, s_, kk))
                     m = explained(rest, la_, lo_, kk, a.cone)
                     rest = [e for e, x in zip(rest, m) if not x]
@@ -249,7 +262,7 @@ def main():
                 ds = []
                 for _ in range(a.boot):
                     pick = [evs[q] for q in rng.integers(0, len(evs), len(evs))]
-                    bl, bo, _ = peaks(*fit(pick, a.grid, a.step, a.cone, score=a.score)[:3], n=1)[0]
+                    bl, bo, _ = peaks(*fit(pick, a.grid, a.step, a.cone, score=a.score, balance=a.balance)[:3], n=1)[0]
                     ds.append(km(top[0][0], top[0][1], bl, bo))
                 ds.sort()
                 print(f"  bootstrap ({a.boot}): top peak moves a median {ds[len(ds) // 2]:.0f} km, 90% within {ds[int(0.9 * (len(ds) - 1))]:.0f} km")
