@@ -156,13 +156,33 @@ def test_heavy_apart():
         rec("A35K", [(hx[3], 1)]),                                                                                    # no peers
     ]
     tot = P.hex_hour_totals(recs, P.HEAVY_TYPES)
-    apart, diag = P.heavy_apart_cells(recs, tot)
+    apart_strict, diag_strict = P.heavy_apart_cells(recs, tot, "apart")
+    assert apart_strict[12] == {(hx[3], 3)} and diag_strict["apart_peers_unjudged"] == 1, diag_strict
+    apart, diag = P.heavy_apart_cells(recs, tot)          # default: too few other aircraft to judge -> kept
     assert apart[0] == {(hx[0], 3)} and apart[4] == set(), apart
     assert apart[8] == {(hx[2], 3)} and apart[9] == {(hx[2], 3)}, "A350 and A380 must not vouch for each other"
-    assert apart[12] == {(hx[3], 3)} and diag["apart_peers_unjudged"] == 1, diag
-    assert diag["apart_hex_hours"] == 4 and diag["kept_corroborated_hex_hours"] == 1, diag
+    assert apart[12] == set() and diag["kept_unjudged_hex_hours"] == 1, diag
+    assert diag["apart_hex_hours"] == 3 and diag["kept_corroborated_hex_hours"] == 1, diag
+    # heavies must not dilute others: two other aircraft, both bad, with three heavies present -> corroborated
+    dil = [rec("A359", [(hx[0], 1)]), rec("A359", [(hx[0], 1)]), rec("A388", [(hx[0], 0)]),
+           rec("B738", [(hx[0], 1)]), rec("A320", [(hx[0], 1)])]
+    a2, d2 = P.heavy_apart_cells(dil, P.hex_hour_totals(dil, P.HEAVY_TYPES))
+    assert a2[0] == set() and a2[1] == set() and d2["kept_corroborated_hex_hours"] == 2, d2
+    # "any": one bad other aircraft among five corroborates; "share" needs 25% of them, and 1 of 5 is 20%
+    one = [rec("A359", [(hx[0], 1)]), rec("B738", [(hx[0], 1)]), rec("A320", [(hx[0], 0)]),
+           rec("A321", [(hx[0], 0)]), rec("A20N", [(hx[0], 0)]), rec("B38M", [(hx[0], 0)])]
+    t1 = P.hex_hour_totals(one, P.HEAVY_TYPES)
+    assert P.heavy_apart_cells(one, t1, "keep", "any")[0][0] == set()
+    assert P.heavy_apart_cells(one, t1, "keep", "share")[0][0] == {(hx[0], 3)}   # 1 of 5 = 20% < 25%
+    # "ring": a lone A350 is judged on its neighbours (ring 1, same hour)
+    nb = h3.str_to_int(h3.grid_disk(h3.int_to_str(hx[3]), 1)[1])
+    lone = [rec("A35K", [(hx[3], 1)]), rec("B738", [(nb, 0)]), rec("A320", [(nb, 0)])]
+    tl = P.hex_hour_totals(lone, P.HEAVY_TYPES)
+    assert P.heavy_apart_cells(lone, tl, "keep")[0][0] == set()
+    ar, dr = P.heavy_apart_cells(lone, tl, "ring")
+    assert ar[0] == {(hx[3], 3)} and dr["judged_on_ring"] == 1, dr
     latched = [set() for _ in recs]
-    daily, hourly, minute = P.aggregate(recs, set(), latched, apart)
+    daily, hourly, minute = P.aggregate(recs, set(), latched, apart_strict)
     d = {h: daily[h] for h in hx}
     # [aircraft, gross, nic, acc, capable, cap acc-bad, latched, live gross, heavy apart]
     assert d[hx[0]][1] == 1 and d[hx[0]][7] == 0 and d[hx[0]][8] == 1, d[hx[0]]
@@ -172,7 +192,7 @@ def test_heavy_apart():
     # without the option nothing is set apart and the bad counts are v1.4's
     daily14, _, minute14 = P.aggregate(recs, set(), latched)
     assert daily14[hx[0]][7] == 1 and daily14[hx[0]][8] == 0 and minute14[(hx[2], 185)] == [2, 0, 0]
-    assert P.hex_hour_totals(recs)[(hx[2], 3)] == [4, 2] and tot[(hx[2], 3)] == [4, 0]
+    assert P.hex_hour_totals(recs)[(hx[2], 3)] == [4, 2] and tot[(hx[2], 3)] == [2, 0]
 
 
 if __name__ == "__main__":
