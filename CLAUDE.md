@@ -29,8 +29,15 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
 - `tools/sun_transit.py`: sun-outage windows for GEO satellites from fixed receivers (`--daily`, `--start`, `--end`,
   `--threshold`). Checked against a separately written calculator: Tehran windows and times agree.
 - `tools/check_public.py`: pre-commit check for private terms.
-- **Maritime lane (planned 23 Oct 2026, not built):** read `docs/maritime-plan.md` first (sources, detectors D1–D13, database, validation,
+- **Maritime lane (planned 23 Oct 2026; M1 started 24 Oct):** read `docs/maritime-plan.md` first (sources, detectors D1–D13, database, validation,
   build steps M0–M7, open decisions). Private handoff and watch configuration are listed in `CLAUDE.local.md`.
+  `tools/ship_detect.py` finds ships in Sentinel-1 GRD (Planetary Computer, anonymous); boxes come from private config.
+- **Lanes added 23–24 Oct 2026 (prototypes; each has a write-up in `docs/validation/` or `docs/assessment/`):**
+  `tools/cygnss_rfi.py` (CYGNSS noise floor, needs `EARTHDATA_TOKEN`), `tools/s1_rfi.py` (Sentinel-1 RFI annotations),
+  `tools/events.py` (observations → graded events, private register in `data/events/`), `collectors/digitraffic_ais.py` and
+  `tools/ais_detect.py` (Finland's open AIS), `tools/station_cn0.py` (EPN station C/N0), `tools/trace_box.py types` (by aircraft family),
+  `tools/horizon_fix.py --balance`. CI runs each `tests/test_*.py` as a plain script with only `requirements.txt` and
+  `nisar/requirements.txt` installed (no matplotlib, no pytest).
 - **The public site `site/` is generated.** Edit `site_src/` (page bodies, `lanes.json`) and run `python tools/build_site.py`;
   the Sources page comes from `registry/sources.csv`. CI fails if `site/` is out of step. Cloudflare Pages deploys `site/` from `main`.
   **Deploys run from GitHub Actions** (`.github/workflows/deploy-site.yml`): after CI passes on `main`, `site/` is uploaded
