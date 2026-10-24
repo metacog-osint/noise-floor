@@ -240,7 +240,8 @@ H4 is deliberately modest. In-sample, most of the top spoofed-to cells (73 of 10
   - near Moscow Sheremetyevo (2 km), on four of the six days from May 2025 (the published source names only Moscow);
   - a point near Dawei, Myanmar, on seven days (67 km from the town);
   - points in the Tel Aviv area on 20 Jun 2025, during the Israel–Iran war, beside the Asaluyeh point (6 km) that Windward reported for ships;
-  - a new point east of St Petersburg on 20 Jun 2026 (57 aircraft).
+  - a new point east of St Petersburg on 20 Jun 2026 (57 aircraft). On 24 Oct 2026 the AIS lane found a ship in the eastern
+    Gulf of Finland shown 0.5 km from the same point (`docs/validation/ais-baltic.md`): two independent sensors, same place.
 - What the test does and doesn't show: the frozen method generalises to days it never saw, at region level and for the main published points. It doesn't test position accuracy beyond the MLAT cross-check, or offset-track spoofing, which v0.3 misses.
 
 ## Control-area episodes against FAA advisories (checked 24 Oct 2026)

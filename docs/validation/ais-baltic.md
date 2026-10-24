@@ -37,6 +37,29 @@ the plan requires (Section 11). This page gives counts and anonymised examples o
 - **Next:** collect for several days with the plan's durations (command in Section 7), then score spoofing events
   prospectively against public notices, since Digitraffic keeps no history.
 
+## 14-hour run (24 Oct 2026, 03:31–17:45 UTC)
+
+The collector then ran for 12 hours on its own; with the earlier sample the day covers 14.2 hours: 1.81 million position
+rows from 928 vessels (1,432 duplicates dropped), with four reconnects and no message errors. Detectors used the plan's
+durations (`--preset plan`: dark gap 6 h, rendezvous 2 h, loiter 6 h).
+
+- **GNSS interference: 26 vessels whose trusted positions were in the Gulf of Finland east of 27°E**, plus 1 each in the
+  Bothnian Bay, the northern Baltic Proper and the Gulf of Finland west of 27°E, and 4 with no trusted position.
+- **Where they were shown:**
+  - 13 on the same circle as in the first sample, near 57.7°N 32.5°E in inland north-western Russia (one more 0.1° west),
+    330–380 km from where they really were, at 66–81 kn.
+  - One each near 58.4°N 30.7°E, 57.9°N 33.4°E and **60.12°N 31.37°E, east of St Petersburg**.
+- **Timing:** 5 vessels an hour at 03–05Z, 1–3 an hour through the morning, then a burst of 10 vessels at 11Z and 18 at
+  12Z (2,039 flagged positions in that hour), back to 2–7 an hour from 13Z.
+- **Cross-sensor match:** the ship centre east of St Petersburg lies 0.5 km from the aircraft spoofed-to point that the
+  ADS-B spoofing detector found on 20 Jun 2026 (57 aircraft; `docs/validation/spoofing.md`). That is the same place on
+  different days, seen by two independent sensors. What is at that point is unverified.
+- **Other detectors** (counts; context in the private event lists): 861 rendezvous pairs, nearly all in ports,
+  anchorages or moored together; 215 loitering runs over 6 hours; 1 dark gap over 6 hours; 76 single-vessel circles, read
+  as real manoeuvres or vessels without a reported heading; 3 IMO numbers with a bad check digit (one a test transponder);
+  48 destination texts classed unusual, all route or service descriptions on inspection of the first ones.
+- Still one day, with no ground truth beyond the consistency checks above. Kaliningrad and Narva Bay remain uncovered.
+
 ## 1. Data
 
 | Item | Value |

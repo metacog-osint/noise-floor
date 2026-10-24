@@ -179,7 +179,7 @@
         "Digitraffic AIS (CC BY 4.0)",
         "Kystverket AIS (NLOD; licence text not yet read)"
       ],
-      "notes": "First 1.9-hour sample, 24 Oct 2026: 7 ships under five flags, really in the eastern Gulf of Finland, reported positions on one small circle in inland north-western Russia at 71–80 knots, which points to their GNSS being spoofed rather than false AIS. Coverage is regional, with none of Kaliningrad. Vessel identities stay private.",
+      "notes": "First 14 hours, 24 Oct 2026: 26 ships in the eastern Gulf of Finland showed GNSS interference; 13 were shown on one circle in inland north-western Russia at 66–81 knots, which points to their GNSS being spoofed rather than false AIS. One ship was shown east of St Petersburg, 0.5 km from a point where the aircraft spoofing detector found 57 aircraft on 20 Jun 2026. Coverage is regional, with none of Kaliningrad. Vessel identities stay private.",
       "links": [
         [
           "First results",
