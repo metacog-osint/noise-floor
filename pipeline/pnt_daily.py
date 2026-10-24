@@ -21,9 +21,11 @@ Method (docs/method-card.md):
   * Hex score, as GPSJam publishes it: 100 * max(bad - 1, 0) / (good + bad).
   * Option --heavy-apart (v1.5; off by default): A350 and A380 (A359, A35K, A388) report NACp 0 whenever one satellite
     is flagged degraded and stay degraded far longer than other types (verdict 43; ICAO CNS SG/29 IP/05). With the option,
-    their gross-bad hex-hours count as interference only when their peers are bad too (>= PEER_BAD_MAX of >= PEER_MIN
-    peers, these types not counting as bad peers). Uncorroborated ones go to `heavy_apart` and are left out of
-    `bad_nacp_live`, the minute counts' live total, post-exposure and the peer tests. `bad_nacp` stays raw.
+    their gross-bad hex-hours count as interference only when other aircraft there are bad too (>= PEER_BAD_MAX of >=
+    PEER_MIN peers). These types are left out of every peer count, so they neither vouch for each other nor dilute other
+    aircraft's bad share. Where too few other aircraft are present to judge, the hex-hour is kept (`--heavy-unjudged
+    keep`, default) or set apart (`apart`). Set-apart hex-hours go to `heavy_apart` and are left out of `bad_nacp_live`,
+    the minute counts' live total, post-exposure and the peer tests. `bad_nacp` stays raw.
 
 Input is the day's tar, or its split parts (.tar.aa, .tar.ab ...), read as one stream without unpacking. The raw
 bytes are SHA-256 hashed during the same pass, for provenance.
@@ -202,19 +204,20 @@ def is_bad(c, k):
 
 
 def hex_hour_totals(recs, ignore=frozenset()):
-    """(hex, hour) -> [aircraft, gross-bad aircraft]. Aircraft of types in `ignore` count as aircraft but never as bad."""
+    """(hex, hour) -> [aircraft, gross-bad aircraft]. Aircraft of types in `ignore` are left out entirely."""
     tot = defaultdict(lambda: [0, 0])
     for cells, meta, _ in recs:
-        can_be_bad = meta[6] not in ignore
+        if meta[6] in ignore:
+            continue
         for key, c in cells.items():
-            t = tot[key]; t[0] += 1; t[1] += can_be_bad and is_bad(c, G)
+            t = tot[key]; t[0] += 1; t[1] += is_bad(c, G)
     return tot
 
 
-def peers_mostly_good(tot, key, self_bad):
-    """True / False when judgeable (>= PEER_MIN peers), None otherwise."""
+def peers_mostly_good(tot, key, self_bad, self_counted=True):
+    """True / False when judgeable (>= PEER_MIN peers), None otherwise. self_counted: the aircraft itself is in tot."""
     n, nb = tot[key]
-    peers, peers_bad = n - 1, nb - (1 if self_bad else 0)
+    peers, peers_bad = n - (1 if self_counted else 0), nb - (1 if self_bad and self_counted else 0)
     if peers < PEER_MIN:
         return None
     return peers_bad / peers < PEER_BAD_MAX
@@ -274,26 +277,57 @@ def resolve_post_exposure(recs, tot, skip=frozenset()):
     return out, diag
 
 
-def heavy_apart_cells(recs, tot):
-    """--heavy-apart: per record, the (hex, hour) cells where an A350/A380 is gross-bad without corroboration (peers
-    mostly good, or too few peers to judge). `tot` must leave these types out of the bad counts. Returns (cells, diag)."""
-    out, types, healthy, unjudged, kept, n_aircraft = [], Counter(), 0, 0, 0, 0
+_RING = {}
+
+
+def ring_totals(tot, key):
+    """[aircraft, gross-bad aircraft] summed over the hex and its ring-1 neighbours in the same hour."""
+    hx, hour = key
+    if hx not in _RING:
+        _RING[hx] = [h3.str_to_int(c) for c in h3.grid_disk(h3.int_to_str(hx), 1)]
+    n = nb = 0
+    for c in _RING[hx]:
+        t = tot.get((c, hour))
+        if t:
+            n += t[0]; nb += t[1]
+    return n, nb
+
+
+def heavy_apart_cells(recs, tot, unjudged="keep", corroborate="share"):
+    """--heavy-apart: per record, the (hex, hour) cells where an A350/A380 is gross-bad without corroboration from
+    other aircraft (`tot` must leave these types out entirely). Corroborated: >= PEER_BAD_MAX of the other aircraft bad
+    ("share"), or at least one of them bad ("any"). With fewer than PEER_MIN other aircraft in the hex-hour, unjudged:
+    "keep" it, set it "apart", or judge it on the hex plus its ring-1 neighbours ("ring"; kept if still too few).
+    Returns (cells, diag)."""
+    out, types, healthy, n_unjudged, kept_unjudged, kept, n_aircraft, ringed = [], Counter(), 0, 0, 0, 0, 0, 0
     for cells, meta, _ in recs:
         apart = set()
         if meta[6] in HEAVY_TYPES:
             for key, c in cells.items():
                 if not is_bad(c, G):
                     continue
-                ok = peers_mostly_good(tot, key, False)   # this aircraft isn't in tot's bad count
-                if ok is False:
+                n, nb = tot[key] if key in tot else (0, 0)          # tot leaves these types out
+                if n < PEER_MIN and unjudged == "ring":
+                    n, nb = ring_totals(tot, key); ringed += n >= PEER_MIN
+                if n < PEER_MIN:
+                    n_unjudged += 1
+                    if unjudged in ("keep", "ring"):
+                        kept_unjudged += 1
+                        continue
+                elif (nb >= 1) if corroborate == "any" else (nb / n >= PEER_BAD_MAX):
                     kept += 1
                     continue
-                apart.add(key); healthy += ok is True; unjudged += ok is None
+                else:
+                    healthy += 1
+                apart.add(key)
             if apart:
                 n_aircraft += 1; types[meta[6]] += 1
         out.append(apart)
-    diag = {"types": sorted(HEAVY_TYPES), "aircraft_with_apart_cells": n_aircraft, "apart_hex_hours": healthy + unjudged,
-            "apart_peers_healthy": healthy, "apart_peers_unjudged": unjudged, "kept_corroborated_hex_hours": kept,
+    diag = {"types": sorted(HEAVY_TYPES), "unjudged_rule": unjudged, "corroborate": corroborate,
+            "judged_on_ring": ringed, "aircraft_with_apart_cells": n_aircraft,
+            "apart_hex_hours": healthy + n_unjudged - kept_unjudged, "apart_peers_healthy": healthy,
+            "apart_peers_unjudged": n_unjudged - kept_unjudged, "kept_unjudged_hex_hours": kept_unjudged,
+            "kept_corroborated_hex_hours": kept,
             "aircraft_by_type": dict(types.most_common()),
             "note": "v1.5: A350/A380 gross-bad hex-hours count as interference only when peers are bad too"}
     return out, diag
@@ -387,17 +421,24 @@ def run(day, raw_dir, out_dir, workers, heavy_apart=False, also=None):
     chain = stream.raw
     t_read = time.time() - t0
     s = finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, workers)
-    if also:
-        finish(day, also[0], also[1], recs, st, chain, parts, t0, t_read, workers)
+    for extra_out, extra_mode in ([also] if also and not isinstance(also, list) else (also or [])):
+        finish(day, extra_out, extra_mode, recs, st, chain, parts, t0, t_read, workers)
     return s
 
 
 def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, workers):
+    """heavy_apart: False (v1.4), or True / a mode string (v1.5): keep, apart, ring, keep-any, ring-any (see heavy_apart_cells)."""
+    mode = "keep" if heavy_apart is True else (heavy_apart or "")
+    if mode == "drop":            # comparison only: A350/A380 left out of every count, as if absent
+        recs = [r for r in recs if r[1][6] not in HEAVY_TYPES]
+        heavy_apart = False
+    unjudged = mode.split("-")[0] or "keep"
+    corroborate = "any" if mode.endswith("-any") else "share"
     ignore = HEAVY_TYPES if heavy_apart else frozenset()
     tot = hex_hour_totals(recs, ignore)
     latched, latch_diag = resolve_post_exposure(recs, tot, ignore)
     if heavy_apart:
-        apart, apart_diag = heavy_apart_cells(recs, tot)
+        apart, apart_diag = heavy_apart_cells(recs, tot, unjudged, corroborate)
         excluded = [lc | ac for lc, ac in zip(latched, apart)]
     else:
         apart, apart_diag, excluded = None, None, latched
@@ -451,7 +492,7 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
         **({"heavy_apart": pa.array([v[2] for _, v in mrows], pa.int32())} if heavy_apart else {}),
     }), os.path.join(out_dir, f"{day}.minute.parquet"), compression="zstd")
     summary = {
-        "day": day, "method_version": "1.5" if heavy_apart else METHOD_VERSION, "inputs": [os.path.basename(p) for p in parts],
+        "day": day, "method_version": "1.5" if heavy_apart else (METHOD_VERSION + "-noheavy" if mode == "drop" else METHOD_VERSION), "inputs": [os.path.basename(p) for p in parts],
         "input_bytes": chain.nbytes, "input_sha256": chain.sha.hexdigest(),
         "seconds": round(secs, 1), "seconds_read": round(t_read, 1), "workers": workers,
         "hexes": len(rows), "hex_hours": len(hrows), "aircraft": len(recs), "avionics_suspects": len(drop),
@@ -466,7 +507,7 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
                                "min_judged_hex_hours": SUSPECT_MIN_JUDGED},
                    "post_exposure": {"exposure": "first bad hex-hour with >= peer_min peers, >= peer_bad_max of them bad",
                                      "min_km_from_exposure": POST_MIN_KM, "tagged_if_peers_mostly_good": True},
-                   "heavy_apart": sorted(HEAVY_TYPES) if heavy_apart else None,
+                   "heavy_apart": {"types": sorted(HEAVY_TYPES), "unjudged": unjudged, "corroborate": corroborate} if heavy_apart else None,
                    "score": "100*max(bad-1,0)/(good+bad)"},
         "source": "adsb.lol globe_history (ODbL 1.0)",
         "latching": latch_diag,
@@ -485,9 +526,14 @@ def main():
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "pnt", "daily"))
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--heavy-apart", action="store_true", help="v1.5: A350/A380 degradation counts only when peers agree")
+    ap.add_argument("--heavy-unjudged", choices=["keep", "apart", "ring"], default="keep",
+                    help="--heavy-apart: hex-hours with too few other aircraft: kept (default), set apart, or judged on ring 1")
+    ap.add_argument("--heavy-any", action="store_true",
+                    help="--heavy-apart: corroborated when any other aircraft there is bad (default: >= PEER_BAD_MAX of them)")
     ap.add_argument("--compare-out", help="also write the other setting (with or without --heavy-apart) here, same read")
     a = ap.parse_args()
-    s = run(a.day, a.raw, a.out, a.workers, a.heavy_apart, (a.compare_out, not a.heavy_apart) if a.compare_out else None)
+    mode = (a.heavy_unjudged + ("-any" if a.heavy_any else "")) if a.heavy_apart else False
+    s = run(a.day, a.raw, a.out, a.workers, mode, (a.compare_out, False if a.heavy_apart else "keep") if a.compare_out else None)
     print(json.dumps({k: s[k] for k in ("day", "seconds", "files", "aircraft", "avionics_suspects", "hexes", "hex_hours", "reports_used")}
                      | {"latched_aircraft": s["latching"]["latched_aircraft"]}))
 
