@@ -18,8 +18,9 @@
     <tr><td>Nightly bursts over central Europe explained</td><td>The post-exposure tag cut them from 33 to 26 events and shrank the peaks, but catches only 38–47% of the aircraft in the bursts that remain</td><td><span class="chip st-partial">Partly</span></td></tr>
   </tbody>
 </table></div>
-<h3>A finding: downstream effects by aircraft type</h3>
-<p>Over 17 days, A350-900s were 24.9% of aircraft-days still degraded after leaving interference, against 1.3% of traffic (19.4×). A380s were 19.2× and 777-300ERs 4.7×; most narrowbodies were near 1×. 777-300ERs fly the same long-haul corridors as A350s, so aircraft type seems to matter beyond route. This is a hypothesis: one possibility is avionics rejecting GPS for the rest of a flight after spoofing exposure. Public guidance, checked on 22 Oct 2026, supports the general mechanism but not the type pattern: the 2024 industry GPS Spoofing Workgroup report warns that a receiver can look normal after spoofing while still holding false data, but no public document describes A350 or A380 behaviour. Airbus's type documentation isn't public.</p>
+<h3>A finding: downstream effects by aircraft type, and what's behind it</h3>
+<p>Over 17 days, A350-900s were 24.9% of aircraft-days still degraded after leaving interference, against 1.3% of traffic (19.4×). A380s were 19.2× and 777-300ERs 4.7×; most narrowbodies were near 1×.</p>
+<p><strong>Tested on 23 Oct 2026, this looks like a reporting effect.</strong> In 19 days of raw traces over the southern Baltic, A350s at cruise altitude stayed visible on 89% of their crossings on jammed days, while narrowbodies went dark on half of theirs; 74% of the positions the A350s kept sending were flagged as degraded. On quiet days every type was seen about equally, yet A350 degraded episodes lasted a median of 8 minutes against 2 for other types. A documented behaviour fits: Australia reported to an ICAO regional meeting in June 2025 that on A350s and A380s the ADS-B accuracy value is set to zero when the inertial reference unit flags a single satellite as degraded, even when the position is valid (<a href="https://www.icao.int/sites/default/files/APAC/Meetings/2025/2025%20CNS%20SG29/4-Information%20Papers/IP05_AUS-AI.8.2-ADS-B-GNSS-Performance-Issues-in-Australia.pdf">CNS SG/29 IP/05</a>). So the type pattern most likely shows how these aircraft report accuracy, not lasting harm. Next: count A350 and A380 accuracy-only drops apart and rerun the validated days.</p>
 <p><a href="/charts">These cases as charts</a> · <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">Full validation report</a></p>
 
 <h3 id="year">A year of data (1 Oct 2025 – 21 Oct 2026)</h3>
@@ -37,6 +38,7 @@
     <tr><td>False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024</td><td>No GNSS degradation over the area (thin coverage)</td><td><span class="chip st-validated">Pass</span></td></tr>
     <tr><td>SBAS flags over India and Australia</td><td>Flagged on 162 and 229 of 344 days because most aircraft there don't use those services. Listed apart on the map as routine</td><td><span class="chip st-validated">Explained</span></td></tr>
     <tr><td>Radio-horizon localizer, scored against a 2025 TDOA network (<a href="https://doi.org/10.1007/s10291-026-02061-5">Gattis, Cydejko &amp; Akos 2026</a>), settings fixed in advance</td><td>On the four days with published fixes, the top peak was 20, 37, 48 and 45 km from the day's site: 1 hit at 25 km. The sites always ranked in the top 2% of cells, but the mean miss (38 km) is no better than naming Kaliningrad city, and the two sites are only 21 km apart</td><td><span class="chip st-failed">Fail</span></td></tr>
+    <tr><td>Do A350s stay visible while degraded where other types go dark? (raw traces, 19 days)</td><td>On jammed days, A350s were seen on 89% of crossings at cruise altitude against 43% for narrowbodies and about 60% for 777s and 787s; the highest share on 7 of 8 full jammed days. Their degraded episodes also last 4–8 times longer, which fits a documented avionics behaviour</td><td><span class="chip st-validated">Confirmed</span></td></tr>
     <tr><td>Localizer, second version, on five held-out days chosen and frozen before download</td><td>Within 25 km of one of the two TDOA sites on 3 of 4 testable days (mean 23 km, against 38 km for naming Kaliningrad city). But every peak sits about 20 km east of both sites, so this is a steady pointer to the right coast, not yet a site fix</td><td><span class="chip st-partial">Partly</span></td></tr>
   </tbody>
 </table></div>
@@ -58,7 +60,7 @@
 
 <h2 id="next">Validation still to come</h2>
 <ul>
-  <li><strong>A localizer that resolves sites,</strong> not just areas. It failed its first scored test against the 2025 TDOA fixes, and its positions stay off the map until it passes one: next, fits for two emitters at once and minute-level timing against the fix windows.</li>
+  <li><strong>A localizer that resolves sites,</strong> not just areas. It failed its first scored test against the 2025 TDOA fixes, and its positions stay off the map until it passes one: two-emitter fits and fix-window timing were tried and dropped; next, a second held-out test of a version that weights every approach direction equally, and days with a single known active site.</li>
   <li><strong>More announced test events</strong> as known positives. The FAA advisories are already a layer on the map. Jammertest 2026 showed no aircraft effect.</li>
   <li><strong>More false look-alikes,</strong> beyond the Kiruna radar fault, as cases the methods must not flag.</li>
   <li><strong>A surveyed emitter or announced test</strong> to measure NISAR position accuracy.</li>

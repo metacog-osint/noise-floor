@@ -8,6 +8,7 @@ When a box's ADS-B aircraft count collapses, this tells the two readings apart:
   python tools/trace_box.py extract <raw_dir> <day>      # raw archive parts -> data/trace_box/<day>.jsonl.gz
   python tools/trace_box.py report <day> [<day> ...]     # crossings, gaps and MLAT per day
   python tools/trace_box.py night <day> [<day> ...]      # night vs day degraded share by altitude, type, arrival state
+  python tools/trace_box.py types <day> [<day> ...]      # pooled: seen vs dark crossings by aircraft family and day class
 
 Defaults: the southern Baltic lead box (54.8-57N, 15-19E) inside a region of 52-60N, 8-26E. Override with
 --box / --region lat0,lat1,lon0,lon1. Only airborne points at or above --min-alt feet (default 10,000) count, and
@@ -237,6 +238,66 @@ def report(day, b, min_alt, gap_s, join_s, adsb_only=True):
     print("  by type, 8+ crossings:", "; ".join(rows))
 
 
+FAMILY = {"A359": "A350", "A35K": "A350", "A388": "A380", "B788": "B787", "B789": "B787", "B78X": "B787",
+          "B772": "B777", "B773": "B777", "B77W": "B777", "B77L": "B777", "B744": "B747", "B748": "B747",
+          "A332": "A330", "A333": "A330", "A338": "A330neo", "A339": "A330neo", "A343": "A340", "A346": "A340",
+          "B762": "B767", "B763": "B767", "B764": "B767"}
+
+
+def family(t):
+    if t in FAMILY:
+        return FAMILY[t]
+    if t in NARROW:
+        return "narrowbody"
+    return "other"
+
+
+def types_pool(days, b, min_alt, gap_s, join_s, hi_alt=30000):
+    """Crossings pooled over days, by aircraft family. Each day is classed by its own dark share (dark and dark-long
+    crossings over all crossings, every type): jammed (30% or more) or quiet (under 10%); days in between are listed
+    but not pooled. Like-for-like: only crossings whose median altitude inside the box is at or above hi_alt feet."""
+    pool = defaultdict(lambda: defaultdict(lambda: Counter()))     # day class -> family -> counts
+    frames = defaultdict(lambda: defaultdict(set))
+    for day in days:
+        day0 = datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp()
+        rows = []
+        with gzip.open(os.path.join(OUT, f"{day}.jsonl.gz"), "rt", encoding="utf-8") as f:
+            for line in f:
+                a = json.loads(line)
+                if not any(p[4] == "a" for p in a["pts"]):
+                    continue
+                pts = sorted((p for p in a["pts"] if p[3] >= min_alt), key=lambda p: p[0])
+                for c in crossings(pts, b, gap_s, join_s):
+                    if not day0 <= c["t0"] < day0 + 86400:
+                        continue
+                    alts = sorted(p[3] for p in pts if c["t0"] - 120 <= p[0] <= c["t1"] + 120)
+                    alt = alts[len(alts) // 2] if alts else c["before"][3]
+                    rows.append((family(a["type"] or "?"), classify(c), alt, c["adsb"], c["nacp_bad"], a["icao"]))
+        n = len(rows)
+        dark = sum(r[1].startswith("dark") for r in rows)
+        share = dark / n if n else 0
+        cls = "jammed" if share >= 0.30 else "quiet" if share < 0.10 else "between"
+        print(f"{day}: {n} crossings, {100 * share:.0f}% dark -> {cls}")
+        for fam, k, alt, na, nb, icao in rows:
+            if alt < hi_alt:
+                continue
+            c = pool[cls][fam]
+            c["n"] += 1; c[k] += 1; c["pts"] += na; c["bad"] += nb
+            frames[cls][fam].add(icao)
+    for cls in ("jammed", "quiet", "between"):
+        if not pool[cls]:
+            continue
+        print()
+        print(f"{cls} days, crossings at FL{hi_alt // 100}+ (median altitude in the box):")
+        print(f"  {'family':11} {'cross':>6} {'frames':>6} {'seen':>6} {'dark':>6} {'mlat':>6}  NACp<8 of seen points")
+        for fam, c in sorted(pool[cls].items(), key=lambda kv: -kv[1]["n"]):
+            if c["n"] < 10:
+                continue
+            dk = c["dark"] + c["dark-long"]
+            print(f"  {fam:11} {c['n']:6d} {len(frames[cls][fam]):6d} {100 * c['seen'] / c['n']:5.0f}% {100 * dk / c['n']:5.0f}% "
+                  f"{100 * c['mlat-only'] / c['n']:5.0f}%  {100 * c['bad'] / c['pts'] if c['pts'] else 0:5.0f}%")
+
+
 NARROW = {"A20N", "A21N", "A319", "A320", "A321", "B737", "B738", "B739", "B38M", "B39M", "BCS1", "BCS3", "E190", "E195",
           "E290", "E295", "CRJ7", "CRJ9", "AT75", "AT76", "DH8D", "E170", "E175", "E75L"}
 BANDS = ((10000, 20000, "FL100-195"), (20000, 30000, "FL200-295"), (30000, 10 ** 6, "FL300+"))
@@ -282,7 +343,7 @@ def night(day, area):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["extract", "report", "night"])
+    ap.add_argument("cmd", choices=["extract", "report", "night", "types"])
     ap.add_argument("args", nargs="+")
     ap.add_argument("--box", type=parse_box, default=BOX)
     ap.add_argument("--region", type=parse_box, default=REGION)
@@ -301,6 +362,8 @@ def main():
     elif a.cmd == "night":
         for day in a.args:
             night(day, a.area)
+    elif a.cmd == "types":
+        types_pool(a.args, a.box, a.min_alt, a.gap * 60, a.max_join * 60)
     else:
         for day in a.args:
             report(day, a.box, a.min_alt, a.gap * 60, a.max_join * 60, adsb_only=not a.all_aircraft)

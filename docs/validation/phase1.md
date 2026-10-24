@@ -244,7 +244,7 @@ Then:
   - The OPSGROUP-led GPS Spoofing Workgroup report (Sep 2024) warns of "a significant possibility of the GPS Receiver appearing normal to flight crew after spoofing, but in reality being contaminated with false data", and that some systems don't work correctly after spoofing even when GPS coverage returns ([AIN summary](https://ainonline.com/aviation-news/air-transport/2024-09-09/opsgroup-releases-gps-spoofing-workgroup-report)). The full report wasn't retrieved.
   - Airbus's Safety First article on GNSS interference points to an Airbus World ISI (34.36.00049) for type detail; that and the FCOM aren't public. EASA SIB 2022-02 (R3, 5 Jul 2024; R4 exists) couldn't be read: the EASA AD site was down for maintenance at the time.
   - Next: read SIB 2022-02R4 when the site is back, and ask an A350 operator or pilot contact whether the GPS stays deselected or degraded for the rest of a flight after a spoofing alert.
-- **Visibility (22 Oct 2026):** in the 9 May 2026 raw traces, A350s stayed visible with degraded positions while most other types went dark across the jammed area (verdict 34). Part of the over-representation may therefore be that A350s stay in the counts. Not yet tested.
+- **Visibility and reporting (tested 23 Oct 2026, verdict 43):** A350s stay visible with degraded positions where other types go dark, and their degraded episodes last 4–8 times longer. A documented A350/A380 behaviour fits: the AESS sets NACp to zero when the ADIRU marks one satellite as degraded (ICAO CNS SG/29 IP/05, June 2025). The type pattern is therefore most likely a reporting artefact. See "A350s in the raw traces" below.
 - The A321's 3.0× is the narrowbody exception. It isn't explained yet; it may reflect which carriers fly it on medium-haul routes near the hotspots.
 - Airbus and EASA guidance on post-spoofing GPS behaviour still hasn't been checked.
 
@@ -285,6 +285,7 @@ Then:
 - **The 02Z spike is the Baltic at night.** Over northern Europe the worst hour is 02Z or 03Z on 369 of 383 days. On the Baltic side of that box, 41–47% of aircraft-hexes are degraded at 02–03Z, against 3–4% in daytime.
 - **Malay Peninsula: closed, no local interference.** The share never passed 0.9% on any day.
 - **The Kurils and Jammertest can't validate the ADS-B lane.** adsb.lol barely covers the Kurils (median 2 aircraft-hexes a day). Over Andøya no aircraft was degraded at any hour of Jammertest week.
+- **The A350 pattern most likely reflects how A350s report accuracy, not what happened to them.** Inside jamming they stay visible while degraded where other types go dark, and their degraded episodes last 4–8 times longer. That fits a documented avionics behaviour (verdict 43).
 
 ## Verdicts
 
@@ -304,6 +305,7 @@ Then:
 | 39 | False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024 (66.5–69.5°N, 17–25°E) | 0.0% and 1.0% degraded, against 0.0% on 27 Feb (88–104 aircraft-hexes a day) | **Pass.** A weather-radar artefact leaves no GNSS signal (coverage there is thin) |
 | 40 | Radio-horizon localizer, first version (southern Baltic; 9 May, 2 Jan, 1 Feb, 24 Feb 2026) | Stacked best crossing at 55.10°N 19.52°E, offshore about 55 km NW of Baltiysk, with NACp events at 80% of the radio horizon. Day by day, every top peak lies within about 20–80 km of the western Sambia peninsula | **Points at the Sambia coast, not yet a fix.** The reach scale was tuned on the same days and moves the peak by up to about 50 km |
 | 41 | Localizer against the 2025 TDOA fixes (Gattis, Cydejko & Akos 2026), scored with settings fixed in advance | Top peak 20 km from the Baltiysk-harbour fix on 3 Apr; 37, 48 and 45 km from the coastal-site fix on 15 Apr, 17 Apr and 21 Jun (1 hit of 4 at 25 km; 0 of 2 in the interference windows). The target cell always ranked in the top 2% of 3,496 cells. Mean miss 38 km, against 38 km for naming Kaliningrad city and 52 km for the centroid of onsets | **Fail.** It finds the area but not the site: the two TDOA sites are 21 km apart, finer than the localizer resolves |
+| 43 | A350 visibility hypothesis: 19 days of raw traces over the southern Baltic box (crossings at FL300+; 9 jammed and 5 quiet days) | Jammed days: A350s seen on 89% of 224 crossings (75 airframes), 74% of their positions degraded; narrowbodies seen on 43% of 2,809, 777s 61%, 787s 59%. Highest seen share on 7 of 8 full jammed days. Quiet days: every family seen on 88–94%, but 28% of A350 positions degraded against 1–8%. Degraded episodes: median 8–17 min for A350/A380, against 2 min | **Confirmed, plus a second effect.** A350s keep broadcasting degraded positions where other types go dark, and their degraded episodes last 4–8 times longer. Both fit a documented ADIRU–AESS behaviour that sets NACp to zero when one satellite is degraded (ICAO CNS SG/29 IP/05). The type over-representation is most likely a reporting artefact |
 | 42 | Localizer v2 on five held-out Apr–Jun 2025 days (method frozen in 38a495e before they were downloaded) | Top peak 20.4, 24.7, 30.1 and 17.9 km from the nearest TDOA site (3 hits of 4 at 25 km; 11 Jun untested, 76 onsets on a partial day). Mean 23 km, against 38 km for Kaliningrad city and 96 km for the onset centroid | **Pass on the rule, area-level only.** The peaks sit about 20 km east of both sites, so a fixed guess there would do as well, and the test can't tell which site was active |
 
 ## Southern Baltic: degraded, or missing?
@@ -509,13 +511,51 @@ What would help next: separate concurrent emitters (two-source fits), use onset 
   - Both sites can be active on the same day, and they are only 21 km apart, so a lenient rule like this one can't tell which was active.
 - **Next:** find out why the peaks sit east of the sites. Traffic geometry, receiver delay at onset and ducting are possible causes. Then test against days with a single known active site and time.
 
+## A350s in the raw traces: visible while degraded, and slow to clear (23 Oct 2026)
+
+This tests the visibility hypothesis from verdict 34 on all 19 days of raw traces extracted so far: the southern Baltic box
+(54.8–57°N, 15–19°E) inside a region of 52–60°N, 8–26°E. Tool: `tools/trace_box.py types`.
+
+**Method.** Each day is classed by its own share of dark crossings, all types together: jammed at 30% or more (9 days,
+one a partial archive), quiet under 10% (5 days), in between otherwise (5 days). Only crossings whose median altitude in
+the box is FL300 or above count, so the families are compared at the same altitude.
+
+| Crossings at FL300+ | Jammed: seen | Jammed: dark | Jammed: NACp < 8 while seen | Quiet: seen | Quiet: dark | Quiet: NACp < 8 while seen |
+|---|---|---|---|---|---|---|
+| A350 (224 and 131 crossings; 75 and 62 airframes) | 89% | 9% | 74% | 92% | 1% | 28% |
+| 777 | 61% | 31% | 22% | 94% | 3% | 8% |
+| 787 | 59% | 35% | 3% | 88% | 6% | 1% |
+| A330 | 32% | 53% | 28% | 90% | 5% | 13% |
+| Narrowbodies (2,809 and 1,693) | 43% | 52% | 19% | 93% | 3% | 5% |
+
+- **Inside jamming, A350s stay visible and other types go dark.**
+  - A350s had the highest seen share on 7 of the 8 full jammed days. On 25 Apr 2025, 777s and 787s were slightly higher.
+  - On the three worst days (15 Jun 2025, 2 Jan and 9 May 2026), A350s were seen on 90–95% of crossings, against 8–28% for narrowbodies and 0–57% for 777s.
+- **The quiet days rule out coverage.** Every family was seen on 88–94% of crossings, so the gaps on jammed days aren't receiver coverage.
+- **A second effect: A350 degraded episodes last longer.**
+  - On quiet days, 28% of A350 positions were degraded, against 1–8% for the other families, with no difference in visibility.
+  - An episode is a run of degraded minutes at FL200+, with gaps of up to 3 minutes bridged. A350 and A380 episodes last a median of 8 minutes on quiet days and 17 minutes on jammed days. For narrowbodies, 777s and 787s the median is 2 minutes.
+  - 11–16% of A350/A380 episodes last over an hour, against at most 4% for the others.
+  - Isolated onsets (peers within 150 km healthy) are only 1.6–1.9 times as frequent per aircraft-hour as for other families. In this region there's no sign of A350s and A380s dropping together in different places: 0 synchronous onsets, against 0.9 expected by chance.
+- **A documented cause fits.**
+  - Australia told an ICAO regional meeting in June 2025 that A359s, A388s and A35Ks were dropping off controllers' screens because their ADS-B NACp went to zero.
+  - Airbus's initial reports put it down to two systems interacting. When the ADIRU marks a satellite used in the position as degraded, the AESS sets NACp to zero "even if the ADS-B position is considered valid".
+  - The episodes lasted from several minutes to 45 minutes, and nearby aircraft weren't affected.
+  - That matches both effects here: the position keeps being broadcast but is flagged as poor, and one degraded satellite can hold the flag down.
+
+**Reading.** Two earlier findings most likely measure how A350 and A380 avionics report accuracy, not lasting effects of interference on those aircraft: the 19× A350 over-representation in the post-exposure table (verdict 27), and the A350-heavy central-Europe bursts (verdicts 22–23). This is an inference. The Australian paper describes a different trigger (natural signal degradation), and Airbus's own detail isn't public. Consequences for the method:
+- Inside strong jamming, the degraded share is carried by A350s and the few others that stay visible. The fall in aircraft count is the better severity measure (the map's "Fewer aircraft than usual" view).
+- A350 and A380 accuracy-only drops should be counted apart in the burst and post-exposure measures. Proposed next: rerun burst detection without them on the validated days and see which bursts remain.
+
+Source (retrieved 23 Oct 2026): Australia, "ADS-B GNSS performance issues in Australia", ICAO APANPIRG CNS SG/29, Information Paper 05, Bangkok, 16–20 Jun 2025: [icao.int](https://www.icao.int/sites/default/files/APAC/Meetings/2025/2025%20CNS%20SG29/4-Information%20Papers/IP05_AUS-AI.8.2-ADS-B-GNSS-Performance-Issues-in-Australia.pdf).
+
 ## Next
 
 1. ~~Read the raw traces for 9 May 2026~~ **Done:** position loss (verdict 34). January and February show the same (verdict 35).
 2. ~~A missing-aircraft measure~~ **Done (22 Oct 2026):** the map's "Fewer aircraft than usual" view (each hex's count against its 14-day median), and hollow dots on the daily trend for days under half the area's usual aircraft-hexes.
 3. **Why the Baltic is worse at night: partly answered** (verdict 36). It's not altitude, it's partly carried in, and mostly local. Left: a route-by-route comparison, and more days.
 4. **Positive controls for the ADS-B lane** remain the announced US tests: WSMR is verified and Point Mugu is confirmed. The Kurils and Jammertest don't work for this lane.
-5. **Test the A350 visibility hypothesis.** For each type, compare dark crossings with degraded-but-visible crossings through known jamming, then recompute the post-exposure type table counting dark aircraft.
+5. ~~Test the A350 visibility hypothesis~~ **Done (verdict 43):** confirmed. A350/A380 degraded episodes also last 4–8 times longer, which fits a documented avionics behaviour. Next: count A350/A380 accuracy-only drops apart in the burst and post-exposure measures, and rerun the validated days.
 
 Sources for this section (retrieved 22 Oct 2026):
 - Danish Defence, "Danish and Polish forces will be training together on Bornholm", 4 May 2026: [forsvaret.dk](https://www.forsvaret.dk/en/news/2026/danske-og-polske-soldater-traner-sammen-pa-bornholm/).
