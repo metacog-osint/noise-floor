@@ -297,6 +297,10 @@ count.
 - Caveat: the rule was designed after seeing the Florida case, and its thresholds weren't tuned on other days. The
   held-out days show it doesn't disturb the checks.
 
+## The Gulf after the March 2026 surge (24 Oct 2026)
+
+A check registered in `docs/validation/cygnss.md` (section 10) before download: v0.4 active share of aircraft-hours in the Gulf region on the 15th of July–October 2026 against the 15th of November 2025–January 2026. Before: 0.000% on all three days (98,056 aircraft-hours). After: 0.178% (135,862 aircraft-hours), present on all four days (0.05–0.36%). Aircraft spoofing persisted in the Gulf for months after the surge, while CYGNSS stayed raised and aircraft NACp read mostly clean.
+
 ## 6. Next
 
 1. **Held-out test, rules fixed first:** v0.3 frozen, on days not used here (for example from the Oct 2025 – Oct 2026 backfill period), scored on the same checks.
