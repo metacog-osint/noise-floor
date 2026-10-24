@@ -643,8 +643,9 @@ def grade(members, day_obs, kp):
         hits = [(f, d) for f, d in hits if d is not None]
         if hits:
             match[o["id"]] = [{"test": f["detail"]["test_id"], "km": d, "obs": f["id"]} for f, d in hits]
-    if effects and h3eff and len(match) == len(effects):
-        planned = "P1"
+    timed = any(o["id"] in match and not o["kind"].startswith("cygnss") for o in effects)
+    if effects and h3eff and len(match) == len(effects) and timed:   # CYGNSS cells are timed only to the day, so they
+        planned = "P1"                                                # can't on their own place an effect inside a window
         excl["planned_test"] = ("planned", "P1", {"matches": match})
     elif match:
         excl["planned_test"] = ("partial", "P-", {"matches": match, "why": f"{len(match)} of {len(effects)} effect "
