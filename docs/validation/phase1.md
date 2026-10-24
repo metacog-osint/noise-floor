@@ -306,6 +306,7 @@ Then:
 | 39 | False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024 (66.5–69.5°N, 17–25°E) | 0.0% and 1.0% degraded, against 0.0% on 27 Feb (88–104 aircraft-hexes a day) | **Pass.** A weather-radar artefact leaves no GNSS signal (coverage there is thin) |
 | 40 | Radio-horizon localizer, first version (southern Baltic; 9 May, 2 Jan, 1 Feb, 24 Feb 2026) | Stacked best crossing at 55.10°N 19.52°E, offshore about 55 km NW of Baltiysk, with NACp events at 80% of the radio horizon. Day by day, every top peak lies within about 20–80 km of the western Sambia peninsula | **Points at the Sambia coast, not yet a fix.** The reach scale was tuned on the same days and moves the peak by up to about 50 km |
 | 41 | Localizer against the 2025 TDOA fixes (Gattis, Cydejko & Akos 2026), scored with settings fixed in advance | Top peak 20 km from the Baltiysk-harbour fix on 3 Apr; 37, 48 and 45 km from the coastal-site fix on 15 Apr, 17 Apr and 21 Jun (1 hit of 4 at 25 km; 0 of 2 in the interference windows). The target cell always ranked in the top 2% of 3,496 cells. Mean miss 38 km, against 38 km for naming Kaliningrad city and 52 km for the centroid of onsets | **Fail.** It finds the area but not the site: the two TDOA sites are 21 km apart, finer than the localizer resolves |
+| 44 | Localizer v3 (heading-balanced) against v2 on a second held-out set (10 and 20 Apr, 10 and 20 May, 20 Jun 2025; rules fixed before download) | v3: 3 hits of 5 at 25 km, mean 23.1 km (5.5 km on 10 Apr). v2: 2 of 5, 30.6 km. Baselines: Kaliningrad city 0 of 5 (38.4 km), onset centroid 2 of 5 (42.9 km), fixed point 54.70°N 20.24°E 5 of 5 (22.9 km) | **Fail against the constant guess.** v3 improves on v2, but one fixed point between the two sites does as well every day. The 25 km rule can't separate a localizer from a constant when two sites 21 km apart are both active; the next test needs single-site days or a tighter radius |
 | 43 | A350 visibility hypothesis: 19 days of raw traces over the southern Baltic box (crossings at FL300+; 9 jammed and 5 quiet days) | Jammed days: A350s seen on 89% of 224 crossings (75 airframes), 74% of their positions degraded; narrowbodies seen on 43% of 2,809, 777s 61%, 787s 59%. Highest seen share on 7 of 8 full jammed days. Quiet days: every family seen on 88–94%, but 28% of A350 positions degraded against 1–8%. Degraded episodes: median 8–17 min for A350/A380, against 2 min | **Confirmed, plus a second effect.** A350s keep broadcasting degraded positions where other types go dark, and their degraded episodes last 4–8 times longer. Both fit a documented ADIRU–AESS behaviour that sets NACp to zero when one satellite is degraded (ICAO CNS SG/29 IP/05). The type over-representation is most likely a reporting artefact |
 | 42 | Localizer v2 on five held-out Apr–Jun 2025 days (method frozen in 38a495e before they were downloaded) | Top peak 20.4, 24.7, 30.1 and 17.9 km from the nearest TDOA site (3 hits of 4 at 25 km; 11 Jun untested, 76 onsets on a partial day). Mean 23 km, against 38 km for Kaliningrad city and 96 km for the onset centroid | **Pass on the rule, area-level only.** The peaks sit about 20 km east of both sites, so a fixed guess there would do as well, and the test can't tell which site was active |
 
@@ -549,6 +550,37 @@ the box is FL300 or above count, so the families are compared at the same altitu
 - A350 and A380 accuracy-only drops should be counted apart in the burst and post-exposure measures. Proposed next: rerun burst detection without them on the validated days and see which bursts remain.
 
 Source (retrieved 23 Oct 2026): Australia, "ADS-B GNSS performance issues in Australia", ICAO APANPIRG CNS SG/29, Information Paper 05, Bangkok, 16–20 Jun 2025: [icao.int](https://www.icao.int/sites/default/files/APAC/Meetings/2025/2025%20CNS%20SG29/4-Information%20Papers/IP05_AUS-AI.8.2-ADS-B-GNSS-Performance-Issues-in-Australia.pdf).
+
+## A second held-out test: heading-balanced v3 against v2 (23 Oct 2026)
+
+**v3** is v2 with `--balance`: each onset is weighted by 1 / (onsets in its 30° heading sector), so one dominant approach
+direction can't trade location against reach along its own line. It was developed on the six development days (3, 15 and
+17 Apr and 21 Jun 2025; 2 Jan and 9 May 2026), where its nearest-site distances were 11, 5, 28, 20, 6 and 20 km.
+
+**Rules, fixed before download** (about 23:00 CDT on 23 Oct 2026):
+- Days by date rule: the 10th and 20th of April–June 2025. 10 June has only a temporary archive, so it was dropped, leaving
+  10 Apr, 20 Apr, 10 May, 20 May and 20 Jun.
+- Both versions use the same command as the first held-out test (`--fit --nacp-only --grid 53,57.5,13,25 --step 0.1`), with
+  v3 adding `--balance`.
+- A hit is a top peak within 25 km of either TDOA site. Under 300 onsets in the grid counts as untested.
+- Three baselines: Kaliningrad city, the day's onset centroid, and the fixed point 54.70°N 20.24°E (the cluster of v2's
+  first held-out peaks). The fixed point tests whether a version does better than a constant guess.
+
+| Day | Onsets in grid | v2 nearest site | v3 nearest site | Kaliningrad city | Onset centroid | Fixed point |
+|---|---|---|---|---|---|---|
+| 10 Apr | 566 | 47.5 km | **5.5 km** (coastal; that cell ranked 1st) | 38.4 km | 17.1 km | 22.9 km |
+| 20 Apr | 637 | 17.9 km | 17.9 km | 38.4 km | 47.2 km | 22.9 km |
+| 10 May | 847 | 29.9 km | 24.7 km | 38.4 km | 14.2 km | 22.9 km |
+| 20 May | 697 | 39.8 km | 39.8 km | 38.4 km | 26.3 km | 22.9 km |
+| 20 Jun | 907 | 17.9 km | 27.5 km | 38.4 km | 109.9 km | 22.9 km |
+| **Hits at 25 km, mean** | | 2 of 5, 30.6 km | 3 of 5, 23.1 km | 0 of 5, 38.4 km | 2 of 5, 42.9 km | **5 of 5, 22.9 km** |
+
+- **v3 is better than v2:** one more hit and 7.5 km closer on average. On 10 Apr it put the coastal site's own cell first.
+- **Neither beats a constant guess.** The fixed point is a hit every day, because it lies between the two sites, which are only
+  21 km apart. With both sites often active, a 25 km rule can't tell a localizer from a constant here. This test settles
+  that and says nothing finer.
+- **What would test it properly:** days or hours with a single known active site, a tighter radius (about 10 km), or a
+  different jammer far from any second site.
 
 ## Next
 

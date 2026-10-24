@@ -130,18 +130,18 @@
       "phase": "Prototype",
       "summary": "Narrow down where a jammer sits from where aircraft lose and regain GNSS.",
       "what": "A jammer on the ground can only reach aircraft above its radio horizon. Each aircraft's first jammed position and altitude define a horizon circle, and where many circles' edges meet points to the source area.",
-      "how": "tools/horizon_fix.py fits the jammer's reach from the data and scores candidate cells by how tightly aircraft onsets agree. Scored against a 2025 TDOA network's fixes in Kaliningrad: the first version failed; the second, frozen before five held-out days, was within 25 km of a known site on 3 of 4 days.",
+      "how": "tools/horizon_fix.py fits the jammer's reach from the data and scores candidate cells by how tightly aircraft onsets agree. Scored against a 2025 TDOA network's fixes in Kaliningrad over two held-out sets: the best version is within 25 km of a known site on 3 of 5 days, but a single fixed point between the two sites does as well.",
       "data": [
         "adsb.lol daily archive"
       ],
-      "notes": "Gives an area, not a site: its peaks sit about 20 km east of both known sites, and two sites 21 km apart can't be told apart. Positions stay off the public map.",
+      "notes": "Gives an area, not a site: two sites 21 km apart can't be told apart, and the test can't yet separate it from a constant guess. Next: days with a single known active site. Positions stay off the public map.",
       "links": [
         [
           "Research note",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/research/2026-10-14-baltic-jammer-2024.md"
         ],
         [
-          "Validation (verdicts 40–42)",
+          "Validation (verdicts 40–44)",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md"
         ]
       ]
