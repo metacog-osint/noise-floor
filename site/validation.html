@@ -92,6 +92,16 @@
 <p>About 80% of the cells CYGNSS flags have no aircraft coverage: the Red Sea, Iran, Iraq, Myanmar, Sudan and the Arabian Sea. It covers only about 38°N to 38°S, so not the Baltic. Its satellites also stop returning data for minutes at a time over Iraq, Iran and the Levant; the cause isn't confirmed.</p>
 <p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/cygnss.md">Full CYGNSS validation report</a></p>
 
+<h3>Ground reference stations</h3>
+<p>Permanent GNSS reference stations log every satellite's signal strength. Six European stations 110–486 km from the Kaliningrad coast were tested on six jammed days and two quiet days, with the rule fixed before any download.</p>
+<div class="tw"><table>
+  <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Do stations near the southern Baltic see the interference that aircraft see?</td><td>No flagged minutes on any of 48 station-days, while aircraft within 150 km were degraded for 1,945 minutes. A ground antenna sees a coastal jammer only within about 35–60 km, against about 410 km for an aircraft at cruise</td><td><span class="chip st-planned">Null (expected)</span></td></tr>
+  </tbody>
+</table></div>
+<p>The detector itself works: it caught a local drop at one Latvian station on 16–17 May 2026 that its neighbours didn't see. <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/ground-stations.md">Full ground-station report</a></p>
+
 <h2 id="s1rfi">C-band interference from Sentinel-1 (prototype)</h2>
 <p>Sentinel-1 radar products carry the processor's own reports of radio interference in each burst. Read alone, without the imagery, they show where C-band emitters such as military radars were heard.</p>
 <div class="tw"><table>

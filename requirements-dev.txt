@@ -1,2 +1,3 @@
 matplotlib
 pillow    # collectors/chayka.py reads the DL0AO monitor image
+hatanaka>=2.8    # tools/station_cn0.py (Hatanaka-compressed RINEX)

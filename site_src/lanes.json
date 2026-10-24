@@ -299,18 +299,22 @@
       "phase": "Prototype (CYGNSS, Oct 2026)",
       "summary": "GNSS reflectometry, radio occultation, ground reference networks and L-band radiometers.",
       "what": "CYGNSS GNSS-reflectometry has been used to localize a jammer (the Shiraz case). COSMIC-2 radio-occultation amplitude can indicate ground jamming power. CORS/IGS ground stations record degradation at fixed sites, and SMOS/SMAP map 1.4 GHz interference.",
-      "how": "CYGNSS first: the noise floor in each delay-Doppler map, against a same-day baseline for the same spacecraft, antenna and land/sea mix (tools/cygnss_rfi.py). On six days it separated aircraft-jammed from aircraft-clean areas with AUC 0.98, caught 98% of jammed cells at a threshold fixed in advance, and stayed quiet over control areas. About 80% of the areas it flags have no aircraft coverage, such as the Red Sea, Iran and Myanmar. Ground reference stations are next.",
+      "how": "CYGNSS first: the noise floor in each delay-Doppler map, against a same-day baseline for the same spacecraft, antenna and land/sea mix (tools/cygnss_rfi.py). On six days it separated aircraft-jammed from aircraft-clean areas with AUC 0.98, caught 98% of jammed cells at a threshold fixed in advance, and stayed quiet over control areas. About 80% of the areas it flags have no aircraft coverage, such as the Red Sea, Iran and Myanmar. Ground reference stations: tools/station_cn0.py compares each EPN/IGS station's GPS L1 C/A C/N0 with its own quiet days at the same sky position and flags simultaneous drops on most satellites. First test (southern Baltic; 6 stations 110–486 km from the Kaliningrad coast; 6 jammed days, 2 controls): no flags on any of 48 station-days, while aircraft within 150 km were degraded. Coastal ground jammers are beyond these stations' line of sight, so the null was expected; the next test needs stations within sight of an emitter.",
       "data": [
         "NASA CYGNSS",
         "UCAR COSMIC-2",
-        "CORS/IGS networks",
+        "EPN and IGS stations via BKG (CC BY 4.0); NOAA CORS",
         "ESA SMOS, NASA SMAP (licences UNVERIFIED for these products)"
       ],
-      "notes": "Location is coarse: the antenna beam is a few hundred km wide, so the map says where satellites were exposed, not where a transmitter is. Coverage is within about 38° of the equator (no Baltic). Not on the public map yet. Licences are checked before any other product here feeds a layer.",
+      "notes": "Location is coarse: the antenna beam is a few hundred km wide, so the map says where satellites were exposed, not where a transmitter is. Coverage is within about 38° of the equator (no Baltic). Not on the public map yet. Licences are checked before any other product here feeds a layer. A ground station sees a ground jammer only within roughly 35–60 km (line of sight).",
       "links": [
         [
           "CYGNSS validation",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/cygnss.md"
+        ],
+        [
+          "Ground-station validation",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/ground-stations.md"
         ]
       ]
     },
