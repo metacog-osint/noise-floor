@@ -101,7 +101,12 @@ def main():
     test_gaps()
     test_group_median()
     test_excess_leaves_hot_cells_out_of_the_baseline()
-    test_land_mask_and_footprint_smoothing()
+    try:                                # land_mask uses matplotlib.path, which CI's requirements don't install
+        import matplotlib.path  # noqa: F401
+    except ImportError:
+        print("skip test_land_mask_and_footprint_smoothing (matplotlib not installed)")
+    else:
+        test_land_mask_and_footprint_smoothing()
     test_subset_url_has_no_secret()
     test_scoring_helpers()
     print("test_cygnss_rfi: ok")
