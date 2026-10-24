@@ -312,6 +312,15 @@ def test_cygnss_fusion_distance():
     far_ = [cyg_row(lat + 420 / 111.2, lon)]           # ~420 km: no link, two events, no S3
     ev, _ = run_cyg(list(gross), far_)
     assert len(effects(ev)) == 2 and all(field(x, "support") == "Single-source, unverified" for x in effects(ev))
+    # a CYGNSS cell between two separate ADS-B events attaches to one of them; it never bridges the two
+    import math
+    east = h3.latlng_to_cell(lat, lon + 560 / (111.2 * math.cos(math.radians(lat))), 2)   # not adjacent, under the cap
+    two = from_file(anomalies=[anomaly(ME, 10, 11, "jam"), anomaly(east, 10, 11, "jam")])
+    k = 111.2 * math.cos(math.radians(lat))
+    mid = [cyg_row(lat, lon + 150 / k), cyg_row(lat, lon + 400 / k)]   # a chain: A - cell - cell - B
+    ev, _ = run_cyg(list(two), mid)
+    gross_events = [x for x in effects(ev) if x["effect_measure"] == "gross"]
+    assert len(gross_events) == 2, [x["members"] for x in effects(ev)]
     # dropouts are placed by the spacecraft: they never fuse with ADS-B and never count toward support
     drop = [cyg_row(lat, lon, n=5, med=None, dropout=0.9)]
     ev, _ = run_cyg(list(gross), drop)
