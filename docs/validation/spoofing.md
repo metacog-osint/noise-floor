@@ -256,8 +256,11 @@ checked against the FAA SPANS advisories directly.
   - 3 Apr 2025, 08:25–08:51Z (2): no advisory found. WSMRNM 25-41 lists 13–15 March and 6–9 April, not 3 April.
 - **Northern Florida, 6 Mar 2024, 17:51–18:34Z (23 episodes): no advisory found** (searched for Jacksonville, Eglin and
   Okaloosa; the nearest is EGLNFL 24-02, 1–12 April 2024). About 20 aircraft jumped to separate tracks within the same few
-  minutes (18:20–18:24Z), mostly with good NACp (9–10) and no MLAT to cross-check. That fits either a real event or a
-  data artefact in the aggregation; it stays unexplained.
+  minutes (18:20–18:24Z), mostly with good NACp (9–10) and no MLAT to cross-check.
+  - **Resolved (24 Oct 2026): a stale-data replay, not spoofing.** In the raw traces, 34 of the 37 flagged positions lie
+    within 2 km of the same aircraft's own position 17–26 minutes earlier (the other 3 within 2.1–3.7 km). Something in
+    the feed re-sent positions about 20 minutes old for aircraft over northern Florida. No episodes elsewhere started in
+    the same minutes, so it was local, not an aggregator-wide stall.
 
 Advisories (retrieved 24 Oct 2026): WSMRNM 25-08 Rev 1 (https://www.faasafety.gov/files/notices/2025/Apr/WSMRNM_25-08_GPS_Flight_Advisory_Revision_1.pdf);
 WSMRNM 25-06 Rev 2 (https://www.faasafety.gov/files/notices/2025/May/WSMRNM_25-06_GPS_Flight_Advisory_(Revision_2).pdf);
