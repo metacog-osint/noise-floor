@@ -243,6 +243,29 @@ H4 is deliberately modest. In-sample, most of the top spoofed-to cells (73 of 10
   - a new point east of St Petersburg on 20 Jun 2026 (57 aircraft).
 - What the test does and doesn't show: the frozen method generalises to days it never saw, at region level and for the main published points. It doesn't test position accuracy beyond the MLAT cross-check, or offset-track spoofing, which v0.3 misses.
 
+## Control-area episodes against FAA advisories (checked 24 Oct 2026)
+
+The project's FAA file (`data/declared/faa_gps_tests.json`) starts in September 2025, so the in-sample control episodes were
+checked against the FAA SPANS advisories directly.
+
+- **White Sands area: 12 of 14 episodes fall inside announced test windows.**
+  - 17 Apr 2025, 19:16–19:42Z (2 episodes): WSMRNM 25-08 Rev 1, 17 Apr 1830–2059Z.
+  - 15 May 2025, 03:07–05:40Z (4): WSMRNM 25-06 Rev 2, 12–17 May daily 0300–0659Z.
+  - 15 May 2025, 08:33 and 10:16Z (2): WSMRNM 25-05 Rev 2, 12–17 May daily 0700–1130Z.
+  - 15 May 2025, 19:07–20:01Z (4): WSMRNM 25-30, 5–16 May daily 1830–2230Z.
+  - 3 Apr 2025, 08:25–08:51Z (2): no advisory found. WSMRNM 25-41 lists 13–15 March and 6–9 April, not 3 April.
+- **Northern Florida, 6 Mar 2024, 17:51–18:34Z (23 episodes): no advisory found** (searched for Jacksonville, Eglin and
+  Okaloosa; the nearest is EGLNFL 24-02, 1–12 April 2024). About 20 aircraft jumped to separate tracks within the same few
+  minutes (18:20–18:24Z), mostly with good NACp (9–10) and no MLAT to cross-check. That fits either a real event or a
+  data artefact in the aggregation; it stays unexplained.
+
+Advisories (retrieved 24 Oct 2026): WSMRNM 25-08 Rev 1 (https://www.faasafety.gov/files/notices/2025/Apr/WSMRNM_25-08_GPS_Flight_Advisory_Revision_1.pdf);
+WSMRNM 25-06 Rev 2 (https://www.faasafety.gov/files/notices/2025/May/WSMRNM_25-06_GPS_Flight_Advisory_(Revision_2).pdf);
+WSMRNM 25-05 Rev 2 (https://www.faasafety.gov/files/notices/2025/May/WSMRNM_25-05_GPS_Flight_Advisory_(Revision_2).pdf);
+WSMRNM 25-30 (https://www.faasafety.gov/files/notices/2025/Apr/WSMRNM_25-30_GPS_Flight_Advisory.pdf);
+WSMRNM 25-41 (https://www.faasafety.gov/files/notices/2025/Mar/WSMRNM_25-41_GPS_Flight_Advisory.pdf, search summary only);
+EGLNFL 24-02 (https://www.faasafety.gov/files/notices/2024/Mar/EGLNFL_24-02_GPS_Flight_Advisory.pdf, search summary only).
+
 ## 6. Next
 
 1. **Held-out test, rules fixed first:** v0.3 frozen, on days not used here (for example from the Oct 2025 – Oct 2026 backfill period), scored on the same checks.
