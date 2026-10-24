@@ -7,6 +7,8 @@
 
 ## Bottom line
 
+- **A full year (section 10): 383 days, AUC 0.974 over 746,753 paired cell-days, 97.7% of jammed cells caught at 1 dB.**
+  The March 2026 Gulf surge shows in both sensors; afterwards CYGNSS fades more slowly than the aircraft share.
 - **Held-out test (section 9): the method holds on 21 unseen days.**
   - Pooled AUC 0.974 (224 jammed, 39,713 clean cells), 98.7% hit and 15.8% false alarms at 1 dB, 0.7% of control cell-days raised.
   - With each region left out in turn the AUC stays at 0.959 or above.
@@ -683,6 +685,61 @@ Sites with 10+ in-window passes:
   - Per pass: when CYGNSS sees an announced test, the on/off timing matches the published windows within the pass sampling.
   - Most announced windows show nothing.
   - Localisation is the weak point (Yuma hearing White Sands).
+
+## 10. A full year (383 days, 1 Oct 2025 – 20 Oct 2026; descriptive, 24 Oct 2026)
+
+Every day with aircraft tables was fetched (344 more days, about 13 GB of subsets, no failures; 304 days with all seven
+spacecraft, none with fewer than four) and gridded with the frozen method. This is a description, not a new test: the
+held-out test in section 9 is the test.
+
+**Against the aircraft map, pooled over the year (res 3):** AUC 0.974 over 746,753 paired cell-days (4,705 aircraft-jammed,
+727,996 aircraft-clean); at 1 dB, 97.7% of jammed cells caught and 16.1% of clean cells flagged; at 2 dB, 87.5% and 5.8%.
+Spearman ρ 0.33 worldwide, 0.38 over the Middle East–Asia window. The product's ADC bit-ratio flag scores AUC 0.951,
+the dropout share 0.71, the kurtosis flag 0.65.
+
+**By region and month** (monthly median of daily values: CYGNSS median excess in the box | aircraft degraded share,
+GPSJam-style; boxes in `cygnss_year_regions.py`, the scratch script behind this table):
+
+| Month | Persian Gulf | Gulf of Oman / Hormuz | Levant | Iraq | Punjab border | Myanmar | Red Sea | Central Pacific (control) |
+|---|---|---|---|---|---|---|---|---|
+| 2025-10 | 1.9 dB, 0.9% | 0.7 dB, 0.4% | 3.6 dB, 1.0% | 4.0 dB, – | 0.8 dB, 0.2% | 2.7 dB, 2.1% | 2.8 dB, 4.8% | −0.1 dB |
+| 2025-12 | 1.5 dB, 0.7% | 0.5 dB, 0.3% | 3.5 dB, 2.0% | 4.0 dB, – | 1.9 dB, 3.4% | 2.7 dB, 2.5% | 2.3 dB, 2.0% | −0.1 dB |
+| 2026-02 | 1.5 dB, 0.5% | 0.6 dB, 0.3% | 3.5 dB, 0.2% | 4.0 dB, – | 1.3 dB, 6.8% | 2.8 dB, 1.4% | 2.2 dB, – | 0.0 dB |
+| 2026-03 | **3.9 dB, 63.1%** | **3.8 dB, 25.4%** | 3.4 dB, 26.8% | 4.0 dB, – | 3.4 dB, 7.5% | 2.7 dB, 1.5% | 2.9 dB, – | −0.1 dB |
+| 2026-04 | 3.7 dB, 6.3% | 2.4 dB, 2.1% | 3.5 dB, 12.6% | 4.0 dB, – | 1.7 dB, 3.6% | 2.7 dB, 0.7% | 2.4 dB, – | −0.1 dB |
+| 2026-05 | 4.0 dB, 56.1% | 3.9 dB, 31.9% | 3.4 dB, 8.3% | 4.0 dB, – | 3.2 dB, – | 2.7 dB, 0.6% | 2.8 dB, – | −0.1 dB |
+| 2026-06 | 3.9 dB, 21.0% | 3.8 dB, 25.4% | 3.4 dB, 3.4% | 3.8 dB, – | 2.7 dB, – | 2.6 dB, 0.5% | 2.2 dB, – | −0.1 dB |
+| 2026-07 | 3.5 dB, 8.5% | 2.4 dB, 3.0% | 3.4 dB, 4.3% | 3.8 dB, 1.4% | 1.7 dB, – | 2.6 dB, 0.3% | 1.8 dB, – | −0.1 dB |
+| 2026-08 | 3.1 dB, 2.3% | 1.7 dB, 3.3% | 3.3 dB, 4.5% | 3.8 dB, 0.5% | 2.0 dB, 0.9% | 2.7 dB, 0.3% | 2.0 dB, – | −0.1 dB |
+| 2026-09 | 2.7 dB, 1.4% | 1.3 dB, 1.1% | 3.3 dB, 4.8% | 3.7 dB, 0.4% | 2.6 dB, 0.7% | 2.6 dB, 0.1% | 2.2 dB, – | −0.1 dB |
+| 2026-10 | 2.5 dB, 1.4% | 1.3 dB, 0.8% | 3.4 dB, 5.5% | 3.8 dB, 0.5% | 3.1 dB, 3.8% | 2.7 dB, 0.3% | 2.0 dB, – | −0.1 dB |
+
+"–" means fewer than 50 aircraft in the box (or, for monthly values, no such day). Australia's interior control stayed
+at 0.0–0.5 dB with no aircraft degraded.
+
+- **The Gulf surge of March 2026 is in both sensors.** Both step up together in March (aircraft 63%, CYGNSS 3.9 dB from
+  1.5–1.9 dB). Public reporting describes a GNSS interference surge across the Gulf that month, with around 1,000 ships
+  affected in the Persian Gulf and Gulf of Oman according to the UT Austin Radionavigation Laboratory, and ships shown at
+  inland points and airports (sources below). Causes and attribution are outside this lane.
+- **"The Gulf stays raised after June" is a slow fade, not a plateau.** CYGNSS decays from 3.9 dB (June) to 2.5 dB
+  (October) while the aircraft share falls from 21% to 1.4%, and stays above the October 2025–February 2026 level.
+  Candidates, none tested: spoofing, which raises the noise floor without lowering aircraft NACp (the aircraft spoofing
+  detector found an inland UAE point on 20 Jun 2026; reports describe ship spoofing in the area); emitters CYGNSS hears
+  over water that aircraft routes avoid; and lower-power interference below what aircraft receivers flag.
+- **The Levant, Iraq and Myanmar sit at a steady 2.6–4.0 dB all year** while the aircraft share moves from 0.1% to 27%. In
+  those places CYGNSS reads persistent exposure (and in the Levant may be near saturation, with dropouts censoring the
+  core, section 3.3); it doesn't follow the aircraft's episodes.
+- **The Punjab border varies** between 0.6 and 3.4 dB, with highs in March, May and October 2026; aircraft coverage there
+  is thin on many days (section 9).
+
+Reproduce: `python tools/cygnss_rfi.py fetch|grid <days>`, then `python tools/cygnss_rfi.py validate <all days> --out
+data/cygnss/validation_year_r3.json`.
+
+Sources for section 10 (retrieved 24 Oct 2026): UT Austin Radionavigation Laboratory, "Hundreds of Ships in Middle East
+Struggle Against GNSS Interference" (https://radionavlab.ae.utexas.edu/?p=5268); Focal Point Positioning, "GPS jamming
+and spoofing: What the Gulf reveals about the scale of the problem"
+(https://focalpointpositioning.com/resources/insights/blogs/gps-spoofing-and-jamming-what-the-gulf-reveals-about-the-scale-of-the-problem/);
+New Space Economy, 20 Mar 2026, a GPSJam-based summary (secondary). Ship counts differ between sources and are estimates.
 
 ## Sources
 
