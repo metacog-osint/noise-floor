@@ -104,3 +104,30 @@ mostly from January and February (19–42 aircraft-hours a day) and are rarer fr
 - Next, as a new pre-registration on held-out days: check 3 redefined to exclude aircraft-hours whose positions sit at a
   shared fixed point (the spoofing detector's own shared-point rule), with MLAT disagreement as independent truth where it
   exists. Nothing here goes on the site until that passes and Tom has reviewed it.
+
+---
+
+## Second test, on held-out days (pre-registered 25 Oct 2026, before any of these days was run)
+
+**Why a second test.** The first failed check 3 because aircraft held at false fixed points had no v0.4 episode, so they
+counted as "jammed, not spoofed". The revised check 3 excludes aircraft-hours whose positions stay at one point, which a
+flown track can't do at 150 kt or more for an hour. Everything else is unchanged.
+
+**Method:** as above (pairs, thresholds, runs, unit), plus one field per aircraft-hour: **spread**, the 90th percentile of
+the pairs' distances from the hour's median position, in km. Code: `tools/roll_turn.py` as committed after this section.
+
+**Days, fixed now:** every 2024–2025 day with a raw archive on disk and v0.4 spoofing outputs, none of them used in the
+first test: 20 and 27 Feb, 5 and 6 Mar, 20 Jun, 13, 14, 15 and 20 Oct 2024; 20 Feb, 3, 10, 15, 17, 20 and 25 Apr, 10, 15,
+20 and 25 May, 15, 20 and 21 Jun, 20 Oct, 15 Nov and 15 Dec 2025 (26 days; 11 Jun 2025 left out, its archive on disk is
+truncated). Spoofing episodes from v0.4 (`data/spoofing_v04/`).
+
+**Checks, fixed now:**
+1. **Control:** central Europe (48–52N, 5–15E), every aircraft-hour: mismatch rate at most 1.0%.
+2. **Known spoofing:** aircraft-hours inside active v0.4 episodes: at least 5% and at least 5 times the control (untestable
+   under 30 aircraft-hours with 5 or more pairs).
+3. **Jammed, not spoofed, not held at a point:** NACp < 8 on half the pairs or more, no v0.4 episode, spread at least 10 km,
+   Baltic (53–61N, 14–32E): at most 3 times the control rate, or at most 0.05% if 3 times the control is lower.
+4. **Exploratory:** aircraft-hours with spread under 10 km and a run, outside episodes, by place (the fixed points).
+
+A pass on all three would make roll-turn mismatch a candidate spoofing indicator for review by Tom; any failure of check
+1 or 3 ends it.
