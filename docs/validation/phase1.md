@@ -709,7 +709,7 @@ The crossing test on wide-region extracts (52–61.5N, 8–34E, `data/trace_box_
 | 20 Jun 2025 | 87% (15 crossings) | 52% | 96% |
 | 20 Oct 2025 | 28% | 46% | 96% |
 | 15 Dec 2025 | 21% | 39% | 99% |
-| 17 Jan – 20 Jun 2026 (5 days) | 25–37% | 34–41% | 98–100% |
+| 17 Jan – 20 Jun 2026 (4 days) | 25–37% | 34–41% | 98–100% |
 | 15 Jul – 15 Oct 2026 (4 days) | 6–26% | 20–29% | 96–98% |
 
 - **The change came between June and October 2025**, a few months after the area east of Kaliningrad (verdict 46), and it
