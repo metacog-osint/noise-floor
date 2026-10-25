@@ -100,6 +100,15 @@ def asset_versions():
         ASSET_V[f] = hashlib.sha256(open(os.path.join(SRC, f), "rb").read()).hexdigest()[:10]
 
 
+def data_version(folder):
+    """Short hash of the files in site/data/<folder> (line endings normalised, so Windows and CI agree). Pages ask for
+    /data/<folder>/<file>?v=<hash>, so new page code never meets an older cached data file."""
+    h, d = hashlib.sha256(), os.path.join(OUT, "data", folder)
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        h.update(f.encode()); h.update(open(os.path.join(d, f), "rb").read().replace(b"\r\n", b"\n"))
+    return h.hexdigest()[:10]
+
+
 def render(meta, body, updated, narrow=False):
     layout = meta.get("layout")
     cls = ' class="wide"' if layout == "wide" else (' class="narrow"' if narrow else "")
@@ -249,7 +258,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     fills = {"{{UPDATED}}": e(updated), "{{LANE_COUNT}}": str(len(data["lanes"])),
              "{{STATUS_COUNTS}}": status_counts(data["lanes"]), "{{LANE_GRID}}": lane_grid(data),
-             "{{SOURCE_COUNT}}": str(len(rows))}
+             "{{SOURCE_COUNT}}": str(len(rows)), "{{VESSELS_V}}": data_version("vessels")}
     fills.update(chart_fills())
     written = []
     for name in ("index.html", "map.html", "sea.html", "charts.html", "methods.html", "validation.html", "404.html"):
