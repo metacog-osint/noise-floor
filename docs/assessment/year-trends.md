@@ -12,9 +12,10 @@ reviewed by a person beyond the checks below.*
   from August (6–11% of crossings with positions on 15 Aug, 15 Sep and 15 Oct, against 25–37% before), so the most degraded
   aircraft dropped out of the count (`docs/validation/position-loss.md`). An earlier draft of this page called it the
   year's clearest decline; that was wrong.
-- **Southern Baltic: a regional increase from May 2026.** Northeast Poland and inland Lithuania roughly doubled their
-  shares from May and stayed up; Gdańsk Bay rose from May to August, then returned to its spring level. Kaliningrad
-  itself rose further, but its traffic fell by 70%, so its size can't be read.
+- **Southern Baltic: a regional increase from May 2026, and near-total position loss east of Kaliningrad.** Northeast
+  Poland and inland Lithuania roughly doubled their shares from May and stayed up; Gdańsk Bay rose from May to August,
+  then returned to its spring level. In the Kaliningrad box 79–86% of aircraft heard sent no position at all on the
+  Jun–Oct sample days, which is why its traffic seemed to fall by 70%.
 - **Strait of Hormuz and Cyprus–Levant: two surges at the same time as traffic collapsed.** Hormuz went from 0.8% to a
   median 66% (2 Mar – 3 Apr 2026) and 83% (8 May – 21 Jun), with aircraft-hexes down from about 9,000 to under 400 a
   day. Cyprus–Levant rose from 0.9% to 19% from 28 Feb. Both are back near baseline since June. CYGNSS, which doesn't
@@ -65,7 +66,7 @@ move the share. Each step below lists the aircraft-hex count beside the share fo
 | | 26 Oct – 25 Dec 2025 | 18.7% | 470 | |
 | | 26 Dec 2025 – 16 Jan 2026 | 49.7% | 485 | The known winter surge (verdict 35) |
 | | 17 Jan – 2 May 2026 | 24.7% | 466 | |
-| | 3 May – 21 Oct 2026 | 45.0% | 139 | **Coverage fell**: only 29 of 171 days with data reach 200 aircraft-hexes. Not readable as more interference |
+| | 3 May – 21 Oct 2026 | 45.0% | 139 | **Aircraft lost their positions**: only 29 of 171 days reach 200 aircraft-hexes; 79–86% of aircraft heard there sent no position on the Jun–Oct sample days (`position-loss.md`) |
 | Southern Black Sea offshore Turkey | 1 Oct – 23 Dec 2025 | 47.4% | 1,237 | |
 | | 24 Dec 2025 – 6 Sep 2026 | 64.8% | 858 | |
 | | 7 Sep – 21 Oct 2026 | 38.7% | 223 | Coverage fell too; read with care |
@@ -194,15 +195,15 @@ Northeast Poland and inland Lithuania roughly doubled and stayed up. Gdańsk Bay
 rose from May to August and was back at its spring level by September.
 
 Kaliningrad's daytime share went from 15–17% (Oct 2025 – Apr 2026, apart from January) to 39–51% (May – Oct 2026).
-Why its traffic fell (rerouting of flights to Kaliningrad, feeders lost, or aircraft dark from position loss as on
-9 May) isn't settled; the raw traces for a few days would tell.
+**Settled the same night:** it's position loss. On the Jun–Oct sample days 79–86% of aircraft heard in the Kaliningrad
+box sent no GNSS position (13–18% in Jan–Feb), and the crossing test east of it found 1–3% of crossings with positions
+(verdict 45; `docs/validation/position-loss.md`).
 
 ## What's next
 
 1. ~~Gulf of Finland decline~~ **Explained (position loss, not a decline):** a position-loss measure is needed beside
    every share trend; the AIS GNSS-interference counts from Finland's open AIS remain a useful independent check.
-2. **Kaliningrad from May:** the regional increase looks real (above); find out why Kaliningrad's own aircraft-hexes
-   fell (rerouting, a feeder outage, or position loss as on 9 May) from the raw traces of a few days.
+2. ~~Kaliningrad from May~~ **Settled: position loss** (79–86% of aircraft heard sending no position, Jun–Oct).
 3. ~~The Grodno-area cell~~ **Done (verdict 45):** position loss across all types, a recurring summer season, longer in
    2026. Next: a position-loss measure (MLAT-only and dark aircraft per hex) in the daily pipeline.
 4. **Ankara and northeast Bulgaria:** check the aircraft types and hours; a single operator's fleet can make a cell
