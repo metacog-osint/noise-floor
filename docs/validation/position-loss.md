@@ -52,6 +52,12 @@ Aircraft heard in the Gulf of Finland box: 17 Jan 1,354, 1 Feb 1,217, 16 May 2,0
 - **The controls stay low** (central Europe 1–2%); central Poland's 4–18% is the background of aircraft that never send
   ADS-B positions there, and it rose in summer, which may be traffic mix or a little spill-over.
 
+![Position loss per hex over the Baltic on 15 Sep 2026](img/position_loss_baltic_2026-09-15.png)
+
+*15 Sep 2026: share of aircraft heard that sent no GNSS position, per hex. A band of heavy loss runs from the eastern
+Gulf of Finland through Estonia, Latvia and Lithuania to the Polish–Belarusian border. Blank hexes have no MLAT
+coverage or too few aircraft; they aren't "no loss" (Kaliningrad itself is blank).*
+
 ## Does the Gulf of Finland's falling share mean less interference?
 
 **No. It's aircraft dropping out of the count.** The year analysis found the Gulf of Finland box's degraded share
