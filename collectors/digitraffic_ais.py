@@ -12,7 +12,10 @@ What it subscribes to (one connection, QoS 0):
   vessels-v2/status       the feed's own heartbeat ("updated", epoch s)
 At start, and once per new UTC day, it also fetches one REST snapshot of the vessel register
 (GET /api/ais/v1/vessels, gzip, Digitraffic-User header) so vessels that stay silent on metadata still have identities.
-The REST locations endpoint returns only each vessel's latest position (no history), so it is not used.
+Every --rest-min minutes (default 10; 0 turns it off) it also polls REST locations (GET /api/ais/v1/locations, each
+vessel's latest position) for one field the MQTT messages lack: the AIS UTC-second, `timestamp` (ITU-R M.1371: 0-59 the
+second of the fix, 60 not available, 61 manual input, 62 dead reckoning, 63 positioning system inoperative). 62 and 63
+are the ship's own report that its position fix failed.
 
 Politeness: the client identifies itself as "noise-floor" (MQTT client id "noise-floor; <uuid>" as in Digitraffic's
 Python example, and a Digitraffic-User header on the WebSocket handshake and REST call; no personal data). One
@@ -24,6 +27,8 @@ Outputs (root data/ is gitignored), by receive day in UTC:
   data/ais/digitraffic/YYYY-MM-DD/metadata-HHMMSS-PID.parquet
   data/ais/digitraffic/YYYY-MM-DD/locations.parquet          parts merged ("compacted") at day end and at exit
   data/ais/digitraffic/YYYY-MM-DD/metadata.parquet
+  data/ais/digitraffic/YYYY-MM-DD/fixflags.parquet           REST polls: mmsi, utc_second, t_ext_ms, lat, lon, posAcc,
+                                                             raim, rx_ms (parts fixflags-*.parquet until compacted)
   data/ais/digitraffic/status.json                           PID, counts, last message and flush times (UTC)
 Columns: see LOC_SCHEMA and META_SCHEMA below. rx_ms is our receive time (epoch ms, UTC); src is mqtt or rest.
 
@@ -54,6 +59,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "ais", "digitraffic")
 HOST, PORT, WS_PATH = "meri.digitraffic.fi", 443, "/mqtt"
 REST_VESSELS = "https://meri.digitraffic.fi/api/ais/v1/vessels"
+REST_LOCATIONS = "https://meri.digitraffic.fi/api/ais/v1/locations"
 USER = "noise-floor"
 TOPICS = [("vessels-v2/+/location", 0), ("vessels-v2/+/metadata", 0), ("vessels-v2/status", 0)]
 STALE_S = 180          # no message for this long while connected: drop and reconnect (normal rate is ~30 a second)
@@ -69,6 +75,11 @@ META_SCHEMA = pa.schema([
     ("eta", pa.int32()), ("posType", pa.int8()), ("refA", pa.int16()), ("refB", pa.int16()),
     ("refC", pa.int16()), ("refD", pa.int16()), ("rx_ms", pa.int64()), ("src", pa.string()),
 ])
+FIX_SCHEMA = pa.schema([
+    ("mmsi", pa.int32()), ("utc_second", pa.int8()), ("t_ext_ms", pa.int64()), ("lat", pa.float64()), ("lon", pa.float64()),
+    ("posAcc", pa.bool_()), ("raim", pa.bool_()), ("rx_ms", pa.int64()),
+])
+FIX_KEYS = [f.name for f in FIX_SCHEMA]
 LOC_KEYS = [f.name for f in LOC_SCHEMA]
 META_KEYS = [f.name for f in META_SCHEMA]
 
@@ -209,13 +220,43 @@ def fetch_vessels_snapshot():
     return rows
 
 
+def fix_rows(geojson, rx):
+    """REST locations (GeoJSON) -> fixflags rows. Features without a usable MMSI or position are skipped."""
+    rows = []
+    for f in (geojson or {}).get("features", []):
+        p = f.get("properties") or {}
+        m = _int(f.get("mmsi", p.get("mmsi")), 0, 2**31 - 1)
+        try:
+            lon, lat = (float(x) for x in f["geometry"]["coordinates"][:2])
+        except Exception:
+            continue
+        if m is None:
+            continue
+        rows.append((m, _int(p.get("timestamp"), 0, 63), _int(p.get("timestampExternal"), 0, 2**62), lat, lon,
+                     _bool(p.get("posAcc")), _bool(p.get("raim")), rx))
+    return rows
+
+
+def fetch_locations():
+    """One REST call for every vessel's latest position; returns fixflags rows."""
+    req = urllib.request.Request(REST_LOCATIONS, headers={"Digitraffic-User": USER, "Accept-Encoding": "gzip",
+                                                          "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        body = r.read()
+        if r.headers.get("Content-Encoding") == "gzip":
+            body = gzip.decompress(body)
+    return fix_rows(json.loads(body), int(time.time() * 1000))
+
+
 class Collector:
     def __init__(self, args):
         import paho.mqtt.client as mqtt
         self.mqtt = mqtt
         self.args = args
-        self.loc, self.meta = {}, {}          # day -> rows
-        self.counts = {"location": 0, "metadata": 0, "status": 0, "bad": 0, "connects": 0, "flushes": 0}
+        self.loc, self.meta, self.fix = {}, {}, {}    # day -> rows
+        self.next_rest = 0.0
+        self.counts = {"location": 0, "metadata": 0, "status": 0, "bad": 0, "connects": 0, "flushes": 0,
+                       "rest_polls": 0, "rest_failures": 0, "fix_lost_reports": 0}
         self.last_msg = 0.0
         self.last_status_updated = None
         self.connected = False
@@ -291,11 +332,28 @@ class Collector:
         except Exception as e:
             log(f"REST vessel snapshot failed: {e}")
 
+    def rest_poll(self):
+        """Every --rest-min minutes: REST locations for the UTC-second field (fixflags)."""
+        if not self.args.rest_min or time.time() < self.next_rest:
+            return
+        self.next_rest = time.time() + self.args.rest_min * 60
+        try:
+            rows = fetch_locations()
+        except Exception as e:
+            self.counts["rest_failures"] += 1
+            log(f"REST locations poll failed: {e}")
+            return
+        self.counts["rest_polls"] += 1
+        self.counts["fix_lost_reports"] += sum(1 for r in rows if r[1] in (62, 63))
+        if rows:
+            self.fix.setdefault(day_of(rows[0][-1]), []).extend(rows)
+
     def flush(self, final=False):
         today = utcnow().strftime("%Y-%m-%d")
-        for day in sorted(set(self.loc) | set(self.meta)):
+        for day in sorted(set(self.loc) | set(self.meta) | set(self.fix)):
             for kind, buf, keys, schema in (("locations", self.loc, LOC_KEYS, LOC_SCHEMA),
-                                            ("metadata", self.meta, META_KEYS, META_SCHEMA)):
+                                            ("metadata", self.meta, META_KEYS, META_SCHEMA),
+                                            ("fixflags", self.fix, FIX_KEYS, FIX_SCHEMA)):
                 try:
                     write_part(day, kind, buf.get(day, []), keys, schema)
                     buf.pop(day, None)
@@ -308,6 +366,7 @@ class Collector:
                 try:
                     n = compact(day, "locations", LOC_SCHEMA)
                     compact(day, "metadata", META_SCHEMA)
+                    compact(day, "fixflags", FIX_SCHEMA)
                 except Exception as e:          # parts stay on disk; --compact-only can finish later
                     log(f"compaction failed for {day}: {e}")
                     continue
@@ -338,6 +397,7 @@ class Collector:
             os.remove(stopfile)
         next_flush = time.time() + a.flush_min * 60
         self.snapshot()
+        self.rest_poll()
         self.write_status()
         log(f"start: pid {os.getpid()}, hours {a.hours or 'unlimited'}, flush every {a.flush_min} min -> {OUT}")
         while not self.stop:
@@ -381,6 +441,7 @@ class Collector:
                     self.backoff = 10          # stable again: reset the backoff
             else:
                 time.sleep(1.0)
+            self.rest_poll()                   # no-op until --rest-min minutes have passed
             if time.time() >= next_flush:
                 self.flush()
                 self.snapshot()        # no-op unless a new UTC day has started
@@ -406,6 +467,8 @@ def main():
     ap.add_argument("--hours", type=float, default=0, help="stop after N hours (default: run until stopped)")
     ap.add_argument("--flush-min", type=float, default=5, help="minutes between flushes to disk (default 5)")
     ap.add_argument("--no-snapshot", action="store_true", help="skip the REST vessel-register snapshot")
+    ap.add_argument("--rest-min", type=float, default=10,
+                    help="minutes between REST locations polls for the UTC-second field (default 10; 0 = off)")
     ap.add_argument("--compact-only", action="store_true", help="merge leftover parts for every day, then exit")
     ap.add_argument("--log", default=None,
                     help="append log lines to this file as well as stderr (default <out>/collector.log; '' for none)")
@@ -422,6 +485,7 @@ def main():
             day = os.path.basename(d)
             n = compact(day, "locations", LOC_SCHEMA)
             compact(day, "metadata", META_SCHEMA)
+            compact(day, "fixflags", FIX_SCHEMA)
             print(day, n)
         return
     c = Collector(args)
