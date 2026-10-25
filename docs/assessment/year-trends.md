@@ -6,9 +6,12 @@ reviewed by a person beyond the checks below.*
 
 ## Summary
 
-- **Gulf of Finland / Estonia–Russia border: degradation roughly halved since late July 2026,** from a median 30.6% of
-  aircraft-hexes (1 Oct 2025 – 29 Jul 2026) to 20.4% (30 Jul – 3 Sep) and 15.2% (4 Sep – 21 Oct). Traffic fell only
-  14%, and the fall holds by night and by day and against October 2025. It's the year's clearest sustained decline.
+- **Gulf of Finland / Estonia–Russia border: the degraded share roughly halved from late July 2026, but interference
+  didn't ease.** The share fell from a median 30.6% of aircraft-hexes (1 Oct 2025 – 29 Jul 2026) to 15.2% (4 Sep –
+  21 Oct). **Corrected the same night:** raw traces show aircraft in the eastern Gulf stopped sending positions at all
+  from August (6–11% of crossings with positions on 15 Aug, 15 Sep and 15 Oct, against 25–37% before), so the most degraded
+  aircraft dropped out of the count (`docs/validation/position-loss.md`). An earlier draft of this page called it the
+  year's clearest decline; that was wrong.
 - **Southern Baltic: a regional increase from May 2026.** Northeast Poland and inland Lithuania roughly doubled their
   shares from May and stayed up; Gdańsk Bay rose from May to August, then returned to its spring level. Kaliningrad
   itself rose further, but its traffic fell by 70%, so its size can't be read.
@@ -158,8 +161,9 @@ and some outside the named areas:
 
 ## Checks on the two biggest questions (run the same night)
 
-**Is the Gulf of Finland decline real?** It holds by night and by day, and against the same month a year earlier, with
-traffic steady. Monthly totals from the hourly tables (night 00–03 UTC, day 06–15 UTC; October 2026 has 21 days):
+**Is the Gulf of Finland decline real?** *Superseded: it isn't a decline in interference.* The checks below ruled out
+traffic and time of day but not position loss, which explains it (`docs/validation/position-loss.md`). They're kept as
+run. It holds by night and by day, and against the same month a year earlier, with traffic steady. Monthly totals from the hourly tables (night 00–03 UTC, day 06–15 UTC; October 2026 has 21 days):
 
 | Month | Night share | Night aircraft-hexes | Day share | Day aircraft-hexes |
 |---|---|---|---|---|
@@ -195,8 +199,8 @@ Why its traffic fell (rerouting of flights to Kaliningrad, feeders lost, or airc
 
 ## What's next
 
-1. **Gulf of Finland decline:** check it route by route and by aircraft type (A350/A380 share by month), and against the
-   AIS GNSS-interference counts from Finland's open AIS, which have their own coverage.
+1. ~~Gulf of Finland decline~~ **Explained (position loss, not a decline):** a position-loss measure is needed beside
+   every share trend; the AIS GNSS-interference counts from Finland's open AIS remain a useful independent check.
 2. **Kaliningrad from May:** the regional increase looks real (above); find out why Kaliningrad's own aircraft-hexes
    fell (rerouting, a feeder outage, or position loss as on 9 May) from the raw traces of a few days.
 3. ~~The Grodno-area cell~~ **Done (verdict 45):** position loss across all types, a recurring summer season, longer in
