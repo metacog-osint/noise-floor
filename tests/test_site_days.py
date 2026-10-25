@@ -60,9 +60,9 @@ def main():
         ev = json.load(open(os.path.join(tmp, "events", "2026-10-21.json")))
         assert ev["baseline_days"] == 14 and ev["burst_basis"].startswith("prior 14"), ev
         assert ev["anomalies"][0] == {"m": "jam", "tier": "major", "h0": 3, "h1": 5, "regions": 2, "rh": 4, "peak": 40.0,
-                                      "excess": 35.0, "lat": 59.1, "lon": 28.1, "cells": ["r1", "r2"]}, ev["anomalies"][0]
+                                      "excess": 35.0, "lat": 59.1, "lon": 28.1, "cells": ["r1", "r2"], "hs": None}, ev["anomalies"][0]
         assert ev["anomalies"][1]["m"] == "acc" and ev["anomalies"][1]["cells"] == []
-        assert ev["bursts"] == [{"t0": "13:11Z", "t1": "13:19Z", "peak": 15, "regions": 2, "lat": 57.9, "lon": 19.2, "cells": ["r3"]}]
+        assert ev["bursts"] == [{"t0": "13:11Z", "t1": "13:19Z", "peak": 15, "regions": 2, "lat": 57.9, "lon": 19.2, "cells": ["r3"], "hs": None}]
         assert ev["sbas"] == [{"area": "EGNOS (Europe)", "start": 1, "end": 2, "state": "outage"},
                               {"area": "EGNOS (Europe)", "start": 4, "end": 4, "state": "degraded"}], ev["sbas"]
         assert not S.write_events("2026-10-20", src, os.path.join(tmp, "events"))   # analysis files missing

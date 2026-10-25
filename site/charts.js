@@ -166,7 +166,7 @@
       txt(svg, m.l - 8, y + 13, r.label, "lbl", "end");
       var p = "M" + m.l + " " + y + "H" + (m.l + w - 4) + "Q" + (m.l + w) + " " + y + " " + (m.l + w) + " " + (y + 4) + "V" + (y + 14) +
               "Q" + (m.l + w) + " " + (y + 18) + " " + (m.l + w - 4) + " " + (y + 18) + "H" + m.l + "Z";
-      el("path", { d: p, fill: o.color }, svg);
+      el("path", { d: p, fill: r.color || o.color }, svg);
       txt(svg, m.l + w + 6, y + 13, r.text, "lbl");
       var hit = el("rect", { x: 0, y: m.t + i * row, width: W, height: row, fill: "transparent" }, svg);
       hit.addEventListener("pointermove", function () { tip.show(m.l + w, y, r.label, r.tip); });
@@ -218,12 +218,14 @@
       });
     },
     types: function (box) {
-      var t = DATA.types.rows;
+      var t = DATA.types.rows, HEAVY = { A359: 1, A35K: 1, A388: 1 };   // reported apart: a reporting artefact (verdict 43)
       barChart(box, {
         aria: "Over-representation of aircraft types among aircraft still degraded after leaving interference, 9 to 25 October 2025",
         rows: t.map(function (r) {
-          return { label: r.type, v: r.ratio, text: r.ratio + "×",
-                   tip: [{ color: cssVar("--series-1"), value: r.ratio + "×", label: "over-representation" },
+          var hv = HEAVY[r.type];
+          return { label: r.type, v: r.ratio, text: r.ratio + "×" + (hv ? " (A350/A380)" : ""), color: hv ? cssVar("--series-base") : null,
+                   tip: [{ color: hv ? cssVar("--series-base") : cssVar("--series-1"), value: r.ratio + "×",
+                           label: hv ? "over-representation, most likely how this type reports accuracy" : "over-representation" },
                          { value: r.pe_share + "%", label: "of post-exposure aircraft-days" },
                          { value: r.all_share + "%", label: "of all aircraft-days" }] };
         }), color: cssVar("--series-1"), unit: "×", ref: 1, refLabel: "1× = share of traffic"

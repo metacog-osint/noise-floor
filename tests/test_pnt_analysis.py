@@ -14,7 +14,9 @@ US = h3.latlng_to_cell(40.0, -100.0, 4)        # inside WAAS (CONUS)
 INDIA = h3.latlng_to_cell(20.0, 78.0, 4)       # inside GAGAN: capable aircraft routinely lose 10 m there
 
 
-def write_day(folder, day, cap_bad_eu=20, gross_us=0, burst=False):
+def write_day(folder, day, cap_bad_eu=20, gross_us=0, burst=False, heavy=None):
+    """heavy: (A350/A380 among the US gross-bad aircraft at 20Z, among the burst aircraft per minute); adds the
+    heavy_live / heavy columns that pnt_daily writes from 25 Oct 2026."""
     rows = []
     for hour in range(24):
         rows.append({"h3": EUROPE, "hour": hour, "aircraft": 300, "bad_nacp": 0, "bad_nic": 0, "bad_acc10": 120,
@@ -23,12 +25,20 @@ def write_day(folder, day, cap_bad_eu=20, gross_us=0, burst=False):
                      "capable": 250, "cap_bad_acc10": 175})
         rows.append({"h3": US, "hour": hour, "aircraft": 300, "bad_nacp": gross_us if hour == 20 else 0, "bad_nic": 0,
                      "bad_acc10": 50, "capable": 250, "cap_bad_acc10": 8})
+    if heavy:
+        for r in rows:
+            r["bad_nacp_live"] = r["bad_nacp"]
+            r["heavy_live"] = heavy[0] if (r["h3"] == US and r["hour"] == 20) else 0
     pq.write_table(pa.Table.from_pylist(rows), os.path.join(folder, f"{day}.hourly.parquet"))
     mins = [{"h3": US, "minute": m, "bad_nacp": 1} for m in range(0, 1440, 7)]          # background noise
     if burst:
         mins += [{"h3": US, "minute": m, "bad_nacp": 30} for m in range(18 * 60, 18 * 60 + 5)]
-    pq.write_table(pa.Table.from_pylist(mins, schema=pa.schema([("h3", pa.string()), ("minute", pa.int16()), ("bad_nacp", pa.int32())])),
-                   os.path.join(folder, f"{day}.minute.parquet"))
+    cols = [("h3", pa.string()), ("minute", pa.int16()), ("bad_nacp", pa.int32())]
+    if heavy:
+        for r in mins:
+            r["heavy"] = heavy[1] if r["bad_nacp"] == 30 else 0
+        cols.append(("heavy", pa.int32()))
+    pq.write_table(pa.Table.from_pylist(mins, schema=pa.schema(cols)), os.path.join(folder, f"{day}.minute.parquet"))
 
 
 def test_analysis():
@@ -60,11 +70,38 @@ def test_analysis():
         ev = A.bursts("2025-10-08")["events"]
         assert len(ev) == 1 and ev[0]["start"] == "18:00Z" and ev[0]["detections"] == 2, ev   # cell + neighbourhood merged
         assert A.bursts("2025-10-07")["bursts"] == []
+        assert an["events"][0]["heavy_share"] is None and ev[0]["heavy_share"] is None   # no heavy columns: unknown
     finally:
         A.DAILY, A.OUT = old
+        shutil.rmtree(tmp)
+
+
+def test_heavy_share():
+    """A350/A380 share of an event's live gross-bad aircraft, from the heavy_live / heavy columns."""
+    tmp = tempfile.mkdtemp()
+    old = A.DAILY, A.OUT
+    for cache in (A._RH, A._MS, A._HH, A._HM):
+        cache.clear()
+    try:
+        A.DAILY = tmp; A.OUT = os.path.join(tmp, "analysis"); os.makedirs(A.OUT)
+        for d in range(1, 8):
+            write_day(tmp, f"2025-10-0{d}", heavy=(0, 0))
+        write_day(tmp, "2025-10-08", cap_bad_eu=240, gross_us=60, burst=True, heavy=(45, 20))
+        cache = {}
+        prior = lambda d: cache.setdefault(d, A.sbas(d, use_kp=False, prior=prior))
+        an = A.anomalies("2025-10-08", prior)
+        assert an["events"][0]["heavy_share"] == 0.75, an["events"][0]          # 45 of 60
+        ev = A.bursts("2025-10-08")["events"]
+        assert ev[0]["heavy_share"] == round(100 / 150, 3), ev[0]               # 5 minutes x 20 of 30
+    finally:
+        A.DAILY, A.OUT = old
+        for cache in (A._RH, A._MS, A._HH, A._HM):
+            cache.clear()
         shutil.rmtree(tmp)
 
 
 if __name__ == "__main__":
     test_analysis()
     print("PASS test_analysis")
+    test_heavy_share()
+    print("PASS test_heavy_share")

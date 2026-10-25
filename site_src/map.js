@@ -386,6 +386,13 @@
     layer.redraw(); mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
   }
   function cell(tr, text, cls) { var td = document.createElement("td"); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); return td; }
+  function heavyCell(tr, hs) {     // A350/A380 share of the event's degraded aircraft (null before 25 Oct 2026)
+    if (hs === null || hs === undefined) return cell(tr, "–", "mut num");
+    var td = cell(tr, "", "num"), txt = Math.round(hs * 100) + "%";
+    if (hs >= 0.5) { var b = document.createElement("strong"); b.textContent = txt; td.appendChild(b); td.title = "Mostly A350/A380 reports"; }
+    else td.textContent = txt;
+    return td;
+  }
   function showButton(tr, e, label) {
     var td = document.createElement("td"), btn = document.createElement("button");
     btn.type = "button"; btn.className = "linkish"; btn.textContent = "Show"; btn.setAttribute("aria-label", "Show " + label + " on the map");
@@ -435,6 +442,7 @@
       var tr = document.createElement("tr"), w = when(state.day, e.h0 * 60, e.h1 * 60 + 59);
       cell(tr, TIER[e.tier]); cell(tr, w[0]); cell(tr, w[1], "mut"); cell(tr, ll2(e.lat, e.lon));
       cell(tr, e.regions, "num"); cell(tr, e.peak.toFixed(0) + "%", "num"); cell(tr, "+" + e.excess.toFixed(0) + " pts", "num");
+      heavyCell(tr, e.m === "jam" ? e.hs : null);
       cell(tr, e.test || "–", e.test ? "" : "mut");
       showButton(tr, e, TIER[e.tier] + " anomaly at " + w[0]); anomBody.appendChild(tr);
     });
@@ -447,6 +455,7 @@
     rows.burst.forEach(function (e) {
       var tr = document.createElement("tr"), w = when(state.day, mins(e.t0), mins(e.t1));
       cell(tr, w[0]); cell(tr, w[1], "mut"); cell(tr, ll2(e.lat, e.lon)); cell(tr, e.peak, "num"); cell(tr, e.regions, "num");
+      heavyCell(tr, e.hs);
       cell(tr, e.test || "–", e.test ? "" : "mut");
       showButton(tr, e, "burst at " + w[0]); burstBody.appendChild(tr);
     });

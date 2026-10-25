@@ -32,10 +32,13 @@ bytes are SHA-256 hashed during the same pass, for provenance.
 
 Output (in --out, default data/pnt/daily):
   YYYY-MM-DD.parquet         h3, lat, lon, aircraft, bad_nacp, bad_nic, bad_acc10, score, score_acc10, capable,
-                             cap_bad_acc10, latched, bad_nacp_live, score_live
-  YYYY-MM-DD.hourly.parquet  h3, hour, aircraft, bad_nacp, bad_nic, bad_acc10, capable, cap_bad_acc10, latched, bad_nacp_live
-  YYYY-MM-DD.minute.parquet  h3, minute (0-1439), bad_nacp, latched (aircraft with a gross-bad / latched report that
+                             cap_bad_acc10, latched, bad_nacp_live, score_live, heavy_live
+  YYYY-MM-DD.hourly.parquet  h3, hour, aircraft, bad_nacp, bad_nic, bad_acc10, capable, cap_bad_acc10, latched, bad_nacp_live,
+                             heavy_live
+  YYYY-MM-DD.minute.parquet  h3, minute (0-1439), bad_nacp, latched, heavy (aircraft with a gross-bad / latched report that
                              minute; nonzero rows only)
+  heavy_live / heavy (from 25 Oct 2026): how many of the live gross-bad aircraft (in bad_nacp_live, or in bad_nacp minus
+  latched for minutes) were A350s or A380s (HEAVY_TYPES), so events can say how much they rest on those types.
   With --heavy-apart, the daily, hourly and minute tables also carry heavy_apart (aircraft whose gross-bad reports there
   were set apart), and the summary's method_version is 1.5.
   YYYY-MM-DD.summary.json    inputs, hashes, counts, timings, method parameters, suspect and latch diagnostics
@@ -362,13 +365,14 @@ def find_suspects(recs, tot, latched, ignore=frozenset()):
 
 
 def aggregate(recs, drop, latched, apart=None):
-    # hex (or (hex, hour)) -> [aircraft, gross, nic, acc, capable, capable acc-bad, latched, live gross, heavy apart]
-    daily = defaultdict(lambda: [0] * 9)
-    hourly = defaultdict(lambda: [0] * 9)
-    minute = defaultdict(lambda: [0, 0, 0])       # (hex, minute) -> [aircraft gross-bad, latched, heavy apart]
+    # hex (or (hex, hour)) -> [aircraft, gross, nic, acc, capable, capable acc-bad, latched, live gross, heavy apart,
+    #                         live gross that is an A350/A380]
+    daily = defaultdict(lambda: [0] * 10)
+    hourly = defaultdict(lambda: [0] * 10)
+    minute = defaultdict(lambda: [0, 0, 0, 0])    # (hex, minute) -> [aircraft gross-bad, latched, heavy apart, heavy live]
     no_apart = set()
 
-    def add(t, c, cap, lat_reports, apart_reports):
+    def add(t, c, cap, lat_reports, apart_reports, heavy=False):
         acc = is_bad(c, A)
         t[0] += 1; t[1] += is_bad(c, G); t[2] += is_bad(c, N); t[3] += acc
         if cap:
@@ -376,12 +380,15 @@ def aggregate(recs, drop, latched, apart=None):
         t[6] += lat_reports * 2 >= c[R] and lat_reports > 0
         t[8] += apart_reports * 2 >= c[R] and apart_reports > 0
         live_reports = c[G] - lat_reports - apart_reports
-        t[7] += live_reports * 2 >= c[R] and live_reports > 0
+        is_live = live_reports * 2 >= c[R] and live_reports > 0
+        t[7] += is_live
+        t[9] += is_live and heavy
 
     for i, (cells, meta, bad_minutes) in enumerate(recs):
         if i in drop:
             continue
         cap, lc = meta[7], latched[i]
+        heavy = meta[6] in HEAVY_TYPES
         ac = apart[i] if apart is not None else no_apart
         per_hex = defaultdict(lambda: [0, 0, 0, 0])
         per_hex_lat = defaultdict(int)
@@ -389,15 +396,16 @@ def aggregate(recs, drop, latched, apart=None):
         for (hx, hour), c in cells.items():
             lr = c[G] if (hx, hour) in lc else 0
             ar = c[G] if (hx, hour) in ac else 0
-            add(hourly[(hx, hour)], c, cap, lr, ar)
+            add(hourly[(hx, hour)], c, cap, lr, ar, heavy)
             ph = per_hex[hx]
             for k in range(4):
                 ph[k] += c[k]
             per_hex_lat[hx] += lr; per_hex_apart[hx] += ar
         for hx, c in per_hex.items():   # daily: the aircraft's reports in the hex over the whole day
-            add(daily[hx], c, cap, per_hex_lat[hx], per_hex_apart[hx])
+            add(daily[hx], c, cap, per_hex_lat[hx], per_hex_apart[hx], heavy)
         for hx, m in bad_minutes:
             x = minute[(hx, m)]; x[0] += 1; x[1] += (hx, m // 60) in lc; x[2] += (hx, m // 60) in ac
+            x[3] += heavy and (hx, m // 60) not in lc and (hx, m // 60) not in ac
     return daily, hourly, minute
 
 
@@ -467,6 +475,7 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
         "latched": [v[6] for _, v in rows],
         "bad_nacp_live": [v[7] for _, v in rows],
         "score_live": [score(v[7], v[0]) for _, v in rows],
+        "heavy_live": [v[9] for _, v in rows],
         **extra(rows, 8),
     }), os.path.join(out_dir, f"{day}.parquet"), compression="zstd")
     hrows = sorted(hourly.items())
@@ -481,6 +490,7 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
         "cap_bad_acc10": [v[5] for _, v in hrows],
         "latched": [v[6] for _, v in hrows],
         "bad_nacp_live": [v[7] for _, v in hrows],
+        "heavy_live": [v[9] for _, v in hrows],
         **extra(hrows, 8),
     }), os.path.join(out_dir, f"{day}.hourly.parquet"), compression="zstd")
     mrows = sorted(minute.items())
@@ -489,6 +499,7 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
         "minute": pa.array([m for (_, m), _ in mrows], pa.int16()),
         "bad_nacp": pa.array([v[0] for _, v in mrows], pa.int32()),
         "latched": pa.array([v[1] for _, v in mrows], pa.int32()),
+        "heavy": pa.array([v[3] for _, v in mrows], pa.int32()),
         **({"heavy_apart": pa.array([v[2] for _, v in mrows], pa.int32())} if heavy_apart else {}),
     }), os.path.join(out_dir, f"{day}.minute.parquet"), compression="zstd")
     summary = {
