@@ -7,7 +7,10 @@ Validation and results: docs/validation/spoofing.md.
 
 Per aircraft (ADS-B airborne positions, type adsb_icao, any ADS-B version, every position):
   fast       emitter category A2-A5 with >= 10 reports at >= 250 kt above 10,000 ft that day, or no category and
-             >= 10 reports at >= 350 kt above 20,000 ft. Only fast aircraft get the three tests below (light aircraft,
+             >= 10 reports at >= 350 kt above 20,000 ft. These are GNSS ground speeds, which a spoofer controls.
+             With --airspeed-fast (v0.5, off by default) indicated airspeed also counts: category A2-A5 with >= 10
+             reports at IAS >= 220 kt above 10,000 ft, or no category with >= 10 at IAS >= 250 kt above 20,000 ft.
+             IAS comes from Mode S enhanced surveillance (air data, not GNSS), where readsb has it. Only fast aircraft get the three tests below (light aircraft,
              rotorcraft, gliders and balloons can fly slowly or circle at altitude, and share addresses more often).
   slow       ground speed < 100 kt at or above 10,000 ft baro (18,000 ft for category A2). A transport aircraft can't
              fly that slowly at altitude; a receiver held at a fixed point reports about 0 kt.
@@ -78,6 +81,7 @@ HIGH_ALT_FT = 10000                         # slow / loiter tests only at or abo
 HIGH_ALT_A2_FT = 18000                      # ... and this for category A2 (skydiving, training and survey flights fly
                                             #     slowly or circle at 10,000-18,000 ft; v0.3, see the validation)
 FAST_KT, FAST_KT_NOCAT, FAST_MIN_PTS = 250, 350, 10
+FAST_IAS_KT, FAST_IAS_KT_NOCAT = 220, 250       # --airspeed-fast (v0.5): indicated airspeed, from air data
 FAST_CATS = {"A2", "A3", "A4", "A5"}         # emitter categories tested for slow / loiter: small to heavy transports
 SLOW_KT = 100
 LOITER_KM, LOITER_S, LOITER_MIN_PTS, LOITER_GAP_S = 3.0, 180, 4, 120   # gap: longest break in coverage inside a run
@@ -99,7 +103,7 @@ KT_PER_KMS = 1943.844                       # 1 km/s in knots
 # trusted-cell layout: [reports, v2 reports, v2 NACp < 8, kin pairs, kin bad, geo diff sum, geo n]  (+ geo list kept apart)
 TR, V2, V2B, KP, KB = range(5)
 
-T, LAT, LON, ALT, GS, TRK, GEO, NACP, NIC, VER = range(10)
+T, LAT, LON, ALT, GS, TRK, GEO, NACP, NIC, VER, IAS = range(11)
 
 
 def km(lat1, lon1, lat2, lon2):
@@ -169,14 +173,14 @@ def parse_trace(d):
                 geo, alt = alt, None
             if alt is not None and alt < MIN_ALT_FT:
                 continue
-            A.append((base + p[0], p[1], p[2], alt, p[4], p[5], geo, nacp, nic, ver))
+            A.append((base + p[0], p[1], p[2], alt, p[4], p[5], geo, nacp, nic, ver, p[12] if len(p) > 12 else None))
         elif src == "mlat" and alt >= MIN_ALT_FT:
             M.append((base + p[0], p[1], p[2], alt))
     return A, M, cat
 
 
-def point_flags(A, cat):
-    """slow and loiter flags per ADS-B point, and whether the aircraft counts as fast."""
+def point_flags(A, cat, airspeed=False):
+    """slow and loiter flags per ADS-B point, and whether the aircraft counts as fast (airspeed: --airspeed-fast)."""
     n = len(A)
     slow, loiter = [False] * n, [False] * n
     hi = [p[ALT] is not None and p[ALT] >= HIGH_ALT_FT for p in A]
@@ -188,6 +192,12 @@ def point_flags(A, cat):
                    and p[GS] >= FAST_KT_NOCAT) >= FAST_MIN_PTS
     else:
         fast = False
+    if not fast and airspeed:
+        if cat in FAST_CATS:
+            fast = sum(1 for p, h in zip(A, hi) if h and p[IAS] is not None and p[IAS] >= FAST_IAS_KT) >= FAST_MIN_PTS
+        elif cat in (None, "", "A0"):
+            fast = sum(1 for p in A if p[ALT] is not None and p[ALT] >= 20000 and p[IAS] is not None
+                       and p[IAS] >= FAST_IAS_KT_NOCAT) >= FAST_MIN_PTS
     if not fast:
         return slow, loiter, False
     hi = [p[ALT] is not None and p[ALT] >= floor for p in A]   # slow / loiter floor (higher for A2, see HIGH_ALT_A2_FT)
@@ -263,13 +273,13 @@ def segments_and_tracks(A, bad):
     return segs, track_of, primary, jumps, far
 
 
-def analyse(A, M, cat):
+def analyse(A, M, cat, airspeed=False):
     """Per-aircraft analysis on time-ordered ADS-B points A and MLAT points M.
 
     Returns dict: false (bool per point), trusted (bool per point), flags {name: [bool]}, episodes [...],
     mlat pairs, dup, jumps, far, unresolved [indexes of the first point after an unresolved jump]."""
     n = len(A)
-    slow, loiter, fast = point_flags(A, cat)
+    slow, loiter, fast = point_flags(A, cat, airspeed)
     bad = [a or b for a, b in zip(slow, loiter)]
     segs, track_of, primary, jumps, far = segments_and_tracks(A, bad)
     dup = far >= 2
@@ -412,8 +422,8 @@ def cell(lat, lon, res):
     return h3.str_to_int(h3.latlng_to_cell(lat, lon, res))
 
 
-def score_trace(raw, day0):
-    """One trace file -> aircraft record, or None."""
+def score_trace(raw, day0, airspeed=False):
+    """One trace file -> aircraft record, or None. airspeed: --airspeed-fast (v0.5)."""
     if raw[:2] == b"\x1f\x8b":
         raw = gzip.decompress(raw)
     d = orjson.loads(raw)
@@ -423,7 +433,7 @@ def score_trace(raw, day0):
     A, M, cat = parse_trace(d)
     if not A:
         return None
-    r = analyse(A, M, cat)
+    r = analyse(A, M, cat, airspeed)
     trusted, false = r["trusted"], r["false"]
 
     def hour(t):
@@ -529,12 +539,12 @@ def score_trace(raw, day0):
 
 
 def work(args):
-    batch, day0 = args
+    batch, day0, airspeed = (args + (False,))[:3]
     recs, st = [], Counter()
     for raw in batch:
         st["files"] += 1
         try:
-            r = score_trace(raw, day0)
+            r = score_trace(raw, day0, airspeed)
         except Exception:
             st["parse_errors"] += 1
             continue
@@ -715,7 +725,7 @@ def aggregate(recs):
     return t4, t2, d4, events, {"geo_out_aircraft": geo_out_aircraft, "episodes_with_geo_out_aircraft": ep_geo_out}
 
 
-def run(day, raw_dir, out_dir, workers, limit=0):
+def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False):
     parts = P.day_parts(raw_dir, day)
     day0 = int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())
     t0 = time.time()
@@ -725,6 +735,8 @@ def run(day, raw_dir, out_dir, workers, limit=0):
         src = P.batches(stream, day0)
         if limit:
             src = itertools.islice(src, limit)
+        if airspeed:
+            src = ((b, d0, True) for b, d0 in src)
         for r, s in pool.imap_unordered(work, src, chunksize=1):
             recs.extend(r); st.update(s)
     chain = stream.raw
@@ -764,7 +776,7 @@ def run(day, raw_dir, out_dir, workers, limit=0):
     ml_unflagged_dis = sum(1 for r in nd if not r["episodes"] and r["mlat"][1] >= 2)
     secs = time.time() - t0
     summary = {
-        "day": day, "version": VERSION, "inputs": [os.path.basename(p) for p in parts],
+        "day": day, "version": "0.5" if airspeed else VERSION, "inputs": [os.path.basename(p) for p in parts],
         "input_bytes": chain.nbytes, "input_sha256": chain.sha.hexdigest(),
         "seconds": round(secs, 1), "seconds_read": round(t_read, 1), "workers": workers,
         **{k: st.get(k, 0) for k in ("files", "skipped", "parse_errors")},
@@ -788,7 +800,7 @@ def run(day, raw_dir, out_dir, workers, limit=0):
         "victim_res2_top": Counter(h3.cell_to_parent(c, RES2) for e in events for c in set(e["victim_cells"])).most_common(40),
         "geo_sat_trusted_res2_top": Counter(h3.int_to_str(c) for r in nd for c in r["geo_sat_trusted_cells"]).most_common(20),
         "method": {k: v for k, v in globals().items() if k.isupper() and isinstance(v, (int, float, tuple, str))
-                   and k not in ("T", "LAT", "LON", "ALT", "GS", "TRK", "GEO", "NACP", "NIC", "VER", "TR", "V2", "V2B", "KP", "KB", "ROOT", "VERSION")},
+                   and k not in ("T", "LAT", "LON", "ALT", "GS", "TRK", "GEO", "NACP", "NIC", "VER", "IAS", "TR", "V2", "V2B", "KP", "KB", "ROOT", "VERSION")},
         "source": "adsb.lol globe_history (ODbL 1.0)",
     }
     summary["method"]["FAST_CATS"] = sorted(FAST_CATS)
@@ -1009,11 +1021,13 @@ def main():
     ap.add_argument("--out", default=os.path.join(ROOT, "data", "spoofing"))
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--limit", type=int, default=0, help="process only the first N batches of 400 traces (testing)")
+    ap.add_argument("--airspeed-fast", action="store_true",
+                    help="v0.5: indicated airspeed (air data) can also qualify an aircraft as fast; off by default")
     a = ap.parse_args()
     if a.cmd == "run":
         for day in a.days:
             raw = a.raw or os.path.join(ROOT, "data", "raw", "trace_box", day)
-            s = run(day, raw, a.out, a.workers, a.limit)
+            s = run(day, raw, a.out, a.workers, a.limit, a.airspeed_fast)
             print(json.dumps({k: s[k] for k in ("day", "seconds", "files", "aircraft", "episodes", "aircraft_with_episodes",
                                                  "episodes_by_kind", "episodes_mlat_confirmed", "duplicate_suspects")}), flush=True)
     else:
