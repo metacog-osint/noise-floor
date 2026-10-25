@@ -240,6 +240,26 @@ SQI/STD test is aimed at sources that degrade products. The numbers cannot be co
 kind: most sources are weak and narrow, and a few are steady all day. Schaper et al. name Isen as having had two
 persistent sources; Isen had five recurrent sources on 23 Oct 2026, but there is no way to match them across four years.
 
+## 5b. A second day (24 Oct 2026, same method)
+
+Fetched at 00:40 UTC on 25 Oct, inside DWD's roughly 48-hour window: 3,600 sweeps from the same 29 radars, 2,963 spokes
+(56 sun, 218 rain-flagged), 113 sources (11 persistent, 27 recurrent, 75 occasional). The sun was found in 42 of 55
+sweeps with it in the beam.
+
+**Day-to-day repeat** (a day-1 source counts as seen again if the same radar has a day-2 source within 1°):
+
+| Day-1 class | Seen again on day 2 |
+|---|---|
+| Persistent | 10 of 10 (9 still persistent) |
+| Recurrent | 24 of 27 |
+| Occasional | 28 of 64 |
+
+- **Persistent and recurrent sources are stable fixtures**, as fixed transmitters would be. Occasional ones repeat less
+  than half the time, so many are intermittent emitters or residual false detections.
+- **The day-1 "night-only" spokes aren't confirmed.** On day 2, Anjalankoski 191°, Korppoo 243° and Flechtdorf 246° all
+  have detections from about midnight to late evening UTC. Their day-1 timing may have been weather or chance, not a
+  nightly pattern; a ducting test needs more days.
+
 ## 6. What can and can't be inferred
 
 - **Can:** that a radar received in-band energy from a given bearing (±0.25°) at a given time; its approximate power at
