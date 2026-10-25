@@ -85,6 +85,30 @@ positions entirely from August, above all in the east:
   (Jan–Feb) to 3–12% while MLAT-only crossings rose from 29–31% to 43–65%. The crossing test's "seen" share isn't
   affected by that, which is why it's the measure used here.
 
+## Time of day and other regions
+
+**Summer loss runs around the clock.** Pooled over two winter days (17 Jan, 1 Feb) and four summer–autumn days (15 Jul,
+15 Aug, 15 Sep, 15 Oct), share of aircraft heard that sent no position, by six-hour block (UTC):
+
+| Box | Season | 00–05 | 06–11 | 12–17 | 18–23 |
+|---|---|---|---|---|---|
+| Kaliningrad | Jan–Feb | 29% | 18% | 9% | 18% |
+| Kaliningrad | Jul–Oct | 89% | 86% | 86% | 88% |
+| Suwałki–Ełk | Jan–Feb | 80% | 22% | 24% | 29% |
+| Suwałki–Ełk | Jul–Oct | 100% | 90% | 94% | 97% |
+| Eastern Gulf of Finland | Jan–Feb | 15% | 71% | 41% | 2% |
+| Eastern Gulf of Finland | Jul–Oct | 52% | 91% | 85% | 63% |
+
+The eastern Gulf's winter blocks rest on 43–187 aircraft heard and swing widely; the summer blocks on 177–1,023.
+
+**Elsewhere (res-2 regions with 300+ aircraft heard and some MLAT coverage).** On 15 Sep and 15 Jul the top regions are
+all in the band above: north-east Estonia and the Russian border (62–91%), Lithuania (78–84%), the Kaliningrad coast
+(37–59%), north-east Poland (50–52%) and western Belarus (59–62%). Next come south-east Finland near the Russian border
+(54% on 15 Sep, 30% on 15 Jul) and Romania near Moldova (16–23%). The seas off Japan (6–13%) and north-east Bulgaria (8%)
+are higher than the central-Europe background and unexplained; the Bulgarian region also holds one of the year's
+persistent cells (`docs/assessment/year-trends.md`). Large parts of the world have no MLAT coverage, so this list says
+nothing about them (the Middle East among them).
+
 ## What follows
 
 1. **The per-hex degraded share can fall while interference spreads.** Wherever position loss is high, the share is
