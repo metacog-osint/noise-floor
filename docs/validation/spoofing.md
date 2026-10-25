@@ -297,6 +297,61 @@ count.
 - Caveat: the rule was designed after seeing the Florida case, and its thresholds weren't tuned on other days. The
   held-out days show it doesn't disturb the checks.
 
+## v0.5 (option): air data can qualify an aircraft for the tests (25 Oct 2026)
+
+**The gap.** v0.4 runs its slow, loiter and excursion tests only on "fast" aircraft, and judges fast by GNSS ground speed
+(10 or more reports at 250 kt or more above 10,000 ft). A spoofer controls GNSS ground speed, so an aircraft spoofed for
+its whole visible flight never qualifies and is never tested. The roll-against-turn-rate check (`roll-turn.md`) found
+such aircraft held at fixed points with no v0.4 episode. Two examples from the raw traces:
+
+- **Sheremetyevo, 15 Jan 2026:** a Tu-204 (category A3) climbing from 15,000 to 31,000 ft at about 280 kt indicated
+  airspeed with wings level (roll about 0°), while its GNSS position circled Sheremetyevo airport in a 2 km loop at a
+  reported 54 kt, with NACp 9–10. Of its 194 points above 10,000 ft, none had a ground speed of 250 kt; 184 had an
+  indicated airspeed of 250 kt or more.
+- **Near Smolensk (54.70N 31.92E), 16 May 2026:** an A320, an E195 and a B738, each shown circling the same point at about
+  54 kt with indicated airspeeds of 250–310 kt and wings level; 0–1 points each at 250 kt ground speed.
+
+The same 54 kt circle at both places suggests the same kind of spoofing source; that's an observation, not a finding.
+
+**The option.** `tools/spoof_day.py --airspeed-fast` (v0.5, off by default) lets indicated airspeed, from Mode S
+enhanced surveillance (air data, not GNSS), qualify an aircraft too: category A2–A5 with 10 or more reports at IAS 220 kt
+or more above 10,000 ft, or no category with 10 or more at IAS 250 kt or more above 20,000 ft. Nothing else changes.
+IAS is only present where ground radars interrogate for it (much of Europe; less elsewhere), so the gain is regional.
+
+**Compared on all 41 days with raw archives on disk** (v0.4 and v0.5 from the same archives; a v0.4 rerun of 15 Jan 2026
+gave identical episodes, so the option leaves v0.4 untouched):
+
+- Episodes 18,329 → 20,640 (+2,311, +13%); none lost. Active episodes 11,220 → 12,186 (+9%). New episodes by class:
+  1,273 unlocated (no trusted position before or after, as expected for aircraft spoofed throughout), 904 active, 109
+  isolated, 25 post.
+- Where the new episodes put aircraft (0.1° cells, top): Sheremetyevo 56.0N 37.4E (893), 55.6N 39.7E (306), near Smolensk
+  54.7N 31.9E (81), 58.2N 39.0E (77), near Samara 53.1N 50.0E (75), Beirut (74), 57.6N 38.4E (70), near Ufa 54.7N 56.1E
+  (58), Amman (51), 57.3N 39.5E (43), east of St Petersburg 60.1N 31.4E (20). Mostly Russian points the published lists
+  don't name, plus the known Beirut and Amman points.
+- Controls over the 41 days: active share 0.002% in both. Episodes located in a control box 297 → 298: one new isolated
+  episode (20 Feb 2025, an aircraft with no type code, category A2, loitering at 18,325 ft over the Alps near 46.24N
+  8.32E); active ones unchanged at 103.
+
+**The five held-out checks (the same 12 days and limits as above), v0.4 → v0.5:**
+
+| # | Pass if | v0.4 | v0.5 | v0.5 result |
+|---|---|---|---|---|
+| H1 | ≤ 0.01% | 0.0020% | 0.0020% | Pass |
+| H2 | each ≥ 0.2% and ≥ 20× controls | Middle East 0.386%, Baltic and western Russia 0.812% | 0.391% (196×), 0.868% (434×) | Pass |
+| H3 | ≥ 75% | 91.5% (530 of 579) | 91.6% (531 of 580) | Pass |
+| H4 | ≥ 25% | 40% (25 of 63) | 35% (23 of 65) | Pass |
+| H5 | Beirut, Beirut, Amman | Beirut, Beirut, Amman | Beirut, Beirut, Amman | Pass |
+
+H4 falls a little because the new top cells sit at Russian points the published lists don't name.
+
+**Caveats.** The change was designed after seeing 2026 days, and two of the 12 held-out days (20 Feb and 20 Jun 2026)
+were among the 14 days of the roll-turn exploration that found the gap, so the held-out test is only partly independent
+for v0.5. The control check (H1), the one that matters most for a looser rule, is unchanged.
+
+**Recommendation for Tom:** make `--airspeed-fast` the default (v0.5), since the controls don't move and it closes a
+documented gap that hides whole-flight spoofing, mostly over Russia. Until then v0.4 stays the default.
+
+
 ## The Gulf after the March 2026 surge (24 Oct 2026)
 
 A check registered in `docs/validation/cygnss.md` (section 10) before download: v0.4 active share of aircraft-hours in the Gulf region on the 15th of July–October 2026 against the 15th of November 2025–January 2026. Before: 0.000% on all three days (98,056 aircraft-hours). After: 0.178% (135,862 aircraft-hours), present on all four days (0.05–0.36%). Aircraft spoofing persisted in the Gulf for months after the surge, while CYGNSS stayed raised and aircraft NACp read mostly clean.
@@ -312,8 +367,7 @@ A check registered in `docs/validation/cygnss.md` (section 10) before download: 
 7. **Fixed false points the detector misses (25 Oct 2026):** the roll-against-turn-rate check (`docs/validation/roll-turn.md`;
    it failed one of its own pre-registered checks) found aircraft held at shared points with no v0.4 episode: near
    Smolensk (54.70N 31.92E), near Vyborg (60.59N 28.2E), east of St Petersburg (60.12N 31.38E) and at Sheremetyevo
-   (56.0N 37.4E, 172 aircraft-hours over 14 days). Find why the episode rules skip them (NACp, speed, or the
-   shared-point and replay rules).
+   (56.0N 37.4E, 172 aircraft-hours over 14 days). **Cause found:** the fast gate uses GNSS ground speed; see v0.5 above.
 
 ## Sources
 
