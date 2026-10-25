@@ -4,3 +4,4 @@ pyarrow
 tzdata>=2024.1
 pypdf>=5.1
 paho-mqtt>=2.0    # collectors/digitraffic_ais.py (Digitraffic AIS over MQTT)
+websockets>=13    # collectors/aisstream_ais.py (private AIS collector) and its mock-server test

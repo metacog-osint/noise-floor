@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Vessel watch</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#f6f5f1;--fg:#1c1f23;--mut:#5d646d;--line:#dedbd2;--card:#fff;--acc:#b4462b;--sea:#dfe7ec;--land:#f1efe8;--landline:#c9c4b6;
+--c-sanctioned:#c0392b;--c-military:#3d4f7d;--c-law:#1f7fbf;--c-watch:#8e44ad;--c-gnss:#0f8f7f;--c-flag:#c98a10;--c-traffic:#8a9097;--c-det:#d0399a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--fg:#e7e5e0;--mut:#9aa1a9;--line:#2a2f36;--card:#171b20;--acc:#e0805f;--sea:#0d1820;--land:#1d2228;--landline:#33393f;
+--c-sanctioned:#ff6b5b;--c-military:#8fa6e6;--c-law:#5db3ef;--c-watch:#c58be0;--c-gnss:#3fd0bc;--c-flag:#f2b640;--c-traffic:#6b737c;--c-det:#ff6ec7}}
+:root[data-theme="dark"]{--bg:#111418;--fg:#e7e5e0;--mut:#9aa1a9;--line:#2a2f36;--card:#171b20;--acc:#e0805f;--sea:#0d1820;--land:#1d2228;--landline:#33393f;
+--c-sanctioned:#ff6b5b;--c-military:#8fa6e6;--c-law:#5db3ef;--c-watch:#c58be0;--c-gnss:#3fd0bc;--c-flag:#f2b640;--c-traffic:#6b737c;--c-det:#ff6ec7}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+header{padding:.6rem 1rem;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:.3rem 1rem;align-items:baseline}
+header h1{font-size:1.1rem;margin:0}
+header .sub{color:var(--mut);font-size:.85rem}
+header a{color:var(--acc)}
+#wrap{flex:1;display:flex;min-height:0}
+#map{flex:1;min-width:0;background:var(--sea)}
+aside{width:26rem;max-width:42vw;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--bg)}
+.filters{padding:.6rem .8rem;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:.45rem}
+.chips{display:flex;flex-wrap:wrap;gap:.3rem}
+.chip{display:inline-flex;align-items:center;gap:.35rem;border:1px solid var(--line);border-radius:999px;padding:.12rem .55rem;font-size:.8rem;cursor:pointer;user-select:none;background:var(--card)}
+.chip input{margin:0}
+.dot{width:.62rem;height:.62rem;border-radius:50%;display:inline-block;flex:none}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;font-size:.8rem;color:var(--mut)}
+.row label{display:inline-flex;gap:.3rem;align-items:center;cursor:pointer}
+input[type=search]{width:100%;padding:.35rem .55rem;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg);font:inherit}
+#list{overflow-y:auto;flex:1;min-height:6rem}
+.item{padding:.45rem .8rem;border-bottom:1px solid var(--line);cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;gap:.1rem .5rem;align-items:center}
+.item:hover,.item.sel{background:var(--card)}
+.item .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .meta{grid-column:2/4;color:var(--mut);font-size:.78rem}
+.item .when{color:var(--mut);font-size:.75rem;white-space:nowrap}
+.tag{display:inline-block;font-size:.7rem;border-radius:4px;padding:0 .3rem;margin-right:.2rem;color:#fff}
+#detail{overflow-y:auto;border-top:2px solid var(--line);max-height:55%;padding:.6rem .8rem;background:var(--card)}
+#detail h2{font-size:1rem;margin:.1rem 0 .3rem}
+#detail h3{font-size:.82rem;margin:.8rem 0 .25rem;color:var(--mut);text-transform:uppercase;letter-spacing:.03em}
+#detail table{border-collapse:collapse;width:100%;font-size:.82rem}
+#detail td{padding:.15rem .3rem;border-bottom:1px solid var(--line);vertical-align:top}
+#detail td:first-child{color:var(--mut);white-space:nowrap;width:40%}
+#detail .close{float:right;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:6px;cursor:pointer;padding:0 .5rem}
+.note{color:var(--mut);font-size:.78rem}
+.warn{color:var(--c-sanctioned)}
+footer{padding:.45rem 1rem;border-top:1px solid var(--line);color:var(--mut);font-size:.75rem}
+.leaflet-container{background:var(--sea);font:inherit}
+.leaflet-popup-content{font-size:.82rem;line-height:1.4}
+.leaflet-control-attribution{font-size:10px}
+@media (max-width:800px){
+  html,body{height:auto}
+  body{display:block}
+  header{padding:.6rem 16px}
+  footer{padding:.45rem 16px}
+  #wrap{flex-direction:column}
+  #map{flex:none;height:55vh}
+  aside{width:100%;max-width:none;border-left:0;border-top:1px solid var(--line)}
+  .filters{padding:.6rem 16px}
+  .item{padding:.45rem 16px}
+  #list{flex:none;max-height:45vh}
+  #detail{max-height:none;padding:.6rem 16px}
+  #detail td:first-child{width:auto;white-space:normal}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Vessel watch · private</h1>
+  <span class="sub" id="sub"></span>
+  <span class="sub"><a href="index.html">Private view home</a></span>
+</header>
+<div id="wrap">
+  <div id="map" role="region" aria-label="Map of vessels"></div>
+  <aside>
+    <div class="filters">
+      <div class="chips" id="chips"></div>
+      <div class="row">
+        <label><input type="checkbox" id="tTraffic"> Other traffic</label>
+        <label><input type="checkbox" id="tDet" checked> NISAR detections</label>
+        <label><input type="checkbox" id="tTracks"> All tracks</label>
+      </div>
+      <input type="search" id="q" placeholder="Search name, MMSI, IMO, call sign" aria-label="Search vessels">
+      <div class="note" id="notes"></div>
+    </div>
+    <div id="list" role="list"></div>
+    <div id="detail" hidden></div>
+  </aside>
+</div>
+<footer id="foot"></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const LAND = /*__LAND__*/null;
+const D = /*__DATA__*/null;
+// Stored in UTC; shown in Central time with the zone named.
+const CT = new Intl.DateTimeFormat('en-US', {timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'});
+const fmt = v => { if (v === null || v === undefined || v === '') return 'n/a'; const d = typeof v === 'number' ? new Date(v * 1000) : new Date(v); return isNaN(d) ? String(v) : CT.format(d); };
+const esc = s => String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const CATS = [
+  ['sanctioned', 'Sanctioned', '--c-sanctioned'], ['military', 'Military', '--c-military'],
+  ['law_enforcement', 'Law enforcement', '--c-law'], ['watch_list', 'Watch list', '--c-watch'],
+  ['gnss_victim', 'GNSS indicators', '--c-gnss'], ['state_flag_of_interest', 'Flag of interest', '--c-flag']];
+const CAT = Object.fromEntries(CATS.map(c => [c[0], {label: c[1], v: c[2]}]));
+const MATCH = {imo: '', mmsi: ' (MMSI match, no valid IMO broadcast: unconfirmed)', name: ' (name match only: annotation, not a match)'};
+const colorOf = v => css(CAT[v.categories[0]] ? CAT[v.categories[0]].v : '--c-traffic');
+const vname = v => v.name || (v.mmsi ? 'MMSI ' + v.mmsi : 'IMO ' + v.imo);
+
+document.getElementById('sub').textContent = D ? `${D.days.length ? D.days[0] + ' to ' + D.days[D.days.length - 1] + ' (UTC days)' : 'no AIS days'} · built ${fmt(D.generated)}` : 'no data';
+const notes = [];
+if (D && !D.sanctions_loaded) notes.push('Sanctions list not loaded: no vessel can be marked sanctioned yet.');
+if (D && D.sanctions_sources && D.sanctions_sources.length) notes.push('Sanctions: ' + D.sanctions_sources.join('; ') + '.');
+if (D) notes.push(`Flags of interest: ${D.flags_of_interest.join(', ')}. GNSS indicators: ${D.gnss_min}+ positions that break the vessel class's speed limit.`);
+document.getElementById('notes').textContent = notes.join(' ');
+document.getElementById('foot').innerHTML = 'Private: behind Cloudflare Access. Never publish or share this page or its data. ' +
+  (D ? Object.entries(D.sources).map(([k, s]) => `${esc(k)}: ${esc(s.note)}`).join(' · ') : '') +
+  ' · NISAR: NASA/JPL-ISRO via ASF DAAC · Land: Natural Earth. Flags come from the MMSI (self-reported). Categories are indicators for review, not findings. Times are Central with the zone named.';
+
+const map = L.map('map', {preferCanvas: true, worldCopyJump: true, zoomControl: true});
+map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+map.attributionControl.addAttribution('AIS: aisstream.io (private) · Fintraffic / digitraffic.fi CC BY 4.0 · NISAR: NASA/JPL-ISRO · Natural Earth');
+map.setView([20, 60], 3);
+if (LAND) L.geoJSON(LAND, {interactive: false, style: {color: css('--landline'), weight: 0.6, fillColor: css('--land'), fillOpacity: 1}}).addTo(map);
+
+const vessels = D ? D.vessels : [];
+const layers = {marks: L.layerGroup().addTo(map), tracks: L.layerGroup().addTo(map), sel: L.layerGroup().addTo(map),
+  traffic: L.layerGroup(), det: L.layerGroup().addTo(map)};
+const active = new Set(CATS.map(c => c[0]));
+let selected = null;
+
+// category chips
+const chips = document.getElementById('chips');
+for (const [k, label, v] of CATS) {
+  const n = D ? (D.counts[k] || 0) : 0;
+  const el = document.createElement('label');
+  el.className = 'chip';
+  el.innerHTML = `<input type="checkbox" checked data-k="${k}"><span class="dot" style="background:var(${v})"></span>${esc(label)} <span class="note">${n}</span>`;
+  chips.appendChild(el);
+}
+chips.addEventListener('change', e => { const k = e.target.dataset.k; if (!k) return; e.target.checked ? active.add(k) : active.delete(k); render(); });
+
+function visible(v) {
+  if (!v.categories.some(c => active.has(c))) return false;
+  const q = document.getElementById('q').value.trim().toUpperCase();
+  if (!q) return true;
+  return [v.name, v.mmsi, v.imo, v.callsign].some(x => x !== null && x !== undefined && String(x).toUpperCase().includes(q));
+}
+
+function popupHtml(v) {
+  return `<b>${esc(vname(v))}</b><br>MMSI ${esc(v.mmsi)}${v.imo ? ' · IMO ' + esc(v.imo) : ''}<br>${esc(v.flag || '?')} · ${esc(v.ais_type_label)}<br>` +
+    `${v.categories.map(c => esc(CAT[c].label)).join(', ')}<br>Last: ${esc(fmt(v.last && v.last.t))}`;
+}
+
+function render() {
+  layers.marks.clearLayers(); layers.tracks.clearLayers();
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  const shown = vessels.filter(visible);
+  const all = document.getElementById('tTracks').checked;
+  const frag = document.createDocumentFragment();
+  for (const v of shown.slice(0, 1500)) {
+    const col = colorOf(v);
+    if (v.last && v.last.t) {
+      const m = L.circleMarker([v.last.lat, v.last.lon], {radius: 6, color: col, weight: 2, fillColor: col, fillOpacity: 0.75});
+      m.bindTooltip(esc(vname(v))).on('click', () => select(v));
+      layers.marks.addLayer(m);
+      if (all && v.track.length > 1) layers.tracks.addLayer(L.polyline(v.track.map(p => [p[1], p[2]]), {color: col, weight: 1.2, opacity: 0.55, interactive: false}));
+    }
+    const it = document.createElement('div');
+    it.className = 'item' + (selected === v ? ' sel' : '');
+    it.setAttribute('role', 'listitem');
+    it.innerHTML = `<span class="dot" style="background:${col}"></span><span class="nm">${esc(vname(v))}</span>` +
+      `<span class="when">${v.last && v.last.t ? esc(fmt(v.last.t)) : 'not seen'}</span>` +
+      `<span class="meta">${v.categories.map(c => `<span class="tag" style="background:var(${CAT[c].v})">${esc(CAT[c].label)}</span>`).join('')}` +
+      `${esc(v.flag || '?')} · ${esc(v.ais_type_label)}${v.emitters_near.length ? ' · <b>emitter near</b>' : ''}</span>`;
+    it.addEventListener('click', () => select(v));
+    frag.appendChild(it);
+  }
+  if (!shown.length) { const p = document.createElement('div'); p.className = 'item'; p.textContent = vessels.length ? 'No vessel matches the filters.' : 'No vessels of interest in the window.'; frag.appendChild(p); }
+  list.appendChild(frag);
+}
+
+function row(k, v) { return `<tr><td>${esc(k)}</td><td>${v === null || v === undefined || v === '' ? 'n/a' : v}</td></tr>`; }
+
+function select(v) {
+  selected = v;
+  layers.sel.clearLayers();
+  const col = colorOf(v);
+  if (v.track.length > 1) layers.sel.addLayer(L.polyline(v.track.map(p => [p[1], p[2]]), {color: col, weight: 2.5, opacity: 0.9}));
+  for (const p of v.suspect_positions) layers.sel.addLayer(L.circleMarker([p[1], p[2]], {radius: 3, color: css('--c-sanctioned'), weight: 1, fillOpacity: 0.6}).bindTooltip('Suspect position ' + esc(fmt(p[0]))));
+  for (const e of v.emitters_near) layers.sel.addLayer(L.circleMarker([e.lat, e.lon], {radius: 7, color: css('--c-det'), weight: 2, fill: false}).bindTooltip('NISAR detection near this vessel: ' + esc(e.site || e.id)));
+  if (v.track.length > 1) map.fitBounds(L.latLngBounds(v.track.map(p => [p[1], p[2]])).pad(0.3), {maxZoom: 11, animate: false});
+  else if (v.last && v.last.t) map.setView([v.last.lat, v.last.lon], Math.max(map.getZoom(), 9), {animate: false});
+  const r = v.reporting, s = v.signals, l = v.last;
+  const dims = s.dimensions ? `${esc(s.dimensions.length_m ?? '?')} m long × ${esc(s.dimensions.beam_m ?? '?')} m wide` : null;
+  let h = `<button class="close" aria-label="Close details">×</button><h2>${esc(vname(v))}</h2>`;
+  h += `<div>${v.categories.map(c => `<span class="tag" style="background:var(${CAT[c].v})">${esc(CAT[c].label)}</span>`).join('')}</div>`;
+  h += '<h3>Identity</h3><table>' + row('MMSI', esc(v.mmsi)) + row('IMO', v.imo ? esc(v.imo) + (s.imo_check_digit_ok === false ? ' <span class="warn">(check digit fails)</span>' : '') : null) +
+    row('Call sign', esc(v.callsign)) + row('Flag (from MMSI)', v.flag ? esc(v.flag) : null) +
+    row('AIS type', v.ais_type !== null ? esc(v.ais_type) + ' · ' + esc(v.ais_type_label) : null) + row('AIS class', esc(v.ais_class)) +
+    row('Why listed', Object.entries(v.category_basis || {}).map(([k, b]) => esc((CAT[k] ? CAT[k].label : k) + ': ' + b)).join('<br>')) + '</table>';
+  if (v.identities && Object.keys(v.identities).length) {
+    h += '<h3>Identity changes in the window</h3><table>' + Object.entries(v.identities).map(([k, vals]) => row(k, vals.map(x => `${esc(x[0])} (${esc(x[1])})`).join(', '))).join('') + '</table>';
+  }
+  if (v.listings.length) h += '<h3>Listings</h3><table>' + v.listings.map(x => row(x.list || 'list', `${esc(x.programme || '')} ${x.date ? '· ' + esc(x.date) : ''} ${x.url && /^https?:\/\//.test(x.url) ? `· <a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">source</a>` : ''}${esc(MATCH[x.match] || '')}`)).join('') + '</table>';
+  h += '<h3>Last position</h3><table>' + (l && l.t ? row('Time', esc(fmt(l.t))) + row('Position', `${esc(l.lat)}, ${esc(l.lon)}`) + row('SOG', l.sog !== null ? esc(l.sog) + ' kn' : null) +
+    row('COG / heading', `${esc(l.cog ?? 'n/a')}° / ${esc(l.heading ?? 'n/a')}°`) + row('Navigational status', esc(l.nav_status))
+    : row('Seen', 'Not seen on AIS in the window')) + '</table>';
+  h += '<h3>Reporting</h3><table>' + row('Positions', esc(r.positions)) + row('First seen', esc(fmt(r.first_seen))) + row('Last seen', esc(fmt(r.last_seen))) +
+    row('Median interval', r.median_interval_s !== null ? esc(r.median_interval_s) + ' s' : null) + row('Gaps over 1 h', esc(r.gaps_over_1h)) +
+    row('Longest gap', r.longest_gap_h !== null ? esc(r.longest_gap_h) + ' h' : null) + row('Suspect (spoofed?) positions', esc(r.spoofed_positions)) +
+    row('Position accuracy high', r.pos_accuracy_high_share !== null ? esc(Math.round(r.pos_accuracy_high_share * 100)) + '%' : null) +
+    row('RAIM in use', r.raim_share !== null ? esc(Math.round(r.raim_share * 100)) + '%' : null) +
+    (v.pos_unavailable ? row('Positions not available (91/181 or 0,0)', esc(v.pos_unavailable)) : '') + row('Sources', esc((v.sources || []).join(', '))) + '</table>';
+  h += '<h3>Signals</h3><table>' + row('Destination', esc(s.destination)) + row('ETA (as broadcast)', esc(s.eta)) +
+    row('Draught', s.draught !== null ? esc(s.draught) + ' m' : null) + row('Dimensions', dims) +
+    row('Declared position fixing', esc(s.pos_fix_device)) + '</table>';
+  h += `<h3>Emitter detections near this vessel</h3><p class="note">NISAR L-band detections on the same UTC day within ${esc(D.near_km)} km of this vessel's positions. Proximity only: not evidence that the vessel emitted.</p>`;
+  h += v.emitters_near.length ? '<table>' + v.emitters_near.map(e => row(`${e.site || e.id} · ${e.confidence || ''}`,
+    `${esc(e.km)} km from the vessel's closest position that day (vessel ${esc(fmt(e.vessel_t))}, detection ${esc(fmt(e.t))}) · ${esc(e.band_text || '')}${e.where ? ' · ' + esc(e.where) : ''}`)).join('') + '</table>' : '<p class="note">None.</p>';
+  if (v.private_notes.length) h += '<h3>Private notes</h3><table>' + v.private_notes.map(n => Object.entries(n).map(([k, x]) => row(k, esc(x))).join('')).join('') + '</table>';
+  const det = document.getElementById('detail');
+  det.innerHTML = h;
+  det.hidden = false;
+  det.querySelector('.close').addEventListener('click', () => { det.hidden = true; selected = null; layers.sel.clearLayers(); render(); });
+  render();
+}
+
+// other traffic (last positions only) and NISAR detections
+if (D) {
+  const T = D.traffic, ix = Object.fromEntries(T.cols.map((c, i) => [c, i]));
+  const tc = css('--c-traffic');
+  for (const r of T.rows) {
+    layers.traffic.addLayer(L.circleMarker([r[ix.lat], r[ix.lon]], {radius: 2.5, color: tc, weight: 0, fillColor: tc, fillOpacity: 0.7})
+      .bindPopup(() => `<b>${esc(r[ix.name] || 'MMSI ' + r[ix.mmsi])}</b><br>MMSI ${esc(r[ix.mmsi])} · ${esc(r[ix.flag] || '?')} · AIS type ${esc(r[ix.ais_type] ?? 'n/a')}<br>${esc(fmt(r[ix.t]))} · ${esc(r[ix.sog] ?? 'n/a')} kn · ${esc(r[ix.src])}`));
+  }
+  const dc = css('--c-det');
+  for (const d of D.detections) {
+    layers.det.addLayer(L.circleMarker([d.lat, d.lon], {radius: 5, color: dc, weight: 2, fill: false, dashArray: '2 2'})
+      .bindPopup(`<b>NISAR detection ${esc(d.site || d.id)}</b> (${esc(d.confidence || '')})<br>${esc(fmt(d.t))}<br>${esc(d.band_text || '')}<br>${esc(d.where || '')}<br><span class="note">A lead from one radar pass, not a finding.</span>`));
+  }
+}
+document.getElementById('tTraffic').addEventListener('change', e => e.target.checked ? layers.traffic.addTo(map) : layers.traffic.remove());
+document.getElementById('tDet').addEventListener('change', e => e.target.checked ? layers.det.addTo(map) : layers.det.remove());
+document.getElementById('tTracks').addEventListener('change', render);
+document.getElementById('q').addEventListener('input', render);
+render();
+const pts = vessels.filter(v => v.last && v.last.t).map(v => [v.last.lat, v.last.lon]);
+if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.15), {maxZoom: 9, animate: false});   // unanimated: a deep link's jump must not be undone
+// deep link: vessels.html#mmsi=273123456 or #imo=9074729 opens that vessel
+const hm = /^#(mmsi|imo)=(\d+)$/.exec(location.hash);
+if (hm) { const v = vessels.find(x => String(x[hm[1]]) === hm[2]); if (v) select(v); }
+window.addEventListener('hashchange', () => { const m = /^#(mmsi|imo)=(\d+)$/.exec(location.hash); const v = m && vessels.find(x => String(x[m[1]]) === m[2]); if (v) select(v); });
+</script>
+</body>
+</html>
