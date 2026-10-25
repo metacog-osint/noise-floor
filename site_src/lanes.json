@@ -288,7 +288,7 @@
       "phase": "Phase 5 (prototype, Oct 2026)",
       "summary": "Interference spokes in open weather-radar data, as evidence of nearby emitters.",
       "what": "A strong emitter in a weather radar's band paints a thin radial spoke on its scans. National services publish the scans.",
-      "how": "tools/radar_spokes.py reads the unfiltered lowest sweep from German (DWD) and Finnish (FMI) radars, finds rays whose range-corrected power stays level along range (the signature of a transmitter, not weather), separates the sun and rain, groups spokes into persistent sources and crosses bearings between radars. First day (23 Oct 2026, 29 radars): 101 sources, the sun found to within 0.23°, and bearing crossings no better than chance, so no emitter located yet.",
+      "how": "tools/radar_spokes.py reads the unfiltered lowest sweep from German (DWD) and Finnish (FMI) radars, finds rays whose range-corrected power stays level along range (the signature of a transmitter, not weather), separates the sun and rain, groups spokes into persistent sources and crosses bearings between radars. First day (23 Oct 2026, 29 radars): 101 sources, the sun found to within 0.23°, and bearing crossings no better than chance, so no emitter located yet. A second day (24 Oct) found all 10 persistent sources again within 1°.",
       "data": [
         "FMI radar (CC BY 4.0)",
         "DWD radar (CC BY 4.0)"
