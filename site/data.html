@@ -52,6 +52,8 @@
     <tr><td><code>&lt;day&gt;.hotspots.json</code></td><td>The day's share in each area of the charts page's daily trend</td><td>1 kB</td></tr>
     <tr><td><code>&lt;day&gt;.summary.json</code></td><td>Run details: input hashes, counts, timings, method version and parameters</td><td>16 kB</td></tr>
     <tr><td><code>&lt;day&gt;.map.json</code></td><td>The map page's file for the day (a compact copy of the per-hex counts)</td><td>0.8 MB</td></tr>
+    <tr><td><code>&lt;day&gt;.loss.parquet</code></td><td>Position loss per hex and UTC hour: aircraft heard, and how many were placed only by multilateration (days processed from late Oct 2026)</td><td>0.8 MB</td></tr>
+    <tr><td><code>&lt;day&gt;.loss_daily.parquet</code></td><td>The same once per hex per day, with the hex centre</td><td>0.5 MB</td></tr>
   </tbody>
 </table></div>
 
@@ -73,6 +75,19 @@
   </tbody>
 </table></div>
 <p class="small">The hourly table has the same counts per hex and <code>hour</code> (0–23, UTC). The minute table has <code>h3</code>, <code>minute</code> (0–1439, UTC), <code>bad_nacp</code>, <code>latched</code> and, from 25 Oct 2026, <code>heavy</code>.</p>
+
+<h3 id="loss">Columns in the position-loss tables</h3>
+<p>Strong jamming can stop an aircraft sending any GNSS position, so it drops out of the tables above instead of counting as degraded. Multilateration (MLAT: receivers timing the same signal) can still place many of them. These tables count aircraft at 10,000 ft or more, any version, per H3 hex (resolution 4): <code>loss.parquet</code> per <code>hour</code> (0–23, UTC), <code>loss_daily.parquet</code> once per day with <code>lat</code> and <code>lon</code>. They exist only for days processed after the daily run started making them (late Oct 2026).</p>
+<div class="tw"><table>
+  <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>heard</code></td><td>Aircraft with an ADS-B or an MLAT position in the hex</td></tr>
+    <tr><td><code>adsb</code></td><td>Of those, aircraft that sent their own ADS-B position there</td></tr>
+    <tr><td><code>mlat_only</code></td><td>Aircraft placed there only by MLAT (in the daily table: never on ADS-B in that hex that day)</td></tr>
+    <tr><td><code>mlat_any</code></td><td>Aircraft with any MLAT position there: shows where MLAT works</td></tr>
+  </tbody>
+</table></div>
+<p class="small"><code>mlat_only</code> / <code>heard</code> is a lower bound on position loss: aircraft that neither send a position nor are placed by MLAT can't be counted, and MLAT coverage differs by place and has grown over time (east of Kaliningrad it went from a few hexes to most of them between mid-2025 and mid-2026). Compare places and years with <code>mlat_any</code> in view. Method and checks: <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/position-loss.md">position-loss.md</a>.</p>
 
 <h3 id="python">Read one day in Python</h3>
 <pre><code>import io, urllib.request

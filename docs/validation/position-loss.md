@@ -1,7 +1,6 @@
 # Position loss: aircraft heard but sending no GNSS position (prototype, 25 Oct 2026)
 
-**Code:** `tools/position_loss.py` (outputs in `data/position_loss/`, aggregates only, ODbL 1.0). **Status:** prototype and a pipeline option (off by
-default), not on the map. Written by Claude overnight; not yet reviewed by Tom.
+**Code:** `tools/position_loss.py` (outputs in `data/position_loss/`, aggregates only, ODbL 1.0). **Status:** prototype and a pipeline option, set in the daily workflow from late Oct 2026; not on the map. Written by Claude overnight; not yet reviewed by Tom.
 
 ## Why
 
@@ -128,13 +127,14 @@ are higher than the central-Europe background and unexplained; the Bulgarian reg
 persistent cells (`docs/assessment/year-trends.md`). Large parts of the world have no MLAT coverage, so this list says
 nothing about them (the Middle East among them).
 
-## In the daily pipeline (option, off by default; 25 Oct 2026)
+## In the daily pipeline (option built 25 Oct 2026; set in the daily workflow from late Oct 2026)
 
 `pipeline/pnt_daily.py --position-loss` counts the same thing from the same read of the archive: per hex and hour, aircraft
 heard (ADS-B or MLAT position, 10,000 ft and above) and those heard only by MLAT. It writes `<day>.loss.parquet` (hex-hour)
 and `<day>.loss_daily.parquet` (hex-day), and a `position_loss` block in the summary (version 0.1). The core tables don't
-change. `pipeline/daily_job.py --position-loss` passes it on and uploads the two files with the day's release; the
-workflow doesn't set it, so nothing published changes until it's switched on.
+change. `pipeline/daily_job.py --position-loss` passes it on and uploads the two files with the day's release. The
+daily workflow sets it from late Oct 2026, so days processed since then carry the two files (columns on the site's Data page);
+earlier days don't, and filling them needs a `--force` rerun of each day.
 
 **Checked on the eight days used above** (raw archives on disk):
 
@@ -167,6 +167,6 @@ that shows MLAT coverage, so that a blank hex isn't read as clean.
 1. **The per-hex degraded share can fall while interference spreads.** Wherever position loss is high, the share is
    measured on the few aircraft that keep a fix. Any trend in the share needs the position-loss measure beside it.
 2. **A position-loss layer belongs on the map** next to the degraded share, with MLAT coverage shown so a blank isn't
-   read as clean. The pipeline option is built (below); switching it on and drawing the layer are the next steps.
+   read as clean. The pipeline option is built and set in the daily workflow (below); drawing the layer is the next step.
 3. **Coverage drift has to be controlled for:** track the number of MLAT-capable hexes per day and keep control boxes
    (central Europe, central Poland) in every report.
