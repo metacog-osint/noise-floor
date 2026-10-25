@@ -207,6 +207,30 @@ def test_day():
         shutil.rmtree(tmp)
 
 
+def test_airspeed_fast():
+    """v0.5 --airspeed-fast: an aircraft spoofed for its whole visible flight (circling a point at 54 kt while its air data
+    says 280 kt IAS) is never 'fast' by GNSS ground speed, so v0.4 doesn't test it; with air data it gets an episode."""
+    pts = []
+    for k in range(60):                                   # 15 min, a point every 15 s, on a 1 km circle round 56.0N 37.4E
+        t = DAY0 + 3600 + 15 * k
+        la, lo = S.destination(56.0, 37.4, (20 * k) % 360, 1.0)
+        pts.append([t - DAY0, la, lo, 15000 + 250 * k, 54.0, (20 * k + 90) % 360, 0, 0, DET if k == 0 else None,
+                    "adsb_icao", 15500 + 250 * k, None, 280, -0.4])
+    d = {"icao": "ccc001", "timestamp": DAY0, "t": "T204", "trace": pts}
+    A, M, cat = S.parse_trace(d)
+    assert A[0][S.IAS] == 280 and len(A[0]) == 11
+    off = S.analyse(A, M, cat)
+    assert not off["fast"] and not off["episodes"], "v0.4: never fast by ground speed, never tested"
+    on = S.analyse(A, M, cat, airspeed=True)
+    assert on["fast"] and len(on["episodes"]) == 1, on["episodes"]
+    assert all(on["flags"]["slow"][i] for i in on["episodes"][0])
+    # a slow light aircraft with no air data stays untested either way
+    light = [[p[0], p[1], p[2], p[3], p[4], p[5], 0, 0, ({"version": 2, "nac_p": 9, "nic": 8, "category": "A1"} if i == 0 else None),
+              "adsb_icao", p[10], None, None, None] for i, p in enumerate(pts)]
+    A2, M2, c2 = S.parse_trace({"icao": "ccc002", "timestamp": DAY0, "trace": light})
+    assert not S.analyse(A2, M2, c2, airspeed=True)["fast"]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):
