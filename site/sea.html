@@ -8,8 +8,8 @@
 <meta property="og:title" content="Sea · Noise Floor">
 <meta property="og:description" content="Sanctioned, military, law-enforcement and state-flag vessels in Finland&#x27;s open AIS, with what each ship broadcasts about itself, its reporting pattern and GNSS interference at sea.">
 <meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="/style.css?v=51d8830243">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="/sea.js?v=ca9df7cd1d"></script>
+<link rel="stylesheet" href="/style.css?v=47b5cd6cb3">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="/sea.js?v=9e6ee97e33"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -27,6 +27,35 @@
 </div>
 
 <p class="small map-line"><span id="sea-data" class="tagnote"></span> <span id="sea-stats"></span></p>
+
+<section id="sea-filters" class="sea-filters" aria-label="Filters">
+  <div class="sf-head">
+    <button type="button" class="sf-toggle" id="sf-toggle" aria-expanded="false" aria-controls="sf-body">Filters <span aria-hidden="true">▾</span></button>
+    <span id="sf-count" class="small" aria-live="polite"></span>
+    <button type="button" class="linkish" id="sf-reset" hidden>Reset</button>
+  </div>
+  <div id="sf-chips" class="sf-chips"></div>
+  <div id="sf-body" class="sf-body" hidden>
+    <p class="small">Choose several options in one box to widen it (any of them); boxes combine (all of them). The number beside each option is how many ships it would show with the other filters as they are. Filters apply to the map and the table, and the address bar keeps them, so a filtered view can be shared.</p>
+    <div class="sf-text">
+      <label><span>Name contains</span><input type="search" id="sf-name" autocomplete="off"></label>
+      <label><span>IMO (exact)</span><input type="search" id="sf-imo" inputmode="numeric" autocomplete="off"></label>
+      <label><span>MMSI (exact)</span><input type="search" id="sf-mmsi" inputmode="numeric" autocomplete="off"></label>
+      <label><span>Call sign contains</span><input type="search" id="sf-cs" autocomplete="off"></label>
+      <label><span>Owner (from the sanctions lists)</span><input type="search" id="sf-owner" list="sf-owner-list" autocomplete="off" placeholder="Type, then pick"></label>
+      <datalist id="sf-owner-list"></datalist>
+    </div>
+    <div class="sf-behaviour">
+      <label><input type="checkbox" id="sf-spoof"> Has failed spoofing tests <span class="sf-n" id="sf-spoof-n"></span></label>
+      <label><input type="checkbox" id="sf-gaps"> Has gaps over 1 h <span class="sf-n" id="sf-gaps-n"></span></label>
+      <label><span>Last heard within</span> <select id="sf-seen">
+        <option value="0" data-label="any time">any time</option><option value="6" data-label="6 h of the data's end">6 h of the data's end</option>
+        <option value="24" data-label="24 h of the data's end">24 h of the data's end</option><option value="48" data-label="48 h of the data's end">48 h of the data's end</option>
+      </select></label>
+    </div>
+    <div id="sf-facets" class="sf-facets"></div>
+  </div>
+</section>
 
 <div class="sea-wrap">
   <div class="map-frame sea-frame">
@@ -61,13 +90,9 @@
 
 <section aria-labelledby="list-h">
 <h2 id="list-h">All vessels shown</h2>
-<div class="filters" role="search">
-  <label class="small" for="sea-q">Search</label><input id="sea-q" type="search" placeholder="Name, MMSI, IMO or call sign" autocomplete="off">
-  <select id="sea-cat" aria-label="Group"><option value="">All groups</option><option value="sanctioned">Sanctioned</option><option value="state">Military and law enforcement</option><option value="state_flag_of_interest">State flag of interest</option></select>
-  <select id="sea-flag" aria-label="Flag"><option value="">All flags</option></select>
-</div>
 <p class="small" id="sea-shown" aria-live="polite"></p>
-<div class="tw"><table id="sea-table"><thead><tr><th>Name</th><th>Flag (by MMSI)</th><th>AIS type</th><th>Groups</th><th>MMSI</th><th>IMO</th><th>Last trusted position (UTC)</th><th>Failed spoofing tests</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="tw"><table id="sea-table"><thead><tr><th>Name</th><th>Flag (by MMSI)</th><th>AIS type</th><th>Groups</th><th>MMSI</th><th>IMO</th><th>Sea zone</th><th>Destination</th><th>Last trusted position (UTC)</th><th>Failed spoofing tests</th><th></th></tr></thead><tbody></tbody></table></div>
+<p class="small">The table follows the filters above the map.</p>
 </section>
 
 <section aria-labelledby="gnss-h">
@@ -88,11 +113,16 @@
   <li><strong>State flags of interest</strong> come from the first three digits of the MMSI (the Maritime Identification Digits): Russia 273, China 412–414, Iran 422, North Korea 445. That is the flag the transponder claims, which can differ from the registry. Only cargo ships, tankers, tugs, passenger ships, service craft and state types are shown; fishing boats, sailing yachts and pleasure craft never are.</li>
   <li><strong>Failed spoofing tests</strong> counts reports that needed an impossible speed from the ship's last trusted position, reported an impossible speed over ground, or put the ship 20 km or more inland. They usually mean the ship's GNSS receiver was jammed or spoofed, which in the eastern Gulf of Finland happens to many ships at once. They can also come from a faulty transponder or two ships sharing one MMSI.</li>
   <li><strong>Gaps over 1 hour</strong> leave out the hours when our collector was down. A gap can mean the ship left the coverage of the Finnish stations, entered a port the stations don't hear, or switched AIS off; the data can't tell these apart.</li>
+  <li><strong>Owners</strong> are the companies the lists themselves name: OFAC's "owned or controlled by" and "property in the interest of" links, and the UK list's current owner/operator. A company's country is its address on the SDN or UK list; for a UK-named company it is found only when the same name is itself designated with an address, so many have none. People linked to ships are never shown. Commercial registries (and Equasis, whose terms forbid reuse) are not used.</li>
+  <li><strong>Believed flag</strong> is the flag the UK list believes the ship now flies, which can differ from the flag its MMSI claims.</li>
+  <li><strong>Sea zone</strong> is the Marine Regions zone (internal waters, then EEZ) holding the last trusted position. Zone limits there are those of the Marine Regions database, which is a research product, not a legal statement.</li>
+  <li><strong>Destination</strong> is read from the text the crew types, when it is a UN/LOCODE ("RUULU", "RU ULU"), a code after an arrow ("FIHEL&gt;EETLL") or a port name in the World Port Index. Ports and their codes come from the World Port Index; a code it lacks still gives the country. "FOR ORDERS" and similar stay unread.</li>
+  <li><strong>Port calls</strong> are stops of an hour or more under 1 knot within 10 km of a World Port Index port, from the trusted positions in this data. Anchorages far from a listed port don't count. <strong>Home port</strong> (port of registry) is not in any open source we can use, so it is never shown.</li>
   <li><strong>Signals</strong> are what the ship broadcasts about itself: class (Class A is inferred when the ship sends voyage data that only Class A transponders send), destination and ETA as typed by the crew, draught, size from the antenna offsets, and the position source the transponder declares (GPS, GLONASS, Galileo, combined and so on), which is a setting, not a check of what the receiver uses. "IMO check digit" says whether the broadcast IMO number is internally valid.</li>
   <li><strong>Times</strong> are UTC, with US Central time alongside.</li>
 </ul>
 
-<p class="small" id="sea-note">Data: <a href="https://www.digitraffic.fi/en/marine-traffic/">Digitraffic</a> AIS from Fintraffic. Source: Fintraffic / digitraffic.fi, license CC 4.0 BY. Sanctions: <a href="https://ofac.treasury.gov/sanctions-list-service">US Treasury OFAC SDN List</a> (US government work) and the <a href="https://www.gov.uk/government/publications/the-uk-sanctions-list">UK Sanctions List</a>; contains public sector information licensed under the Open Government Licence v3.0. Land and borders: Natural Earth (public domain). <span id="sea-dates"></span> The data is refreshed by hand, not daily: <code>python tools/sanctions.py</code> then <code>python tools/vessels_build.py</code> (<a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/vessels_build.py">code</a>).</p>
+<p class="small" id="sea-note">Data: <a href="https://www.digitraffic.fi/en/marine-traffic/">Digitraffic</a> AIS from Fintraffic. Source: Fintraffic / digitraffic.fi, license CC 4.0 BY. Sanctions: <a href="https://ofac.treasury.gov/sanctions-list-service">US Treasury OFAC SDN List</a> (US government work) and the <a href="https://www.gov.uk/government/publications/the-uk-sanctions-list">UK Sanctions List</a>; contains public sector information licensed under the Open Government Licence v3.0. Sea zones: Flanders Marine Institute (2023), Maritime Boundaries Geodatabase, World EEZ v12 and Internal Waters v4, <a href="https://www.marineregions.org/">marineregions.org</a>, CC BY 4.0 (only the zone of each ship's position is published, not the boundaries). Ports: <a href="https://msi.nga.mil/Publications/WPI">NGA World Port Index</a> (US government). Land and borders: Natural Earth (public domain). <span id="sea-dates"></span> The data is refreshed by hand, not daily: <code>python tools/sanctions.py</code> then <code>python tools/vessels_build.py</code> (<a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/vessels_build.py">code</a>).</p>
 
 </main>
 <footer class="site"><div class="in">

@@ -5,6 +5,13 @@ Inputs
   data/ais/digitraffic/<UTC day>/locations*.parquet, metadata*.parquet   collectors/digitraffic_ais.py (CC BY 4.0)
   data/vessels/sanctioned.json                                           tools/sanctions.py (OFAC SDN, UK Sanctions List)
   --rest   also one snapshot of Digitraffic's REST API (latest position and metadata per vessel; no history)
+  data/cache/marineregions/   Marine Regions World EEZ v12 and Internal Waters v4 (Flanders Marine Institute, CC BY 4.0),
+                              fetched once from the anonymous WFS at geo.vliz.be, clipped to the coverage area. Only the
+                              per-vessel attribute is published, never the geometry (Marine Regions asks that its
+                              products are not made available for download elsewhere)
+  data/cache/wpi/             NGA World Port Index (Pub 150; US government, free to copy): port names, positions and the
+                              UN/LOCODE NGA gives for each port. The UNECE UN/LOCODE table itself is not used: its site
+                              terms limit reuse to personal, non-commercial use
 Outputs (published; the site serves them as they are)
   site/data/vessels/baltic.json       vessels in the categories below, with identifiers, listings, last position,
                                       a thinned 48 h track and the reporting pattern
@@ -25,6 +32,10 @@ Positions flagged by tools/ais_detect.py's spoofing tests (impossible implied sp
 or more inland), and positions left inside an impossible jump, are kept out of `track` and `last` and counted in
 reporting.spoofed_positions.
 Track points are [epoch seconds UTC, lat, lon], at most one per 5 minutes, over the 48 h before the newest position.
+Added keys (Oct 2026): flag_believed (the UK list's believed flag), owners (from the sanctions lists), eez (zone of the
+last trusted position), destination_locode / destination_country / destination_port (parsed from the AIS destination
+text; the raw text stays in signals.destination), port_calls (stops of 1 h or more under 1 kn within 10 km of a World
+Port Index port) and home_port (always null: the port of registry is held by commercial registries, not open data).
 
 Usage
   python tools/sanctions.py                     # refresh the sanctions lists first (about 130 MB download)
@@ -32,9 +43,11 @@ Usage
   python tools/vessels_build.py --days 2026-10-24 2026-10-25 [--rest]
 """
 import argparse
+import csv
 import gzip
 import json
 import os
+import re
 import sys
 import urllib.request
 from collections import Counter
@@ -45,11 +58,25 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import ais_detect as A  # noqa: E402
+import sanctions as S  # noqa: E402
 
 OUT_DIR = os.path.join(ROOT, "site", "data", "vessels")
 SANCTIONED = os.path.join(ROOT, "data", "vessels", "sanctioned.json")
 REST = "https://meri.digitraffic.fi/api/ais/v1/"
 DIGITRAFFIC = "Source: Fintraffic / digitraffic.fi, license CC 4.0 BY"
+CACHE = os.path.join(ROOT, "data", "cache")
+CLIP = (9.0, 53.0, 35.0, 67.5)                        # lon0, lat0, lon1, lat1: the Baltic and the Finnish coverage
+MR_WFS = ("https://geo.vliz.be/geoserver/MarineRegions/wfs?service=WFS&version=1.0.0&request=GetFeature"
+          "&typeName=MarineRegions:{}&outputFormat=application/json&bbox={},{},{},{}")
+MR_LAYERS = (("eez_internal_waters", "eez_internal_baltic.json"), ("eez", "eez_baltic.json"))    # internal waters first
+MR_ATTRIBUTION = ("EEZ: Flanders Marine Institute (2023), Maritime Boundaries Geodatabase, World EEZ v12 and Internal "
+                  "Waters v4, marineregions.org, CC BY 4.0")
+WPI_URL = "https://msi.nga.mil/api/publications/download?type=view&key=16920959/SFH00000/UpdatedPub150.csv"
+WPI_ATTRIBUTION = "Ports: NGA World Port Index (Pub 150), US National Geospatial-Intelligence Agency"
+ISO3 = {"FIN": "FI", "RUS": "RU", "EST": "EE", "SWE": "SE", "LVA": "LV", "LTU": "LT", "POL": "PL", "DEU": "DE", "DNK": "DK",
+        "NOR": "NO", "ALA": "AX", "BLR": "BY", "GBR": "GB", "NLD": "NL"}
+PORT_KM = 10.0
+STOP_KN, STOP_S, STOP_HOLE_S = 1.0, 3600, 3600
 WINDOW_H = 48
 THIN_S = 300
 OUTAGE_S = 300            # no position from any vessel for this long: the collector was down, not the ships
@@ -157,6 +184,266 @@ def pos_fix_label(v):
         return POS_FIX.get(int(v))
     except (TypeError, ValueError):
         return None
+
+
+LOCODE_RE = re.compile(r"^([A-Z]{2})[ \-_.]?([A-Z2-9]{3})$")
+
+
+def norm_place(s):
+    return re.sub(r"[^A-Z0-9]+", " ", str(s or "").upper()).strip()
+
+
+def name_keys(name):
+    """Lookup keys for a port name: as written, without spaces, and without a leading generic word ('Gavan Vysotsk')."""
+    n = norm_place(name)
+    if not n:
+        return set()
+    bare = re.sub(r"^(GAVAN|PORT OF|PORT|PORTO|PUERTO|HAMN|SATAMA)\s+", "", n)
+    return {n, n.replace(" ", ""), bare, bare.replace(" ", "")} - {""}
+
+
+class Geo:
+    """Sea zones (Marine Regions) and ports (World Port Index).
+    zones: [(shapely geometry, {iso, name, sovereign})], checked in order (internal waters before EEZ).
+    ports: [{locode, name, country, lat, lon, alt}] in the coverage area (port calls, 3-character codes);
+    all_ports: the whole index, for destinations anywhere (defaults to ports)."""
+
+    def __init__(self, zones=(), ports=(), all_ports=None):
+        import shapely
+        self.shapely = shapely
+        self.zones = list(zones)
+        for g, _ in self.zones:
+            shapely.prepare(g)
+        self.ports = list(ports)
+        pool = list(all_ports) if all_ports is not None else self.ports
+        self.by_locode = {p["locode"]: p for p in pool if p.get("locode")}
+        self.area_locodes = sorted({p["locode"] for p in self.ports if p.get("locode")})
+        self.by_name = {}
+        for p in pool:
+            for n in (p.get("name"), p.get("alt")):
+                for k in name_keys(n):
+                    if p not in self.by_name.setdefault(k, []):
+                        self.by_name[k].append(p)
+        self.plat = np.array([p["lat"] for p in self.ports], float)
+        self.plon = np.array([p["lon"] for p in self.ports], float)
+
+    def by_place(self, text, country=None):
+        """The one port whose name matches the text (optionally in one country), else None."""
+        hits = []
+        for k in name_keys(text):
+            for p in self.by_name.get(k, []):
+                if (country is None or p.get("country") == country) and p not in hits:
+                    hits.append(p)
+        return hits[0] if len(hits) == 1 else None
+
+    def eez_at(self, lat, lon, near_km=5.0):
+        """{iso, name, sovereign} of the zone holding the point; else the nearest zone within near_km; else None."""
+        if lat is None or lon is None or not self.zones:
+            return None
+        pt = self.shapely.Point(lon, lat)
+        for g, props in self.zones:
+            if g.contains(pt):
+                return dict(props)
+        best = min(((g.distance(pt), props) for g, props in self.zones), key=lambda x: x[0])
+        km = best[0] * 111.32 * max(0.2, np.cos(np.radians(lat)))   # degrees -> km, conservative (longitude scale)
+        return dict(best[1]) if km <= near_km else None
+
+    def port_near(self, lat, lon, km=PORT_KM):
+        if not len(self.ports):
+            return None
+        d = A.haversine_km(lat, lon, self.plat, self.plon)
+        i = int(np.argmin(d))
+        return self.ports[i] if d[i] <= km else None
+
+    def suffix(self, code):
+        """The one LOCODE in the area ending in this 3-character code, else None (ambiguous or absent)."""
+        hits = [k for k in self.area_locodes if k[2:] == code]
+        return hits[0] if len(hits) == 1 else None
+
+
+LOCODE_PREFIX_RE = re.compile(r"^([A-Z]{2})[ \-]?([A-Z2-9]{3})(?=[\s,.;:]|$)")
+
+
+def parse_destination(text, geo=None):
+    """(locode, country ISO2, port name) from an AIS destination text, or (None, None, None).
+    Read in this order, on the part after the last '>' or '/' ('FIHEL>EETLL', 'RUKGD/RUULU'; 'ULU>' keeps 'ULU'):
+      a UN/LOCODE: 'RUULU', 'RU ULU', 'RU-ULU';
+      a 3-character code that only one World Port Index port in the coverage area ends in ('ULU');
+      a World Port Index port name ('UST-LUGA', 'USTLUGA', 'VYSOTSK' for 'Gavan Vysotsk'), unique matches only;
+      a country code then a port name ('RU UST-LUGA');
+      a UN/LOCODE followed by other words ('RU LED FOR ORDER');
+      a port name followed by other words ('UST LUGA ANCHORAGE'), the longest unique name of 5 or more letters;
+      a country name followed by other words ('TURKEY FOR ORDER': country only).
+    Ports and their LOCODEs come from the World Port Index; a LOCODE it lacks still gives the country."""
+    s = " ".join(str(text or "").upper().replace("@", " ").split())
+    parts = [x.strip() for x in re.split(r"=>|->|>|/|\bTO\b", s) if x.strip()]
+    if not parts:
+        return None, None, None
+    tok = parts[-1]
+
+    def by_code(cc, rest):
+        loc = cc + rest
+        p = geo.by_locode.get(loc) if geo else None
+        return loc, cc, p["name"] if p else None
+
+    def port(p):
+        return p.get("locode"), p.get("country"), p["name"]
+
+    m = LOCODE_RE.match(tok)
+    if m and S.is_iso2(m.group(1)):
+        return by_code(m.group(1), m.group(2))
+    if geo is not None:
+        if re.fullmatch(r"[A-Z2-9]{3}", tok):
+            loc = geo.suffix(tok)
+            if loc:
+                return loc, loc[:2], geo.by_locode[loc]["name"]
+        p = geo.by_place(tok)
+        if p:
+            return port(p)
+        m = re.match(r"^([A-Z]{2})[ \-]+(.+)$", tok)
+        if m and S.is_iso2(m.group(1)):
+            p = geo.by_place(m.group(2), country=m.group(1))
+            if p:
+                return port(p)
+    m = LOCODE_PREFIX_RE.match(tok)
+    if m and S.is_iso2(m.group(1)):
+        return by_code(m.group(1), m.group(2))
+    words = norm_place(tok).split()
+    if geo is not None:
+        for n in range(len(words) - 1, 0, -1):
+            head = " ".join(words[:n])
+            if len(head.replace(" ", "")) >= 5:
+                p = geo.by_place(head)
+                if p:
+                    return port(p)
+    for n in range(min(3, len(words) - 1), 0, -1):
+        cc = S.country_iso2(" ".join(words[:n]))
+        if cc:
+            return None, cc, None
+    return None, None, None
+
+
+def find_stops(t, sog, max_kn=STOP_KN, min_s=STOP_S, max_hole_s=STOP_HOLE_S):
+    """Index runs (i0, i1) where every report is under max_kn (speed available), lasting min_s or more, with no
+    hole over max_hole_s between reports."""
+    slow = (sog < max_kn) & (sog < A.SOG_NA)
+    out, i0 = [], None
+    for i in range(len(t)):
+        if slow[i] and i0 is not None and t[i] - t[i - 1] > max_hole_s:
+            if t[i - 1] - t[i0] >= min_s:
+                out.append((i0, i - 1))
+            i0 = None
+        if slow[i] and i0 is None:
+            i0 = i
+        elif not slow[i] and i0 is not None:
+            if t[i - 1] - t[i0] >= min_s:
+                out.append((i0, i - 1))
+            i0 = None
+    if i0 is not None and t[len(t) - 1] - t[i0] >= min_s:
+        out.append((i0, len(t) - 1))
+    return out
+
+
+def port_calls(t, lat, lon, sog, geo, km=PORT_KM):
+    """Stops matched to the nearest World Port Index port within km: [{locode, name, country, from, to}]."""
+    if geo is None or len(t) == 0:
+        return []
+    out = []
+    for i0, i1 in find_stops(t, sog):
+        p = geo.port_near(float(np.median(lat[i0:i1 + 1])), float(np.median(lon[i0:i1 + 1])), km)
+        if not p:
+            continue
+        if out and out[-1]["locode"] == p.get("locode") and out[-1]["name"] == p["name"]:
+            out[-1]["to"] = iso(t[i1])
+            continue
+        out.append({"locode": p.get("locode"), "name": p["name"], "country": p.get("country"), "from": iso(t[i0]), "to": iso(t[i1])})
+    return out
+
+
+def load_zones(clip=CLIP, fetch=True):
+    """Marine Regions internal waters and EEZ polygons clipped to the coverage area, as Geo zones. Downloads the
+    Baltic features once from the anonymous WFS into data/cache/marineregions/."""
+    import shapely
+    from shapely.geometry import box, shape
+    d = os.path.join(CACHE, "marineregions")
+    os.makedirs(d, exist_ok=True)
+    clipped = os.path.join(d, "zones_clip_v1_{}_{}_{}_{}.json".format(*clip))
+    if os.path.exists(clipped):                         # the clipped zones, cached (the raw features take about a minute)
+        return [(shape(z["geometry"]), z["properties"]) for z in json.load(open(clipped, encoding="utf-8"))]
+    c = box(*clip)
+    zones = []
+    for layer, fname in MR_LAYERS:
+        path = os.path.join(d, fname)
+        if not os.path.exists(path):
+            if not fetch:
+                continue
+            req = urllib.request.Request(MR_WFS.format(layer, *clip), headers={"User-Agent": "noise-floor (research)"})
+            with urllib.request.urlopen(req, timeout=300) as r, open(path + ".part", "wb") as f:
+                f.write(r.read())
+            os.replace(path + ".part", path)
+        for ft in json.load(open(path, encoding="utf-8"))["features"]:
+            g = shapely.make_valid(shape(ft["geometry"]))
+            if not g.intersects(c):
+                continue
+            pr = ft["properties"]
+            iso3 = pr.get("iso_ter1") or pr.get("iso_sov1")
+            zones.append((g.intersection(c), {"iso": ISO3.get(iso3, iso3), "name": pr.get("geoname"),
+                                              "sovereign": pr.get("sovereign1")}))
+    if zones and all(os.path.exists(os.path.join(d, f)) for _, f in MR_LAYERS):
+        from shapely.geometry import mapping
+        with open(clipped, "w", encoding="utf-8") as f:
+            json.dump([{"geometry": mapping(g), "properties": pr} for g, pr in zones], f)
+    return zones
+
+
+def load_ports(clip=CLIP, fetch=True):
+    """World Port Index ports (positions, names, NGA's UN/LOCODE, country) inside clip; clip=None for all."""
+    d = os.path.join(CACHE, "wpi")
+    path = os.path.join(d, "UpdatedPub150.csv")
+    if not os.path.exists(path):
+        if not fetch:
+            return []
+        os.makedirs(d, exist_ok=True)
+        req = urllib.request.Request(WPI_URL, headers={"User-Agent": "noise-floor (research)"})
+        with urllib.request.urlopen(req, timeout=300) as r, open(path + ".part", "wb") as f:
+            f.write(r.read())
+        os.replace(path + ".part", path)
+    out = []
+    for r in csv.DictReader(open(path, encoding="utf-8-sig")):
+        try:
+            lat, lon = float(r["Latitude"]), float(r["Longitude"])
+        except (KeyError, ValueError):
+            continue
+        if clip is not None and not (clip[1] <= lat <= clip[3] and clip[0] <= lon <= clip[2]):
+            continue
+        loc = re.sub(r"[^A-Z0-9]", "", (r.get("UN/LOCODE") or "").upper())
+        out.append({"locode": loc if len(loc) == 5 else None, "name": (r.get("Main Port Name") or "").strip(),
+                    "alt": (r.get("Alternate Port Name") or "").strip() or None, "lat": lat, "lon": lon,
+                    "country": (loc[:2] if len(loc) == 5 else None) or S.country_iso2(r.get("Country Code"))})
+    return out
+
+
+def sanction_extras(mmsi, imo, match, san):
+    """(owners, believed flag ISO2) for a vessel matched by IMO or MMSI; nothing for a name match."""
+    by_imo = san.get("by_imo", {})
+    if match == "imo":
+        entries = [by_imo.get(str(imo))]
+    elif match == "mmsi":
+        entries = [by_imo.get(str(i)) for i in san.get("by_mmsi", {}).get(str(mmsi), [])]
+    else:
+        return [], None
+    owners, believed = [], None
+    for en in entries:
+        if not en:
+            continue
+        for o in en.get("owners", []):
+            rec = {k: o.get(k) for k in ("name", "role", "country", "list", "ref")}
+            if rec not in owners:
+                owners.append(rec)
+        for l in en.get("listings", []):
+            if l.get("list") == "UK Sanctions List" and l.get("flag") and believed is None:
+                believed = S.country_iso2(l["flag"])
+    return owners, believed
 
 
 def decode_eta(v):
@@ -319,7 +606,7 @@ def jump_spans(t, lat, lon, ok, typ):
     return out
 
 
-def vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs):
+def vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs, owners=None, flag_believed=None, geo=None):
     t, lat, lon = L["time"][s:e], L["lat"][s:e], L["lon"][s:e]
     v = meta.get(m, {})
     typ = v.get("type")
@@ -336,12 +623,18 @@ def vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs):
                 "sog": round(sog, 1) if sog < A.SOG_NA else None, "cog": round(cog, 1) if cog < 360 else None,
                 "heading": hd if hd < 360 else None, "nav_status": NAV_STATUS.get(ns, "not defined")}
     gaps = gap_hours(t, outs)
+    dest_loc, dest_cc, dest_port = parse_destination(v.get("destination"), geo)
     dims = None
     if any(v.get(k) for k in ("refA", "refB", "refC", "refD")):
         dims = {"length_m": (v.get("refA") or 0) + (v.get("refB") or 0) or None,
                 "beam_m": (v.get("refC") or 0) + (v.get("refD") or 0) or None}
     return {
         "mmsi": int(m), "imo": imo, "name": v.get("name"), "callsign": v.get("callSign"), "flag": flag_of(m),
+        "flag_believed": flag_believed, "owners": list(owners or []),
+        "eez": geo.eez_at(last["lat"], last["lon"]) if geo is not None else None,
+        "destination_locode": dest_loc, "destination_country": dest_cc, "destination_port": dest_port,
+        "port_calls": port_calls(t[ok], lat[ok], lon[ok], L["sog"][s:e][ok], geo),
+        "home_port": None,
         "ais_type": typ, "ais_type_label": type_label(typ), "ais_class": cls, "categories": cats,
         "listings": [{"list": l["list"], "programme": l["programme"], "date": l["date"], "url": l["url"], "match": match}
                      for l in listings],
@@ -416,7 +709,7 @@ def write_land(path, clip=(9.0, 53.0, 35.0, 67.5), tol=0.004, min_area=0.0004):
 
 
 # ----------------------------------------------------------------------------------------------- main
-def build(L, meta, san, use_land=True):
+def build(L, meta, san, use_land=True, geo=None):
     """Everything from loaded positions (ais_detect arrays) and latest metadata. Returns (baltic, gnss)."""
     t1 = int(L["time"].max())
     t0 = t1 - WINDOW_H * 3600
@@ -433,12 +726,18 @@ def build(L, meta, san, use_land=True):
         cats = categories_for(m, typ, A.imo_valid(imo) if imo else False, match)
         if not cats:
             continue
-        vessels.append(vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs))
+        owners, believed = sanction_extras(m, imo, match, san)
+        vessels.append(vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs, owners=owners,
+                                     flag_believed=believed, geo=geo))
     order = {"sanctioned": 0, "military": 1, "law_enforcement": 1, "state_flag_of_interest": 2}
     vessels.sort(key=lambda x: (min(order[c] for c in x["categories"]), x["name"] or "~", x["mmsi"]))
     span = f"{iso(int(L['time'].min()))} to {iso(t1)}"
     gaps = "; ".join(f"{iso(a)[:16]}Z to {iso(b)[:16]}Z" for a, b in outs)
-    src = [DIGITRAFFIC] + [f"{s['attribution']}, list dated {s['published']}" for s in san.get("sources", [])]
+    src = [DIGITRAFFIC] + [f"{x['attribution']}, list dated {x['published']}" for x in san.get("sources", [])]
+    if geo is not None and geo.zones:
+        src.append(MR_ATTRIBUTION)
+    if geo is not None and geo.ports:
+        src.append(WPI_ATTRIBUTION)
     baltic = {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
               "coverage": f"{COVERAGE} Positions collected {span} (UTC)." + (f" Collection gaps: {gaps}." if gaps else ""),
               "sources": src, "vessels": vessels}
@@ -467,7 +766,8 @@ def main():
         L = add_rows(L, cols)
         for m, v in rmeta.items():
             meta[m] = {**v, **meta.get(m, {})}         # collected metadata wins; REST fills what is missing
-    baltic, gnss = build(L, meta, san, use_land=not args.no_land)
+    geo = Geo(load_zones(), load_ports(), load_ports(clip=None))
+    baltic, gnss = build(L, meta, san, use_land=not args.no_land, geo=geo)
     os.makedirs(args.out, exist_ok=True)
     for name, obj in (("baltic.json", baltic), ("gnss_at_sea.json", gnss)):
         with open(os.path.join(args.out, name), "w", encoding="utf-8", newline="\n") as f:
@@ -479,6 +779,12 @@ def main():
     print(f"days {days[0]}..{days[-1]}: {load_stats['rows']:,} positions; {len(baltic['vessels'])} vessels published")
     print("  by category:", dict(cats))
     print("  by flag:", dict(flags.most_common()))
+    vs = baltic["vessels"]
+    sanc = [v for v in vs if "sanctioned" in v["categories"]]
+    print(f"  sanctioned: {len(sanc)}; with owners {sum(1 for v in sanc if v['owners'])}; with an owner country "
+          f"{sum(1 for v in sanc if any(o['country'] for o in v['owners']))}; believed flag {sum(1 for v in sanc if v['flag_believed'])}")
+    print(f"  EEZ {sum(1 for v in vs if v['eez'])}/{len(vs)}; destination country {sum(1 for v in vs if v['destination_country'])}, "
+          f"port {sum(1 for v in vs if v['destination_port'])}; vessels with port calls {sum(1 for v in vs if v['port_calls'])}")
     print(f"  GNSS interference at sea: {gnss['affected_vessels']} vessels; areas {[(a['area'], a['vessels']) for a in gnss['by_area']]}")
     print("  wrote", ", ".join(os.path.join(args.out, n) for n in ("baltic.json", "gnss_at_sea.json", "land.json")))
 

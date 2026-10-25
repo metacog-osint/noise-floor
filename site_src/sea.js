@@ -1,6 +1,9 @@
 /* Noise Floor Sea map: vessels of interest in Finland's open AIS (Digitraffic, CC BY 4.0) joined with official
-   sanctions lists (OFAC SDN, UK Sanctions List), plus anonymous GNSS-interference counts at sea.
-   Data: /data/vessels/baltic.json, /data/vessels/gnss_at_sea.json, /data/vessels/land.json (tools/vessels_build.py). */
+   sanctions lists (OFAC SDN, UK Sanctions List), sea zones (Marine Regions, CC BY 4.0) and ports (NGA World Port
+   Index), plus anonymous GNSS-interference counts at sea.
+   Data: /data/vessels/baltic.json, /data/vessels/gnss_at_sea.json, /data/vessels/land.json (tools/vessels_build.py).
+   Filters: AND across facets, OR within one; counts beside each option assume the other facets as they are.
+   The URL hash holds the selected vessel (v=<mmsi>) and the filters, so a filtered view can be shared. */
 (function () {
   "use strict";
   var mapEl = document.getElementById("sea-map");
@@ -14,7 +17,9 @@
   var CAT = { sanctioned: "Sanctioned", military: "Military", law_enforcement: "Law enforcement",
               state_flag_of_interest: "State flag of interest" };
   var LIST_BY = { "OFAC SDN": "OFAC", "UK Sanctions List": "the UK" };
-  var vessels = [], gnss = null, colors = {}, markers = {}, selected = null, trackLayer = null;
+  var LIST_SHORT = { "OFAC SDN": "OFAC", "UK Sanctions List": "UK" };
+  var HOME_PORT = "not in open data (the port of registry is held by commercial registries)";
+  var vessels = [], shown = [], gnss = null, colors = {}, markers = {}, selected = null, trackLayer = null, dataEnd = 0;
   var on = { sanctioned: true, state: true, flag: true, gnss: true, borders: true };
   try { var saved = JSON.parse(localStorage.getItem("nf-sea-layers") || "null"); if (saved) on = Object.assign(on, saved); } catch (e) { /* defaults */ }
 
@@ -35,6 +40,8 @@
     if (v.categories.indexOf("sanctioned") >= 0) return "sanctioned";
     return isState(v) ? "state" : "flag";
   }
+  function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+  function normName(s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim(); }
   var regionName = null;
   try { regionName = new Intl.DisplayNames(["en"], { type: "region" }); } catch (e) { /* ISO codes only */ }
   function country(iso) {
@@ -58,13 +65,91 @@
   }
   function num(x, unit) { return x === null || x === undefined ? "–" : x + (unit || ""); }
   function pct(x) { return x === null || x === undefined ? "–" : Math.round(100 * x) + "%"; }
+  function owners(v) { return v.owners || []; }
+  function calls(v) { return v.port_calls || []; }
+
+  // ---------- facets: k (hash key), label, values per vessel; "" means none or not given
+  var NONE = "";
+  function programmes(v) {
+    var out = [];
+    v.listings.forEach(function (l) {
+      var who = LIST_SHORT[l.list] || l.list;
+      String(l.programme || "").split(l.list === "OFAC SDN" ? "; " : ", ref ").slice(0, l.list === "OFAC SDN" ? 99 : 1)
+        .forEach(function (p) { if (p) out.push(who + " · " + p); });
+    });
+    return uniq(out);
+  }
+  function lists(v) {
+    var ls = uniq(v.listings.filter(function (l) { return l.match !== "name"; }).map(function (l) { return LIST_SHORT[l.list] || l.list; }));
+    if (!ls.length) return [NONE];
+    return ls.length > 1 ? ls.concat(["Both lists"]) : ls;
+  }
+  var FACETS = [
+    { k: "cat", label: "Group", vals: function (v) { return v.categories; }, name: function (x) { return CAT[x] || x; } },
+    { k: "flag", label: "Flag (by MMSI)", vals: function (v) { return [v.flag || NONE]; }, name: country, none: "unknown" },
+    { k: "bflag", label: "Believed flag (UK list)", vals: function (v) { return [v.flag_believed || NONE]; }, name: country, none: "not on the UK list or not given" },
+    { k: "ocountry", label: "Owner country", vals: function (v) {
+        var o = owners(v);
+        return o.length ? uniq(o.map(function (x) { return x.country || "?"; })) : [NONE];
+      }, name: function (x) { return x === "?" ? "owner listed, country not given" : country(x); }, none: "no owner listed" },
+    { k: "list", label: "Sanctions list", vals: lists, name: function (x) { return x; }, none: "not listed" },
+    { k: "prog", label: "Programme or regime", vals: function (v) { var p = programmes(v); return p.length ? p : [NONE]; },
+      name: function (x) { return x; }, none: "not listed" },
+    { k: "type", label: "AIS type", vals: function (v) { return [v.ais_type_label]; }, name: function (x) { return x; } },
+    { k: "eez", label: "Sea zone of last position", vals: function (v) { return [v.eez ? v.eez.name : NONE]; },
+      name: function (x) { return x; }, none: "no trusted position" },
+    { k: "dcountry", label: "Destination country", vals: function (v) { return [v.destination_country || NONE]; }, name: country, none: "not given or not read" },
+    { k: "dport", label: "Destination port", vals: function (v) {
+        return [v.destination_port ? v.destination_port + (v.destination_locode ? " (" + v.destination_locode + ")" : "") :
+                v.destination_locode ? v.destination_locode : NONE];
+      }, name: function (x) { return x; }, none: "not given or not read" },
+    { k: "pcountry", label: "Port call country", vals: function (v) {
+        var c = calls(v); return c.length ? uniq(c.map(function (p) { return p.country || "?"; })) : [NONE];
+      }, name: function (x) { return x === "?" ? "unknown" : country(x); }, none: "no port call seen" },
+    { k: "pport", label: "Port call port", vals: function (v) {
+        var c = calls(v); return c.length ? uniq(c.map(function (p) { return p.name + (p.locode ? " (" + p.locode + ")" : ""); })) : [NONE];
+      }, name: function (x) { return x; }, none: "no port call seen" },
+    { k: "nav", label: "Navigation status", vals: function (v) { return [v.last.nav_status || NONE]; },
+      name: function (x) { return x; }, none: "no trusted position" }
+  ];
+  var F = { sel: {}, owner: [], name: "", imo: "", mmsi: "", cs: "", spoof: false, gaps: false, seen: 0 };
+  FACETS.forEach(function (f) { F.sel[f.k] = []; });
+  function ownerKeys(v) { return uniq(owners(v).map(function (o) { return normName(o.name); })); }
+  function ago(v) { return v.reporting.last_seen ? (dataEnd - Date.parse(v.reporting.last_seen)) / 3600000 : Infinity; }
+  // every filter except `skip` (a facet key, or "owner", "spoof", "gaps", "seen")
+  function passes(v, skip) {
+    for (var i = 0; i < FACETS.length; i++) {
+      var f = FACETS[i], s = F.sel[f.k];
+      if (f.k === skip || !s.length) continue;
+      var vals = f.vals(v);
+      if (!s.some(function (x) { return vals.indexOf(x) >= 0; })) return false;
+    }
+    if (skip !== "owner" && F.owner.length) {
+      var ok = ownerKeys(v);
+      if (!F.owner.some(function (x) { return ok.indexOf(normName(x)) >= 0; })) return false;
+    }
+    if (F.name && String(v.name || "").toLowerCase().indexOf(F.name.toLowerCase()) < 0) return false;
+    if (F.cs && String(v.callsign || "").toLowerCase().indexOf(F.cs.toLowerCase()) < 0) return false;
+    if (F.imo && String(v.imo || "") !== F.imo.trim()) return false;
+    if (F.mmsi && String(v.mmsi) !== F.mmsi.trim()) return false;
+    if (skip !== "spoof" && F.spoof && !v.reporting.spoofed_positions) return false;
+    if (skip !== "gaps" && F.gaps && !v.reporting.gaps_over_1h) return false;
+    if (skip !== "seen" && F.seen && !(ago(v) <= F.seen)) return false;
+    return true;
+  }
+  function activeCount() {
+    var n = F.owner.length + (F.name ? 1 : 0) + (F.imo ? 1 : 0) + (F.mmsi ? 1 : 0) + (F.cs ? 1 : 0) + (F.spoof ? 1 : 0) + (F.gaps ? 1 : 0) + (F.seen ? 1 : 0);
+    FACETS.forEach(function (f) { n += F.sel[f.k].length; });
+    return n;
+  }
 
   // ---------- map
   var map = L.map(mapEl, { minZoom: 4, maxZoom: 12, zoomSnap: 0.5, preferCanvas: true, attributionControl: true,
                            maxBounds: [[50, 0], [70, 45]] });
   map.attributionControl.setPrefix(false);
   map.attributionControl.addAttribution('Source: Fintraffic / <a href="https://www.digitraffic.fi/en/marine-traffic/">digitraffic.fi</a>, license CC 4.0 BY · ' +
-    'Sanctions: OFAC SDN, UK Sanctions List (OGL v3.0) · Land: Natural Earth');
+    'Sanctions: OFAC SDN, UK Sanctions List (OGL v3.0) · Zones: <a href="https://www.marineregions.org/">Marine Regions</a> (CC BY 4.0) · ' +
+    'Ports: NGA World Port Index · Land: Natural Earth');
   var canvas = L.canvas({ padding: 0.3 });
   var landLayer = null, borderLayer = null, gnssLayer = L.layerGroup(), vesselLayers = { sanctioned: L.layerGroup(), state: L.layerGroup(), flag: L.layerGroup() };
 
@@ -86,7 +171,7 @@
   function drawVessels() {
     Object.keys(vesselLayers).forEach(function (g) { vesselLayers[g].clearLayers(); });
     markers = {};
-    vessels.forEach(function (v) {
+    shown.forEach(function (v) {
       if (v.last.lat === null || v.last.lat === undefined) return;
       var m = L.marker([v.last.lat, v.last.lon], { icon: icon(v, selected === v.mmsi), keyboard: true,
                                                    title: (v.name || "MMSI " + v.mmsi) + " · " + GROUP[group(v)].label,
@@ -151,6 +236,12 @@
              : l.match === "name" ? ' <span class="sd-warn">Name match only, not confirmed by IMO or MMSI.</span>' : "";
     return "<li>" + txt + link + note + "</li>";
   }
+  function ownerHtml(o) {
+    var src = o.list === "OFAC SDN" && o.ref ? '<a href="https://sanctionssearch.ofac.treas.gov/Details.aspx?id=' + encodeURIComponent(o.ref) +
+              '" rel="noopener">OFAC entry</a>' : esc(LIST_SHORT[o.list] || o.list) + (o.ref ? " ref " + esc(o.ref) : "");
+    return "<li>" + esc(o.name) + ": " + esc(o.role) + ", " + esc(o.country ? country(o.country) : "country not given") +
+           '. <span class="small">' + src + "</span></li>";
+  }
   function renderDetail(v) {
     var box = document.getElementById("sea-detail");
     if (!v) {
@@ -167,21 +258,36 @@
          row("IMO", v.imo ? esc(v.imo) + (s.imo_check_digit_ok === false ? ' <span class="sd-warn">check digit invalid</span>' : "") : "not broadcast") +
          row("Call sign", esc(v.callsign || "not broadcast")) +
          row("Flag by MMSI", esc(country(v.flag))) +
+         (v.flag_believed ? row("Believed flag (UK list)", esc(country(v.flag_believed))) : "") +
          row("AIS type", v.ais_type ? esc(v.ais_type) + " · " + esc(v.ais_type_label) : esc(v.ais_type_label)) +
-         row("AIS class", esc(v.ais_class ? v.ais_class + " (inferred)" : "not known")) + "</dl>";
+         row("AIS class", esc(v.ais_class ? v.ais_class + " (inferred)" : "not known")) +
+         row("Home port", esc(HOME_PORT)) + "</dl>";
     if (v.listings.length) {
       h += "<h3>Official listings</h3><ul class=\"sd-list\">" + v.listings.map(listingHtml).join("") + "</ul>";
+    }
+    if (owners(v).length) {
+      h += '<h3>Owners named by the lists</h3><ul class="sd-list">' + owners(v).map(ownerHtml).join("") + "</ul>" +
+           '<p class="small">As each list publishes them; a company\'s country is its address on the SDN or UK list.</p>';
     }
     h += "<h3>Last trusted position</h3>";
     if (last.lat === null || last.lat === undefined) {
       h += '<p class="small">None in this data: every report from this ship failed the spoofing tests, so where it was is unknown.</p>';
     } else {
       h += '<dl class="sd-dl">' + row("Time", esc(both(last.t))) + row("Position", esc(ll(last.lat, last.lon))) +
+           row("Sea zone", esc(v.eez ? v.eez.name + (v.eez.sovereign ? " (" + v.eez.sovereign + ")" : "") : "not found")) +
            row("Speed", esc(num(last.sog, " kn"))) + row("Course", esc(num(last.cog, "°"))) + row("Heading", esc(num(last.heading, "°"))) +
            row("Status", esc(last.nav_status || "–")) + "</dl>" +
            '<p class="small">As the ship reported it. Positions can be spoofed or falsified.' +
            (r.spoofed_positions > r.positions / 2 ? " Most of this ship's reports failed the spoofing tests, so the remaining position and track may still be affected." : "") + "</p>";
     }
+    h += '<h3>Destination and port calls</h3><dl class="sd-dl">' +
+         row("Destination (as typed)", esc(s.destination || "not given")) +
+         row("Read as", esc(v.destination_port || v.destination_locode || v.destination_country ?
+             [v.destination_port, v.destination_locode, v.destination_country ? country(v.destination_country) : null].filter(Boolean).join(", ") : "not read")) +
+         row("Port calls", calls(v).length ? "<ul class=\"sd-list\">" + calls(v).map(function (p) {
+             return "<li>" + esc(p.name) + (p.locode ? " (" + esc(p.locode) + ")" : "") + ", " + esc(country(p.country)) + ": " +
+                    esc(utc(p.from)) + " to " + esc(utc(p.to)) + "</li>"; }).join("") + "</ul>" : "none seen") + "</dl>" +
+         '<p class="small">Port calls are stops of an hour or more under 1 knot within 10 km of a World Port Index port, in this data only.</p>';
     h += '<h3>Reporting pattern</h3><dl class="sd-dl">' +
          row("Reports", esc(r.positions.toLocaleString("en-US"))) +
          row("First heard", esc(both(r.first_seen))) + row("Last heard", esc(both(r.last_seen))) +
@@ -195,25 +301,26 @@
       .filter(Boolean).join(", ") : null;
     h += '<h3>Signals</h3><dl class="sd-dl">' +
          row("Class", esc(s.ais_class ? "Class " + s.ais_class + " (inferred)" : "not known")) +
-         row("Destination", esc(s.destination || "not given")) + row("ETA", esc(s.eta || "not given")) +
+         row("ETA", esc(s.eta || "not given")) +
          row("Draught", esc(num(s.draught, " m"))) + row("Size", esc(dim || "not given")) +
          row("Position source (declared)", esc(s.pos_fix_device || "not given")) +
          row("IMO check digit", esc(s.imo_check_digit_ok === null || s.imo_check_digit_ok === undefined ? "no IMO" : s.imo_check_digit_ok ? "valid" : "invalid")) + "</dl>";
     box.innerHTML = h;
     document.getElementById("sd-close").addEventListener("click", function () { select(null, false); });
   }
+  function byMmsi(m) { return vessels.filter(function (x) { return x.mmsi === m; })[0] || null; }
   function select(mmsi, fromTable) {
     var prev = selected;
     selected = mmsi;
-    var v = vessels.filter(function (x) { return x.mmsi === mmsi; })[0] || null;
+    var v = byMmsi(mmsi);
     [prev, mmsi].forEach(function (m) {
-      var vv = vessels.filter(function (x) { return x.mmsi === m; })[0];
+      var vv = byMmsi(m);
       if (vv && markers[m]) { markers[m].setIcon(icon(vv, m === selected)); markers[m].setZIndexOffset(zFor(vv)); }
     });
     drawTrack(v);
     renderDetail(v);
     renderTable();
-    try { history.replaceState(null, "", v ? "#v=" + v.mmsi : location.pathname + location.search); } catch (e) { /* no history API */ }
+    writeHash();
     if (v && fromTable) {
       if (v.track && v.track.length > 1) map.fitBounds(L.latLngBounds(v.track.map(function (p) { return [p[1], p[2]]; })), { maxZoom: 9, padding: [30, 30], animate: false });
       else if (v.last.lat !== null) map.setView([v.last.lat, v.last.lon], Math.max(map.getZoom(), 8), { animate: false });
@@ -224,24 +331,133 @@
 
   // ---------- table
   function renderTable() {
-    var q = document.getElementById("sea-q").value.trim().toLowerCase();
-    var cat = document.getElementById("sea-cat").value, fl = document.getElementById("sea-flag").value;
-    var tb = document.querySelector("#sea-table tbody"), n = 0, out = [];
-    vessels.forEach(function (v) {
-      if (cat === "state" ? !isState(v) : cat && v.categories.indexOf(cat) < 0) return;
-      if (fl && (v.flag || "") !== fl) return;
-      if (q && [v.name, v.mmsi, v.imo, v.callsign].join(" ").toLowerCase().indexOf(q) < 0) return;
-      n++;
+    var tb = document.querySelector("#sea-table tbody");
+    tb.innerHTML = shown.map(function (v) {
       var g = group(v), sp = v.reporting.spoofed_positions;
-      out.push('<tr' + (selected === v.mmsi ? ' class="sel"' : "") + '><td><span class="sd-shape">' + shapeSvg(GROUP[g].shape, colors[g], colors.card, 13, false) +
+      return '<tr' + (selected === v.mmsi ? ' class="sel"' : "") + '><td><span class="sd-shape">' + shapeSvg(GROUP[g].shape, colors[g], colors.card, 13, false) +
         "</span> " + esc(v.name || "–") + "</td><td>" + esc(country(v.flag)) + "</td><td>" + esc(v.ais_type_label) + "</td><td>" +
-        esc(v.categories.map(function (c) { return CAT[c] || c; }).join(", ")) + (v.listings.length ? " (" + esc(v.listings.map(function (l) { return LIST_BY[l.list] === "the UK" ? "UK" : LIST_BY[l.list] || l.list; })
-          .filter(function (x, i, a) { return a.indexOf(x) === i; }).join(", ")) + ")" : "") + '</td><td class="num">' + esc(v.mmsi) +
-        '</td><td class="num">' + esc(v.imo || "–") + "</td><td>" + (v.last.t ? esc(utc(v.last.t)) : '<span class="mut">none trusted</span>') +
-        '</td><td class="num">' + (sp ? esc(sp.toLocaleString("en-US")) : "0") + '</td><td><button type="button" class="linkish" data-m="' + v.mmsi + '">Show</button></td></tr>');
+        esc(v.categories.map(function (c) { return CAT[c] || c; }).join(", ")) +
+        (v.listings.length ? " (" + esc(uniq(v.listings.map(function (l) { return LIST_SHORT[l.list] || l.list; })).join(", ")) + ")" : "") +
+        '</td><td class="num">' + esc(v.mmsi) + '</td><td class="num">' + esc(v.imo || "–") + "</td><td>" +
+        esc(v.eez ? v.eez.name : "–") + "</td><td>" + esc(v.destination_port || v.destination_locode || (v.destination_country ? country(v.destination_country) : "–")) +
+        "</td><td>" + (v.last.t ? esc(utc(v.last.t)) : '<span class="mut">none trusted</span>') +
+        '</td><td class="num">' + (sp ? esc(sp.toLocaleString("en-US")) : "0") + '</td><td><button type="button" class="linkish" data-m="' + v.mmsi + '">Show</button></td></tr>';
+    }).join("");
+    document.getElementById("sea-shown").textContent = shown.length + " of " + vessels.length + " vessels shown" +
+      (activeCount() ? " (filtered)" : "");
+  }
+
+  // ---------- filters panel
+  function optionsFor(f) {
+    var counts = {};
+    vessels.forEach(function (v) {
+      if (!passes(v, f.k)) return;
+      f.vals(v).forEach(function (x) { counts[x] = (counts[x] || 0) + 1; });
     });
-    tb.innerHTML = out.join("");
-    document.getElementById("sea-shown").textContent = n + " of " + vessels.length + " vessels shown";
+    F.sel[f.k].forEach(function (x) { if (!(x in counts)) counts[x] = 0; });
+    return Object.keys(counts).sort(function (a, b) {
+      if ((a === NONE) !== (b === NONE)) return a === NONE ? 1 : -1;
+      return counts[b] - counts[a] || f.name(a).localeCompare(f.name(b));
+    }).map(function (x) { return { v: x, n: counts[x], label: x === NONE ? (f.none || "not given") : f.name(x) }; });
+  }
+  function renderFacets() {
+    var box = document.getElementById("sf-facets");
+    box.innerHTML = FACETS.map(function (f) {
+      var opts = optionsFor(f).filter(function (o) { return o.n > 0 || F.sel[f.k].indexOf(o.v) >= 0; });
+      return '<fieldset class="sf-facet"><legend>' + esc(f.label) + (F.sel[f.k].length ? ' <span class="sf-on">' + F.sel[f.k].length + "</span>" : "") +
+        '</legend><div class="sf-opts">' + (opts.length ? opts.map(function (o) {
+          return '<label><input type="checkbox" data-f="' + f.k + '" value="' + esc(o.v) + '"' + (F.sel[f.k].indexOf(o.v) >= 0 ? " checked" : "") +
+                 '> <span>' + esc(o.label) + '</span> <span class="sf-n">' + o.n + "</span></label>";
+        }).join("") : '<span class="small">none</span>') + "</div></fieldset>";
+    }).join("");
+    // owner names: typeahead from the ships that pass the other filters
+    var names = {}, display = {};
+    vessels.forEach(function (v) {
+      if (!passes(v, "owner")) return;
+      owners(v).forEach(function (o) { var k = normName(o.name); if (!display[k]) display[k] = o.name; });
+      ownerKeys(v).forEach(function (k) { names[k] = (names[k] || 0) + 1; });
+    });
+    document.getElementById("sf-owner-list").innerHTML = Object.keys(names).sort(function (a, b) { return names[b] - names[a] || a.localeCompare(b); })
+      .filter(function (k) { return !F.owner.some(function (x) { return normName(x) === k; }); })
+      .map(function (k) { return '<option value="' + esc(display[k]) + '">' + esc(display[k]) + " (" + names[k] + ")</option>"; }).join("");
+    [["spoof", function (v) { return v.reporting.spoofed_positions > 0; }], ["gaps", function (v) { return v.reporting.gaps_over_1h > 0; }]].forEach(function (p) {
+      var n = vessels.filter(function (v) { return passes(v, p[0]) && p[1](v); }).length;
+      document.getElementById("sf-" + p[0] + "-n").textContent = n;
+      document.getElementById("sf-" + p[0]).checked = F[p[0]];
+    });
+    var seenSel = document.getElementById("sf-seen");
+    [].forEach.call(seenSel.options, function (o) {
+      var h = +o.value, n = vessels.filter(function (v) { return passes(v, "seen") && (!h || ago(v) <= h); }).length;
+      o.textContent = o.getAttribute("data-label") + " (" + n + ")";
+    });
+    seenSel.value = String(F.seen);
+  }
+  function chip(label, remove) { return { label: label, remove: remove }; }
+  function renderChips() {
+    var cs = [];
+    FACETS.forEach(function (f) {
+      F.sel[f.k].forEach(function (x) {
+        cs.push(chip(f.label + ": " + (x === NONE ? (f.none || "not given") : f.name(x)), function () { F.sel[f.k] = F.sel[f.k].filter(function (y) { return y !== x; }); }));
+      });
+    });
+    F.owner.forEach(function (x) { cs.push(chip("Owner: " + x, function () { F.owner = F.owner.filter(function (y) { return y !== x; }); })); });
+    [["name", "Name contains"], ["imo", "IMO"], ["mmsi", "MMSI"], ["cs", "Call sign contains"]].forEach(function (p) {
+      if (F[p[0]]) cs.push(chip(p[1] + ": " + F[p[0]], function () { F[p[0]] = ""; document.getElementById("sf-" + p[0]).value = ""; }));
+    });
+    if (F.spoof) cs.push(chip("Has failed spoofing tests", function () { F.spoof = false; }));
+    if (F.gaps) cs.push(chip("Has gaps over 1 h", function () { F.gaps = false; }));
+    if (F.seen) cs.push(chip("Last heard within " + F.seen + " h", function () { F.seen = 0; }));
+    var box = document.getElementById("sf-chips");
+    box.innerHTML = cs.map(function (c, i) {
+      return '<span class="sf-chip">' + esc(c.label) + ' <button type="button" data-i="' + i + '" aria-label="Remove filter: ' + esc(c.label) + '">×</button></span>';
+    }).join("");
+    [].forEach.call(box.querySelectorAll("button[data-i]"), function (b) {
+      b.addEventListener("click", function () { cs[+b.getAttribute("data-i")].remove(); applyFilters(); });
+    });
+    document.getElementById("sf-reset").hidden = !cs.length;
+    document.getElementById("sf-count").textContent = cs.length ? cs.length + " active · " + shown.length + " of " + vessels.length + " vessels" :
+      "none active · " + vessels.length + " vessels";
+  }
+  function applyFilters() {
+    shown = vessels.filter(function (v) { return passes(v, null); });
+    if (selected !== null && !shown.some(function (v) { return v.mmsi === selected; })) {
+      selected = null; drawTrack(null); renderDetail(null);
+    }
+    drawVessels(); applyLayers(); renderTable(); renderFacets(); renderChips(); writeHash();
+  }
+
+  // ---------- URL hash: v=<mmsi>, facet keys, owner, name, imo, mmsi, cs, spoof, gaps, seen
+  function writeHash() {
+    var parts = [];
+    if (selected !== null) parts.push("v=" + selected);
+    FACETS.forEach(function (f) {
+      if (F.sel[f.k].length) parts.push(f.k + "=" + F.sel[f.k].map(function (x) { return encodeURIComponent(x === NONE ? "-" : x); }).join("|"));
+    });
+    if (F.owner.length) parts.push("owner=" + F.owner.map(encodeURIComponent).join("|"));
+    ["name", "imo", "mmsi", "cs"].forEach(function (k) { if (F[k]) parts.push(k + "=" + encodeURIComponent(F[k])); });
+    if (F.spoof) parts.push("spoof=1");
+    if (F.gaps) parts.push("gaps=1");
+    if (F.seen) parts.push("seen=" + F.seen);
+    var h = parts.length ? "#" + parts.join("&") : "";
+    if (h !== location.hash && !(h === "" && location.hash === "")) {
+      try { history.replaceState(null, "", h || location.pathname + location.search); } catch (e) { /* no history API */ }
+    }
+  }
+  function readHash() {
+    var hp = {};
+    location.hash.replace(/^#/, "").split("&").forEach(function (kv) {
+      var i = kv.indexOf("=");
+      if (i > 0) hp[kv.slice(0, i)] = kv.slice(i + 1);
+    });
+    function list(k) { return hp[k] ? hp[k].split("|").map(function (x) { try { x = decodeURIComponent(x); } catch (e) { /* as is */ } return x === "-" ? NONE : x; }) : []; }
+    function one(k) { try { return hp[k] ? decodeURIComponent(hp[k]) : ""; } catch (e) { return hp[k] || ""; } }
+    FACETS.forEach(function (f) { F.sel[f.k] = list(f.k); });
+    F.owner = list("owner");
+    ["name", "imo", "mmsi", "cs"].forEach(function (k) { F[k] = one(k); var el = document.getElementById("sf-" + k); if (el) el.value = F[k]; });
+    F.spoof = hp.spoof === "1"; F.gaps = hp.gaps === "1";
+    F.seen = [6, 24, 48].indexOf(+hp.seen) >= 0 ? +hp.seen : 0;
+    var m = /^\d+$/.test(hp.v || "") ? +hp.v : null;
+    return m;
   }
 
   // ---------- GNSS tables
@@ -282,25 +498,23 @@
   Promise.all([getJson("/data/vessels/baltic.json"), getJson("/data/vessels/gnss_at_sea.json").catch(function () { return null; })]).then(function (res) {
     var d = res[0];
     vessels = d.vessels; gnss = res[1];
+    vessels.forEach(function (v) { var t = Date.parse(v.reporting.last_seen || ""); if (t > dataEnd) dataEnd = t; });
     var counts = { sanctioned: 0, state: 0, flag: 0 };
     vessels.forEach(function (v) { counts[group(v)]++; });
     document.getElementById("sea-data").textContent = "Data built " + utc(d.generated);
     document.getElementById("sea-stats").textContent = vessels.length + " vessels: " + counts.sanctioned + " sanctioned, " + counts.state +
       " military or law enforcement, " + counts.flag + " other state-flag ships. " + d.coverage;
-    document.getElementById("sea-dates").textContent = "This data was built " + both(d.generated) + ". Lists used: " + d.sources.slice(1).join("; ") + ".";
-    var flags = {};
-    vessels.forEach(function (v) { flags[v.flag || ""] = (flags[v.flag || ""] || 0) + 1; });
-    var sel = document.getElementById("sea-flag");
-    Object.keys(flags).sort(function (a, b) { return flags[b] - flags[a] || a.localeCompare(b); }).forEach(function (f) {
-      var o = document.createElement("option"); o.value = f; o.textContent = (f ? country(f) : "unknown") + " (" + flags[f] + ")"; sel.appendChild(o);
+    document.getElementById("sea-dates").textContent = "This data was built " + both(d.generated) + ". Sources: " + d.sources.slice(1).join("; ") + ".";
+    var v0 = readHash();
+    shown = vessels.filter(function (v) { return passes(v, null); });
+    drawGnss(); renderGnss(); applyFilters();
+    if (v0 !== null && shown.some(function (v) { return v.mmsi === v0; })) select(v0, true);
+    if (activeCount() && window.innerWidth >= 700) setFilters(true);   // on a phone the chips show them; the panel stays shut
+    window.addEventListener("hashchange", function () {
+      var m = readHash();
+      applyFilters();
+      if (m !== selected && (m === null || shown.some(function (v) { return v.mmsi === m; }))) select(m, m !== null);
     });
-    drawVessels(); drawGnss(); applyLayers(); renderTable(); renderGnss();
-    function fromHash() {                               // #v=<mmsi> opens that vessel (links and the back button)
-      var m = /v=(\d+)/.exec(location.hash), id = m ? +m[1] : null;
-      if (id !== selected && (id === null || vessels.some(function (v) { return v.mmsi === id; }))) select(id, id !== null);
-    }
-    fromHash();
-    window.addEventListener("hashchange", fromHash);
   }).catch(function (e) {
     document.getElementById("sea-stats").textContent = "The vessel data could not be loaded (" + e.message + ").";
   });
@@ -322,7 +536,45 @@
       applyLayers();
     });
   });
-  ["sea-q", "sea-cat", "sea-flag"].forEach(function (id) { document.getElementById(id).addEventListener("input", renderTable); });
+  var sfToggle = document.getElementById("sf-toggle"), sfBody = document.getElementById("sf-body");
+  function setFilters(open) { sfBody.hidden = !open; sfToggle.setAttribute("aria-expanded", open); }
+  sfToggle.addEventListener("click", function () { setFilters(sfBody.hidden); });
+  document.getElementById("sf-facets").addEventListener("change", function (ev) {
+    var b = ev.target;
+    if (!b.matches || !b.matches("input[data-f]")) return;
+    var k = b.getAttribute("data-f");
+    F.sel[k] = b.checked ? uniq(F.sel[k].concat([b.value])) : F.sel[k].filter(function (x) { return x !== b.value; });
+    applyFilters();
+  });
+  var typing;
+  ["name", "imo", "mmsi", "cs"].forEach(function (k) {
+    document.getElementById("sf-" + k).addEventListener("input", function (ev) {
+      F[k] = ev.target.value.trim();
+      clearTimeout(typing); typing = setTimeout(applyFilters, 200);
+    });
+  });
+  var ownerIn = document.getElementById("sf-owner");
+  function addOwner() {
+    var x = ownerIn.value.trim();
+    if (!x) return;
+    var known = vessels.some(function (v) { return ownerKeys(v).indexOf(normName(x)) >= 0; });
+    if (known && !F.owner.some(function (y) { return normName(y) === normName(x); })) { F.owner.push(x); ownerIn.value = ""; applyFilters(); }
+  }
+  ownerIn.addEventListener("change", addOwner);
+  ownerIn.addEventListener("input", function () {          // a pick from the list fills the exact name
+    var x = normName(ownerIn.value);
+    if (x && [].some.call(document.getElementById("sf-owner-list").options, function (o) { return normName(o.value) === x; })) addOwner();
+  });
+  ownerIn.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); addOwner(); } });
+  document.getElementById("sf-spoof").addEventListener("change", function (ev) { F.spoof = ev.target.checked; applyFilters(); });
+  document.getElementById("sf-gaps").addEventListener("change", function (ev) { F.gaps = ev.target.checked; applyFilters(); });
+  document.getElementById("sf-seen").addEventListener("change", function (ev) { F.seen = +ev.target.value; applyFilters(); });
+  document.getElementById("sf-reset").addEventListener("click", function () {
+    FACETS.forEach(function (f) { F.sel[f.k] = []; });
+    F.owner = []; F.spoof = F.gaps = false; F.seen = 0;
+    ["name", "imo", "mmsi", "cs"].forEach(function (k) { F[k] = ""; document.getElementById("sf-" + k).value = ""; });
+    applyFilters();
+  });
   document.querySelector("#sea-table tbody").addEventListener("click", function (ev) {
     var b = ev.target.closest("button[data-m]");
     if (b) select(+b.getAttribute("data-m"), true);
@@ -330,7 +582,7 @@
   map.on("click", function () { if (selected !== null) select(null, false); });
   if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
     readColors(); styleBase(); drawVessels(); drawGnss(); applyLayers(); renderTable();
-    var v = vessels.filter(function (x) { return x.mmsi === selected; })[0];
+    var v = byMmsi(selected);
     drawTrack(v); renderDetail(v);
   });
 })();
