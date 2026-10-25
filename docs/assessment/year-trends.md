@@ -8,7 +8,10 @@ reviewed by a person beyond the checks below.*
 
 - **Gulf of Finland / Estonia–Russia border: degradation roughly halved since late July 2026,** from a median 30.6% of
   aircraft-hexes (1 Oct 2025 – 29 Jul 2026) to 20.4% (30 Jul – 3 Sep) and 15.2% (4 Sep – 21 Oct). Traffic fell only
-  14% over the same period, so this isn't a coverage artefact on its face. It's the year's clearest sustained decline.
+  14%, and the fall holds by night and by day and against October 2025. It's the year's clearest sustained decline.
+- **Southern Baltic: a regional increase from May 2026.** Gdańsk Bay, northeast Poland and inland Lithuania roughly
+  doubled their shares from May and stayed up. Kaliningrad itself rose further, but its traffic fell by 70%, so its
+  size can't be read.
 - **Strait of Hormuz and Cyprus–Levant: two surges at the same time as traffic collapsed.** Hormuz went from 0.8% to a
   median 66% (2 Mar – 3 Apr 2026) and 83% (8 May – 21 Jun), with aircraft-hexes down from about 9,000 to under 400 a
   day. Cyprus–Levant rose from 0.9% to 19% from 28 Feb. Both are back near baseline since June.
@@ -147,12 +150,46 @@ and some outside the named areas:
 | 39.62N 32.58E | Turkey | 53% | About 42 km from Ankara; unexplained |
 | 43.96N 27.00E | Bulgaria | 60% | Northeast Bulgaria; unexplained |
 
+## Checks on the two biggest questions (run the same night)
+
+**Is the Gulf of Finland decline real?** It holds by night and by day, and against the same month a year earlier, with
+traffic steady. Monthly totals from the hourly tables (night 00–03 UTC, day 06–15 UTC; October 2026 has 21 days):
+
+| Month | Night share | Night aircraft-hexes | Day share | Day aircraft-hexes |
+|---|---|---|---|---|
+| Oct 2025 | 54.7% | 5,398 | 18.6% | 33,415 |
+| Jan 2026 | 86.2% | 3,983 | 20.0% | 30,057 |
+| Apr 2026 | 63.8% | 4,752 | 18.3% | 31,544 |
+| Jul 2026 | 52.5% | 4,160 | 16.3% | 34,426 |
+| Aug 2026 | 39.9% | 3,085 | 12.0% | 32,599 |
+| Sep 2026 | 29.0% | 3,028 | 8.6% | 31,386 |
+| Oct 2026 (1–21) | 31.0% | 2,147 | 9.5% | 21,177 |
+
+Year over year, October's night share fell from 55% to 31% and its day share from 19% to 10%. Still open: whether the
+mix of aircraft types changed (A350/A380 share by month needs the raw traces), and whether Finland's open AIS shows
+the same fall at sea.
+
+**Is Kaliningrad's rise from May real, or the coverage drop?** Kaliningrad's own aircraft-hexes fell by about 70% from
+May (from 450–490 a day to 120–170), so its share there can't be read on its own. But its neighbours, with steadier
+traffic, rose at the same time and stayed up, which points to a real regional increase from May 2026:
+
+| Area (box) | Jan–Apr 2026 share | Jun–Oct 2026 share | Aircraft-hexes a day, Apr → Aug |
+|---|---|---|---|
+| Kaliningrad box (54.0–55.6N 19–23E) | 23–35% | 43–52% | 487 → 132 |
+| Gdańsk Bay / southern Baltic (54.3–56.0N 16–19E) | 6.5–19% | 8–15% | 972 → 1,007 |
+| Northeast Poland (53–54N 19–23E) | 7.4–12.7% | 12.8–16.6% | 589 → 389 |
+| Inland Lithuania (54–56N 23.5–26.5E) | 4.1–7.9% | 10.8–14.0% | 727 → 391 |
+
+Kaliningrad's daytime share went from 15–17% (Oct 2025 – Apr 2026, apart from January) to 39–51% (May – Oct 2026).
+Why its traffic fell (rerouting of flights to Kaliningrad, feeders lost, or aircraft dark from position loss as on
+9 May) isn't settled; the raw traces for a few days would tell.
+
 ## What's next
 
 1. **Gulf of Finland decline:** check it route by route and by aircraft type (A350/A380 share by month), and against the
    AIS GNSS-interference counts from Finland's open AIS, which have their own coverage.
-2. **Kaliningrad from May:** find out why aircraft-hexes fell (a feeder outage, rerouting, or position loss as on 9 May).
-   The "fewer aircraft than usual" map view and the raw traces can tell these apart.
+2. **Kaliningrad from May:** the regional increase looks real (above); find out why Kaliningrad's own aircraft-hexes
+   fell (rerouting, a feeder outage, or position loss as on 9 May) from the raw traces of a few days.
 3. **The Grodno-area cell:** pull raw traces for a few active days and see whether it's jamming, spoofing or a few
    aircraft types.
 4. **Ankara and northeast Bulgaria:** check the aircraft types and hours; a single operator's fleet can make a cell
