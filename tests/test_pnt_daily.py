@@ -188,10 +188,13 @@ def test_heavy_apart():
     assert d[hx[0]][1] == 1 and d[hx[0]][7] == 0 and d[hx[0]][8] == 1, d[hx[0]]
     assert d[hx[1]][1] == 3 and d[hx[1]][7] == 3 and d[hx[1]][8] == 0, d[hx[1]]
     assert d[hx[2]][1] == 2 and d[hx[2]][7] == 0 and d[hx[2]][8] == 2, d[hx[2]]
-    assert minute[(hx[2], 185)] == [2, 0, 2] and minute[(hx[1], 185)] == [3, 0, 0], minute
+    # minute: [gross-bad, latched, heavy apart, heavy live]
+    assert minute[(hx[2], 185)] == [2, 0, 2, 0] and minute[(hx[1], 185)] == [3, 0, 0, 1], minute
+    assert d[hx[1]][9] == 1 and d[hx[2]][9] == 0 and d[hx[0]][9] == 0, (d[hx[1]], d[hx[2]])   # heavy_live
     # without the option nothing is set apart and the bad counts are v1.4's
     daily14, _, minute14 = P.aggregate(recs, set(), latched)
-    assert daily14[hx[0]][7] == 1 and daily14[hx[0]][8] == 0 and minute14[(hx[2], 185)] == [2, 0, 0]
+    assert daily14[hx[0]][7] == 1 and daily14[hx[0]][8] == 0 and minute14[(hx[2], 185)] == [2, 0, 0, 2]
+    assert daily14[hx[0]][9] == 1 and daily14[hx[1]][9] == 1   # v1.4: every live A350/A380 counts in heavy_live
     assert P.hex_hour_totals(recs)[(hx[2], 3)] == [4, 2] and tot[(hx[2], 3)] == [2, 0]
 
 

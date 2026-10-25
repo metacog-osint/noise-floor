@@ -217,8 +217,32 @@ def group(items, linked):
     return list(out.values())
 
 
-def anomaly_events(found):
-    """Adjacent region-hours (ring 1, within one hour) on the same measure -> events, ranked by size x excess."""
+_HH = {}
+
+
+def heavy_hours(day):
+    """{(region, hour): [A350/A380 live gross-bad aircraft, live gross-bad aircraft]} from the hourly table's heavy_live
+    column (pnt_daily from 25 Oct 2026); None when the day has no such column."""
+    if day not in _HH:
+        rows = _read(day, "hourly")
+        if not rows or "heavy_live" not in rows[0]:
+            _HH[day] = None
+        else:
+            out = defaultdict(lambda: [0, 0])
+            for r in rows:
+                x = out[(parent(r["h3"]), r["hour"])]
+                x[0] += r["heavy_live"] or 0; x[1] += r.get("bad_nacp_live", r["bad_nacp"])
+            _HH[day] = out
+    return _HH[day]
+
+
+def share(num, den):
+    return round(num / den, 3) if den else None
+
+
+def anomaly_events(found, hh=None):
+    """Adjacent region-hours (ring 1, within one hour) on the same measure -> events, ranked by size x excess.
+    hh (heavy_hours): adds heavy_share to gross events, the share of their live gross-bad aircraft that were A350/A380."""
     ev = []
     for measure in ("gross", "capable_10m"):
         fs = [f for f in found if f["measure"] == measure]
@@ -229,7 +253,10 @@ def anomaly_events(found):
                        "peak_share": max(f["share"] for f in g),
                        "lat": round(sum(f["lat"] for f in g) / len(g), 2), "lon": round(sum(f["lon"] for f in g) / len(g), 2),
                        "tier": "major" if ex >= 25 else "notable" if ex >= 10 else "minor",
-                       "cells": sorted({f["region"] for f in g})})
+                       "cells": sorted({f["region"] for f in g}),
+                       "heavy_share": (share(sum(hh.get((f["region"], f["hour"]), [0, 0])[0] for f in g),
+                                             sum(hh.get((f["region"], f["hour"]), [0, 0])[1] for f in g))
+                                       if hh is not None and measure == "gross" else None)})
     ev.sort(key=lambda e: -e["region_hours"] * e["peak_excess"])
     return ev
 
@@ -260,7 +287,7 @@ def anomalies(day, sbas_cache):
                               "share": round(cur, 1), "baseline_median": round(med, 1), "baseline_mad": round(m, 2),
                               "n": den, "z": round(z, 1), "baseline_n_days": len(xs)})
     found.sort(key=lambda f: (f["measure"], -(f["share"] - f["baseline_median"])))
-    return {"day": day, "baseline_days": bdays, "anomalies": found, "events": anomaly_events(found)}
+    return {"day": day, "baseline_days": bdays, "anomalies": found, "events": anomaly_events(found, heavy_hours(day))}
 
 
 _MS = {}
@@ -284,6 +311,23 @@ def minute_series(day, level):
             base = minute_series(day, "2")
             _MS[key] = {c: [sum(col) for col in zip(*(base[x] for x in h3.grid_disk(c, 1) if x in base))] for c in base}
     return _MS[key]
+
+
+_HM = {}
+
+
+def heavy_minutes(day):
+    """{res-2 region: [A350/A380 live gross-bad aircraft] * 1440} from the minute table's heavy column; None without it."""
+    if day not in _HM:
+        rows = _read(day, "minute")
+        if not rows or "heavy" not in rows[0]:
+            _HM[day] = None
+        else:
+            s = defaultdict(lambda: [0] * 1440)
+            for r in rows:
+                s[parent(r["h3"])][r["minute"]] += r["heavy"] or 0
+            _HM[day] = dict(s)
+    return _HM[day]
 
 
 def bursts(day):
@@ -326,8 +370,16 @@ def bursts(day):
     groups = group(found, lambda x, y: _near(x["region"], y["region"], 2) and _mins(x["start"]) <= _mins(y["end"]) + 5
                    and _mins(y["start"]) <= _mins(x["end"]) + 5)
     ev = []
+    hm, live = heavy_minutes(day), minute_series(day, "2")
     for g in groups:
-        ev.append({"start": min(f["start"] for f in g), "end": max(f["end"] for f in g),
+        hs = None
+        if hm is not None:
+            m0, m1 = min(_mins(f["start"]) for f in g), max(_mins(f["end"]) for f in g)
+            cells = sorted({f["region"] for f in g})
+            num = sum((hm.get(c) or [0] * 1440)[m] for c in cells for m in range(m0, m1 + 1))
+            den = sum((live.get(c) or [0] * 1440)[m] for c in cells for m in range(m0, m1 + 1))
+            hs = share(num, den)
+        ev.append({"start": min(f["start"] for f in g), "end": max(f["end"] for f in g), "heavy_share": hs,
                    "peak_aircraft": max(f["peak_aircraft"] for f in g),
                    "lat": round(sum(f["lat"] for f in g) / len(g), 2), "lon": round(sum(f["lon"] for f in g) / len(g), 2),
                    "detections": len(g), "regions": len({f["region"] for f in g}), "basis": g[0]["basis"],

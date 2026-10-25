@@ -65,10 +65,11 @@ def events(day, anomalies, bursts, sbas):
     for e in anomalies.get("events") or []:
         out["anomalies"].append({"m": MEASURE[e["measure"]], "tier": e["tier"], "h0": e["start_hour"], "h1": e["end_hour"],
                                  "regions": e["regions"], "rh": e["region_hours"], "peak": e["peak_share"],
-                                 "excess": e["peak_excess"], "lat": e["lat"], "lon": e["lon"], "cells": e.get("cells", [])})
+                                 "excess": e["peak_excess"], "lat": e["lat"], "lon": e["lon"], "cells": e.get("cells", []),
+                                 "hs": e.get("heavy_share")})
     for e in bursts.get("events") or []:
         out["bursts"].append({"t0": e["start"], "t1": e["end"], "peak": e["peak_aircraft"], "regions": e["regions"],
-                              "lat": e["lat"], "lon": e["lon"], "cells": e.get("cells", [])})
+                              "lat": e["lat"], "lon": e["lon"], "cells": e.get("cells", []), "hs": e.get("heavy_share")})
     return out
 
 
