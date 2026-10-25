@@ -309,6 +309,11 @@ A check registered in `docs/validation/cygnss.md` (section 10) before download: 
 4. **Post-exposure:** trace an aircraft back to its last exposure across days, and look at the A350/A380 latching lead (`docs/validation/phase1.md`) with the spoofing episodes.
 5. **Pipeline and map:** only after the held-out test. A res-2 map of active-spoofed share, separate from jamming, with spoofed-to points as a second layer. Events without ICAO addresses.
 6. **geo_out in the Gulf:** find why it fires there (aircraft mix, reference mismatch, or altitude-only spoofing).
+7. **Fixed false points the detector misses (25 Oct 2026):** the roll-against-turn-rate check (`docs/validation/roll-turn.md`;
+   it failed one of its own pre-registered checks) found aircraft held at shared points with no v0.4 episode: near
+   Smolensk (54.70N 31.92E), near Vyborg (60.59N 28.2E), east of St Petersburg (60.12N 31.38E) and at Sheremetyevo
+   (56.0N 37.4E, 172 aircraft-hours over 14 days). Find why the episode rules skip them (NACp, speed, or the
+   shared-point and replay rules).
 
 ## Sources
 
