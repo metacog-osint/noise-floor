@@ -15,8 +15,13 @@ parsed yet.
 
 Output (root data/ is gitignored): data/vessels/sanctioned.json
   generated, sources [{id, list, name, url, page, published, licence, licence_evidence, attribution, vessels}],
-  by_imo {"<imo>": {imo, names, flags, mmsi, callsigns, listings [{list, programme, date, url, id, name, flag}]}},
+  by_imo {"<imo>": {imo, names, flags, mmsi, callsigns, listings [{list, programme, date, url, id, name, flag}],
+                    owners [{name, role, country, list, ref}]}},
   no_imo [listings without an IMO number], by_mmsi {"<mmsi>": [imo, ...]} (OFAC only; a secondary match)
+Owners: OFAC links each vessel to entities by "Owned or Controlled By" and "Property in the interest of"; the owner's
+country is the country of its own SDN address (most common if several). The UK list gives "current owner/operator"
+names only; their country comes from an exact name match to an entity designated on the UK list, then on the SDN list,
+when that entity has an address. Individuals linked to vessels are never output (counted only).
 Downloads are cached in data/cache/sanctions/ (about 130 MB for both lists).
 
 Usage
@@ -63,6 +68,67 @@ SOURCES = {
     },
 }
 OFAC_DETAIL = "https://sanctionssearch.ofac.treas.gov/Details.aspx?id={}"
+
+
+# Country names as the lists write them -> ISO 3166-1 alpha-2. Base table: tzdata's iso3166.tab (a requirement already);
+# these aliases cover the names it spells differently.
+COUNTRY_ALIASES = {
+    "bahamas, the": "BS", "burma": "MM", "myanmar": "MM", "congo": "CG", "congo (democratic republic)": "CD",
+    "congo, democratic republic of the": "CD", "congo, republic of the": "CG", "democratic republic of the congo": "CD",
+    "cote d ivoire": "CI", "cote d'ivoire": "CI", "curacao": "CW", "dprk": "KP", "korea, north": "KP", "north korea": "KP",
+    "korea, south": "KR", "south korea": "KR", "kosovo": "XK", "man, isle of": "IM", "north macedonia, the republic of": "MK",
+    "occupied palestinian territories": "PS", "palestinian": "PS", "west bank": "PS", "region: northern mali": "ML",
+    "saint kitts and nevis": "KN", "saint vincent and the grenadines": "VC", "st vincent and the grenadines": "VC",
+    "samoa": "WS", "the gambia": "GM", "gambia, the": "GM", "united kingdom": "GB", "uk": "GB", "virgin islands, british": "VG",
+    "british virgin islands": "VG", "central african republic": "CF", "russian federation": "RU", "united states of america": "US",
+    "usa": "US", "turkiye": "TR", "t\u00fcrkiye": "TR", "viet nam": "VN", "macao": "MO", "hong kong sar": "HK",
+    "iran (islamic republic of)": "IR", "syrian arab republic": "SY", "lao pdr": "LA", "tanzania, united republic of": "TZ",
+    "micronesia, federated states of": "FM", "brunei darussalam": "BN", "cabo verde": "CV", "eswatini": "SZ",
+}
+_COUNTRIES = None
+
+
+def country_iso2(name):
+    """ISO2 for a country name as written in the lists, else None."""
+    global _COUNTRIES
+    if not name:
+        return None
+    if _COUNTRIES is None:
+        _COUNTRIES = {}
+        try:
+            import importlib.resources
+            tab = importlib.resources.files("tzdata").joinpath("zoneinfo/iso3166.tab").read_text(encoding="utf-8")
+            for line in tab.splitlines():
+                if line and not line.startswith("#") and "\t" in line:
+                    code, nm = line.split("\t", 1)
+                    _COUNTRIES[nm.strip().lower().replace("&", "and")] = code.strip()
+        except Exception:                               # no tzdata: aliases only
+            pass
+        _COUNTRIES.update(COUNTRY_ALIASES)
+    key = " ".join(str(name).strip().lower().replace("&", "and").split())
+    return _COUNTRIES.get(key)
+
+
+def is_iso2(code):
+    """True for an ISO 3166-1 alpha-2 code in the country table."""
+    country_iso2("x")                                   # loads the table
+    return bool(code) and code.upper() in set(_COUNTRIES.values())
+
+
+def norm_name(s):
+    """Company names compared across lists: upper case, punctuation dropped."""
+    return re.sub(r"[^A-Z0-9]+", " ", str(s or "").upper()).strip()
+
+
+def _main_country(names):
+    """The most common ISO2 among address country names (first seen wins a tie), else None."""
+    codes = [c for c in (country_iso2(n) for n in names) if c]
+    if not codes:
+        return None
+    return max(dict.fromkeys(codes), key=codes.count)
+
+
+OFAC_OWNER_ROLES = {"Owned or Controlled By": "owner or controller", "Property in the interest of": "property in the interest of"}
 
 
 def imo_check_ok(imo):
@@ -118,13 +184,29 @@ def _text(el, *path):
     return el.text.strip() if el is not None and el.text and el.text.strip() else None
 
 
-def parse_ofac_enhanced(source):
-    """OFAC SDN enhanced XML (file path or file object) -> one record per vessel entry."""
-    out = []
+def _ofac_primary_name(el):
+    for n in _all(el, "names", "name"):
+        if _text(n, "isPrimary") == "true":
+            for tr in _all(n, "translations", "translation"):
+                if _text(tr, "formattedFullName"):
+                    return _text(tr, "formattedFullName")
+    return None
+
+
+def parse_ofac_enhanced(source, names_index=None):
+    """OFAC SDN enhanced XML (file path or file object) -> one record per vessel entry, owners resolved through the
+    entry's relationships. names_index, if given, is filled with normalised entity name -> ISO2 of its address."""
+    out, ents = [], {}
     for _, el in ET.iterparse(source, events=("end",)):
         if _local(el.tag) != "entity":
             continue
-        if _text(el, "generalInfo", "entityType") != "Vessel":
+        etype = _text(el, "generalInfo", "entityType")
+        if etype != "Vessel":
+            nm = _ofac_primary_name(el)
+            country = _main_country([_text(a, "country") for a in _all(el, "addresses", "address") if _text(a, "country")])
+            ents[el.get("id")] = (etype, nm, country)
+            if names_index is not None and etype == "Entity" and nm and country:
+                names_index.setdefault(norm_name(nm), country)
             el.clear()
             continue
         names, aliases = [], []
@@ -149,14 +231,29 @@ def parse_ofac_enhanced(source):
         progs = [p.text.strip() for p in _all(el, "sanctionsPrograms", "sanctionsProgram")
                  if p.text and p.text.strip()]
         eid = el.get("id")
+        rels = []
+        for r in _all(el, "relationships", "relationship"):
+            rel = _kid(r, "relatedEntity")
+            if rel is not None and _text(r, "type") in OFAC_OWNER_ROLES:
+                rels.append((OFAC_OWNER_ROLES[_text(r, "type")], rel.get("entityId"), (rel.text or "").strip()))
         rec = {"source": "ofac", "list": SOURCES["ofac"]["list"], "id": eid, "name": names[0] if names else None,
                "aliases": sorted(set(aliases)), "imo": imos[0] if imos else None, "imos": sorted(set(imos)),
                "mmsi": sorted(set(mmsis)), "flag": (feats.get("Vessel Flag") or [None])[0],
                "callsign": (feats.get("Vessel Call Sign") or [None])[0], "type": (feats.get("VESSEL TYPE") or [None])[0],
                "programme": "; ".join(progs) or None, "date": min(dates) if dates else None,
-               "url": OFAC_DETAIL.format(eid) if eid else SOURCES["ofac"]["page"]}
+               "url": OFAC_DETAIL.format(eid) if eid else SOURCES["ofac"]["page"], "_rels": rels, "owners": [],
+               "individual_owners": 0}
         out.append(rec)
         el.clear()
+    for rec in out:                                     # related entities can come later in the file than the vessel
+        for role, rid, rname in rec.pop("_rels"):
+            etype, nm, country = ents.get(rid, (None, rname, None))
+            if etype == "Individual":                   # people are never output (maritime plan Section 12)
+                rec["individual_owners"] += 1
+                continue
+            o = {"name": nm or rname, "role": role, "country": country, "list": SOURCES["ofac"]["list"], "ref": rid}
+            if o["name"] and o not in rec["owners"]:
+                rec["owners"].append(o)
     return out
 
 
@@ -172,13 +269,21 @@ def uk_regime(name):
     return re.sub(r"^The\s+", "", (name or "").strip()) or None
 
 
-def parse_uk_xml(source):
-    """UK Sanctions List XML (file path or file object) -> one record per specified ship."""
+def parse_uk_xml(source, names_index=None):
+    """UK Sanctions List XML (file path or file object) -> one record per specified ship, with its current
+    owner/operator names. names_index, if given, is filled with normalised entity name -> ISO2 of its address."""
     out = []
     for _, el in ET.iterparse(source, events=("end",)):
         if _local(el.tag) != "Designation":
             continue
-        if (_text(el, "IndividualEntityShip") or "").lower() != "ship":
+        kind = (_text(el, "IndividualEntityShip") or "").lower()
+        if kind == "entity" and names_index is not None:
+            c = _main_country([_text(a, "AddressCountry") for a in _all(el, "Addresses", "Address") if _text(a, "AddressCountry")])
+            if c:
+                for n in _all(el, "Names", "Name"):
+                    if _text(n, "Name6"):
+                        names_index.setdefault(norm_name(_text(n, "Name6")), c)
+        if kind != "ship":
             el.clear()
             continue
         names, aliases = [], []
@@ -187,8 +292,11 @@ def parse_uk_xml(source):
             if not v:
                 continue
             (names if (_text(n, "NameType") or "").lower().startswith("primary") else aliases).append(v)
-        imos, flags, types = [], [], []
+        imos, flags, types, owners = [], [], [], []
         for ship in _all(el, "ShipDetails", "Ship"):
+            for o in _all(ship, "CurrentOwnerOperators", "CurrentOwnerOperator"):
+                if o.text and o.text.strip() and o.text.strip() not in owners:
+                    owners.append(o.text.strip())
             for i in _all(ship, "IMONumbers", "IMONumber"):
                 if imo_of(i.text):
                     imos.append(imo_of(i.text))
@@ -205,10 +313,27 @@ def parse_uk_xml(source):
                "aliases": sorted(set(aliases)), "imo": imos[0] if imos else None, "imos": imos, "mmsi": [],
                "flag": flags[0] if flags else None, "callsign": None, "type": types[0] if types else None,
                "programme": f"{regime}, ref {uid}" if regime and uid else regime or uid,
-               "date": _uk_date(_text(el, "DateDesignated")), "url": SOURCES["uk"]["page"]}
+               "date": _uk_date(_text(el, "DateDesignated")), "url": SOURCES["uk"]["page"],
+               "owners": [{"name": o, "role": "owner/operator", "country": None, "list": SOURCES["uk"]["list"], "ref": uid}
+                          for o in owners], "individual_owners": 0}
         out.append(rec)
         el.clear()
+    if names_index is not None:
+        fill_owner_countries(out, names_index)
     return out
+
+
+def fill_owner_countries(records, *indexes):
+    """Owners without a country take it from the first index (normalised name -> ISO2) that has their exact name."""
+    for r in records:
+        for o in r.get("owners", []):
+            if o["country"]:
+                continue
+            for idx in indexes:
+                c = idx.get(norm_name(o["name"]))
+                if c:
+                    o["country"] = c
+                    break
 
 
 def merge(records):
@@ -221,7 +346,10 @@ def merge(records):
             continue
         for imo in r["imos"]:
             v = by_imo.setdefault(str(imo), {"imo": imo, "imo_check_digit_ok": imo_check_ok(imo), "names": [], "flags": [],
-                                             "mmsi": [], "callsigns": [], "listings": []})
+                                             "mmsi": [], "callsigns": [], "listings": [], "owners": []})
+            for o in r.get("owners", []):
+                if o not in v["owners"]:
+                    v["owners"].append(dict(o))
             for n in [r["name"]] + r["aliases"]:
                 if n and n not in v["names"]:
                     v["names"].append(n)
@@ -280,16 +408,21 @@ def main():
     ap.add_argument("--out", default=OUT)
     args = ap.parse_args()
     records, sources = [], []
+    index = {"ofac": {}, "uk": {}}
     for key, parser in (("ofac", parse_ofac_enhanced), ("uk", parse_uk_xml)):
         path = getattr(args, key) or download(key, args.offline)
-        recs = parser(path)
+        recs = parser(path, index[key])
         records += recs
         s = {k: v for k, v in SOURCES[key].items() if k != "file"}
         s.update({"id": key, "published": published(key, path), "vessels": len(recs),
                   "with_imo": sum(1 for r in recs if r["imos"])})
         sources.append(s)
         print(f"{key}: {len(recs)} vessel entries, {s['with_imo']} with an IMO number, list dated {s['published']}")
+    fill_owner_countries(records, index["uk"], index["ofac"])
     by_imo, no_imo, by_mmsi = merge(records)
+    ow = [v for v in by_imo.values() if v["owners"]]
+    print(f"owners: {len(ow)} of {len(by_imo)} IMO numbers have an owner; {sum(1 for v in ow if any(o['country'] for o in v['owners']))} "
+          f"with an owner country; {sum(r['individual_owners'] for r in records)} links to individuals left out")
     both = sum(1 for v in by_imo.values() if len({l["list"] for l in v["listings"]}) > 1)
     out = {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "sources": sources,
            "by_imo": by_imo, "no_imo": no_imo, "by_mmsi": by_mmsi}
