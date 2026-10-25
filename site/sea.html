@@ -9,7 +9,7 @@
 <meta property="og:description" content="Sanctioned, military, law-enforcement and state-flag vessels in Finland&#x27;s open AIS, with what each ship broadcasts about itself, its reporting pattern and GNSS interference at sea.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css?v=dd5599806c">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="/sea.js?v=3a86e8dc3f"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="/sea.js?v=d97a49da3e"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -48,6 +48,7 @@
     <div class="sf-behaviour">
       <label><input type="checkbox" id="sf-spoof"> Has failed spoofing tests <span class="sf-n" id="sf-spoof-n"></span></label>
       <label><input type="checkbox" id="sf-gaps"> Has gaps over 1 h <span class="sf-n" id="sf-gaps-n"></span></label>
+      <label title="The flag its MMSI implies differs from the flag a sanctions list gives. It can mean a change of flag since the listing, a false flag, or an MMSI not updated after a change."><input type="checkbox" id="sf-mism"> Flag by MMSI differs from listed flag <span class="sf-n" id="sf-mism-n"></span></label>
       <label><span>Last heard within</span> <select id="sf-seen">
         <option value="0" data-label="any time">any time</option><option value="6" data-label="6 h of the data's end">6 h of the data's end</option>
         <option value="24" data-label="24 h of the data's end">24 h of the data's end</option><option value="48" data-label="48 h of the data's end">48 h of the data's end</option>
@@ -92,7 +93,7 @@
 <h2 id="list-h">All vessels shown</h2>
 <p class="small" id="sea-shown" aria-live="polite"></p>
 <div class="tw"><table id="sea-table"><thead><tr><th>Name</th><th>Flag (by MMSI)</th><th>AIS type</th><th>Groups</th><th>MMSI</th><th>IMO</th><th>Sea zone</th><th>Destination</th><th>Last trusted position (UTC)</th><th>Failed spoofing tests</th><th></th></tr></thead><tbody></tbody></table></div>
-<p class="small">The table follows the filters above the map.</p>
+<p class="small">The table follows the filters above the map. Download the ships shown: <button type="button" class="linkish" id="dl-csv">CSV</button> · <button type="button" class="linkish" id="dl-geojson">GeoJSON</button> (last trusted positions, identifiers, listings, owners, zones and reporting; each file carries the sources' attribution, and the same licences apply).</p>
 </section>
 
 <section aria-labelledby="gnss-h">

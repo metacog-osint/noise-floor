@@ -116,7 +116,8 @@
     { k: "nav", label: "Navigation status", vals: function (v) { return [v.last.nav_status || NONE]; },
       name: function (x) { return x; }, none: "no trusted position" }
   ];
-  var F = { sel: {}, owner: [], name: "", imo: "", mmsi: "", cs: "", spoof: false, gaps: false, seen: 0 };
+  var F = { sel: {}, owner: [], name: "", imo: "", mmsi: "", cs: "", spoof: false, gaps: false, mism: false, seen: 0 };
+  function mism(v) { return !!(v.flag && v.flag_believed && v.flag !== v.flag_believed); }
   FACETS.forEach(function (f) { F.sel[f.k] = []; });
   function ownerKeys(v) { return uniq(owners(v).map(function (o) { return normName(o.name); })); }
   function ago(v) { return v.reporting.last_seen ? (dataEnd - Date.parse(v.reporting.last_seen)) / 3600000 : Infinity; }
@@ -138,11 +139,12 @@
     if (F.mmsi && String(v.mmsi) !== F.mmsi.trim()) return false;
     if (skip !== "spoof" && F.spoof && !v.reporting.spoofed_positions) return false;
     if (skip !== "gaps" && F.gaps && !v.reporting.gaps_over_1h) return false;
+    if (skip !== "mism" && F.mism && !mism(v)) return false;
     if (skip !== "seen" && F.seen && !(ago(v) <= F.seen)) return false;
     return true;
   }
   function activeCount() {
-    var n = F.owner.length + (F.name ? 1 : 0) + (F.imo ? 1 : 0) + (F.mmsi ? 1 : 0) + (F.cs ? 1 : 0) + (F.spoof ? 1 : 0) + (F.gaps ? 1 : 0) + (F.seen ? 1 : 0);
+    var n = F.owner.length + (F.name ? 1 : 0) + (F.imo ? 1 : 0) + (F.mmsi ? 1 : 0) + (F.cs ? 1 : 0) + (F.spoof ? 1 : 0) + (F.gaps ? 1 : 0) + (F.mism ? 1 : 0) + (F.seen ? 1 : 0);
     FACETS.forEach(function (f) { n += F.sel[f.k].length; });
     return n;
   }
@@ -262,7 +264,8 @@
          row("IMO", v.imo ? esc(v.imo) + (s.imo_check_digit_ok === false ? ' <span class="sd-warn">check digit invalid</span>' : "") : "not broadcast") +
          row("Call sign", esc(v.callsign || "not broadcast")) +
          row("Flag by MMSI", esc(country(v.flag))) +
-         (v.flag_believed ? row("Listed flag", esc(country(v.flag_believed)) + ' <span class="sd-src">(' + esc(flagSource(v)) + ")</span>") : "") +
+         (v.flag_believed ? row("Listed flag", esc(country(v.flag_believed)) + ' <span class="sd-src">(' + esc(flagSource(v)) + ")" +
+            (mism(v) ? "; differs from the MMSI flag" : "") + "</span>") : "") +
          row("AIS type", v.ais_type ? esc(v.ais_type) + " · " + esc(v.ais_type_label) : esc(v.ais_type_label)) +
          row("AIS class", esc(v.ais_class ? v.ais_class + " (inferred)" : "not known")) +
          row("Home port", esc(HOME_PORT)) + "</dl>";
@@ -384,7 +387,7 @@
     document.getElementById("sf-owner-list").innerHTML = Object.keys(names).sort(function (a, b) { return names[b] - names[a] || a.localeCompare(b); })
       .filter(function (k) { return !F.owner.some(function (x) { return normName(x) === k; }); })
       .map(function (k) { return '<option value="' + esc(display[k]) + '">' + esc(display[k]) + " (" + names[k] + ")</option>"; }).join("");
-    [["spoof", function (v) { return v.reporting.spoofed_positions > 0; }], ["gaps", function (v) { return v.reporting.gaps_over_1h > 0; }]].forEach(function (p) {
+    [["spoof", function (v) { return v.reporting.spoofed_positions > 0; }], ["gaps", function (v) { return v.reporting.gaps_over_1h > 0; }], ["mism", mism]].forEach(function (p) {
       var n = vessels.filter(function (v) { return passes(v, p[0]) && p[1](v); }).length;
       document.getElementById("sf-" + p[0] + "-n").textContent = n;
       document.getElementById("sf-" + p[0]).checked = F[p[0]];
@@ -410,6 +413,7 @@
     });
     if (F.spoof) cs.push(chip("Has failed spoofing tests", function () { F.spoof = false; }));
     if (F.gaps) cs.push(chip("Has gaps over 1 h", function () { F.gaps = false; }));
+    if (F.mism) cs.push(chip("Flag by MMSI differs from listed flag", function () { F.mism = false; }));
     if (F.seen) cs.push(chip("Last heard within " + F.seen + " h", function () { F.seen = 0; }));
     var box = document.getElementById("sf-chips");
     box.innerHTML = cs.map(function (c, i) {
@@ -430,6 +434,54 @@
     drawVessels(); applyLayers(); renderTable(); renderFacets(); renderChips(); writeHash();
   }
 
+  // ---------- downloads of the ships shown
+  var sources = [];
+  function flatRow(v) {
+    var o = owners(v);
+    return {
+      name: v.name, mmsi: v.mmsi, imo: v.imo, callsign: v.callsign, flag_by_mmsi: v.flag, listed_flag: v.flag_believed,
+      listed_flag_from: v.flag_believed ? v.flag_believed_list : null, ais_type: v.ais_type, ais_type_label: v.ais_type_label,
+      groups: v.categories.join("; "), lists: uniq(v.listings.map(function (l) { return l.list; })).join("; "),
+      programmes: uniq(v.listings.map(function (l) { return l.programme; }).filter(Boolean)).join("; "),
+      listing_dates: uniq(v.listings.map(function (l) { return l.date; }).filter(Boolean)).join("; "),
+      listing_match: uniq(v.listings.map(function (l) { return l.match; }).filter(Boolean)).join("; "),
+      owners: o.map(function (x) { return x.name + (x.country ? " [" + x.country + "]" : ""); }).join("; "),
+      sea_zone: v.eez ? v.eez.name : null, destination_as_typed: v.signals.destination, destination_locode: v.destination_locode,
+      destination_country: v.destination_country, destination_port: v.destination_port,
+      port_calls: (v.port_calls || []).map(function (p) { return (p.locode || p.name) + " " + p.from + "/" + p.to; }).join("; "),
+      last_trusted_utc: v.last.t, lat: v.last.lat, lon: v.last.lon, sog_kn: v.last.sog, cog_deg: v.last.cog,
+      nav_status: v.last.nav_status, first_heard_utc: v.reporting.first_seen, last_heard_utc: v.reporting.last_seen,
+      positions: v.reporting.positions, gaps_over_1h: v.reporting.gaps_over_1h,
+      failed_spoofing_tests: v.reporting.spoofed_positions, pos_fix_device: v.signals.pos_fix_device
+    };
+  }
+  function csvCell(x) {
+    if (x === null || x === undefined) return "";
+    var s = String(x);
+    if (typeof x === "string" && /^[=+\-@\t\r]/.test(s)) s = "'" + s;      // keep spreadsheets from reading broadcast text as a formula
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function download(kind) {
+    var rows = shown.map(flatRow), stamp = dataEnd ? new Date(dataEnd).toISOString().slice(0, 10) : "data", text, type;
+    var note = "Noise Floor Sea page (https://noisefloor.theintelligence.company/sea" + location.hash + "), downloaded " +
+               new Date().toISOString().slice(0, 16) + "Z. " + sources.join(" | ");
+    if (kind === "csv") {
+      var keys = rows.length ? Object.keys(rows[0]) : Object.keys(flatRow(vessels[0]));
+      text = "# " + note.replace(/[\r\n]+/g, " ") + "\r\n" + keys.join(",") + "\r\n" +
+             rows.map(function (r) { return keys.map(function (k) { return csvCell(r[k]); }).join(","); }).join("\r\n") + "\r\n";
+      type = "text/csv";
+    } else {
+      text = JSON.stringify({ type: "FeatureCollection", attribution: note, features: rows.map(function (r) {
+        return { type: "Feature", geometry: r.lat === null || r.lat === undefined ? null : { type: "Point", coordinates: [r.lon, r.lat] }, properties: r };
+      }) });
+      type = "application/geo+json";
+    }
+    var a = document.createElement("a"), url = URL.createObjectURL(new Blob([text], { type: type + ";charset=utf-8" }));
+    a.href = url; a.download = "noise-floor-sea-" + stamp + "." + kind;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
   // ---------- URL hash: v=<mmsi>, facet keys, owner, name, imo, mmsi, cs, spoof, gaps, seen
   function writeHash() {
     var parts = [];
@@ -441,6 +493,7 @@
     ["name", "imo", "mmsi", "cs"].forEach(function (k) { if (F[k]) parts.push(k + "=" + encodeURIComponent(F[k])); });
     if (F.spoof) parts.push("spoof=1");
     if (F.gaps) parts.push("gaps=1");
+    if (F.mism) parts.push("mism=1");
     if (F.seen) parts.push("seen=" + F.seen);
     var h = parts.length ? "#" + parts.join("&") : "";
     if (h !== location.hash && !(h === "" && location.hash === "")) {
@@ -458,7 +511,7 @@
     FACETS.forEach(function (f) { F.sel[f.k] = list(f.k); });
     F.owner = list("owner");
     ["name", "imo", "mmsi", "cs"].forEach(function (k) { F[k] = one(k); var el = document.getElementById("sf-" + k); if (el) el.value = F[k]; });
-    F.spoof = hp.spoof === "1"; F.gaps = hp.gaps === "1";
+    F.spoof = hp.spoof === "1"; F.gaps = hp.gaps === "1"; F.mism = hp.mism === "1";
     F.seen = [6, 24, 48].indexOf(+hp.seen) >= 0 ? +hp.seen : 0;
     var m = /^\d+$/.test(hp.v || "") ? +hp.v : null;
     return m;
@@ -501,7 +554,7 @@
   }).catch(function () { /* the map works without borders */ });
   Promise.all([getJson(vdata("/data/vessels/baltic.json")), getJson(vdata("/data/vessels/gnss_at_sea.json")).catch(function () { return null; })]).then(function (res) {
     var d = res[0];
-    vessels = d.vessels; gnss = res[1];
+    vessels = d.vessels; gnss = res[1]; sources = d.sources || [];
     vessels.forEach(function (v) { var t = Date.parse(v.reporting.last_seen || ""); if (t > dataEnd) dataEnd = t; });
     var counts = { sanctioned: 0, state: 0, flag: 0 };
     vessels.forEach(function (v) { counts[group(v)]++; });
@@ -572,10 +625,13 @@
   ownerIn.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); addOwner(); } });
   document.getElementById("sf-spoof").addEventListener("change", function (ev) { F.spoof = ev.target.checked; applyFilters(); });
   document.getElementById("sf-gaps").addEventListener("change", function (ev) { F.gaps = ev.target.checked; applyFilters(); });
+  document.getElementById("sf-mism").addEventListener("change", function (ev) { F.mism = ev.target.checked; applyFilters(); });
+  document.getElementById("dl-csv").addEventListener("click", function () { download("csv"); });
+  document.getElementById("dl-geojson").addEventListener("click", function () { download("geojson"); });
   document.getElementById("sf-seen").addEventListener("change", function (ev) { F.seen = +ev.target.value; applyFilters(); });
   document.getElementById("sf-reset").addEventListener("click", function () {
     FACETS.forEach(function (f) { F.sel[f.k] = []; });
-    F.owner = []; F.spoof = F.gaps = false; F.seen = 0;
+    F.owner = []; F.spoof = F.gaps = F.mism = false; F.seen = 0;
     ["name", "imo", "mmsi", "cs"].forEach(function (k) { F[k] = ""; document.getElementById("sf-" + k).value = ""; });
     applyFilters();
   });
