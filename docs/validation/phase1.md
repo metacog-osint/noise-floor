@@ -306,6 +306,7 @@ Then:
 | 39 | False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024 (66.5–69.5°N, 17–25°E) | 0.0% and 1.0% degraded, against 0.0% on 27 Feb (88–104 aircraft-hexes a day) | **Pass.** A weather-radar artefact leaves no GNSS signal (coverage there is thin) |
 | 40 | Radio-horizon localizer, first version (southern Baltic; 9 May, 2 Jan, 1 Feb, 24 Feb 2026) | Stacked best crossing at 55.10°N 19.52°E, offshore about 55 km NW of Baltiysk, with NACp events at 80% of the radio horizon. Day by day, every top peak lies within about 20–80 km of the western Sambia peninsula | **Points at the Sambia coast, not yet a fix.** The reach scale was tuned on the same days and moves the peak by up to about 50 km |
 | 41 | Localizer against the 2025 TDOA fixes (Gattis, Cydejko & Akos 2026), scored with settings fixed in advance | Top peak 20 km from the Baltiysk-harbour fix on 3 Apr; 37, 48 and 45 km from the coastal-site fix on 15 Apr, 17 Apr and 21 Jun (1 hit of 4 at 25 km; 0 of 2 in the interference windows). The target cell always ranked in the top 2% of 3,496 cells. Mean miss 38 km, against 38 km for naming Kaliningrad city and 52 km for the centroid of onsets | **Fail.** It finds the area but not the site: the two TDOA sites are 21 km apart, finer than the localizer resolves |
+| 46 | When did the loss east of Kaliningrad start? The same crossing test on every other raw day on disk: 9 days of 2024, 8 more of Feb–Jun 2025, 5 of Oct–Dec 2025 | Suwałki–Ełk box seen: 89–100% on all 9 days of 2024 (Feb–Oct, including 20 Jun 2024); 47% on 20 Feb 2025; 2–26% from late Apr to Jun 2025; 63–74% Oct–Dec 2025; 0.5–3% Jun–Oct 2026. Central Poland 37–70% throughout | **A change that began between late Oct 2024 and Feb 2025, not a long-running season.** It eased only partly in winter 2025–26 and has been heavier and longer in 2026 |
 | 45 | Position loss east of Kaliningrad, Apr 2025 – Oct 2026: crossing test in four boxes (Suwałki–Ełk, Grodno area, Kaunas, central Poland as control) on 20 days of raw traces | Suwałki–Ełk box seen on ADS-B: 20–36% (Apr 2025), 2–5% (late May–Jun 2025), 57–72% (Jan–Feb 2026, outside the holiday surge), 1–3% (Jun–Oct 2026). Grodno and Kaunas boxes the same shape; central Poland 37–68% throughout | **Recurring summer position loss, longer in 2026.** Aircraft fly through but lose GNSS positions (in 2026 mostly seen as MLAT-only, in 2025 as dark). The daily per-hex share understates it, because aircraft without positions drop out |
 | 44 | Localizer v3 (heading-balanced) against v2 on a second held-out set (10 and 20 Apr, 10 and 20 May, 20 Jun 2025; rules fixed before download) | v3: 3 hits of 5 at 25 km, mean 23.1 km (5.5 km on 10 Apr). v2: 2 of 5, 30.6 km. Baselines: Kaliningrad city 0 of 5 (38.4 km), onset centroid 2 of 5 (42.9 km), fixed point 54.70°N 20.24°E 5 of 5 (22.9 km) | **Fail against the constant guess.** v3 improves on v2, but one fixed point between the two sites does as well every day. The 25 km rule can't separate a localizer from a constant when two sites 21 km apart are both active; the next test needs single-site days or a tighter radius |
 | 43 | A350 visibility hypothesis: 19 days of raw traces over the southern Baltic box (crossings at FL300+; 9 jammed and 5 quiet days) | Jammed days: A350s seen on 89% of 224 crossings (75 airframes), 74% of their positions degraded; narrowbodies seen on 43% of 2,809, 777s 61%, 787s 59%. Highest seen share on 7 of 8 full jammed days. Quiet days: every family seen on 88–94%, but 28% of A350 positions degraded against 1–8%. Degraded episodes: median 8–17 min for A350/A380, against 2 min | **Confirmed, plus a second effect.** A350s keep broadcasting degraded positions where other types go dark, and their degraded episodes last 4–8 times longer. Both fit a documented ADIRU–AESS behaviour that sets NACp to zero when one satellite is degraded (ICAO CNS SG/29 IP/05). The type over-representation is most likely a reporting artefact |
@@ -585,11 +586,11 @@ direction can't trade location against reach along its own line. It was develope
 - **What would test it properly:** days or hours with a single known active site, a tighter radius (about 10 km), or a
   different jammer far from any second site.
 
-## Position loss east of Kaliningrad: a recurring summer season (25 Oct 2026)
+## Position loss east of Kaliningrad, summer 2025 and 2026 (25 Oct 2026)
 
 The year analysis (`docs/assessment/year-trends.md`) flagged a res-3 cell at 53.92N 23.70E, by the Lithuania–Belarus–Poland
 border, as active on 4% of days in Oct–Dec 2025 and 96% in Jul–Oct 2026. The crossing test from verdicts 34–35
-(`tools/trace_box.py report`, aircraft at 10,000 ft or more) was run on every raw day on disk from Apr 2025 to Oct 2026, in
+(`tools/trace_box.py report`, aircraft at 10,000 ft or more) was run on 18 raw days from Apr 2025 to Oct 2026 (more in verdict 46), in
 four boxes: Suwałki–Ełk (53.5–54.35N, 21.6–23.0E, on Kaliningrad's south-eastern border), the Grodno area (53.5–54.35N,
 23.0–24.4E), Kaunas (54.6–55.45N, 23.5–24.9E) and central Poland (52.0–52.85N, 19.5–20.9E) as a control. The 2025 days were
 chosen by a date rule (the 10th, 15th and 20th) for the localizer tests, not for jamming.
@@ -617,9 +618,9 @@ Share of crossings with ADS-B positions for most of the way ("seen"):
 | 15 Sep 2026 | 0.5% | 1.5% | 5% | 55% |
 | 15 Oct 2026 | 3% | 10% | 13% | 51% |
 
-![Share of crossings seen on ADS-B in four boxes, Apr 2025 – Oct 2026](img/position_loss_east_kaliningrad.png)
+![Share of crossings seen on ADS-B in four boxes, Feb 2024 – Oct 2026](img/position_loss_east_kaliningrad.png)
 
-*Lines join single sample days; there is no data between the points.*
+*All sample days from verdicts 45 and 46 (Feb 2024 – Oct 2026); lines join days under 45 days apart, and there is no data between the points.*
 
 - **Position loss, not routing or a receiver outage.** 73–148 aircraft crossed the Suwałki–Ełk box on summer days,
   against 87–124 on the winter days. In 2026 most crossings are MLAT-only (75–93% from June): ground receivers hear the
@@ -630,9 +631,10 @@ Share of crossings with ADS-B positions for most of the way ("seen"):
   the losses showed as dark crossings (0% MLAT-only in the three eastern boxes), in summer 2026 mostly as MLAT tracks.
   MLAT coverage at these altitudes evidently differed between the two periods (the Suwałki–Ełk box had 8–15% MLAT-only
   crossings on 10–20 Apr 2025 and 15–22% in Jan–Feb 2026), so compare "seen" across years, not "dark".
-- **A season, longer in 2026.** Loss builds through April and May and is near total from June. It eased in winter
-  2025–26 (57–79% seen in Jan–Feb, apart from the holiday surge), and the daily tables show the Grodno-area cell quiet in
-  October 2025 (active 1 day of 31). In October 2026 it was still heavy (3–13% seen; active 20 of 21 days).
+- **Summer 2025 and 2026, longer in 2026.** Loss builds through April and May and is near total from June. It eased in
+  winter 2025–26 (57–79% seen in Jan–Feb, apart from the holiday surge), and the daily tables show the Grodno-area cell
+  quiet in October 2025 (active 1 day of 31). In October 2026 it was still heavy (3–13% seen; active 20 of 21 days).
+  Verdict 46 found 2024 clean, so this started in early 2025; it isn't a long-running yearly cycle.
 - **The daily map understates it.** Aircraft that lose their position drop out of the per-hex counts, so a box where
   almost every aircraft loses position can show a share of 30–50% from the few that keep one. The map's "Fewer aircraft
   than usual" view compares each hex with its previous 14 days, so it catches an onset but not a loss that lasts all
@@ -644,6 +646,49 @@ Share of crossings with ADS-B positions for most of the way ("seen"):
 
 Next: count MLAT-only and dark aircraft per hex in the daily pipeline, as a position-loss measure beside the share (a
 method change; needs a review first). More 2025 days (Jul–Dec) would date the 2025 season's end.
+
+## When the loss east of Kaliningrad started (verdict 46, 25 Oct 2026)
+
+The verdict 45 test on every other raw day already on disk (no downloads): nine days of 2024 kept from the validation and
+spoofing work, eight more days of February–June 2025, and five of October–December 2025 (11 Jun 2025 left out: the archive
+on disk is a truncated copy). Share of crossings seen on ADS-B:
+
+| Day | Suwałki–Ełk | Grodno area | Kaunas | Central Poland (control) |
+|---|---|---|---|---|
+| 20 Feb 2024 | 89% | 97% | 74% | 69% |
+| 27 Feb 2024 | 100% | 99% | 76% | 61% |
+| 5 Mar 2024 | 92% | 90% | 82% | 62% |
+| 6 Mar 2024 | 100% | 95% | 73% | 62% |
+| 20 Jun 2024 | 92% | 95% | 71% | 70% |
+| 13 Oct 2024 | 97% | 90% | 68% | 63% |
+| 14 Oct 2024 | 96% | 89% | 64% | 67% |
+| 15 Oct 2024 | 93% | 90% | 66% | 66% |
+| 20 Oct 2024 | 96% | 91% | 66% | 62% |
+| 20 Feb 2025 | 47% | 80% | 51% | 64% |
+| 3 Apr 2025 | 50% | 70% | 66% | 64% |
+| 15 Apr 2025 | 25% | 73% | 58% | 57% |
+| 17 Apr 2025 | 25% | 74% | 57% | 55% |
+| 25 Apr 2025 | 5% | 28% | 39% | 54% |
+| 15 May 2025 | 26% | 69% | 65% | 63% |
+| 25 May 2025 | 6% | 15% | 36% | 48% |
+| 21 Jun 2025 | 9% | 14% | 33% | 50% |
+| 20 Oct 2025 | 65% | 71% | 48% | 63% |
+| 11 Nov 2025 | 74% | 88% | 73% | 70% |
+| 12 Nov 2025 | 63% | 76% | 72% | 62% |
+| 15 Nov 2025 | 69% | 83% | 68% | 65% |
+| 15 Dec 2025 | 70% | 92% | 55% | 62% |
+
+- **2024 was clean.** All nine days, February to October and including 20 June 2024, had 89–100% of Suwałki–Ełk crossings
+  with positions. By 20 February 2025 it was 47%, so the change began between late October 2024 and February 2025.
+- **Summer 2025:** heavy from late April (5–26% seen in the Suwałki–Ełk box, 14–28% in the Grodno area on the worst days),
+  varying from day to day (Suwałki–Ełk: 5% on 25 April, 26% on 15 May, 6% on 25 May).
+- **Autumn and winter 2025–26:** partial recovery to 63–74% (Suwałki–Ełk) and 71–92% (Grodno), below 2024's levels.
+- **2026:** heavier and longer than 2025: 0.5–3% seen from June to October 2026, against 65% on 20 October 2025.
+- Kaunas reads lower than the other boxes in every period because aircraft descending to Kaunas and Vilnius leave the
+  10,000 ft floor inside it (long dark gaps that aren't interference); use it for its trend only.
+- Not localized, and the cause isn't tested here. The 2024 days were chosen for other tests (validation cases, spoofing
+  controls), not by a date rule, so they could under-represent bad days, but nine clean days out of nine across eight
+  months is a clear contrast with 2025–26.
 
 ## Next
 
