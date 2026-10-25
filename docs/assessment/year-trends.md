@@ -16,9 +16,9 @@ reviewed by a person beyond the checks below.*
   Poland and inland Lithuania roughly doubled their shares from May and stayed up; Gdańsk Bay rose from May to August,
   then returned to its spring level. In the Kaliningrad box 79–86% of aircraft heard sent no position at all on the
   Jun–Oct sample days, which is why its traffic seemed to fall by 70%.
-- **Strait of Hormuz and Cyprus–Levant: two surges at the same time as traffic collapsed.** Hormuz went from 0.8% to a
-  median 66% (2 Mar – 3 Apr 2026) and 83% (8 May – 21 Jun), with aircraft-hexes down from about 9,000 to under 400 a
-  day. Cyprus–Levant rose from 0.9% to 19% from 28 Feb. Both are back near baseline since June. CYGNSS, which doesn't
+- **Strait of Hormuz and Cyprus–Levant: two surges while aircraft with positions nearly vanished.** Hormuz went from
+  0.8% to a median 66% (2 Mar – 3 Apr 2026) and 83% (8 May – 21 Jun), with aircraft-hexes carrying positions down from
+  about 9,000 to under 400 a day: fewer flights, lost positions, or both (there's no MLAT there to tell them apart). Cyprus–Levant rose from 0.9% to 19% from 28 Feb. Both are back near baseline since June. CYGNSS, which doesn't
   depend on traffic, shows the same months over Hormuz (Gulf of Oman/Hormuz box: 0.5–0.7 dB before March, 3.8 dB in
   March, 2.4 dB in April, 3.8–3.9 dB in May–June; `docs/validation/cygnss.md` section 10), so the surges aren't a
   traffic artefact.
@@ -31,8 +31,9 @@ reviewed by a person beyond the checks below.*
   return from May 2026, lasting longer this year (`docs/validation/phase1.md`, verdict 45).
 - **No weekday pattern of any practical size.** The night peak is strong everywhere in the
   Baltic and Black Sea: 63–87% of aircraft-hexes degraded at 00–02 UTC against 4–19% in the morning.
-- **Worldwide, the total held steady:** a median 231 hexes at jamming scale a day in the first 92 days and 245 in the
-  last 92; about 54 and 58 active res-3 cells.
+- **Worldwide, the count of jamming-scale hexes held steady** (a median 231 a day in the first 92 days and 245 in the
+  last 92; about 54 and 58 active res-3 cells), but it counts only aircraft that keep a position, so it can't show
+  areas where positions are lost outright.
 
 ## Measures and method
 
@@ -49,10 +50,11 @@ reviewed by a person beyond the checks below.*
   days, counting only cells with 5-aircraft hexes on 70% or more of days in both windows, so a coverage change isn't
   read as a change in interference.
 
-**The main caveat: the share depends on who is flying.** When traffic collapses (Hormuz, Cyprus–Levant) or receiver
-coverage drops (Kaliningrad from May), the remaining aircraft may not be representative. Aircraft that lose their
-position entirely don't count at all, and earlier work (verdict 34, 9 May 2026) found jamming makes many aircraft go
-dark. A350s and A380s flag degradation more readily than other types (verdict 43), so a change in the widebody mix can
+**The main caveat: the share counts only aircraft that keep a position.** Aircraft that lose their position entirely
+don't count at all, so where most of them do (Kaliningrad and the eastern Gulf of Finland from mid-2026; verdict 34 found
+the same on 9 May 2026) the share is measured on the few left, and it can fall while interference spreads. Check the
+position-loss measure (`docs/validation/position-loss.md`) before reading any trend here. Where aircraft with positions
+nearly vanish (Hormuz, Cyprus–Levant), fewer flights and lost positions can't be told apart without MLAT. A350s and A380s flag degradation more readily than other types (verdict 43), so a change in the widebody mix can
 move the share. Each step below lists the aircraft-hex count beside the share for that reason.
 
 ## Step changes by area
@@ -60,8 +62,8 @@ move the share. Each step below lists the aircraft-hex count beside the share fo
 | Area | Period | Median share | Aircraft-hexes a day (median) | Read |
 |---|---|---|---|---|
 | Gulf of Finland / Estonia–Russia border | 1 Oct 2025 – 29 Jul 2026 | 30.6% | 1,129 | |
-| | 30 Jul – 3 Sep 2026 | 20.4% | 1,039 | Decline, traffic steady |
-| | 4 Sep – 21 Oct 2026 | 15.2% | 971 | Decline continues |
+| | 30 Jul – 3 Sep 2026 | 20.4% | 1,039 | Lower share; position loss rising (`position-loss.md`) |
+| | 4 Sep – 21 Oct 2026 | 15.2% | 971 | Lower share; eastern Gulf aircraft mostly without positions |
 | Kaliningrad and approaches | 1–25 Oct 2025 | 26.0% | 585 | |
 | | 26 Oct – 25 Dec 2025 | 18.7% | 470 | |
 | | 26 Dec 2025 – 16 Jan 2026 | 49.7% | 485 | The known winter surge (verdict 35) |
@@ -82,14 +84,14 @@ move the share. Each step below lists the aircraft-hex count beside the share fo
 | | 5 Jun – 24 Aug 2026 | 28.0% | 1,533 | Summer high |
 | | 25 Aug – 21 Oct 2026 | 15.1% | 3,691 | Traffic more than doubled |
 | Cyprus–Levant | 1 Oct 2025 – 27 Feb 2026 | 0.9% | 5,425 | |
-| | 28 Feb – 22 Mar 2026 | 18.8% | 1,131 | Surge, traffic down about 80% |
+| | 28 Feb – 22 Mar 2026 | 18.8% | 1,131 | Surge; aircraft-hexes with positions down about 80% |
 | | 23 Mar – 19 Apr 2026 | 13.8% | 1,440 | |
 | | 20 Apr – 5 Jun 2026 | 6.3% | 3,841 | |
 | | 6 Jun – 21 Oct 2026 | 2.7% | 7,378 | Near baseline |
 | Strait of Hormuz / Gulf of Oman | 1 Oct 2025 – 1 Mar 2026 | 0.8% | 9,055 | |
-| | 2 Mar – 3 Apr 2026 | 66.0% | 395 | Surge, traffic down 96% |
+| | 2 Mar – 3 Apr 2026 | 66.0% | 395 | Surge; aircraft-hexes with positions down 96% |
 | | 4 Apr – 7 May 2026 | 5.3% | 2,598 | |
-| | 8 May – 21 Jun 2026 | 82.6% | 368 | Second surge, traffic down 96% |
+| | 8 May – 21 Jun 2026 | 82.6% | 368 | Second surge; aircraft-hexes with positions down 96% |
 | | 22 Jun – 21 Oct 2026 | 2.0–8.1% | 5,926–7,591 | Three short segments near baseline |
 | High latitude excl. Baltic/Russia (control) | whole year | 0.1% | 10,028 | No change |
 
