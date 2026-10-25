@@ -5,6 +5,7 @@
   python -m nisar_rfi tables   GCOV_OR_RSLC_GRANULE_UR [--height M]
   python -m nisar_rfi map      [--config config.json]
   python -m nisar_rfi publish  [--config config.json] [--build-only]   (private web view)
+  python -m nisar_rfi vessels  [--config config.json] [--out DIR] [--days N]   (private vessel page, built only)
 """
 import argparse
 import os
@@ -58,6 +59,18 @@ def cmd_publish(a):
     if not a.build_only:
         ok = view.deploy(cfg, folder)
         raise SystemExit(0 if ok else 1)
+
+
+def cmd_vessels(a):
+    """Build the private vessel page locally (never deploys; publish adds it when the view config says "vessels")."""
+    from . import vessels
+    try:
+        cfg = pipeline.load_config(a.config)
+    except SystemExit:
+        cfg = {}                                  # no NISAR config: the page builds without emitter context
+    info = vessels.build(cfg, a.out, days=a.day or None, n_days=a.days, near_km=a.near_km, use_land=not a.no_land)
+    print(f"vessel page built: {os.path.join(info['dest'], 'vessels.html')}")
+    print(", ".join(f"{k} {v}" for k, v in info.items() if k not in ("dest", "days")) + f"; days {', '.join(info['days'])}")
 
 
 def cmd_map(a):
@@ -156,6 +169,14 @@ def main(argv=None):
     pb.add_argument("--config", default=default_cfg)
     pb.add_argument("--build-only", action="store_true")
     pb.set_defaults(fn=cmd_publish)
+    v = sub.add_parser("vessels")
+    v.add_argument("--config", default=default_cfg)
+    v.add_argument("--out", help="output folder (default private/maritime/vessels)")
+    v.add_argument("--days", type=int, default=2, help="the last N UTC days with AIS data (default 2)")
+    v.add_argument("--day", action="append", help="explicit UTC day(s), YYYY-MM-DD (repeatable)")
+    v.add_argument("--no-land", action="store_true", help="skip the Baltic inland-position test")
+    v.add_argument("--near-km", type=float, default=50, help="NISAR detections this close count as near (default 50)")
+    v.set_defaults(fn=cmd_vessels)
     m = sub.add_parser("map")
     m.add_argument("--config", default=default_cfg)
     m.set_defaults(fn=cmd_map)

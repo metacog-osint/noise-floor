@@ -65,6 +65,33 @@ Daily trigger pollers, ported from Tom's emso-watch trigger board on 22 Oct 2026
 
 **Not ported:** IODA (ask first), Cloudflare Radar and GPSJam (visual comparison only), and phone pushes through ntfy (a new service, so Tom's OK first). Announced US GPS tests for the public map come separately from the FAA's flight advisories (`pipeline/faa_gps_tests.py`, in the daily GitHub workflow).
 
+## aisstream AIS (`aisstream_ais.py`) — private
+
+This collects live AIS from [aisstream.io](https://aisstream.io/documentation)'s WebSocket API (`wss://stream.aisstream.io/v0/stream`) for the maritime lane's focus areas. aisstream publishes no terms of service or licence (registry row `aisstream`), so **everything it collects stays private**. It feeds only the private watch site's vessel page (`nisar/nisar_rfi/vessels.py`) and is never published or committed.
+
+**Setup.**
+- An aisstream API key in the `AISSTREAM_API_KEY` user environment variable, which the owner sets in their own terminal. The collector also reads it from the Windows user environment when the process started before the variable existed.
+- The key is never printed or logged, and never appears in an error message: every log line, status file and traceback passes through a redactor.
+- Bounding boxes come from the focus areas in `private/watch/maritime.json` (gitignored), read at run time. Areas marked `candidate` are skipped unless named with `--areas`. `--box lat0,lat1,lon0,lon1` replaces them (or adds to them with `--add-box`).
+
+**Protocol** (from the aisstream docs, read 25 Oct 2026):
+- permessage-deflate compression. aisstream needs it for full bandwidth, and has limited uncompressed connections since September 2026.
+- The subscription is sent at once, because aisstream closes a connection that is not subscribed within 3 s.
+- Message types: `PositionReport`, `StandardClassBPositionReport`, `ExtendedClassBPositionReport`, `ShipStaticData` and `StaticDataReport`.
+- Limits: at most 3 connections per account and per IP. The collector opens one, or two with `--watch-global`, which also follows the private watch list's MMSIs worldwide (aisstream takes at most 200).
+- Reconnects back off from 5 s to 5 min with jitter.
+- A stream that goes silent for 5 min is dropped and reopened.
+- After 8 attempts in a row that never get a subscription confirmation, it stops and points at the key.
+
+**Run:** `python collectors/aisstream_ais.py --dry-run` (shows the subscription with the key redacted), then `python collectors/aisstream_ais.py --hours 24`. Stop it early with Ctrl+C or by creating `data/ais/aisstream/STOP`.
+
+**Outputs** (all under `data/ais/aisstream/`, gitignored):
+- Per-UTC-day `locations.parquet` and `metadata.parquet`. The columns are the Digitraffic collector's, so `tools/ais_detect.py`'s loaders read both, plus `msg_id`, `valid`, `meta_name` and `source`.
+- `status.json` and `collector.log`.
+- Pleasure craft (AIS type 37) are dropped before their rows reach disk, unless the vessel is watch-listed or sanctioned.
+
+**Tests:** `tests/test_aisstream.py`. These cover the parser on documented message shapes, key redaction, box loading, a fake connection, and a local mock WebSocket server when `websockets` is installed.
+
 ## Daily schedule (Windows)
 
 `run_daily.cmd` runs the collectors and the watch pollers and appends to `data/logs/collectors.log`. It is registered as the Windows scheduled task **"noise-floor daily collectors"**:

@@ -74,6 +74,7 @@ python -m nisar_rfi run                       # last 10 days over the area; firs
 python -m nisar_rfi run --start 2026-07-01 --end 2026-10-20 --seed   # backfill without alerts
 python -m nisar_rfi tables <GranuleUR> [--height 1500]   # table method on one pass, printed, nothing saved
 python -m nisar_rfi publish [--build-only]            # private web view (needs the setup below)
+python -m nisar_rfi vessels [--days 2]                # private vessel page only, built locally, never deployed
 python -m nisar_rfi inspect <GranuleUR or file.h5>    # RFI fields a GCOV carries (also reads the full image)
 python -m nisar_rfi run --quiet               # one summary line, for logs others can read
 ```
@@ -99,6 +100,12 @@ One-time setup by the owner, kept out of this repo:
 5. Add `"view": {"pages_project": ..., "account_id": ..., "extra_maps": [...]}` to the private config.
 
 The pages also send `noindex` and `no-store` headers.
+
+**Vessel page (optional, private).** With `"vessels": true` in the `view` config (or `{"days": 2, "near_km": 50}`), the build adds `vessels.html` and `vessels.json`, made by `vessels.py`:
+- Vessels of interest from the private AIS collections (aisstream and Digitraffic), with identifiers, sanctions listings, reporting patterns and 5-minute tracks. Records use the public vessel tab's own record builder (`tools/vessels_build.py`).
+- The private watch list.
+- NISAR detections on the same UTC day within 50 km of a vessel, shown as "near" (proximity, not attribution).
+- `python -m nisar_rfi vessels` builds the page alone into `private/maritime/vessels/` and never deploys. aisstream-derived data must stay on this private site.
 
 **Config keys for the table method:**
 - `method`: `tables` or `image`. The default is `image` if any collection is BETA, otherwise `tables`.
@@ -162,6 +169,7 @@ Everything the run writes is private: it is watch output.
 | `places.py` | Offline place wording from Natural Earth |
 | `report.py` | Alerts, observations (deduplicated by detection), GeoJSON, map |
 | `view.py` | Private web view: bundle and deploy behind Cloudflare Access |
+| `vessels.py`, `vessels_template.html` | Private vessel page (AIS vessels of interest, NISAR detections near them) |
 | `pipeline.py` | One run: search, screen, read, detect, sites, outputs |
 | `__main__.py` | Command-line interface |
 

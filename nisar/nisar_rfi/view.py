@@ -6,7 +6,8 @@ protects it (production and every deployment hostname) are set up once by the ow
 names live in the private config, never in this repo:
 
   "view": {"pages_project": "...", "account_id": "...",
-           "extra_maps": [{"title": "...", "path": "private/.../map.html"}]}
+           "extra_maps": [{"title": "...", "path": "private/.../map.html"}],
+           "vessels": true}            # optional: add the private vessel page (vessels.py); or {"days": 2, ...}
 
 Deploys use wrangler with CLOUDFLARE_API_TOKEN from the environment (or the Windows user
 environment). The token is never printed.
@@ -165,6 +166,14 @@ def build(cfg, out_dir=None, now=None):
         if os.path.exists(p):
             shutil.copy(p, os.path.join(dest, f))
             files.append(f)
+    if vcfg.get("vessels"):                       # opt-in: the private vessel page (AIS; never published publicly)
+        try:
+            from . import vessels
+            info = vessels.build_for_view(cfg, dest, vcfg["vessels"])
+            maps.append((f"Vessel watch (AIS, private): {info['vessels']} vessels of interest", "vessels.html"))
+            files.append("vessels.json")
+        except Exception as ex:                   # the NISAR view still builds and deploys
+            print(f"view: vessel page skipped ({type(ex).__name__}: {ex})")
     open(os.path.join(dest, "index.html"), "w", encoding="utf-8").write(index_html(state, cfg, now, maps, files))
     open(os.path.join(dest, "_headers"), "w", encoding="utf-8").write(HEADERS)
     return dest
