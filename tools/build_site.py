@@ -34,7 +34,7 @@ STATUS = {  # key: (label, css class, one-line meaning)
     "planned": ("Planned", "st-planned", "designed, not built"),
 }
 NAV = [("home", "Home", ""), ("map", "Map", "map"), ("sea", "Sea", "sea"), ("charts", "Charts", "charts"),
-       ("lanes", "Lanes", "lanes"), ("methods", "Methods", "methods"), ("validation", "Validation", "validation"), ("sources", "Sources", "sources")]
+       ("lanes", "Lanes", "lanes"), ("methods", "Methods", "methods"), ("validation", "Validation", "validation"), ("data", "Data", "data"), ("sources", "Sources", "sources")]
 USE = {  # registry `use` values in plain words
     "ingest": "Feeds a layer", "ingest-after-ok": "After permission", "visual-only": "Visual comparison only",
     "cite-only": "Cited, not ingested", "later": "Later phase", "exclude": "Excluded", "private-watch": "Private watch only",
@@ -92,7 +92,7 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
-ASSETS = ("style.css", "map.js", "sea.js", "charts.js", "home.js")
+ASSETS = ("style.css", "map.js", "sea.js", "charts.js", "home.js", "data.js")
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
 
@@ -262,7 +262,7 @@ def main():
              "{{SOURCE_COUNT}}": str(len(rows)), "{{VESSELS_V}}": data_version("vessels")}
     fills.update(chart_fills())
     written = []
-    for name in ("index.html", "map.html", "sea.html", "charts.html", "methods.html", "validation.html", "404.html"):
+    for name in ("index.html", "map.html", "sea.html", "charts.html", "methods.html", "validation.html", "data.html", "404.html"):
         meta, body = read_page(name)
         for k, v in fills.items():
             body = body.replace(k, v)

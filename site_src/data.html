@@ -1,0 +1,84 @@
+<!--{"title": "Data · Noise Floor", "description": "Download and reuse Noise Floor's data: daily GNSS degradation files per hex, hour and minute since October 2025, the daily feed, announced GPS tests and the Sea page's vessel data, with licences and column definitions.", "nav": "data", "head": "<script defer src=\"/data.js\"></script>"}-->
+<p class="kicker">Data</p>
+<h1>Download and reuse</h1>
+<p class="lede">Everything behind the map, the charts and the Sea page can be downloaded and reused under its licence. Nothing here needs an account.</p>
+
+<h2 id="licences">What you can use, and how to credit it</h2>
+<div class="tw"><table>
+  <thead><tr><th>Data</th><th>Where</th><th>Licence</th><th>Credit</th></tr></thead>
+  <tbody>
+    <tr><td>GNSS degradation, every day since 1 Oct 2025 (per hex, hour and minute; anomalies, bursts, SBAS flags)</td><td><a href="#gnss">Monthly releases</a> on GitHub</td><td>ODbL 1.0</td><td rowspan="3">"Contains data derived from <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0), processed by Noise Floor (noisefloor.theintelligence.company)." Share derived databases under ODbL too.</td></tr>
+    <tr><td>The site's own map, event, trend and chart files</td><td><a href="#site-files">Site files</a> below</td><td>ODbL 1.0</td></tr>
+    <tr><td>Daily summary feed</td><td><a href="/feed.xml">/feed.xml</a> (Atom)</td><td>ODbL 1.0</td></tr>
+    <tr><td>Announced US GPS interference tests</td><td><a href="https://github.com/metacog-osint/noise-floor/releases/tag/declared-data">declared-data release</a>, <code>faa_gps_tests.json</code></td><td>Parsed from FAA flight advisories, a US government work (public domain in the US)</td><td>"FAA SPANS flight advisories, parsed by Noise Floor."</td></tr>
+    <tr><td>Sea page vessels (sanctioned, military, law-enforcement and state-flag ships in Finland's open AIS)</td><td><a href="/data/vessels/baltic.json">baltic.json</a>, <a href="/data/vessels/gnss_at_sea.json">gnss_at_sea.json</a>, or the CSV and GeoJSON buttons on the <a href="/sea">Sea page</a></td><td>Mixed: Digitraffic AIS CC BY 4.0; OFAC SDN List (US government work); UK Sanctions List (OGL v3.0); Marine Regions zones CC BY 4.0; NGA World Port Index</td><td>Each file carries its sources' attribution lines; keep them.</td></tr>
+  </tbody>
+</table></div>
+<p class="small">Aggregates only: the GNSS files hold counts per H3 hex and region, never aircraft identifiers. The daily files are made automatically and not reviewed by a person, apart from the 20 validated days (on the <a href="/validation">Validation</a> page).</p>
+
+<h2 id="gnss">GNSS degradation: monthly releases</h2>
+<p>One GitHub release per month, named <code>pnt-data-YYYY-MM</code>, with one set of files per UTC day. A day's files appear the next morning, after the daily run at 05:40 UTC (about 12:40 AM CDT), with a second try at 12:40 UTC for late archives. Download one file directly with <code>https://github.com/metacog-osint/noise-floor/releases/download/pnt-data-YYYY-MM/&lt;file&gt;</code>.</p>
+<p id="data-months" class="small">All releases: <a href="https://github.com/metacog-osint/noise-floor/releases">github.com/metacog-osint/noise-floor/releases</a>.</p>
+<p class="small">Gaps are at the source: adsb.lol published no archive for 31 Dec 2025 or 6 May 2026, its 5 May 2026 archive holds no traces, and its 7 May 2026 archive covers about 6 hours.</p>
+<div class="tw"><table>
+  <thead><tr><th>File (per day)</th><th>What it holds</th><th>Typical size</th></tr></thead>
+  <tbody>
+    <tr><td><code>&lt;day&gt;.parquet</code></td><td>One row per H3 hex (resolution 4, about 1,770 km²) seen that day</td><td>0.7 MB</td></tr>
+    <tr><td><code>&lt;day&gt;.hourly.parquet</code></td><td>One row per hex and UTC hour</td><td>1.1 MB</td></tr>
+    <tr><td><code>&lt;day&gt;.minute.parquet</code></td><td>Aircraft with gross degradation per hex and minute (nonzero rows only)</td><td>0.1 MB</td></tr>
+    <tr><td><code>&lt;day&gt;.anomalies.json</code></td><td>Region-hours well above the same hour's median over up to 14 earlier days, grouped into ranked events</td><td>0.1 MB</td></tr>
+    <tr><td><code>&lt;day&gt;.bursts.json</code></td><td>Minute-level bursts: short rises in degraded aircraft, timed to the minute</td><td>30 kB</td></tr>
+    <tr><td><code>&lt;day&gt;.sbas.json</code></td><td>Hours when an SBAS service area lost 10 m accuracy, labelled storm or probable service problem</td><td>20 kB</td></tr>
+    <tr><td><code>&lt;day&gt;.hotspots.json</code></td><td>The day's share in each area of the charts page's daily trend</td><td>1 kB</td></tr>
+    <tr><td><code>&lt;day&gt;.summary.json</code></td><td>Run details: input hashes, counts, timings, method version and parameters</td><td>16 kB</td></tr>
+    <tr><td><code>&lt;day&gt;.map.json</code></td><td>The map page's file for the day (a compact copy of the per-hex counts)</td><td>0.8 MB</td></tr>
+  </tbody>
+</table></div>
+
+<h3 id="columns">Columns in the per-hex table</h3>
+<p>"Bad" means an aircraft with half or more of its reports in that hex (or hex-hour) below the threshold. Reports are ADS-B version 2, the aircraft's own GNSS position only (type <code>adsb_icao</code>), airborne (1,000 ft or more), sampled at most every 30 s per aircraft. Aircraft whose avionics were faulty that day (bad where their neighbours were fine) are dropped. Full method: <a href="/methods#adsb">Methods</a> and the <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">method card</a>.</p>
+<div class="tw"><table>
+  <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>h3</code>, <code>lat</code>, <code>lon</code></td><td>H3 cell (resolution 4) and its centre</td></tr>
+    <tr><td><code>aircraft</code></td><td>Aircraft seen in the hex that day</td></tr>
+    <tr><td><code>bad_nacp</code></td><td>Aircraft bad at NACp below 8 (uncertainty 93 m or worse): jamming-scale loss, raw, comparable with GPSJam</td></tr>
+    <tr><td><code>bad_nic</code></td><td>The same with NIC below 7 (integrity)</td></tr>
+    <tr><td><code>bad_acc10</code></td><td>Aircraft bad at NACp below 10 (10 m or worse)</td></tr>
+    <tr><td><code>score</code>, <code>score_acc10</code></td><td>100 × max(bad − 1, 0) / aircraft, for <code>bad_nacp</code> and <code>bad_acc10</code> (the formula GPSJam publishes; one bad aircraft is subtracted)</td></tr>
+    <tr><td><code>capable</code>, <code>cap_bad_acc10</code></td><td>Aircraft that reported 10 m accuracy at least once that day, and how many of them were bad at 10 m in this hex</td></tr>
+    <tr><td><code>latched</code></td><td>Aircraft whose degraded reports here are post-exposure: still degraded after leaving interference 300 km or more away, among healthy neighbours</td></tr>
+    <tr><td><code>bad_nacp_live</code>, <code>score_live</code></td><td><code>bad_nacp</code> and <code>score</code> with post-exposure reports left out. The map and charts use these</td></tr>
+    <tr><td><code>heavy_live</code></td><td>Of <code>bad_nacp_live</code>, how many were A350s or A380s (in files made from 25 Oct 2026). These types flag poor accuracy far more readily than others</td></tr>
+  </tbody>
+</table></div>
+<p class="small">The hourly table has the same counts per hex and <code>hour</code> (0–23, UTC). The minute table has <code>h3</code>, <code>minute</code> (0–1439, UTC), <code>bad_nacp</code>, <code>latched</code> and, from 25 Oct 2026, <code>heavy</code>.</p>
+
+<h3 id="python">Read one day in Python</h3>
+<pre><code>import io, urllib.request
+import pyarrow.parquet as pq
+
+day = "2026-10-01"
+url = f"https://github.com/metacog-osint/noise-floor/releases/download/pnt-data-{day[:7]}/{day}.parquet"
+table = pq.read_table(io.BytesIO(urllib.request.urlopen(url).read()))
+rows = [r for r in table.to_pylist() if r["aircraft"] &gt;= 5]
+jam = [r for r in rows if 100 * max(r["bad_nacp_live"] - 1, 0) / r["aircraft"] &gt;= 10]
+print(len(rows), "hexes with 5 or more aircraft;", len(jam), "at jamming scale")</code></pre>
+
+<h2 id="site-files">Site files</h2>
+<p>The pages read small JSON files that you can use directly. They're refreshed after each daily run.</p>
+<div class="tw"><table>
+  <thead><tr><th>File</th><th>What it holds</th></tr></thead>
+  <tbody>
+    <tr><td><a href="/data/gnss/days.json"><code>/data/gnss/days.json</code></a></td><td>Every day on the map, with its hex counts (hexes with 5 or more aircraft, hexes at jamming scale, hexes with 10 m loss)</td></tr>
+    <tr><td><code>/data/gnss/&lt;day&gt;.json</code></td><td>The map's per-hex counts for a day</td></tr>
+    <tr><td><code>/data/events/&lt;day&gt;.json</code></td><td>The day's anomaly events, bursts, SBAS flags and matching announced tests</td></tr>
+    <tr><td><a href="/data/trend.json"><code>/data/trend.json</code></a></td><td>The charts page's daily hotspot trend: share per named area, every day</td></tr>
+    <tr><td><a href="/data/charts.json"><code>/data/charts.json</code></a></td><td>The validation charts</td></tr>
+    <tr><td><a href="/feed.xml"><code>/feed.xml</code></a></td><td>Atom feed: one entry per day for the latest 30 days</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="cite">How to cite</h2>
+<p>Noise Floor (2026). <em>GNSS degradation from ADS-B, daily, method v1.4.</em> The Intelligence Company. https://noisefloor.theintelligence.company. Data derived from adsb.lol, ODbL 1.0.</p>
+<p class="small">Code: <a href="https://github.com/metacog-osint/noise-floor">github.com/metacog-osint/noise-floor</a>.</p>
