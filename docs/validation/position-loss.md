@@ -85,6 +85,23 @@ positions entirely from August, above all in the east:
   (Jan–Feb) to 3–12% while MLAT-only crossings rose from 29–31% to 43–65%. The crossing test's "seen" share isn't
   affected by that, which is why it's the measure used here.
 
+## MLAT coverage changed in late 2025
+
+The measure needs MLAT, and MLAT coverage east of Kaliningrad grew a lot in late 2025 (`mlat_any`, hexes with at least one
+MLAT-placed aircraft, from `tools/position_loss.py` on 2025 days on disk):
+
+| Day | Kaliningrad box: hexes with MLAT (of 30) | Suwałki–Ełk box: hexes with MLAT (of 5) | Suwałki–Ełk: aircraft heard, MLAT-only |
+|---|---|---|---|
+| 20 Jun 2025 | 2 | 0 | 26 heard, 0 MLAT-only |
+| 20 Oct 2025 | 4 | 5 | 180 heard, 16 MLAT-only |
+| 15 Dec 2025 | 20 | 5 | 206 heard, 54 MLAT-only |
+| 17 Jan 2026 | 19 | 5 | 238 heard, 62 MLAT-only |
+| 20 Jun 2026 | 27 | 5 | 305 heard, 283 MLAT-only |
+
+On 20 Jun 2025 the crossing test found only 2–5% of crossings with positions in the Suwałki–Ełk box (verdict 45), yet this
+measure read 0% there, because no aircraft could be placed by MLAT. **So position loss can't be compared across a change
+in MLAT coverage; the crossing test's "seen" share can.** For trends, report MLAT coverage beside the share.
+
 ## Time of day and other regions
 
 **Summer loss runs around the clock.** Pooled over two winter days (17 Jan, 1 Feb) and four summer–autumn days (15 Jul,
