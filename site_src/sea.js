@@ -86,6 +86,13 @@
     if (!ls.length) return [NONE];
     return ls.length > 1 ? ls.concat(["Both lists"]) : ls;
   }
+  function fixLost(f) {                               // AIS UTC-second 62 / 63 in the collector's REST polls
+    if (!f) return '<span class="mut">not collected for this ship</span>';
+    var n = f.dead_reckoning + f.inoperative;
+    if (!n) return "none in " + f.polls + " polls";
+    return n + " of " + f.polls + " polls (" + (f.inoperative ? f.inoperative + " positioning system inoperative" : "") +
+      (f.inoperative && f.dead_reckoning ? ", " : "") + (f.dead_reckoning ? f.dead_reckoning + " dead reckoning" : "") + "); last " + esc(utc(f.last_lost));
+  }
   function flagSource(v) { return v.flag_believed_list === "OFAC SDN" ? "flag on the OFAC entry" : "UK list, believed flag"; }
   var FACETS = [
     { k: "cat", label: "Group", vals: function (v) { return v.categories; }, name: function (x) { return CAT[x] || x; } },
@@ -268,7 +275,8 @@
             (mism(v) ? "; differs from the MMSI flag" : "") + "</span>") : "") +
          row("AIS type", v.ais_type ? esc(v.ais_type) + " · " + esc(v.ais_type_label) : esc(v.ais_type_label)) +
          row("AIS class", esc(v.ais_class ? v.ais_class + " (inferred)" : "not known")) +
-         row("Home port", esc(HOME_PORT)) + "</dl>";
+         row("Home port", esc(HOME_PORT)) +
+         row("Position fix lost (ship's own report)", fixLost(s.fix_lost)) + "</dl>";
     if (v.listings.length) {
       h += "<h3>Official listings</h3><ul class=\"sd-list\">" + v.listings.map(listingHtml).join("") + "</ul>";
     }

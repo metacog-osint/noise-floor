@@ -612,8 +612,27 @@ def jump_spans(t, lat, lon, ok, typ):
     return out
 
 
+def load_fixflags(days, t0=None):
+    """{mmsi: {polls, dead_reckoning, inoperative, last_lost}} from the collector's REST polls (fixflags*.parquet, AIS
+    UTC-second field: 62 dead reckoning, 63 positioning system inoperative), polls at or after t0 (epoch s); {} if none."""
+    t = A.read_kind(days, "fixflags")
+    if t is None or t.num_rows == 0:
+        return {}
+    out = {}
+    for m, sec, rx in zip(t.column("mmsi").to_pylist(), t.column("utc_second").to_pylist(), t.column("rx_ms").to_pylist()):
+        if t0 is not None and rx / 1000 < t0:
+            continue
+        r = out.setdefault(int(m), {"polls": 0, "dead_reckoning": 0, "inoperative": 0, "last_lost": None})
+        r["polls"] += 1
+        if sec in (62, 63):
+            r["dead_reckoning" if sec == 62 else "inoperative"] += 1
+            when = iso(int(rx / 1000))
+            r["last_lost"] = max(r["last_lost"] or when, when)
+    return out
+
+
 def vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs, owners=None, flag_believed=None, geo=None,
-                  flag_believed_list=None):
+                  flag_believed_list=None, fix=None):
     t, lat, lon = L["time"][s:e], L["lat"][s:e], L["lon"][s:e]
     v = meta.get(m, {})
     typ = v.get("type")
@@ -657,7 +676,8 @@ def vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs, owners
             "raim_share": round(float(L["raim"][s:e].mean()), 2)},
         "signals": {"ais_class": cls, "destination": v.get("destination"), "eta": decode_eta(v.get("eta")),
                     "draught": round(v["draught"] / 10, 1) if v.get("draught") else None, "dimensions": dims,
-                    "imo_check_digit_ok": A.imo_valid(imo) if imo else None, "pos_fix_device": pos_fix_label(v.get("posType"))},
+                    "imo_check_digit_ok": A.imo_valid(imo) if imo else None, "pos_fix_device": pos_fix_label(v.get("posType")),
+                    "fix_lost": (fix or {}).get(int(m))},
     }
 
 
@@ -717,10 +737,12 @@ def write_land(path, clip=(9.0, 53.0, 35.0, 67.5), tol=0.004, min_area=0.0004):
 
 
 # ----------------------------------------------------------------------------------------------- main
-def build(L, meta, san, use_land=True, geo=None):
-    """Everything from loaded positions (ais_detect arrays) and latest metadata. Returns (baltic, gnss)."""
+def build(L, meta, san, use_land=True, geo=None, fixflags_days=None):
+    """Everything from loaded positions (ais_detect arrays) and latest metadata. Returns (baltic, gnss).
+    fixflags_days: day folders whose REST polls give each vessel's own 'fix lost' reports (signals.fix_lost)."""
     t1 = int(L["time"].max())
     t0 = t1 - WINDOW_H * 3600
+    fix = load_fixflags(fixflags_days, t0) if fixflags_days else {}
     keep = L["time"] >= t0
     L = {k: v[keep] for k, v in L.items()}
     meta_types = {m: {"type": v.get("type"), "imo": v.get("imo"), "name": v.get("name")} for m, v in meta.items()}
@@ -736,7 +758,7 @@ def build(L, meta, san, use_land=True, geo=None):
             continue
         owners, believed, believed_list = sanction_extras(m, imo, match, san)
         vessels.append(vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs, owners=owners,
-                                     flag_believed=believed, flag_believed_list=believed_list, geo=geo))
+                                     flag_believed=believed, flag_believed_list=believed_list, geo=geo, fix=fix))
     order = {"sanctioned": 0, "military": 1, "law_enforcement": 1, "state_flag_of_interest": 2}
     vessels.sort(key=lambda x: (min(order[c] for c in x["categories"]), x["name"] or "~", x["mmsi"]))
     span = f"{iso(int(L['time'].min()))} to {iso(t1)}"
@@ -750,6 +772,9 @@ def build(L, meta, san, use_land=True, geo=None):
               "coverage": f"{COVERAGE} Positions collected {span} (UTC)." + (f" Collection gaps: {gaps}." if gaps else ""),
               "sources": src, "vessels": vessels}
     gnss = gnss_aggregate(L, meta_types, flagged, dirty, int(L["time"].min()), t1, outs)
+    gnss["fix_lost"] = ({"vessels_polled": len(fix), "vessels_reporting": sum(1 for r in fix.values() if r["dead_reckoning"] or r["inoperative"]),
+                         "note": "Ships' own reports in AIS (UTC-second 62 dead reckoning, 63 positioning system inoperative), "
+                                 "from REST polls every 10 minutes"} if fix else None)
     return baltic, gnss
 
 
@@ -775,7 +800,7 @@ def main():
         for m, v in rmeta.items():
             meta[m] = {**v, **meta.get(m, {})}         # collected metadata wins; REST fills what is missing
     geo = Geo(load_zones(), load_ports(), load_ports(clip=None))
-    baltic, gnss = build(L, meta, san, use_land=not args.no_land, geo=geo)
+    baltic, gnss = build(L, meta, san, use_land=not args.no_land, geo=geo, fixflags_days=days)
     os.makedirs(args.out, exist_ok=True)
     for name, obj in (("baltic.json", baltic), ("gnss_at_sea.json", gnss)):
         with open(os.path.join(args.out, name), "w", encoding="utf-8", newline="\n") as f:

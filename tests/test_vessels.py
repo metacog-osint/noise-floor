@@ -337,6 +337,29 @@ def test_gaps():
     assert [p[0] for p in V.thin_track(tt, np.zeros(6), np.zeros(6))] == [0, 300, 700]
 
 
+def test_fixflags(tmp):
+    """Ships' own 'fix lost' reports (AIS UTC-second 62/63) from the collector's REST polls, per vessel in the window."""
+    import pyarrow as pa, pyarrow.parquet as pq
+    A = V.A
+    old = A.AIS_DIR
+    try:
+        A.AIS_DIR = os.path.join(tmp, "ais")
+        os.makedirs(os.path.join(A.AIS_DIR, "2026-10-25"))
+        rx = [1792900000000 + k * 600000 for k in range(6)]          # six polls, ten minutes apart
+        pq.write_table(pa.table({"mmsi": pa.array([273000001] * 6 + [230000007] * 2, pa.int32()),
+                                 "utc_second": pa.array([12, 62, 63, 63, 40, 60, 5, 6], pa.int8()),
+                                 "rx_ms": pa.array(rx + rx[:2], pa.int64())}),
+                       os.path.join(A.AIS_DIR, "2026-10-25", "fixflags.parquet"))
+        f = V.load_fixflags(["2026-10-25"])
+        assert f[273000001]["polls"] == 6 and f[273000001]["dead_reckoning"] == 1 and f[273000001]["inoperative"] == 2, f
+        assert f[273000001]["last_lost"] == V.iso(int(rx[3] / 1000)) and f[230000007]["inoperative"] == 0
+        g = V.load_fixflags(["2026-10-25"], t0=rx[2] / 1000)                 # polls before the window are dropped
+        assert g[273000001]["polls"] == 4 and g[273000001]["dead_reckoning"] == 0 and 230000007 not in g
+        assert V.load_fixflags(["2026-10-24"]) == {}                         # no polls collected: empty
+    finally:
+        A.AIS_DIR = old
+
+
 def main():
     tmp = tempfile.mkdtemp()
     try:
@@ -347,6 +370,7 @@ def main():
         test_listed_flag()
         test_stops()
         test_gaps()
+        test_fixflags(tmp)
         print("test_vessels: ok")
     finally:
         shutil.rmtree(tmp)
