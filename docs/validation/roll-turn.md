@@ -150,7 +150,9 @@ aircraft-hours with a run before, 0–0.1% after). Something in the archives' ro
 one candidate is stale roll values carried forward in older traces (a roll sample minutes old meets a track that's
 turning), but that's unverified. readsb's public commit history (github.com/wiedehopf/readsb) shows no roll or track
 change in that window; the nearest candidate is a 14 Dec 2025 change to feeder data reduction
-(`--net-beast-reduce-filter-dist`), which fits the timing only. The held-out days all fall before the change, so the test ran on the noisier vintage,
+(`--net-beast-reduce-filter-dist`), which fits the timing only. **Cause found, 25 Oct 2026: a readsb roll overflow, fixed
+in August 2025 and live in adsb.lol's archives between 15 Nov and 15 Dec 2025; see the last section. The two guesses
+above were wrong.** The held-out days all fall before the change, so the test ran on the noisier vintage,
 and its higher control rate made check 3's relative limit easier to meet (check 3's rate, 0.087%, is under the limit
 either way but above the 0.05% floor alone).
 
@@ -163,3 +165,42 @@ aircraft-hours), near Smolensk (37) and Yaroslavl-area points, and also in the L
 rate depends on the archive's vintage, so any use needs a threshold calibrated per period, and a clean confirmation needs
 held-out days from after December 2025 (none left on disk: every 2026 day was in the first test). Nothing here goes on
 the site; the spoofing detector's fix for the same gap is v0.5 (`spoofing.md`).
+
+## The 2025 data change: readsb stored roll in a field that overflowed (25 Oct 2026)
+
+**Cause.** readsb kept each trace point's roll as hundredths of a degree in a signed 12-bit field (`int roll:12` in
+`struct state`, `track.h`), which holds ±20.47°. A steeper
+bank wrapped round to the other sign: a true 25° right bank was stored as about −16° (25 − 40.96), and −20.8° as +20.2°.
+readsb fixed it on 10 Aug 2025 (commit `2fac6025b`, "traces: fix roll overflow by reducing accuracy", which now stores
+tenths of a degree; github.com/wiedehopf/readsb). Its message says all earlier trace roll data was wrong once the roll
+passed 20°. adsb.lol's archives carry the old behaviour on 15 Nov 2025 and the fixed one on 15 Dec 2025, so adsb.lol
+deployed the fix between those dates. The exact day isn't in its public repositories (its infrastructure history stops in
+2023) or in the archives (no version file); dating it needs raw days in between, not downloaded. My earlier search of
+readsb's history covered only Nov–Dec 2025 and so missed the August fix.
+
+**Checked on the two raw days on disk** (`adsb_icao` points at 10,000 ft or more; control box 48–52N, 5–15E, with this
+check's pairing):
+
+| | 15 Nov 2025 | 15 Dec 2025 |
+|---|---|---|
+| Roll values above ±20.5°, worldwide | 0 of 16.7 million (largest 20.4°) | 362,859 of 17.0 million (largest 39.9°) |
+| One-point sign flips (banked point between two of the other sign), per 10,000 banked points | 63.6 | 1.1 |
+| Control mismatch pairs, as stored | 0.403% | 0.063% |
+| Control mismatch pairs after undoing the wrap (roll − 40.96 × its sign, used where it fits the observed turn better and stays within 35°) | 0.024% | 0.037% |
+| Share of control mismatches with roll and turn of opposite sign | 95.6% | 3.4% |
+
+Undoing the wrap removes the step: the 15 Nov rate falls to the 15 Dec level. (The unwrap gets two tries per pair, so
+it lowers 15 Dec a little too; compare the two unwrapped rates.)
+
+**What changes.**
+- The second test's control rate (0.45% of aircraft-hours) and the higher mismatch rate in held-out days up to 15 Nov 2025
+  come from the overflow, not from the method or the days. Its three checks still pass as registered.
+- Roll before adsb.lol's upgrade is wrong for every bank steeper than 20.5°, which covers normal airliner turns (25°)
+  and holding patterns: that's the "noisier roll data" in the London stacks above. Use of earlier days needs the unwrap
+  above (a method change, to be registered before any new test) or must stop at December 2025.
+- Nothing else in the project reads roll: the jamming processor, the spoofing detector (v0.4, and v0.5, whose indicated
+  airspeed is stored in whole knots in an unsigned 12-bit field, up to 4,095 kt), position loss and the crossing counts are unaffected. The published
+  daily tables show no step in December 2025 in quiet regions: the main measure (NACp below 8) in high latitude, central
+  Europe, the eastern US, Japan and south-east Australia, and the 10 m measure in those plus the UK, western US, Canada and
+  Brazil (it swings two- to threefold from day to day everywhere, with no step).
+- A clean held-out confirmation still needs 2026 days not used before (none left on disk).
