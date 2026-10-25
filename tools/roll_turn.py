@@ -207,7 +207,8 @@ def report(days, out_dir=OUT):
         n = len(sel); k = sum(1 for r in sel if r["runs"] > 0)
         return k, n, (100.0 * k / n if n else None)
 
-    c1 = rate([r for r in ok if r["tag"] == "none" and inside(r, CONTROL)])
+    c1 = rate([r for r in ok if inside(r, CONTROL)])                      # as pre-registered: every aircraft-hour in the box
+    c1u = rate([r for r in ok if r["tag"] == "none" and inside(r, CONTROL)])
     c2 = rate([r for r in ok if r["tag"] == "active"])
     c3 = rate([r for r in ok if r["tag"] == "none" and inside(r, BALTIC) and r["nacp_bad"] * 2 >= r["n_pairs"]])
     base = rate([r for r in ok if r["tag"] == "none"])
@@ -215,6 +216,7 @@ def report(days, out_dir=OUT):
     out = {"days": days, "aircraft_hours_with_5_pairs": len(ok),
            "check1_control": {"runs": c1[0], "aircraft_hours": c1[1], "rate_pct": c1[2],
                               "pass": c1[2] is not None and c1[2] <= 1.0},
+           "check1_control_untagged_only": {"runs": c1u[0], "aircraft_hours": c1u[1], "rate_pct": c1u[2]},
            "check2_active_spoofing": {"runs": c2[0], "aircraft_hours": c2[1], "rate_pct": c2[2],
                                       "pass": None if c2[1] < 30 else (c2[2] >= 5.0 and c1[2] is not None and c2[2] >= 5 * c1[2]),
                                       "untestable": c2[1] < 30},
