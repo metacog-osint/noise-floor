@@ -8,6 +8,8 @@
   "use strict";
   var mapEl = document.getElementById("sea-map");
   if (!mapEl || !window.L) return;
+  var DATA_V = mapEl.getAttribute("data-v") || "";        // hash of the data files, set by tools/build_site.py
+  function vdata(u) { return DATA_V ? u + "?v=" + DATA_V : u; }
 
   var GROUP = {                                         // marker group: first match wins (sanctioned, then state, then flag)
     sanctioned: { label: "Sanctioned", shape: "diamond", lyr: "lyr-sanctioned" },
@@ -485,7 +487,7 @@
   readColors();
   if (window.innerWidth < 700) map.setView([59.9, 27.0], 6, { animate: false });
   else map.fitBounds([[57.4, 19.5], [61.4, 33.0]], { animate: false });     // the Gulf of Finland and the spoofed-to points
-  getJson("/data/vessels/land.json").then(function (j) {
+  getJson(vdata("/data/vessels/land.json")).then(function (j) {
     landLayer = L.geoJSON(j, { renderer: canvas, interactive: false }).addTo(map);
     landLayer.bringToBack();
     styleBase();
@@ -497,7 +499,7 @@
     borderLayer = L.polyline(lines, { renderer: canvas, interactive: false });
     styleBase(); applyLayers();
   }).catch(function () { /* the map works without borders */ });
-  Promise.all([getJson("/data/vessels/baltic.json"), getJson("/data/vessels/gnss_at_sea.json").catch(function () { return null; })]).then(function (res) {
+  Promise.all([getJson(vdata("/data/vessels/baltic.json")), getJson(vdata("/data/vessels/gnss_at_sea.json")).catch(function () { return null; })]).then(function (res) {
     var d = res[0];
     vessels = d.vessels; gnss = res[1];
     vessels.forEach(function (v) { var t = Date.parse(v.reporting.last_seen || ""); if (t > dataEnd) dataEnd = t; });
