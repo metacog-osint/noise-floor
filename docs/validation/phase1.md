@@ -712,6 +712,8 @@ The crossing test on wide-region extracts (52–61.5N, 8–34E, `data/trace_box_
 | 17 Jan – 20 Jun 2026 (4 days) | 25–37% | 34–41% | 98–100% |
 | 15 Jul – 15 Oct 2026 (4 days) | 6–26% | 20–29% | 96–98% |
 
+![Gulf of Finland: share of crossings seen on ADS-B, 2024–2026](img/position_loss_gulf_of_finland.png)
+
 - **The change came between June and October 2025**, a few months after the area east of Kaliningrad (verdict 46), and it
   deepened through 2026: 6% of eastern crossings had positions on 15 September and 15 October 2026.
 - **It isn't an artefact of the archive change** found by the roll-turn check (15 Nov – 15 Dec 2025): 20 October 2025,
