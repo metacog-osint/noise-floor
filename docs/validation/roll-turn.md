@@ -148,7 +148,9 @@ control pairs mismatch and 0.22–1.06% of control aircraft-hours have a run; on
 pairs and 0–0.04% of aircraft-hours. South-east Australia (30–40S, 140–155E) shows the same step (0.4–6.5% of
 aircraft-hours with a run before, 0–0.1% after). Something in the archives' roll or track values changed in that month;
 one candidate is stale roll values carried forward in older traces (a roll sample minutes old meets a track that's
-turning), but that's unverified. The held-out days all fall before the change, so the test ran on the noisier vintage,
+turning), but that's unverified. readsb's public commit history (github.com/wiedehopf/readsb) shows no roll or track
+change in that window; the nearest candidate is a 14 Dec 2025 change to feeder data reduction
+(`--net-beast-reduce-filter-dist`), which fits the timing only. The held-out days all fall before the change, so the test ran on the noisier vintage,
 and its higher control rate made check 3's relative limit easier to meet (check 3's rate, 0.087%, is under the limit
 either way but above the 0.05% floor alone).
 
