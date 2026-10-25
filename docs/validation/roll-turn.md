@@ -131,3 +131,33 @@ truncated). Spoofing episodes from v0.4 (`data/spoofing_v04/`).
 
 A pass on all three would make roll-turn mismatch a candidate spoofing indicator for review by Tom; any failure of check
 1 or 3 ends it.
+
+### Second test: results (run 25 Oct 2026, about 16:20 UTC; code 61a2a69): all three checks pass, with a caveat
+
+2,841,471 aircraft-hours on the 26 held-out days had 5 or more valid pairs.
+
+| Check | Fixed in advance | Result | Verdict |
+|---|---|---|---|
+| 1. Control, central Europe | at most 1.0% | 742 of 165,103 aircraft-hours (0.45%) | **Pass** |
+| 2. Inside active v0.4 episodes | at least 5% and at least 5 times the control | 471 of 3,366 (14.0%), 31 times the control | **Pass** |
+| 3. Jammed, no v0.4 episode, not held at a point, Baltic | at most max(3 × control, 0.05%) = 1.35% | 2 of 2,305 (0.087%) | **Pass** |
+
+**Caveat: the data changed between 15 Nov and 15 Dec 2025.** The control's mismatch rate is about 56 times the first
+test's (0.45% against 0.008%). Day by day it isn't the method or the days: on every day up to 15 Nov 2025, 0.45–0.91% of
+control pairs mismatch and 0.22–1.06% of control aircraft-hours have a run; on every day from 15 Dec 2025, 0.03–0.09% of
+pairs and 0–0.04% of aircraft-hours. South-east Australia (30–40S, 140–155E) shows the same step (0.4–6.5% of
+aircraft-hours with a run before, 0–0.1% after). Something in the archives' roll or track values changed in that month;
+one candidate is stale roll values carried forward in older traces (a roll sample minutes old meets a track that's
+turning), but that's unverified. The held-out days all fall before the change, so the test ran on the noisier vintage,
+and its higher control rate made check 3's relative limit easier to meet (check 3's rate, 0.087%, is under the limit
+either way but above the 0.05% floor alone).
+
+Exploratory (check 4): aircraft held at a point with a run, outside episodes, again cluster at Sheremetyevo (79
+aircraft-hours), near Smolensk (37) and Yaroslavl-area points, and also in the London holding stacks (51.3–51.7N,
+0.6W–0.3E; 8–33 each), where real holding turns meet the noisier roll data.
+
+**What this means.** The check separates known spoofing from controls by a wide margin in both data vintages (22% against
+0.008% after the change; 14% against 0.45% before), and it finds the fixed false points v0.4 missed. Its false-mismatch
+rate depends on the archive's vintage, so any use needs a threshold calibrated per period, and a clean confirmation needs
+held-out days from after December 2025 (none left on disk: every 2026 day was in the first test). Nothing here goes on
+the site; the spoofing detector's fix for the same gap is v0.5 (`spoofing.md`).
