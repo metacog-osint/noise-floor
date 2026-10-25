@@ -100,7 +100,9 @@ MLAT-placed aircraft, from `tools/position_loss.py` on 2025 days on disk):
 
 On 20 Jun 2025 the crossing test found only 2–5% of crossings with positions in the Suwałki–Ełk box (verdict 45), yet this
 measure read 0% there, because no aircraft could be placed by MLAT. **So position loss can't be compared across a change
-in MLAT coverage; the crossing test's "seen" share can.** For trends, report MLAT coverage beside the share.
+in MLAT coverage; the crossing test's "seen" share can.** For trends, report MLAT coverage beside the share. The jump in
+coverage falls between 20 Oct and 15 Dec 2025, the same window as a wider change in the archives found by the roll-turn
+check (`roll-turn.md`, second test), so it may be a change in adsb.lol's processing rather than new receivers (unverified).
 
 ## Time of day and other regions
 
