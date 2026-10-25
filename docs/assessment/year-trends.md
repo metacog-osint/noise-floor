@@ -18,9 +18,10 @@ reviewed by a person beyond the checks below.*
 - **The same dates surge in several areas at once:** around New Year (Kaliningrad, the southern Black Sea and the
   Caucasus, 28 Dec – 3 Jan) and around 7–17 May (Kaliningrad, the Gulf of Finland, the southern Black Sea and the
   Caucasus). The May run brackets 9 May. A link to Victory Day security measures is a hypothesis, not tested here.
-- **One new persistent area:** a res-3 cell centred at 53.92N 23.70E, where Lithuania, Belarus and Poland meet (Grodno
-  is about 28 km south), went from active on 4% of days (Oct–Dec 2025) to 96% (late Jul – Oct 2026). No published
-  report specific to this area was found; unverified.
+- **The one "new" area is a returning season, not a new area.** A res-3 cell centred at 53.92N 23.70E, where Lithuania,
+  Belarus and Poland meet, went from active on 4% of days (Oct–Dec 2025) to 96% (late Jul – Oct 2026). Raw traces show
+  near-total position loss in that area and the Suwałki–Ełk box in May–June 2025 as well, an easing in winter, and its
+  return from May 2026, lasting longer this year (`docs/validation/phase1.md`, verdict 45).
 - **No weekday pattern of any practical size.** The night peak is strong everywhere in the
   Baltic and Black Sea: 63–87% of aircraft-hexes degraded at 00–02 UTC against 4–19% in the morning.
 - **Worldwide, the total held steady:** a median 231 hexes at jamming scale a day in the first 92 days and 245 in the
@@ -131,9 +132,11 @@ it (p = 0.007; Saturday 31.9% against 27–30% on other days). No other area com
 
 **Started (1 cell):** 53.92N 23.70E (centre of a res-3 cell, about 12,400 km², covering the Lithuania–Belarus–Poland
 border area around Druskininkai and Grodno). Active on 4.3% of covered days from 1 Oct to 1 Jan, and 95.7% from 22 Jul to
-21 Oct 2026; first active 23 Oct 2025. The cell marks where aircraft were affected, not where a transmitter is. Lithuania's
-regulator reports ongoing GNSS interference nationally ([LRT, 9 Mar 2026](https://www.lrt.lt/en/news-in-english/19/2862230/gps-jamming-incidents-reported-by-pilots-continue-in-lithuania-regulator-says)),
-but nothing found names this area.
+21 Oct 2026; by month, active on 0–2 days a month Oct–Dec 2025, 17 of 26 days in May 2026 and 28–30 a month from July.
+**Checked in the raw traces the same night (verdict 45): not new.** The area had near-total position loss in May–June
+2025 too; the year window starts in a quiet season. The cell marks where aircraft were affected, not where a transmitter
+is. Lithuania's regulator reports ongoing GNSS interference nationally
+([LRT, 9 Mar 2026](https://www.lrt.lt/en/news-in-english/19/2862230/gps-jamming-incidents-reported-by-pilots-continue-in-lithuania-regulator-says)).
 
 **Stopped:** none by the rule (the Gulf surges started and ended inside the year, so neither window catches them).
 
@@ -193,8 +196,8 @@ Why its traffic fell (rerouting of flights to Kaliningrad, feeders lost, or airc
    AIS GNSS-interference counts from Finland's open AIS, which have their own coverage.
 2. **Kaliningrad from May:** the regional increase looks real (above); find out why Kaliningrad's own aircraft-hexes
    fell (rerouting, a feeder outage, or position loss as on 9 May) from the raw traces of a few days.
-3. **The Grodno-area cell:** pull raw traces for a few active days and see whether it's jamming, spoofing or a few
-   aircraft types.
+3. ~~The Grodno-area cell~~ **Done (verdict 45):** position loss across all types, a recurring summer season, longer in
+   2026. Next: a position-loss measure (MLAT-only and dark aircraft per hex) in the daily pipeline.
 4. **Ankara and northeast Bulgaria:** check the aircraft types and hours; a single operator's fleet can make a cell
    look persistent.
 5. **On the site:** a "what changed this year" panel on the charts page from `year_trends.json`, after review.
