@@ -375,7 +375,9 @@ def bursts(day):
         hs = None
         if hm is not None:
             m0, m1 = min(_mins(f["start"]) for f in g), max(_mins(f["end"]) for f in g)
-            cells = sorted({f["region"] for f in g})
+            cells = set()                  # detections on a neighbourhood ("2n") count their ring-1 cells too
+            for f in g:
+                cells |= {f["region"]} if f["res"] == "2" else set(h3.grid_disk(f["region"], 1))
             num = sum((hm.get(c) or [0] * 1440)[m] for c in cells for m in range(m0, m1 + 1))
             den = sum((live.get(c) or [0] * 1440)[m] for c in cells for m in range(m0, m1 + 1))
             hs = share(num, den)
