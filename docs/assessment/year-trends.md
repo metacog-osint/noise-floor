@@ -9,9 +9,9 @@ reviewed by a person beyond the checks below.*
 - **Gulf of Finland / Estonia–Russia border: degradation roughly halved since late July 2026,** from a median 30.6% of
   aircraft-hexes (1 Oct 2025 – 29 Jul 2026) to 20.4% (30 Jul – 3 Sep) and 15.2% (4 Sep – 21 Oct). Traffic fell only
   14%, and the fall holds by night and by day and against October 2025. It's the year's clearest sustained decline.
-- **Southern Baltic: a regional increase from May 2026.** Gdańsk Bay, northeast Poland and inland Lithuania roughly
-  doubled their shares from May and stayed up. Kaliningrad itself rose further, but its traffic fell by 70%, so its
-  size can't be read.
+- **Southern Baltic: a regional increase from May 2026.** Northeast Poland and inland Lithuania roughly doubled their
+  shares from May and stayed up; Gdańsk Bay rose from May to August, then returned to its spring level. Kaliningrad
+  itself rose further, but its traffic fell by 70%, so its size can't be read.
 - **Strait of Hormuz and Cyprus–Levant: two surges at the same time as traffic collapsed.** Hormuz went from 0.8% to a
   median 66% (2 Mar – 3 Apr 2026) and 83% (8 May – 21 Jun), with aircraft-hexes down from about 9,000 to under 400 a
   day. Cyprus–Levant rose from 0.9% to 19% from 28 Feb. Both are back near baseline since June.
@@ -173,12 +173,15 @@ the same fall at sea.
 May (from 450–490 a day to 120–170), so its share there can't be read on its own. But its neighbours, with steadier
 traffic, rose at the same time and stayed up, which points to a real regional increase from May 2026:
 
-| Area (box) | Jan–Apr 2026 share | Jun–Oct 2026 share | Aircraft-hexes a day, Apr → Aug |
-|---|---|---|---|
-| Kaliningrad box (54.0–55.6N 19–23E) | 23–35% | 43–52% | 487 → 132 |
-| Gdańsk Bay / southern Baltic (54.3–56.0N 16–19E) | 6.5–19% | 8–15% | 972 → 1,007 |
-| Northeast Poland (53–54N 19–23E) | 7.4–12.7% | 12.8–16.6% | 589 → 389 |
-| Inland Lithuania (54–56N 23.5–26.5E) | 4.1–7.9% | 10.8–14.0% | 727 → 391 |
+| Area (box) | Mar–Apr 2026 share | Jun–Aug 2026 share | Sep–Oct 2026 share | Aircraft-hexes a day, Apr → Aug |
+|---|---|---|---|---|
+| Kaliningrad box (54.0–55.6N 19–23E) | 23.3–23.8% | 47.6–52.4% | 42.6–43.1% | 487 → 132 |
+| Gdańsk Bay / southern Baltic (54.3–56.0N 16–19E) | 6.5–8.1% | 11.0–15.0% | 8.0–8.2% | 972 → 1,007 |
+| Northeast Poland (53–54N 19–23E) | 7.6–8.7% | 13.6–16.6% | 12.8–12.9% | 589 → 389 |
+| Inland Lithuania (54–56N 23.5–26.5E) | 4.1–6.3% | 11.1–14.0% | 10.8–11.1% | 727 → 391 |
+
+Northeast Poland and inland Lithuania roughly doubled and stayed up. Gdańsk Bay, the area with the steadiest traffic,
+rose from May to August and was back at its spring level by September.
 
 Kaliningrad's daytime share went from 15–17% (Oct 2025 – Apr 2026, apart from January) to 39–51% (May – Oct 2026).
 Why its traffic fell (rerouting of flights to Kaliningrad, feeders lost, or aircraft dark from position loss as on
