@@ -306,6 +306,7 @@ Then:
 | 39 | False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024 (66.5–69.5°N, 17–25°E) | 0.0% and 1.0% degraded, against 0.0% on 27 Feb (88–104 aircraft-hexes a day) | **Pass.** A weather-radar artefact leaves no GNSS signal (coverage there is thin) |
 | 40 | Radio-horizon localizer, first version (southern Baltic; 9 May, 2 Jan, 1 Feb, 24 Feb 2026) | Stacked best crossing at 55.10°N 19.52°E, offshore about 55 km NW of Baltiysk, with NACp events at 80% of the radio horizon. Day by day, every top peak lies within about 20–80 km of the western Sambia peninsula | **Points at the Sambia coast, not yet a fix.** The reach scale was tuned on the same days and moves the peak by up to about 50 km |
 | 41 | Localizer against the 2025 TDOA fixes (Gattis, Cydejko & Akos 2026), scored with settings fixed in advance | Top peak 20 km from the Baltiysk-harbour fix on 3 Apr; 37, 48 and 45 km from the coastal-site fix on 15 Apr, 17 Apr and 21 Jun (1 hit of 4 at 25 km; 0 of 2 in the interference windows). The target cell always ranked in the top 2% of 3,496 cells. Mean miss 38 km, against 38 km for naming Kaliningrad city and 52 km for the centroid of onsets | **Fail.** It finds the area but not the site: the two TDOA sites are 21 km apart, finer than the localizer resolves |
+| 45 | Position loss east of Kaliningrad, Apr 2025 – Oct 2026: crossing test in four boxes (Suwałki–Ełk, Grodno area, Kaunas, central Poland as control) on 20 days of raw traces | Suwałki–Ełk box seen on ADS-B: 20–36% (Apr 2025), 2–5% (late May–Jun 2025), 57–72% (Jan–Feb 2026, outside the holiday surge), 1–3% (Jun–Oct 2026). Grodno and Kaunas boxes the same shape; central Poland 37–68% throughout | **Recurring summer position loss, longer in 2026.** Aircraft fly through but lose GNSS positions (in 2026 mostly seen as MLAT-only, in 2025 as dark). The daily per-hex share understates it, because aircraft without positions drop out |
 | 44 | Localizer v3 (heading-balanced) against v2 on a second held-out set (10 and 20 Apr, 10 and 20 May, 20 Jun 2025; rules fixed before download) | v3: 3 hits of 5 at 25 km, mean 23.1 km (5.5 km on 10 Apr). v2: 2 of 5, 30.6 km. Baselines: Kaliningrad city 0 of 5 (38.4 km), onset centroid 2 of 5 (42.9 km), fixed point 54.70°N 20.24°E 5 of 5 (22.9 km) | **Fail against the constant guess.** v3 improves on v2, but one fixed point between the two sites does as well every day. The 25 km rule can't separate a localizer from a constant when two sites 21 km apart are both active; the next test needs single-site days or a tighter radius |
 | 43 | A350 visibility hypothesis: 19 days of raw traces over the southern Baltic box (crossings at FL300+; 9 jammed and 5 quiet days) | Jammed days: A350s seen on 89% of 224 crossings (75 airframes), 74% of their positions degraded; narrowbodies seen on 43% of 2,809, 777s 61%, 787s 59%. Highest seen share on 7 of 8 full jammed days. Quiet days: every family seen on 88–94%, but 28% of A350 positions degraded against 1–8%. Degraded episodes: median 8–17 min for A350/A380, against 2 min | **Confirmed, plus a second effect.** A350s keep broadcasting degraded positions where other types go dark, and their degraded episodes last 4–8 times longer. Both fit a documented ADIRU–AESS behaviour that sets NACp to zero when one satellite is degraded (ICAO CNS SG/29 IP/05). The type over-representation is most likely a reporting artefact |
 | 42 | Localizer v2 on five held-out Apr–Jun 2025 days (method frozen in 38a495e before they were downloaded) | Top peak 20.4, 24.7, 30.1 and 17.9 km from the nearest TDOA site (3 hits of 4 at 25 km; 11 Jun untested, 76 onsets on a partial day). Mean 23 km, against 38 km for Kaliningrad city and 96 km for the onset centroid | **Pass on the rule, area-level only.** The peaks sit about 20 km east of both sites, so a fixed guess there would do as well, and the test can't tell which site was active |
@@ -583,6 +584,60 @@ direction can't trade location against reach along its own line. It was develope
   that and says nothing finer.
 - **What would test it properly:** days or hours with a single known active site, a tighter radius (about 10 km), or a
   different jammer far from any second site.
+
+## Position loss east of Kaliningrad: a recurring summer season (25 Oct 2026)
+
+The year analysis (`docs/assessment/year-trends.md`) flagged a res-3 cell at 53.92N 23.70E, by the Lithuania–Belarus–Poland
+border, as active on 4% of days in Oct–Dec 2025 and 96% in Jul–Oct 2026. The crossing test from verdicts 34–35
+(`tools/trace_box.py report`, aircraft at 10,000 ft or more) was run on every raw day on disk from Apr 2025 to Oct 2026, in
+four boxes: Suwałki–Ełk (53.5–54.35N, 21.6–23.0E, on Kaliningrad's south-eastern border), the Grodno area (53.5–54.35N,
+23.0–24.4E), Kaunas (54.6–55.45N, 23.5–24.9E) and central Poland (52.0–52.85N, 19.5–20.9E) as a control. The 2025 days were
+chosen by a date rule (the 10th, 15th and 20th) for the localizer tests, not for jamming.
+
+Share of crossings with ADS-B positions for most of the way ("seen"):
+
+| Day | Suwałki–Ełk | Grodno area | Kaunas | Central Poland (control) |
+|---|---|---|---|---|
+| 10 Apr 2025 | 36% | 75% | 70% | 68% |
+| 20 Apr 2025 | 20% | 76% | 47% | 53% |
+| 10 May 2025 | 27% | 71% | 65% | 61% |
+| 20 May 2025 | 5% | 29% | 33% | 57% |
+| 15 Jun 2025 | 2% | 10% | 9% | 37% |
+| 20 Jun 2025 | 5% | 2% | 21% | 48% |
+| 2 Jan 2026 (holiday surge) | 12% | 16% | 30% | 43% |
+| 17 Jan 2026 | 72% | 79% | 65% | 59% |
+| 1 Feb 2026 | 57% | 77% | 65% | 51% |
+| 24 Feb 2026 | 68% | 72% | 66% | 64% |
+| 8 May 2026 | 41% | 90% | 54% | 57% |
+| 9 May 2026 | 8% | 5% | 0% | 38% |
+| 16 May 2026 | 23% | 62% | 36% | 64% |
+| 20 Jun 2026 | 2% | 17% | 15% | 45% |
+| 15 Jul 2026 | 1% | 1% | 6% | 56% |
+| 15 Aug 2026 | 3% | 22% | 12% | 51% |
+| 15 Sep 2026 | 0.5% | 1.5% | 5% | 55% |
+| 15 Oct 2026 | 3% | 10% | 13% | 51% |
+
+- **Position loss, not routing or a receiver outage.** 73–148 aircraft crossed the Suwałki–Ełk box on summer days,
+  against 87–124 on the winter days. In 2026 most crossings are MLAT-only (75–93% from June): ground receivers hear the
+  aircraft, but it sends no GNSS position. Every common airliner type is affected (on 15 Sep in the Grodno box, 0–4% of
+  A321, A21N, B738, BCS3 and A320 crossings were seen), so it isn't one avionics family. The few ADS-B points left are
+  often degraded (26–88% NACp < 8 on the Jun–Aug 2026 days; too few points to say in Sep–Oct).
+- **Dark or MLAT-only depends on receiver coverage; "seen" is the like-for-like measure.** On the May–June 2025 days
+  the losses showed as dark crossings (0% MLAT-only in the three eastern boxes), in summer 2026 mostly as MLAT tracks.
+  MLAT coverage at these altitudes evidently differed between the two periods (the Suwałki–Ełk box had 8–15% MLAT-only
+  crossings on 10–20 Apr 2025 and 15–22% in Jan–Feb 2026), so compare "seen" across years, not "dark".
+- **A season, longer in 2026.** Loss builds through April and May and is near total from June. It eased in winter
+  2025–26 (57–79% seen in Jan–Feb, apart from the holiday surge), and the daily tables show the Grodno-area cell quiet in
+  October 2025 (active 1 day of 31). In October 2026 it was still heavy (3–13% seen; active 20 of 21 days).
+- **The daily map understates it.** Aircraft that lose their position drop out of the per-hex counts, so a box where
+  almost every aircraft loses position can show a share of 30–50% from the few that keep one. The map's "Fewer aircraft
+  than usual" view is the better guide there.
+- **Not localized.** The boxes mark where aircraft lost position, not where a transmitter is. The Suwałki–Ełk box borders
+  Kaliningrad; the Grodno box borders Belarus. Whether the season reflects operations, propagation (the TDOA paper notes
+  ducting can carry interference past the radio horizon) or both isn't tested.
+
+Next: count MLAT-only and dark aircraft per hex in the daily pipeline, as a position-loss measure beside the share (a
+method change; needs a review first). More 2025 days (Jul–Dec) would date the 2025 season's end.
 
 ## Next
 
