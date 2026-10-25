@@ -228,7 +228,7 @@ def test_build():
     assert all(v["ais_type"] not in (30, 36, 37) for v in baltic["vessels"])
     assert set(baltic) == {"generated", "coverage", "sources", "vessels"} and baltic["sources"][0].startswith("Source: Fintraffic")
     keys = {"mmsi", "imo", "name", "callsign", "flag", "ais_type", "ais_type_label", "ais_class", "categories", "listings",
-            "last", "track", "reporting", "signals", "flag_believed", "owners", "eez", "destination_locode",
+            "last", "track", "reporting", "signals", "flag_believed", "flag_believed_list", "owners", "eez", "destination_locode",
             "destination_country", "destination_port", "port_calls", "home_port"}
     assert all(set(v) == keys for v in vs.values()), [set(v) ^ keys for v in vs.values()]
     s = vs[273000001]
@@ -248,6 +248,7 @@ def test_build():
                               "match": "imo"}], t["listings"]
     assert t["reporting"]["spoofed_positions"] == 0 and t["reporting"]["median_interval_s"] == 10.0
     assert t["flag_believed"] == "RU" and t["owners"][0]["name"] == "Blue Sea Ltd" and t["home_port"] is None
+    assert t["flag_believed_list"] == "UK Sanctions List" and s["flag_believed_list"] is None
     assert t["eez"] == {"iso": "FI", "name": "Test Zone", "sovereign": "Finland"}, t["eez"]
     assert (s["destination_locode"], s["destination_country"], s["destination_port"]) == ("RULED", "RU", "Sankt-Peterburg")
     assert s["eez"] is None and s["owners"] == [] and s["flag_believed"] is None      # last position outside the zone
@@ -287,6 +288,26 @@ def test_geo_and_destinations():
     assert V.parse_destination("RUULU") == ("RUULU", "RU", None)                # no port index: code and country only
 
 
+def test_listed_flag():
+    """UK believed flag first, else the flag on the OFAC entry; OFAC flags marked false or unknown are not used."""
+    assert S.listed_flag("Democratic People's Republic of Korea") == "KP" and S.listed_flag("St. Kitts & Nevis") == "KN"
+    assert S.listed_flag("Republic of Palau") == "PW" and S.listed_flag("Panama") == "PA"
+    for bad in ("Mozambique (False)", "Botswana False", "Unknown", "None Identified", "", None):
+        assert S.listed_flag(bad) is None, bad
+    uk = {"list": "UK Sanctions List", "flag": "Russia"}
+    of = {"list": "OFAC SDN", "flag": "Panama"}
+    san = {"by_imo": {"1": {"listings": [of, uk], "owners": []}, "2": {"listings": [of], "owners": []},
+                      "3": {"listings": [{"list": "OFAC SDN", "flag": "Mozambique (False)"}], "owners": []},
+                      "4": {"listings": [{"list": "UK Sanctions List", "flag": None}, of], "owners": []}},
+           "by_mmsi": {"273000001": [3, 2]}}
+    assert V.sanction_extras(1, 1, "imo", san)[1:] == ("RU", "UK Sanctions List")      # UK wins whatever the order
+    assert V.sanction_extras(1, 2, "imo", san)[1:] == ("PA", "OFAC SDN")               # OFAC fills in
+    assert V.sanction_extras(1, 3, "imo", san)[1:] == (None, None)                     # false flag is not a believed flag
+    assert V.sanction_extras(1, 4, "imo", san)[1:] == ("PA", "OFAC SDN")               # UK listing without a flag
+    assert V.sanction_extras(273000001, None, "mmsi", san)[1:] == ("PA", "OFAC SDN")   # the false flag is skipped
+    assert V.sanction_extras(1, 2, "name", san) == ([], None, None)                    # name matches carry nothing
+
+
 def test_stops():
     t = np.arange(0, 3 * 3600, 60)                    # 3 h of reports, one a minute
     sog = np.full(len(t), 10.0)
@@ -323,6 +344,7 @@ def main():
         test_flags_and_categories()
         test_build()
         test_geo_and_destinations()
+        test_listed_flag()
         test_stops()
         test_gaps()
         print("test_vessels: ok")

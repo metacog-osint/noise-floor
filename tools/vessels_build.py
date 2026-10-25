@@ -32,7 +32,8 @@ Positions flagged by tools/ais_detect.py's spoofing tests (impossible implied sp
 or more inland), and positions left inside an impossible jump, are kept out of `track` and `last` and counted in
 reporting.spoofed_positions.
 Track points are [epoch seconds UTC, lat, lon], at most one per 5 minutes, over the 48 h before the newest position.
-Added keys (Oct 2026): flag_believed (the UK list's believed flag), owners (from the sanctions lists), eez (zone of the
+Added keys (Oct 2026): flag_believed (the UK list's believed flag, else the flag on the OFAC SDN entry; OFAC flags it
+marks false are not used) with flag_believed_list naming the list, owners (from the sanctions lists), eez (zone of the
 last trusted position), destination_locode / destination_country / destination_port (parsed from the AIS destination
 text; the raw text stays in signals.destination), port_calls (stops of 1 h or more under 1 kn within 10 km of a World
 Port Index port) and home_port (always null: the port of registry is held by commercial registries, not open data).
@@ -424,15 +425,16 @@ def load_ports(clip=CLIP, fetch=True):
 
 
 def sanction_extras(mmsi, imo, match, san):
-    """(owners, believed flag ISO2) for a vessel matched by IMO or MMSI; nothing for a name match."""
+    """(owners, believed flag ISO2, the list it came from) for a vessel matched by IMO or MMSI; nothing for a name match.
+    The UK list's believed flag wins; the flag on the OFAC SDN entry fills in when the UK list gives none."""
     by_imo = san.get("by_imo", {})
     if match == "imo":
         entries = [by_imo.get(str(imo))]
     elif match == "mmsi":
         entries = [by_imo.get(str(i)) for i in san.get("by_mmsi", {}).get(str(mmsi), [])]
     else:
-        return [], None
-    owners, believed = [], None
+        return [], None, None
+    owners, flags = [], {}
     for en in entries:
         if not en:
             continue
@@ -441,9 +443,13 @@ def sanction_extras(mmsi, imo, match, san):
             if rec not in owners:
                 owners.append(rec)
         for l in en.get("listings", []):
-            if l.get("list") == "UK Sanctions List" and l.get("flag") and believed is None:
-                believed = S.country_iso2(l["flag"])
-    return owners, believed
+            code = S.listed_flag(l.get("flag"))
+            if code and l.get("list") in ("UK Sanctions List", "OFAC SDN"):
+                flags.setdefault(l["list"], code)
+    for lst in ("UK Sanctions List", "OFAC SDN"):
+        if lst in flags:
+            return owners, flags[lst], lst
+    return owners, None, None
 
 
 def decode_eta(v):
@@ -606,7 +612,8 @@ def jump_spans(t, lat, lon, ok, typ):
     return out
 
 
-def vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs, owners=None, flag_believed=None, geo=None):
+def vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs, owners=None, flag_believed=None, geo=None,
+                  flag_believed_list=None):
     t, lat, lon = L["time"][s:e], L["lat"][s:e], L["lon"][s:e]
     v = meta.get(m, {})
     typ = v.get("type")
@@ -630,7 +637,8 @@ def vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs, owners
                 "beam_m": (v.get("refC") or 0) + (v.get("refD") or 0) or None}
     return {
         "mmsi": int(m), "imo": imo, "name": v.get("name"), "callsign": v.get("callSign"), "flag": flag_of(m),
-        "flag_believed": flag_believed, "owners": list(owners or []),
+        "flag_believed": flag_believed, "flag_believed_list": flag_believed_list if flag_believed else None,
+        "owners": list(owners or []),
         "eez": geo.eez_at(last["lat"], last["lon"]) if geo is not None else None,
         "destination_locode": dest_loc, "destination_country": dest_cc, "destination_port": dest_port,
         "port_calls": port_calls(t[ok], lat[ok], lon[ok], L["sog"][s:e][ok], geo),
@@ -726,9 +734,9 @@ def build(L, meta, san, use_land=True, geo=None):
         cats = categories_for(m, typ, A.imo_valid(imo) if imo else False, match)
         if not cats:
             continue
-        owners, believed = sanction_extras(m, imo, match, san)
+        owners, believed, believed_list = sanction_extras(m, imo, match, san)
         vessels.append(vessel_record(m, s, e, L, flagged, meta, cats, match, listings, outs, owners=owners,
-                                     flag_believed=believed, geo=geo))
+                                     flag_believed=believed, flag_believed_list=believed_list, geo=geo))
     order = {"sanctioned": 0, "military": 1, "law_enforcement": 1, "state_flag_of_interest": 2}
     vessels.sort(key=lambda x: (min(order[c] for c in x["categories"]), x["name"] or "~", x["mmsi"]))
     span = f"{iso(int(L['time'].min()))} to {iso(t1)}"
@@ -782,7 +790,9 @@ def main():
     vs = baltic["vessels"]
     sanc = [v for v in vs if "sanctioned" in v["categories"]]
     print(f"  sanctioned: {len(sanc)}; with owners {sum(1 for v in sanc if v['owners'])}; with an owner country "
-          f"{sum(1 for v in sanc if any(o['country'] for o in v['owners']))}; believed flag {sum(1 for v in sanc if v['flag_believed'])}")
+          f"{sum(1 for v in sanc if any(o['country'] for o in v['owners']))}; believed flag {sum(1 for v in sanc if v['flag_believed'])} "
+          f"(UK {sum(1 for v in sanc if v['flag_believed_list'] == 'UK Sanctions List')}, "
+          f"OFAC {sum(1 for v in sanc if v['flag_believed_list'] == 'OFAC SDN')})")
     print(f"  EEZ {sum(1 for v in vs if v['eez'])}/{len(vs)}; destination country {sum(1 for v in vs if v['destination_country'])}, "
           f"port {sum(1 for v in vs if v['destination_port'])}; vessels with port calls {sum(1 for v in vs if v['port_calls'])}")
     print(f"  GNSS interference at sea: {gnss['affected_vessels']} vessels; areas {[(a['area'], a['vessels']) for a in gnss['by_area']]}")

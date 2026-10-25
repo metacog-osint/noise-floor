@@ -84,10 +84,12 @@
     if (!ls.length) return [NONE];
     return ls.length > 1 ? ls.concat(["Both lists"]) : ls;
   }
+  function flagSource(v) { return v.flag_believed_list === "OFAC SDN" ? "flag on the OFAC entry" : "UK list, believed flag"; }
   var FACETS = [
     { k: "cat", label: "Group", vals: function (v) { return v.categories; }, name: function (x) { return CAT[x] || x; } },
     { k: "flag", label: "Flag (by MMSI)", vals: function (v) { return [v.flag || NONE]; }, name: country, none: "unknown" },
-    { k: "bflag", label: "Believed flag (UK list)", vals: function (v) { return [v.flag_believed || NONE]; }, name: country, none: "not on the UK list or not given" },
+    { k: "bflag", label: "Listed flag (UK, else OFAC)", vals: function (v) { return [v.flag_believed || NONE]; }, name: country, none: "not listed or not given" },
+    { k: "bsrc", label: "Listed flag from", vals: function (v) { return [v.flag_believed ? flagSource(v) : NONE]; }, name: function (x) { return x; }, none: "no listed flag" },
     { k: "ocountry", label: "Owner country", vals: function (v) {
         var o = owners(v);
         return o.length ? uniq(o.map(function (x) { return x.country || "?"; })) : [NONE];
@@ -258,7 +260,7 @@
          row("IMO", v.imo ? esc(v.imo) + (s.imo_check_digit_ok === false ? ' <span class="sd-warn">check digit invalid</span>' : "") : "not broadcast") +
          row("Call sign", esc(v.callsign || "not broadcast")) +
          row("Flag by MMSI", esc(country(v.flag))) +
-         (v.flag_believed ? row("Believed flag (UK list)", esc(country(v.flag_believed))) : "") +
+         (v.flag_believed ? row("Listed flag", esc(country(v.flag_believed)) + ' <span class="sd-src">(' + esc(flagSource(v)) + ")</span>") : "") +
          row("AIS type", v.ais_type ? esc(v.ais_type) + " · " + esc(v.ais_type_label) : esc(v.ais_type_label)) +
          row("AIS class", esc(v.ais_class ? v.ais_class + " (inferred)" : "not known")) +
          row("Home port", esc(HOME_PORT)) + "</dl>";

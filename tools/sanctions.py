@@ -84,6 +84,9 @@ COUNTRY_ALIASES = {
     "usa": "US", "turkiye": "TR", "t\u00fcrkiye": "TR", "viet nam": "VN", "macao": "MO", "hong kong sar": "HK",
     "iran (islamic republic of)": "IR", "syrian arab republic": "SY", "lao pdr": "LA", "tanzania, united republic of": "TZ",
     "micronesia, federated states of": "FM", "brunei darussalam": "BN", "cabo verde": "CV", "eswatini": "SZ",
+    "democratic people's republic of korea": "KP", "democratic people\u2019s republic of korea": "KP",
+    "st. kitts and nevis": "KN", "st kitts and nevis": "KN", "republic of palau": "PW", "sint maarten": "SX",
+    "st. vincent and grenadines": "VC", "st vincent and grenadines": "VC", "saint vincent and grenadines": "VC",
 }
 _COUNTRIES = None
 
@@ -107,6 +110,14 @@ def country_iso2(name):
         _COUNTRIES.update(COUNTRY_ALIASES)
     key = " ".join(str(name).strip().lower().replace("&", "and").split())
     return _COUNTRIES.get(key)
+
+
+def listed_flag(name):
+    """ISO2 for a vessel flag as a list gives it, or None when the list marks it false ('Mozambique (False)'),
+    unknown or none identified, or the name isn't recognised."""
+    if not name or "false" in str(name).lower():
+        return None
+    return country_iso2(name)
 
 
 def is_iso2(code):

@@ -302,5 +302,6 @@ details.table-view .tw { max-height: 22rem; overflow: auto; }
 .sf-opts { max-height: 10.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: .05rem; padding-right: .7rem; scrollbar-gutter: stable; }
 .sf-opts label { display: flex; align-items: baseline; gap: .4rem; font-size: .88rem; line-height: 1.35; padding: .12rem 0; cursor: pointer; }
 .sf-opts label span:first-of-type { flex: 1; overflow-wrap: anywhere; }
+.sd-src { color: var(--mut); font-size: .85em; }
 .sf-n { color: var(--mut); font-size: .8rem; font-variant-numeric: tabular-nums; }
 @media (max-width: 34rem) { .sf-facets { grid-template-columns: minmax(0, 1fr); } .sf-opts label { padding: .3rem 0; } }
