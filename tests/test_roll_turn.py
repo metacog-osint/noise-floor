@@ -48,6 +48,8 @@ def main():
     raw = gzip.compress(json.dumps({"icao": "abc123", "timestamp": DAY0, "trace": fake}).encode())
     rows, n_ac, n_pairs = R.work(([raw], DAY0, {}))
     assert n_ac == 1 and n_pairs == 12 and len(rows) == 1 and rows[0][:6] == ("abc123", 0, "none", 12, 12, 1), rows
+    assert rows[0][9] == 0.0                                       # every point at 55N 20E: held at a point
+    assert R.spread_km([55.0, 55.1, 55.2], [20.0, 20.0, 20.0], 55.1, 20.0) > 10 and R.spread_km([], [], 0, 0) is None
     print("test_roll_turn: ok")
 
 

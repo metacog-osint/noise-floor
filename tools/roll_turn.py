@@ -15,7 +15,9 @@ inside an active episode of the same aircraft, "other" inside any other episode 
 
 Output data/roll_turn/<day>.hours.parquet (local: holds ICAO addresses, like the spoofing events): one row per aircraft,
 UTC hour and episode tag: n_pairs, n_mismatch, runs (mismatch runs starting there), lat, lon (median of the pairs),
-nacp_bad (pairs whose current NACp < 8). Plus <day>.summary.json. Derived from adsb.lol (ODbL 1.0).
+nacp_bad (pairs whose current NACp < 8), spread_km (90th percentile of the pairs' distances from that median; the second
+test's check 3 leaves out aircraft-hours held at a point). Plus <day>.summary.json. Derived from adsb.lol (ODbL 1.0).
+`report --second` scores the second, held-out test (docs/validation/roll-turn.md).
 """
 import argparse, gzip, io, json, math, os, sys, time
 from collections import defaultdict
@@ -147,8 +149,9 @@ def work(args):
             rows[keys[i]][2] += 1
     out = []
     for (icao, hour, tag), (n, m, runs, la, lo, nb) in rows.items():
-        la.sort(); lo.sort()
-        out.append((icao, hour, tag, n, m, runs, round(la[len(la) // 2], 3), round(lo[len(lo) // 2], 3), nb))
+        sla, slo = sorted(la), sorted(lo)
+        mla, mlo = sla[len(sla) // 2], slo[len(slo) // 2]
+        out.append((icao, hour, tag, n, m, runs, round(mla, 3), round(mlo, 3), nb, spread_km(la, lo, mla, mlo)))
     return out, n_ac, n_pairs
 
 
@@ -177,7 +180,7 @@ def run(day, raw_dir, out_dir=OUT, workers=None):
         for r, a, n in pool.imap_unordered(work, jobs, chunksize=1):
             rows.extend(r); n_ac += a; n_pairs += n
     os.makedirs(out_dir, exist_ok=True)
-    cols = ("icao", "hour", "tag", "n_pairs", "n_mismatch", "runs", "lat", "lon", "nacp_bad")
+    cols = ("icao", "hour", "tag", "n_pairs", "n_mismatch", "runs", "lat", "lon", "nacp_bad", "spread_km")
     rows.sort()
     pq.write_table(pa.table({c: [r[i] for r in rows] for i, c in enumerate(cols)}), os.path.join(out_dir, f"{day}.hours.parquet"))
     s = {"day": day, "aircraft_with_pairs": n_ac, "pairs": n_pairs, "rows": len(rows), "seconds": round(time.time() - t0, 1),
@@ -190,12 +193,24 @@ def run(day, raw_dir, out_dir=OUT, workers=None):
     return s
 
 
+def km(a_lat, a_lon, b_lat, b_lon):
+    p1, p2 = math.radians(a_lat), math.radians(b_lat)
+    h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(b_lon - a_lon) / 2) ** 2
+    return 12742.0 * math.asin(min(1.0, math.sqrt(h)))
+
+
+def spread_km(lats, lons, mlat, mlon):
+    d = sorted(km(mlat, mlon, a, b) for a, b in zip(lats, lons))
+    return round(d[min(len(d) - 1, int(0.9 * len(d)))], 1) if d else None
+
+
 def inside(r, b):
     return b[0] <= r["lat"] <= b[1] and b[2] <= r["lon"] <= b[3]
 
 
-def report(days, out_dir=OUT):
-    """The pre-registered checks over the given days. Unit: aircraft-hour (per tag) with >= 5 valid pairs."""
+def report(days, out_dir=OUT, second=False):
+    """The pre-registered checks over the given days. Unit: aircraft-hour (per tag) with >= 5 valid pairs.
+    second: the held-out test's check 3 (spread >= 10 km only; limit max(3 x control, 0.05%))."""
     rows = []
     for day in days:
         for r in pq.read_table(os.path.join(out_dir, f"{day}.hours.parquet")).to_pylist():
@@ -210,7 +225,9 @@ def report(days, out_dir=OUT):
     c1 = rate([r for r in ok if inside(r, CONTROL)])                      # as pre-registered: every aircraft-hour in the box
     c1u = rate([r for r in ok if r["tag"] == "none" and inside(r, CONTROL)])
     c2 = rate([r for r in ok if r["tag"] == "active"])
-    c3 = rate([r for r in ok if r["tag"] == "none" and inside(r, BALTIC) and r["nacp_bad"] * 2 >= r["n_pairs"]])
+    held = lambda r: second and (r.get("spread_km") is None or r["spread_km"] < 10.0)
+    c3 = rate([r for r in ok if r["tag"] == "none" and inside(r, BALTIC) and r["nacp_bad"] * 2 >= r["n_pairs"] and not held(r)])
+    c3_limit = max(3 * (c1[2] or 0), 0.05) if second else 3 * max(c1[2] or 0, 1e-9)
     base = rate([r for r in ok if r["tag"] == "none"])
     pair_rate = lambda sel: 100.0 * sum(r["n_mismatch"] for r in sel) / max(1, sum(r["n_pairs"] for r in sel))
     out = {"days": days, "aircraft_hours_with_5_pairs": len(ok),
@@ -220,8 +237,8 @@ def report(days, out_dir=OUT):
            "check2_active_spoofing": {"runs": c2[0], "aircraft_hours": c2[1], "rate_pct": c2[2],
                                       "pass": None if c2[1] < 30 else (c2[2] >= 5.0 and c1[2] is not None and c2[2] >= 5 * c1[2]),
                                       "untestable": c2[1] < 30},
-           "check3_jammed_not_spoofed_baltic": {"runs": c3[0], "aircraft_hours": c3[1], "rate_pct": c3[2],
-                                                "pass": None if not c3[1] else (c1[2] is not None and c3[2] <= 3 * max(c1[2], 1e-9))},
+           "check3_jammed_not_spoofed_baltic": {"runs": c3[0], "aircraft_hours": c3[1], "rate_pct": c3[2], "limit_pct": c3_limit,
+                                                "pass": None if not c3[1] else (c1[2] is not None and c3[2] <= c3_limit)},
            "all_untagged": {"runs": base[0], "aircraft_hours": base[1], "rate_pct": base[2]},
            "mismatch_pair_pct": {"control": pair_rate([r for r in ok if r["tag"] == "none" and inside(r, CONTROL)]),
                                  "active": pair_rate([r for r in ok if r["tag"] == "active"])}}
@@ -231,6 +248,12 @@ def report(days, out_dir=OUT):
         if r["tag"] == "none":
             k = (5 * math.floor(r["lat"] / 5), 5 * math.floor(r["lon"] / 5))
             where[k][0] += 1; where[k][1] += r["runs"] > 0
+    if second:                                       # exploratory: held at a point, with a run, outside episodes
+        pts = defaultdict(int)
+        for r in ok:
+            if r["tag"] == "none" and r["runs"] > 0 and held(r):
+                pts[(round(r["lat"], 1), round(r["lon"], 1))] += 1
+        out["check4_held_points"] = sorted(([k[0], k[1], v] for k, v in pts.items()), key=lambda x: -x[2])[:20]
     out["check4_untagged_by_5deg_box"] = sorted(([k[0], k[1], v[1], v[0], round(100 * v[1] / v[0], 2)] for k, v in where.items()
                                                  if v[0] >= 200), key=lambda x: -x[4])[:25]
     return out
@@ -242,12 +265,13 @@ def main():
     ap.add_argument("days", nargs="+")
     ap.add_argument("--raw")
     ap.add_argument("--workers", type=int)
+    ap.add_argument("--second", action="store_true", help="report: the second, held-out test's check 3")
     a = ap.parse_args()
     if a.cmd == "run":
         for day in a.days:
             run(day, a.raw or os.path.join(ROOT, "data", "raw", "trace_box", day), OUT, a.workers)
     else:
-        print(json.dumps(report(a.days), indent=1))
+        print(json.dumps(report(a.days, second=a.second), indent=1))
 
 
 if __name__ == "__main__":
