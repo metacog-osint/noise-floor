@@ -680,14 +680,15 @@ on disk is a truncated copy). Share of crossings seen on ADS-B:
 
 - **2024 was clean.** All nine days, February to October and including 20 June 2024, had 89–100% of Suwałki–Ełk crossings
   with positions. By 20 February 2025 it was 47%, so the change began between late October 2024 and February 2025.
-- **Summer 2025:** heavy from late April (5–26% seen in the Suwałki–Ełk box, 14–28% in the Grodno area on the worst days),
-  varying from day to day (Suwałki–Ełk: 5% on 25 April, 26% on 15 May, 6% on 25 May).
+- **Summer 2025:** heavy from late April: 2–27% seen in the Suwałki–Ełk box across the late April – June days of verdicts
+  45–46, and 2–29% in the Grodno area on the worst days, varying from day to day (Suwałki–Ełk: 5% on 25 April, 26% on
+  15 May, 6% on 25 May).
 - **Autumn and winter 2025–26:** partial recovery to 63–74% (Suwałki–Ełk) and 71–92% (Grodno), below 2024's levels.
 - **2026:** heavier and longer than 2025: 0.5–3% seen from June to October 2026, against 65% on 20 October 2025.
-- Kaunas reads lower than the other boxes in every period because aircraft descending to Kaunas and Vilnius leave the
+- Kaunas reads lower than the other boxes in every period because aircraft descending to Kaunas airport leave the
   10,000 ft floor inside it (long dark gaps that aren't interference); use it for its trend only.
-- Not localized, and the cause isn't tested here. The 2024 days were chosen for other tests (validation cases, spoofing
-  controls), not by a date rule, so they could under-represent bad days, but nine clean days out of nine across eight
+- Not localized, and the cause isn't tested here. Three of the 2024 days (20 Feb, 20 Jun, 20 Oct) were chosen by a date
+  rule for the spoofing held-out test; the other six were 2024 validation cases. Nine clean days out of nine across eight
   months is a clear contrast with 2025–26.
 
 ## Next
