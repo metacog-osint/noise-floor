@@ -27,6 +27,12 @@ Method (docs/method-card.md):
     keep`, default) or set apart (`apart`). Set-apart hex-hours go to `heavy_apart` and are left out of `bad_nacp_live`,
     the minute counts' live total, post-exposure and the peer tests. `bad_nacp` stays raw.
 
+  * Option --position-loss (off by default; docs/validation/position-loss.md): from the same read, per hex and UTC
+    hour, aircraft at or above PL_MIN_ALT_FT (10,000 ft) with any ADS-B (adsb_icao, any version) or MLAT position
+    ("heard"), and those with MLAT positions but no ADS-B position there ("mlat_only"): heard, but sending no GNSS
+    position. The degraded share can't see these aircraft, because they send nothing to grade. It changes none of the
+    core tables, which come out the same with or without it.
+
 Input is the day's tar, or its split parts (.tar.aa, .tar.ab ...), read as one stream without unpacking. The raw
 bytes are SHA-256 hashed during the same pass, for provenance.
 
@@ -42,11 +48,18 @@ Output (in --out, default data/pnt/daily):
   With --heavy-apart, the daily, hourly and minute tables also carry heavy_apart (aircraft whose gross-bad reports there
   were set apart), and the summary's method_version is 1.5.
   YYYY-MM-DD.summary.json    inputs, hashes, counts, timings, method parameters, suspect and latch diagnostics
+  With --position-loss only:
+  YYYY-MM-DD.loss.parquet        h3, hour, heard, adsb, mlat_only, mlat_any (aircraft per hex-hour)
+  YYYY-MM-DD.loss_daily.parquet  h3, lat, lon, heard, adsb, mlat_only, mlat_any (aircraft once per hex per day;
+                                 mlat_only only if never on ADS-B in that hex that day)
+  and a "position_loss" block in the summary. Position loss = mlat_only / heard, a lower bound (aircraft with neither
+  ADS-B nor MLAT positions can't be placed) that depends on MLAT coverage (mlat_any says where MLAT works).
 
 Usage
   python pipeline/pnt_daily.py 2025-10-16 --raw <folder with v2025.10.16-planes-readsb-prod-0.tar*>
   python pipeline/pnt_daily.py 2025-10-16 --raw <folder> --heavy-apart --out data/pnt/daily_v15 --compare-out data/pnt/daily
       (one read, both versions: v1.5 to --out and v1.4 to --compare-out)
+  python pipeline/pnt_daily.py 2026-09-15 --raw <folder> --position-loss     (also the loss tables)
 """
 import argparse, gzip, hashlib, io, json, math, os, sys, tarfile, time
 from collections import Counter, defaultdict
@@ -71,6 +84,8 @@ SUSPECT_MIN_JUDGED = 3
 POST_MIN_KM = 300.0   # post-exposure reports must be at least this far from the exposure point
 HEAVY_TYPES = frozenset({"A359", "A35K", "A388"})   # --heavy-apart: NACp 0 on one degraded satellite (verdict 43)
 BATCH = 400           # trace files per worker task
+PL_MIN_ALT_FT = 10000  # --position-loss: aircraft at or above this (approach and departure MLAT gaps stay out)
+PL_VERSION = "0.1"
 
 # cell layout: [reports, gross bad, nic bad, acc bad]
 R, G, N, A = range(4)
@@ -118,8 +133,39 @@ def km(lat1, lon1, lat2, lon2):
     return 12742.0 * math.asin(min(1.0, math.sqrt(a)))
 
 
-def score_trace(raw, day0):
-    """One trace file -> aircraft record, or None if not usable.
+def position_flags(d, day0):
+    """--position-loss: {(h3 int, hour): bits} for one parsed ICAO trace; bit 1 = an ADS-B (adsb_icao) position there,
+    bit 2 = an MLAT position. Airborne at or above PL_MIN_ALT_FT, inside the UTC day."""
+    base = float(d.get("timestamp") or 0)
+    out = {}
+    for p in d.get("trace", []):
+        src = p[9] if len(p) > 9 else None
+        bit = 1 if src == "adsb_icao" else 2 if src == "mlat" else 0
+        alt = p[3]
+        if not bit or alt == "ground" or alt is None or alt < PL_MIN_ALT_FT:
+            continue
+        hour = int((base + p[0] - day0) // 3600)
+        if not 0 <= hour < 24:
+            continue
+        k = (h3.str_to_int(h3.latlng_to_cell(p[1], p[2], RES)), hour)
+        out[k] = out.get(k, 0) | bit
+    return out
+
+
+def add_position_flags(flags, hh, dd):
+    """Fold one aircraft's flags into hex-hour (hh) and hex-day (dd) counters [heard, adsb, mlat_only, mlat_any]."""
+    per_hex = defaultdict(int)
+    for (hx, hour), f in flags.items():
+        c = hh[(hx, hour)]
+        c[0] += 1; c[1] += bool(f & 1); c[2] += f == 2; c[3] += bool(f & 2)
+        per_hex[hx] |= f
+    for hx, f in per_hex.items():
+        c = dd[hx]
+        c[0] += 1; c[1] += bool(f & 1); c[2] += f == 2; c[3] += bool(f & 2)
+
+
+def score_trace(raw, day0, pl=None):
+    """One trace file -> aircraft record, or None if not usable. pl: a dict to receive position_flags (--position-loss).
 
     Record: (cells, meta, bad_minutes).
       cells: {(h3_int, hour): [reports, gross_bad, nic_bad, acc_bad]}
@@ -133,6 +179,8 @@ def score_trace(raw, day0):
     d = orjson.loads(raw)
     if d.get("icao", "~").startswith("~"):
         return None
+    if pl is not None:
+        pl.update(position_flags(d, day0))
     base = float(d.get("timestamp") or 0)
     nacp = nic = ver = None
     last_t = -1e9
@@ -172,20 +220,27 @@ def score_trace(raw, day0):
 
 
 def work(args):
-    batch, day0 = args
+    batch, day0, pl_on = (args + (False,))[:3]
     recs, st = [], defaultdict(int)
+    hh, dd, n_pl = defaultdict(lambda: [0, 0, 0, 0]), defaultdict(lambda: [0, 0, 0, 0]), 0
     for raw in batch:
         st["files"] += 1
+        flags = {} if pl_on else None
         try:
-            r = score_trace(raw, day0)
+            r = score_trace(raw, day0, flags)
         except Exception:
             st["parse_errors"] += 1
             continue
         if r is None:
             st["non_icao"] += 1
             continue
+        if flags:
+            add_position_flags(flags, hh, dd)
+            n_pl += 1
         if r[1][0]:
             recs.append(r)
+    if pl_on:
+        return recs, dict(st), (dict(hh), dict(dd), n_pl)
     return recs, dict(st)
 
 
@@ -413,28 +468,61 @@ def score(bad, n):
     return round(100 * max(bad - 1, 0) / n, 2)
 
 
-def run(day, raw_dir, out_dir, workers, heavy_apart=False, also=None):
+def run(day, raw_dir, out_dir, workers, heavy_apart=False, also=None, position_loss=False):
     """Process one day into out_dir. also: optional (out_dir, heavy_apart) for a second output set from the same read,
-    for like-for-like comparisons. Returns the summary of the first set."""
+    for like-for-like comparisons. position_loss: also write the loss tables to out_dir. Returns the first set's summary."""
     parts = day_parts(raw_dir, day)
     day0 = int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())
     t0 = time.time()
     stream = io.BufferedReader(Chain(parts), buffer_size=8 << 20)
     recs, st = [], defaultdict(int)
+    hh, dd, n_pl = defaultdict(lambda: [0, 0, 0, 0]), defaultdict(lambda: [0, 0, 0, 0]), 0
+    jobs = ((b, d0, True) for b, d0 in batches(stream, day0)) if position_loss else batches(stream, day0)
     with Pool(workers) as pool:
-        for r, s in pool.imap_unordered(work, batches(stream, day0), chunksize=1):
+        for res in pool.imap_unordered(work, jobs, chunksize=1):
+            r, s = res[0], res[1]
             recs.extend(r)
             for k, v in s.items():
                 st[k] += v
+            if position_loss:
+                h, d, k = res[2]
+                n_pl += k
+                for key, v in h.items():
+                    c = hh[key]; c[0] += v[0]; c[1] += v[1]; c[2] += v[2]; c[3] += v[3]
+                for key, v in d.items():
+                    c = dd[key]; c[0] += v[0]; c[1] += v[1]; c[2] += v[2]; c[3] += v[3]
     chain = stream.raw
     t_read = time.time() - t0
-    s = finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, workers)
+    pl = write_position_loss(day, out_dir, hh, dd, n_pl) if position_loss else None
+    s = finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, workers, pl)
     for extra_out, extra_mode in ([also] if also and not isinstance(also, list) else (also or [])):
         finish(day, extra_out, extra_mode, recs, st, chain, parts, t0, t_read, workers)
     return s
 
 
-def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, workers):
+def write_position_loss(day, out_dir, hh, dd, n_aircraft):
+    """--position-loss: write <day>.loss.parquet and <day>.loss_daily.parquet; returns the summary block."""
+    import pyarrow as pa, pyarrow.parquet as pq
+    os.makedirs(out_dir, exist_ok=True)
+    cols = ("heard", "adsb", "mlat_only", "mlat_any")
+    hk = sorted(hh)
+    pq.write_table(pa.table({"h3": [h3.int_to_str(k[0]) for k in hk], "hour": pa.array([k[1] for k in hk], pa.int8()),
+                             **{c: pa.array([hh[k][i] for k in hk], pa.int32()) for i, c in enumerate(cols)}}),
+                   os.path.join(out_dir, f"{day}.loss.parquet"), compression="zstd")
+    dk = sorted(dd)
+    cells = [h3.int_to_str(k) for k in dk]
+    ll = [h3.cell_to_latlng(c) for c in cells]
+    pq.write_table(pa.table({"h3": cells, "lat": [round(a, 4) for a, _ in ll], "lon": [round(b, 4) for _, b in ll],
+                             **{c: pa.array([dd[k][i] for k in dk], pa.int32()) for i, c in enumerate(cols)}}),
+                   os.path.join(out_dir, f"{day}.loss_daily.parquet"), compression="zstd")
+    heard = sum(v[0] for v in dd.values()); mo = sum(v[2] for v in dd.values())
+    return {"version": PL_VERSION, "min_alt_ft": PL_MIN_ALT_FT, "aircraft": n_aircraft, "hexes": len(dk), "hex_hours": len(hk),
+            "aircraft_hexes_heard": heard, "aircraft_hexes_mlat_only": mo,
+            "definition": "mlat_only / heard per hex: aircraft with MLAT but no ADS-B position there, of those with either; "
+                          "a lower bound that depends on MLAT coverage"}
+
+
+def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, workers, pl=None):
     """heavy_apart: False (v1.4), or True / a mode string (v1.5): keep, apart, ring, keep-any, ring-any (see heavy_apart_cells)."""
     mode = "keep" if heavy_apart is True else (heavy_apart or "")
     if mode == "drop":            # comparison only: A350/A380 left out of every count, as if absent
@@ -523,6 +611,7 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
         "source": "adsb.lol globe_history (ODbL 1.0)",
         "latching": latch_diag,
         **({"heavy_apart": apart_diag} if heavy_apart else {}),
+        **({"position_loss": pl} if pl else {}),
         "type_counts_all": dict(Counter(m[6] or "?" for _, m, _ in recs).most_common()),   # all types (was top 80)
         "avionics_suspect_centroids": sorted(where),   # [mean lat, mean lon, hours, type]; no identifiers
     }
@@ -542,9 +631,12 @@ def main():
     ap.add_argument("--heavy-any", action="store_true",
                     help="--heavy-apart: corroborated when any other aircraft there is bad (default: >= PEER_BAD_MAX of them)")
     ap.add_argument("--compare-out", help="also write the other setting (with or without --heavy-apart) here, same read")
+    ap.add_argument("--position-loss", action="store_true",
+                    help="also write <day>.loss.parquet and .loss_daily.parquet (aircraft heard but sending no GNSS position)")
     a = ap.parse_args()
     mode = (a.heavy_unjudged + ("-any" if a.heavy_any else "")) if a.heavy_apart else False
-    s = run(a.day, a.raw, a.out, a.workers, mode, (a.compare_out, False if a.heavy_apart else "keep") if a.compare_out else None)
+    s = run(a.day, a.raw, a.out, a.workers, mode, (a.compare_out, False if a.heavy_apart else "keep") if a.compare_out else None,
+            position_loss=a.position_loss)
     print(json.dumps({k: s[k] for k in ("day", "seconds", "files", "aircraft", "avionics_suspects", "hexes", "hex_hours", "reports_used")}
                      | {"latched_aircraft": s["latching"]["latched_aircraft"]}))
 

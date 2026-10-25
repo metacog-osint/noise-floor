@@ -20,6 +20,8 @@ Usage
   python pipeline/daily_job.py 2026-10-07:2026-10-21 --reanalyse    # rerun only the analyses on published days
   python pipeline/daily_job.py 2025-10-09:2025-10-25 --upload-local # publish days already processed on this PC
   python pipeline/daily_job.py 2025-11-01:2025-11-30 --skip-analysis  # backfill phase 1 (.github/workflows/backfill.yml)
+  python pipeline/daily_job.py 2026-10-20 --position-loss   # also make and upload <day>.loss.parquet and .loss_daily.parquet
+                                                           # (off by default; the workflow doesn't set it)
 """
 import argparse, json, os, shutil, subprocess, sys, time, traceback, urllib.request
 from datetime import date, datetime, timedelta, timezone
@@ -128,14 +130,19 @@ def outputs(day):
             + [os.path.join(ANALYSIS, f"{day}.{k}") for k in ("sbas.json", "anomalies.json", "bursts.json")])
 
 
-def upload(day, with_analysis=True):
+def loss_outputs(day):
+    """--position-loss files, if this run made them."""
+    return [p for p in (os.path.join(DAILY, f"{day}.{k}") for k in ("loss.parquet", "loss_daily.parquet")) if os.path.exists(p)]
+
+
+def upload(day, with_analysis=True, extra=()):
     tag = data_tag(day)
     if assets(REPO, tag) is None:
         gh("release", "create", tag, "-R", REPO, "--title", f"GNSS degradation data, {day[:7]}",
            "--notes", NOTES.format(month=day[:7]), "--latest=false")
         _ASSETS[(REPO, tag)] = {}
     files = outputs(day) if with_analysis else outputs(day)[:4]
-    gh("release", "upload", tag, "-R", REPO, "--clobber", *files, os.path.join(SITE, f"{day}.hotspots.json"))
+    gh("release", "upload", tag, "-R", REPO, "--clobber", *files, *extra, os.path.join(SITE, f"{day}.hotspots.json"))
     gh("release", "upload", tag, "-R", REPO, "--clobber", os.path.join(SITE, f"{day}.map.json"))   # last: marks done
     _ASSETS.pop((REPO, tag), None)
 
@@ -195,7 +202,7 @@ def process(day, a):
         return {"day": day, "status": "not published yet"}
     t_dl = time.time() - t0
     try:
-        s = P.run(day, raw, DAILY, a.workers)
+        s = P.run(day, raw, DAILY, a.workers, position_loss=a.position_loss)
     finally:
         if not a.raw_dir and not a.keep_raw:
             shutil.rmtree(raw, ignore_errors=True)
@@ -205,7 +212,7 @@ def process(day, a):
     hexes, jam = st["hexes"], st["jam_hexes"]
     E.hotspot_day(day, os.path.join(SITE, f"{day}.hotspots.json"))
     if not a.no_upload:
-        upload(day, with_analysis=not a.skip_analysis)
+        upload(day, with_analysis=not a.skip_analysis, extra=loss_outputs(day) if a.position_loss else ())
     return {"day": day, "status": "published" if not a.no_upload else "done (not uploaded)",
             "aircraft": s["aircraft"], "hexes_5plus": hexes, "jam_hexes": jam, "history_files": hist,
             "baseline_days": an.get("baseline_days"), "anomaly_region_hours": an.get("anomaly_region_hours"),
@@ -227,6 +234,8 @@ def main():
     ap.add_argument("--keep-raw", action="store_true")
     ap.add_argument("--no-upload", action="store_true")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
+    ap.add_argument("--position-loss", action="store_true",
+                    help="also make and upload the position-loss tables (off by default; not set by the workflow)")
     a = ap.parse_args()
     today = datetime.now(timezone.utc).date()
     days = sorted(set(expand(a.days))) if a.days else [(today - timedelta(days=k)).isoformat() for k in range(a.lookback, 0, -1)]

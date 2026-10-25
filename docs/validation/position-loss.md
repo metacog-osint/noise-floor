@@ -1,7 +1,7 @@
 # Position loss: aircraft heard but sending no GNSS position (prototype, 25 Oct 2026)
 
-**Code:** `tools/position_loss.py` (outputs in `data/position_loss/`, aggregates only, ODbL 1.0). **Status:** prototype,
-not on the map. Written by Claude overnight; not yet reviewed by Tom.
+**Code:** `tools/position_loss.py` (outputs in `data/position_loss/`, aggregates only, ODbL 1.0). **Status:** prototype and a pipeline option (off by
+default), not on the map. Written by Claude overnight; not yet reviewed by Tom.
 
 ## Why
 
@@ -109,12 +109,45 @@ are higher than the central-Europe background and unexplained; the Bulgarian reg
 persistent cells (`docs/assessment/year-trends.md`). Large parts of the world have no MLAT coverage, so this list says
 nothing about them (the Middle East among them).
 
+## In the daily pipeline (option, off by default; 25 Oct 2026)
+
+`pipeline/pnt_daily.py --position-loss` counts the same thing from the same read of the archive: per hex and hour, aircraft
+heard (ADS-B or MLAT position, 10,000 ft and above) and those heard only by MLAT. It writes `<day>.loss.parquet` (hex-hour)
+and `<day>.loss_daily.parquet` (hex-day), and a `position_loss` block in the summary (version 0.1). The core tables don't
+change. `pipeline/daily_job.py --position-loss` passes it on and uploads the two files with the day's release; the
+workflow doesn't set it, so nothing published changes until it's switched on.
+
+**Checked on the eight days used above** (raw archives on disk):
+
+| Day | Per-hex table vs published v1.4 | Hourly table vs published v1.4 | Loss, hex-hour, vs prototype | Loss, hex-day, vs prototype | Run time with the option |
+|---|---|---|---|---|---|
+| 17 Jan | identical | identical | identical | identical | 134 s |
+| 1 Feb | identical | identical | identical | identical | 148 s |
+| 16 May | identical | identical | identical | identical | 144 s |
+| 20 Jun | identical | identical | identical | identical | 159 s |
+| 15 Jul | identical | identical | identical | identical | 177 s |
+| 15 Aug | identical | identical | identical | identical | 200 s |
+| 15 Sep | identical | identical | identical | identical | 191 s |
+| 15 Oct | identical | identical | identical | identical | 193 s |
+
+- The core tables match the published v1.4 tables on every day (all identical),
+  on the columns both have (the published year tables predate the `heavy_live` column).
+- With and without the option on the same day (2 days), the per-hex, hourly and minute tables are
+  identical. Run time: 17 Jan: 113 s without, 134 s with; 15 Sep: 150 s without, 191 s with, so about 20–30% longer
+  (not a controlled benchmark: other scheduled jobs shared the machine during some runs).
+- The loss tables match `tools/position_loss.py` exactly (all identical),
+  so the results above hold for the pipeline version too.
+- Tests: `tests/test_pnt_daily.py` (`test_position_loss`): option off leaves the outputs and summary unchanged; option on
+  counts ADS-B (any version), MLAT-only, and ignores ground, next-day, non-ICAO and sub-10,000 ft points.
+
+Switching it on in the daily workflow is a deploy-setting change (Tom's call). Putting it on the map needs a layer design
+that shows MLAT coverage, so that a blank hex isn't read as clean.
+
 ## What follows
 
 1. **The per-hex degraded share can fall while interference spreads.** Wherever position loss is high, the share is
    measured on the few aircraft that keep a fix. Any trend in the share needs the position-loss measure beside it.
 2. **A position-loss layer belongs on the map** next to the degraded share, with MLAT coverage shown so a blank isn't
-   read as clean. That's a method change for the daily pipeline (count MLAT-only aircraft per hex and hour from the same
-   pass); it needs a review first.
+   read as clean. The pipeline option is built (below); switching it on and drawing the layer are the next steps.
 3. **Coverage drift has to be controlled for:** track the number of MLAT-capable hexes per day and keep control boxes
    (central Europe, central Poland) in every report.

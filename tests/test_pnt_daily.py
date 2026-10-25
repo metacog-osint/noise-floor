@@ -198,8 +198,47 @@ def test_heavy_apart():
     assert P.hex_hour_totals(recs)[(hx[2], 3)] == [4, 2] and tot[(hx[2], 3)] == [2, 0]
 
 
+def test_position_loss():
+    """--position-loss: core tables identical to a run without it; loss tables count ADS-B / MLAT-only aircraft per hex."""
+    import pyarrow.parquet as pq
+    import h3
+    tmp = tempfile.mkdtemp()
+    try:
+        build_day(tmp, "2025-10-16")
+        off, on = os.path.join(tmp, "off"), os.path.join(tmp, "on")
+        s_off = P.run("2025-10-16", tmp, off, workers=2)
+        s_on = P.run("2025-10-16", tmp, on, workers=2, position_loss=True)
+        for name in ("2025-10-16.parquet", "2025-10-16.hourly.parquet", "2025-10-16.minute.parquet"):
+            assert pq.read_table(os.path.join(off, name)).equals(pq.read_table(os.path.join(on, name))), name
+        assert "position_loss" not in s_off and not os.path.exists(os.path.join(off, "2025-10-16.loss.parquet"))
+        skip = {"seconds", "seconds_read", "position_loss"}
+        assert {k: v for k, v in s_off.items() if k not in skip} == {k: v for k, v in s_on.items() if k not in skip}
+        pl = s_on["position_loss"]
+        assert pl["version"] == P.PL_VERSION and pl["min_alt_ft"] == 10000, pl
+        b = h3.latlng_to_cell(55.0, 20.0, 4)
+        hh = {(r["h3"], r["hour"]): r for r in pq.read_table(os.path.join(on, "2025-10-16.loss.parquet")).to_pylist()}
+        # Baltic hex, hour 0: five ADS-B v2 aircraft, one ADS-B v0 (any version counts as sending positions), one MLAT-only;
+        # the ground, next-day and non-ICAO traces don't count
+        r = hh[(b, 0)]
+        assert (r["heard"], r["adsb"], r["mlat_only"], r["mlat_any"]) == (7, 6, 1, 1), r
+        dd = {r["h3"]: r for r in pq.read_table(os.path.join(on, "2025-10-16.loss_daily.parquet")).to_pylist()}
+        assert (dd[b]["heard"], dd[b]["adsb"], dd[b]["mlat_only"]) == (7, 6, 1) and abs(dd[b]["lat"] - 55.0) < 0.3, dd[b]
+        lone = h3.latlng_to_cell(40.0, -100.0, 4)
+        assert (dd[lone]["heard"], dd[lone]["mlat_only"]) == (1, 0)
+        assert pl["aircraft_hexes_mlat_only"] == 1 and pl["hexes"] == len(dd)
+        # flags for one trace: below 10,000 ft ignored; ADS-B and MLAT in the same hex-hour give both bits
+        d = trace("eeeee1", [(0, 55.0, 20.0, 35000, GOOD), (60, 55.0, 20.0, 5000, None)], kind="adsb_icao")
+        d["trace"].append([120, 55.0, 20.0, 35000, 450.0, 90.0, 0, 0, None, "mlat", 35000, None, None, None])
+        f = P.position_flags(d, DAY0)
+        assert f == {(h3.str_to_int(b), 0): 3}, f
+    finally:
+        shutil.rmtree(tmp)
+
+
 if __name__ == "__main__":
     test_day()
     print("PASS test_day")
     test_heavy_apart()
     print("PASS test_heavy_apart")
+    test_position_loss()
+    print("PASS test_position_loss")
