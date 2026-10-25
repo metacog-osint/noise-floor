@@ -240,7 +240,14 @@ ports. That reading is unverified, and it is exactly where the plan's D3 and D4 
 6. Transfer: `tools/ais_detect.py` needs only mmsi, time, lat, lon, sog, cog, heading, navStat, posAcc and raim, so the
    same code can read aisstream (if its terms allow) for the focus areas, or Norway's open AIS (NLOD, plan Section 3) as
    a second test region.
-7. Housekeeping for the main session:
+7. **The ship's own "fix lost" flag (added 25 Oct 2026).** AIS position reports carry a UTC-second field: 0–59 is the
+   second of the fix, 60 not available, 61 manual input, 62 dead reckoning, 63 positioning system inoperative
+   (ITU-R M.1371). Digitraffic's MQTT messages leave it out; its REST `locations` endpoint has it. The collector now
+   polls REST every 10 minutes (`--rest-min`) into `fixflags.parquet`. In one live snapshot (25 Oct 2026, 05:45 UTC),
+   6 of 971 vessels reported 62 or 63: four near Vysotsk and the Primorsk approaches (60.0–60.6N, 28.0–28.6E) and two
+   Russian-flag ships placed at a false inland position (57.67N 32.52E). Next: count 62/63 by area and hour beside the
+   spoofing tests, once a day or more of polls is collected; a ship that reports 63 is telling us its GNSS failed.
+8. Housekeeping for the main session:
    - add `paho-mqtt` to the requirements;
    - the registry row `digitraffic-ais` says "CC BY 4.0 (stated)". The terms-of-service page (retrieved 24 Oct 2026)
      confirms CC BY 4.0 and gives the attribution text quoted at the top of this page.

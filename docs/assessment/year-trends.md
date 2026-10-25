@@ -14,7 +14,10 @@ reviewed by a person beyond the checks below.*
   itself rose further, but its traffic fell by 70%, so its size can't be read.
 - **Strait of Hormuz and Cyprus–Levant: two surges at the same time as traffic collapsed.** Hormuz went from 0.8% to a
   median 66% (2 Mar – 3 Apr 2026) and 83% (8 May – 21 Jun), with aircraft-hexes down from about 9,000 to under 400 a
-  day. Cyprus–Levant rose from 0.9% to 19% from 28 Feb. Both are back near baseline since June.
+  day. Cyprus–Levant rose from 0.9% to 19% from 28 Feb. Both are back near baseline since June. CYGNSS, which doesn't
+  depend on traffic, shows the same months over Hormuz (Gulf of Oman/Hormuz box: 0.5–0.7 dB before March, 3.8 dB in
+  March, 2.4 dB in April, 3.8–3.9 dB in May–June; `docs/validation/cygnss.md` section 10), so the surges aren't a
+  traffic artefact.
 - **The same dates surge in several areas at once:** around New Year (Kaliningrad, the southern Black Sea and the
   Caucasus, 28 Dec – 3 Jan) and around 7–17 May (Kaliningrad, the Gulf of Finland, the southern Black Sea and the
   Caucasus). The May run brackets 9 May. A link to Victory Day security measures is a hypothesis, not tested here.
