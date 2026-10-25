@@ -636,7 +636,8 @@ Share of crossings with ADS-B positions for most of the way ("seen"):
 - **The daily map understates it.** Aircraft that lose their position drop out of the per-hex counts, so a box where
   almost every aircraft loses position can show a share of 30–50% from the few that keep one. The map's "Fewer aircraft
   than usual" view compares each hex with its previous 14 days, so it catches an onset but not a loss that lasts all
-  season. A position-loss measure is needed (`tools/position_loss.py`, below).
+  season. A position-loss measure is needed (`tools/position_loss.py`; `docs/validation/position-loss.md`, which also
+  shows the same effect behind the Gulf of Finland's falling share).
 - **Not localized.** The boxes mark where aircraft lost position, not where a transmitter is. The Suwałki–Ełk box borders
   Kaliningrad; the Grodno box borders Belarus. Whether the season reflects operations, propagation (the TDOA paper notes
   ducting can carry interference past the radio horizon) or both isn't tested.
