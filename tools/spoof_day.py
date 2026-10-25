@@ -8,7 +8,7 @@ Validation and results: docs/validation/spoofing.md.
 Per aircraft (ADS-B airborne positions, type adsb_icao, any ADS-B version, every position):
   fast       emitter category A2-A5 with >= 10 reports at >= 250 kt above 10,000 ft that day, or no category and
              >= 10 reports at >= 350 kt above 20,000 ft. These are GNSS ground speeds, which a spoofer controls.
-             With --airspeed-fast (v0.5, off by default) indicated airspeed also counts: category A2-A5 with >= 10
+             In v0.5 (the default from late Oct 2026; --no-airspeed-fast gives v0.4) indicated airspeed also counts: category A2-A5 with >= 10
              reports at IAS >= 220 kt above 10,000 ft, or no category with >= 10 at IAS >= 250 kt above 20,000 ft.
              IAS comes from Mode S enhanced surveillance (air data, not GNSS), where readsb has it. Only fast aircraft get the three tests below (light aircraft,
              rotorcraft, gliders and balloons can fly slowly or circle at altitude, and share addresses more often).
@@ -1021,8 +1021,9 @@ def main():
     ap.add_argument("--out", default=os.path.join(ROOT, "data", "spoofing"))
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--limit", type=int, default=0, help="process only the first N batches of 400 traces (testing)")
-    ap.add_argument("--airspeed-fast", action="store_true",
-                    help="v0.5: indicated airspeed (air data) can also qualify an aircraft as fast; off by default")
+    ap.add_argument("--airspeed-fast", action=argparse.BooleanOptionalAction, default=True,
+                    help="v0.5 (default): indicated airspeed (air data) can also qualify an aircraft as fast; "
+                         "--no-airspeed-fast gives v0.4")
     a = ap.parse_args()
     if a.cmd == "run":
         for day in a.days:
