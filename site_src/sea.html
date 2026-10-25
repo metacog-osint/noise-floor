@@ -1,0 +1,76 @@
+<!--{"title": "Sea · Noise Floor", "description": "Sanctioned, military, law-enforcement and state-flag vessels in Finland's open AIS, with what each ship broadcasts about itself, its reporting pattern and GNSS interference at sea.", "nav": "sea", "layout": "wide", "head": "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css\"><script defer src=\"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js\"></script><script defer src=\"/sea.js\"></script>"}-->
+<p class="kicker">Sea</p>
+<h1>Vessels of interest in Finnish AIS</h1>
+<p class="lede">Ships on official sanctions lists, ships declaring military or law-enforcement work, and Russian, Chinese, Iranian and North Korean-flagged commercial and state ships, as heard by Finland's shore AIS stations. For each ship: the identifiers it broadcasts about itself, any official listing, where it last reported, how regularly it reported, and how many of its reports failed the spoofing tests. Metadata only: no communications content.</p>
+
+<div class="callout">
+<p><strong>Read with care.</strong> A listing is a government designation, quoted as published; it is not a finding by this project, and the map does not say what any ship is doing. AIS positions come from each ship's own GNSS receiver and can be jammed, spoofed or falsified, so a position here is what the ship reported, not where it was seen. Reports that failed the spoofing tests are left out of positions and tracks and counted instead.</p>
+</div>
+
+<p class="small map-line"><span id="sea-data" class="tagnote"></span> <span id="sea-stats"></span></p>
+
+<div class="sea-wrap">
+  <div class="map-frame sea-frame">
+    <div id="sea-map" role="region" aria-label="Map of the northern Baltic with vessel markers. A table of the same vessels follows the map."></div>
+    <div id="sea-panel" class="map-panel">
+      <button type="button" class="mp-toggle" id="sea-toggle" aria-expanded="true" aria-controls="sea-body">Layers <span aria-hidden="true">▾</span></button>
+      <div id="sea-body" class="mp-body">
+        <fieldset class="mp-group"><legend>Vessels</legend>
+          <label><input type="checkbox" id="lyr-sanctioned" checked> <i class="sea-key k-sanctioned" aria-hidden="true"></i> Sanctioned</label>
+          <label><input type="checkbox" id="lyr-state" checked> <i class="sea-key k-state" aria-hidden="true"></i> Military and law enforcement</label>
+          <label><input type="checkbox" id="lyr-flag" checked> <i class="sea-key k-flag" aria-hidden="true"></i> Other state flags of interest</label>
+        </fieldset>
+        <fieldset class="mp-group"><legend>Context</legend>
+          <label><input type="checkbox" id="lyr-gnss" checked> <i class="sea-key k-gnss" aria-hidden="true"></i> GNSS interference at sea</label>
+          <label><input type="checkbox" id="lyr-borders" checked> Country borders</label>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+  <aside id="sea-detail" class="sea-detail" aria-labelledby="sd-h" tabindex="-1">
+    <h2 id="sd-h">Select a vessel</h2>
+    <p class="small">Click a marker, or choose "Show" in the table below. The panel lists what the ship broadcasts about itself, any official listing, its last trusted position and how it reported.</p>
+  </aside>
+</div>
+<div class="legend-row"><div id="sea-legend" class="map-legend" aria-label="Legend">
+  <span><i class="sea-key k-sanctioned" aria-hidden="true"></i> Sanctioned (diamond)</span>
+  <span><i class="sea-key k-state" aria-hidden="true"></i> Military or law enforcement (square)</span>
+  <span><i class="sea-key k-flag" aria-hidden="true"></i> Russia, China, Iran or North Korea flag (circle)</span>
+  <span><i class="sea-key k-gnss" aria-hidden="true"></i> GNSS interference: areas and spoofed-to points</span>
+</div></div>
+<p class="small">A ship that fits more than one group takes the shape of the first group listed. The track of a selected ship covers its trusted positions over the last 48 hours of data, at most one point every 5 minutes.</p>
+
+<section aria-labelledby="list-h">
+<h2 id="list-h">All vessels shown</h2>
+<div class="filters" role="search">
+  <label class="small" for="sea-q">Search</label><input id="sea-q" type="search" placeholder="Name, MMSI, IMO or call sign" autocomplete="off">
+  <select id="sea-cat" aria-label="Group"><option value="">All groups</option><option value="sanctioned">Sanctioned</option><option value="state">Military and law enforcement</option><option value="state_flag_of_interest">State flag of interest</option></select>
+  <select id="sea-flag" aria-label="Flag"><option value="">All flags</option></select>
+</div>
+<p class="small" id="sea-shown" aria-live="polite"></p>
+<div class="tw"><table id="sea-table"><thead><tr><th>Name</th><th>Flag (by MMSI)</th><th>AIS type</th><th>Groups</th><th>MMSI</th><th>IMO</th><th>Last trusted position (UTC)</th><th>Failed spoofing tests</th><th></th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section aria-labelledby="gnss-h">
+<h2 id="gnss-h">GNSS interference at sea</h2>
+<p class="small">Ships whose receivers reported impossible positions or speeds, with no ship identities. "Where they were" uses each ship's last trusted position before or after the interference; "where they were shown" is the centre of its flagged positions. Method and first results: <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/ais-baltic.md">AIS validation notes</a>.</p>
+<p id="gnss-summary"></p>
+<div class="sea-two">
+  <div><h3>Where they were</h3><div class="tw"><table id="gnss-areas"><thead><tr><th>Sea area</th><th>Ships</th></tr></thead><tbody></tbody></table></div></div>
+  <div><h3>Where they were shown</h3><div class="tw"><table id="gnss-to"><thead><tr><th>Centre</th><th>Ships</th></tr></thead><tbody></tbody></table></div></div>
+</div>
+<details class="table-view"><summary>Ships affected per hour</summary><div class="tw"><table id="gnss-hours"><thead><tr><th>Hour (UTC)</th><th>Hour (Central)</th><th>Ships</th></tr></thead><tbody></tbody></table></div></details>
+</section>
+
+<h2>Reading the page</h2>
+<ul>
+  <li><strong>Sanctioned</strong> means the IMO number the ship broadcasts is on the US Treasury OFAC SDN List or the UK Sanctions List, worded as each list publishes it: "listed by OFAC on <em>date</em> under <em>programme</em>". OFAC's date is the day the entry was published on the SDN List. A listed MMSI counts as a match only when the ship broadcasts no valid IMO number, and is marked as unconfirmed. A matching name alone never puts a ship on the map.</li>
+  <li><strong>Military and law enforcement</strong> are AIS ship types 35 and 55, as the ship declares them. Many state ships switch AIS off or declare another type, so their absence here means nothing.</li>
+  <li><strong>State flags of interest</strong> come from the first three digits of the MMSI (the Maritime Identification Digits): Russia 273, China 412–414, Iran 422, North Korea 445. That is the flag the transponder claims, which can differ from the registry. Only cargo ships, tankers, tugs, passenger ships, service craft and state types are shown; fishing boats, sailing yachts and pleasure craft never are.</li>
+  <li><strong>Failed spoofing tests</strong> counts reports that needed an impossible speed from the ship's last trusted position, reported an impossible speed over ground, or put the ship 20 km or more inland. They usually mean the ship's GNSS receiver was jammed or spoofed, which in the eastern Gulf of Finland happens to many ships at once. They can also come from a faulty transponder or two ships sharing one MMSI.</li>
+  <li><strong>Gaps over 1 hour</strong> leave out the hours when our collector was down. A gap can mean the ship left the coverage of the Finnish stations, entered a port the stations don't hear, or switched AIS off; the data can't tell these apart.</li>
+  <li><strong>Signals</strong> are what the ship broadcasts about itself: class (Class A is inferred when the ship sends voyage data that only Class A transponders send), destination and ETA as typed by the crew, draught, size from the antenna offsets, and the position source the transponder declares (GPS, GLONASS, Galileo, combined and so on), which is a setting, not a check of what the receiver uses. "IMO check digit" says whether the broadcast IMO number is internally valid.</li>
+  <li><strong>Times</strong> are UTC, with US Central time alongside.</li>
+</ul>
+
+<p class="small" id="sea-note">Data: <a href="https://www.digitraffic.fi/en/marine-traffic/">Digitraffic</a> AIS from Fintraffic. Source: Fintraffic / digitraffic.fi, license CC 4.0 BY. Sanctions: <a href="https://ofac.treasury.gov/sanctions-list-service">US Treasury OFAC SDN List</a> (US government work) and the <a href="https://www.gov.uk/government/publications/the-uk-sanctions-list">UK Sanctions List</a>; contains public sector information licensed under the Open Government Licence v3.0. Land and borders: Natural Earth (public domain). <span id="sea-dates"></span> The data is refreshed by hand, not daily: <code>python tools/sanctions.py</code> then <code>python tools/vessels_build.py</code> (<a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/vessels_build.py">code</a>).</p>

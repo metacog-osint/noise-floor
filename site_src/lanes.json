@@ -179,11 +179,15 @@
         "Digitraffic AIS (CC BY 4.0)",
         "Kystverket AIS (NLOD; licence text not yet read)"
       ],
-      "notes": "First 14 hours, 24 Oct 2026: 26 ships in the eastern Gulf of Finland showed GNSS interference; 13 were shown on one circle in inland north-western Russia at 66–81 knots, which points to their GNSS being spoofed rather than false AIS. One ship was shown east of St Petersburg, 0.5 km from a point where the aircraft spoofing detector found 57 aircraft on 20 Jun 2026. Coverage is regional, with none of Kaliningrad. Vessel identities stay private.",
+      "notes": "First 14 hours, 24 Oct 2026: 26 ships in the eastern Gulf of Finland showed GNSS interference; 13 were shown on one circle in inland north-western Russia at 66–81 knots, which points to their GNSS being spoofed rather than false AIS. One ship was shown east of St Petersburg, 0.5 km from a point where the aircraft spoofing detector found 57 aircraft on 20 Jun 2026. Coverage is regional, with none of Kaliningrad. Identities are published only for the Sea map's categories.",
       "links": [
         [
           "First results",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/ais-baltic.md"
+        ],
+        [
+          "Sea map",
+          "/sea"
         ]
       ]
     },
@@ -552,14 +556,20 @@
       "what": "Combines ships seen by radar satellites while silent on AIS (dark ships), AIS tracks with no ship under them (phantom tracks), ship-to-ship transfers, identity changes, spoofed tracks, behaviour over undersea cables, RF emitters at sea and HF signal metadata, with weather and declared activity as context.",
       "how": "First one method, validated and written up: Sentinel-1 ship detections matched against AIS at one focus area. Ship detection is built and runs privately on the first area (19 radar passes in 60 days). Checked against Sentinel-2 optical images, about half of its detections are confirmed at the best setting, against 13–31% at the first one; AIS matching is next. Then behaviour detectors, context layers and a separate Sea map with licence-clean layers only.",
       "data": [
+        "Digitraffic AIS (CC BY 4.0)",
+        "Official sanctions lists (OFAC SDN, UK Sanctions List)",
         "Copernicus Sentinel-1 and -2",
         "VIIRS night lights (licence to confirm)",
         "AIS (aisstream, private until its terms are clear)",
         "Declared warnings",
         "Public HF receivers (metadata only)"
       ],
-      "notes": "No open AIS feed covers this region and no free source sees per-vessel satellite communications. Communications content is never published.",
+      "notes": "A public Sea map shows sanctioned, military, law-enforcement and Russian, Chinese, Iranian or North Korean-flagged vessels in Finland's open AIS, with official listings, reporting patterns and failed spoofing tests; everything else stays private. No open AIS feed covers the South China Sea or Indian Ocean, and no free source sees per-vessel satellite communications. Communications content is never published.",
       "links": [
+        [
+          "Sea map",
+          "/sea"
+        ],
         [
           "Plan",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/maritime-plan.md"

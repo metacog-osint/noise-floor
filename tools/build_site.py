@@ -33,8 +33,8 @@ STATUS = {  # key: (label, css class, one-line meaning)
     "prototype": ("Prototype", "st-prototype", "a first result, not yet a product"),
     "planned": ("Planned", "st-planned", "designed, not built"),
 }
-NAV = [("home", "Home", ""), ("map", "Map", "map"), ("charts", "Charts", "charts"), ("lanes", "Lanes", "lanes"),
-       ("methods", "Methods", "methods"), ("validation", "Validation", "validation"), ("sources", "Sources", "sources")]
+NAV = [("home", "Home", ""), ("map", "Map", "map"), ("sea", "Sea", "sea"), ("charts", "Charts", "charts"),
+       ("lanes", "Lanes", "lanes"), ("methods", "Methods", "methods"), ("validation", "Validation", "validation"), ("sources", "Sources", "sources")]
 USE = {  # registry `use` values in plain words
     "ingest": "Feeds a layer", "ingest-after-ok": "After permission", "visual-only": "Visual comparison only",
     "cite-only": "Cited, not ingested", "later": "Later phase", "exclude": "Excluded", "private-watch": "Private watch only",
@@ -91,7 +91,7 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
-ASSETS = ("style.css", "map.js", "charts.js", "home.js")
+ASSETS = ("style.css", "map.js", "sea.js", "charts.js", "home.js")
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
 
@@ -252,7 +252,7 @@ def main():
              "{{SOURCE_COUNT}}": str(len(rows))}
     fills.update(chart_fills())
     written = []
-    for name in ("index.html", "map.html", "charts.html", "methods.html", "validation.html", "404.html"):
+    for name in ("index.html", "map.html", "sea.html", "charts.html", "methods.html", "validation.html", "404.html"):
         meta, body = read_page(name)
         for k, v in fills.items():
             body = body.replace(k, v)
@@ -268,7 +268,7 @@ def main():
         {"title": "Sources · Noise Floor", "description": "Noise Floor's licence registry: every source, its licence and how it may be used.",
          "nav": "sources"}, sources_page(rows), updated))
     written += ["lanes.html", "sources.html"]
-    for f in ("style.css", "map.js", "charts.js", "home.js"):
+    for f in ASSETS:
         shutil.copy(os.path.join(SRC, f), os.path.join(OUT, f))
     open(os.path.join(OUT, "robots.txt"), "w", newline="\n").write("User-agent: *\nAllow: /\n")
     year, day, hour, short = ("public, max-age=31536000, immutable", "public, max-age=86400, stale-while-revalidate=604800",
@@ -277,6 +277,7 @@ def main():
     rules += [(f"/{f}", f"Cache-Control: {year}") for f in ASSETS]              # always requested as /file?v=<content hash>
     rules += [(f"/data/{f}", f"Cache-Control: {day}") for f in ("land.json", "borders.json", "places.json")]
     rules += [(p, f"Cache-Control: {hour}") for p in ("/data/gnss/2*", "/data/events/*", "/data/history/*")]   # day files
+    rules += [("/data/vessels/*", f"Cache-Control: {hour}")]                  # Sea map data, refreshed by hand
     rules += [(f"/data/{f}", f"Cache-Control: {short}") for f in ("gnss/days.json", "trend.json", "charts.json")]
     open(os.path.join(OUT, "_headers"), "w", newline="\n").write("".join(f"{p}\n  {h}\n" for p, h in rules))
     for name in written:                      # a duplicate id once broke the charts page (two elements, one anchor)
@@ -284,7 +285,7 @@ def main():
         dup = sorted({i for i in ids if ids.count(i) > 1})
         if dup:
             sys.exit(f"{name}: duplicate ids {dup}")
-    expected = set(written) | {"style.css", "map.js", "charts.js", "home.js", "robots.txt", "_headers", "data"}
+    expected = set(written) | set(ASSETS) | {"robots.txt", "_headers", "data"}
     stray = sorted(set(os.listdir(OUT)) - expected)
     if stray:
         sys.exit(f"unexpected files in site/: {stray} (remove them, or add them to the build)")
