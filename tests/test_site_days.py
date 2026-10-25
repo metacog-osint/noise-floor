@@ -17,12 +17,41 @@ def write(path, obj):
         json.dump(obj, f)
 
 
+def test_feed(tmp):
+    import xml.etree.ElementTree as ET
+    evd = os.path.join(tmp, "feed_events")
+    os.makedirs(evd)
+    write(os.path.join(tmp, "feed_places.json"), {"places": [["Kaliningrad", 54.7, 20.5, 2, 0], ["Tiny <Town>", 0, 0, 9, 0]]})
+    idx = [{"day": f"2026-09-{d:02d}", "note": "", "hexes": 1000, "jam_hexes": 100 + d} for d in range(1, 31)]
+    idx.append({"day": "2026-10-01", "note": "R&D <note>", "hexes": 1000, "jam_hexes": 400, "daily": True})
+    write(os.path.join(evd, "2026-10-01.json"), {"day": "2026-10-01", "anomalies": [
+        {"m": "jam", "tier": "major", "peak": 61.2, "lat": 54.9, "lon": 20.1, "h0": 2, "h1": 4, "excess": 40.4, "hs": 0.7, "test": "X <1>"},
+        {"m": "acc", "tier": "major", "peak": 30, "lat": 1, "lon": 1, "h0": 0, "h1": 1, "excess": 20},
+        {"m": "jam", "tier": "minor", "peak": 9, "lat": 1, "lon": 1, "h0": 0, "h1": 1, "excess": 5}],
+        "bursts": [{}, {}], "tests": [{"id": "X <1>"}]})
+    p = os.path.join(tmp, "feed.xml")
+    assert S.write_feed(idx, evd, p, os.path.join(tmp, "feed_places.json"), n=30) == 30
+    ns = {"a": "http://www.w3.org/2005/Atom"}
+    root = ET.parse(p).getroot()                                       # well-formed despite <, & in notes and test ids
+    es = root.findall("a:entry", ns)
+    assert len(es) == 30 and es[0].find("a:updated", ns).text == "2026-10-01T23:59:59Z"
+    assert es[0].find("a:title", ns).text == "2026-10-01: 400 hexes at jamming scale (30-day median 116), 1 major event", es[0].find("a:title", ns).text
+    html = es[0].find("a:content", ns).text
+    assert "near Kaliningrad" in html and "70% of the degraded aircraft were A350s or A380s" in html and "fits announced test X &lt;1&gt;" in html, html
+    assert "R&amp;D &lt;note&gt;" in html and "2 minute-level bursts." in html and "1 announced US GPS tests." in html, html
+    assert html.count("<li>") == 1, html                                # only the major/notable jamming-scale event
+    assert es[-1].find("a:id", ns).text.endswith("gnss-day-2026-09-02")
+    assert "No event file for this day." in es[1].find("a:content", ns).text
+    assert "not reviewed by a person" in html and "validated days" in es[1].find("a:content", ns).text
+
+
 def main():
     tmp = tempfile.mkdtemp()
     try:
         gnss, src = os.path.join(tmp, "gnss"), os.path.join(tmp, "dl")
         os.makedirs(gnss); os.makedirs(src)
         S.GNSS, S.EVENTS = gnss, os.path.join(tmp, "events")
+        S.FEED, S.PLACES = os.path.join(tmp, "feed.xml"), os.path.join(tmp, "places.json")    # never the repo's site/
         write(os.path.join(gnss, "2025-10-14.json"), day_file("2025-10-14", [["a", 10, 5, 5, 8, 1]]))
         write(os.path.join(gnss, "days.json"), [{"day": "2025-10-14", "note": "EGNOS outage", "hexes": 1, "jam_hexes": 1, "kb": 1}])
         # 5 aircraft, 2 bad -> 100*(2-1)/5 = 20% (jamming scale); 5 aircraft, 1 bad -> 0%; 4 aircraft -> not counted
@@ -101,6 +130,7 @@ def main():
         assert [a.get("test") for a in ev["anomalies"]] == ["WSMRNM GPS 25-16", None, None], ev["anomalies"]
         assert ev["bursts"][0]["test"] == "WSMRNM GPS 25-16" and ev["tests"][0]["place"].startswith("White Sands"), ev
         assert json.load(open(os.path.join(evd, "2025-10-25.json")))["tests"] == []
+        test_feed(tmp)
         print("test_site_days: ok")
     finally:
         shutil.rmtree(tmp)

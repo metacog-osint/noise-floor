@@ -53,6 +53,7 @@ PAGE = """<!doctype html>
 <meta property="og:description" content="{description}">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css">
+<link rel="alternate" type="application/atom+xml" title="Noise Floor: daily GNSS summary" href="/feed.xml">
 {head}
 </head>
 <body>
@@ -288,13 +289,14 @@ def main():
     rules += [(p, f"Cache-Control: {hour}") for p in ("/data/gnss/2*", "/data/events/*", "/data/history/*")]   # day files
     rules += [("/data/vessels/*", f"Cache-Control: {hour}")]                  # Sea map data, refreshed by hand
     rules += [(f"/data/{f}", f"Cache-Control: {short}") for f in ("gnss/days.json", "trend.json", "charts.json")]
+    rules += [("/feed.xml", f"Cache-Control: {short}")]
     open(os.path.join(OUT, "_headers"), "w", newline="\n").write("".join(f"{p}\n  {h}\n" for p, h in rules))
     for name in written:                      # a duplicate id once broke the charts page (two elements, one anchor)
         ids = re.findall(r'\sid="([^"]+)"', open(os.path.join(OUT, name), encoding="utf-8").read())
         dup = sorted({i for i in ids if ids.count(i) > 1})
         if dup:
             sys.exit(f"{name}: duplicate ids {dup}")
-    expected = set(written) | set(ASSETS) | {"robots.txt", "_headers", "data"}
+    expected = set(written) | set(ASSETS) | {"robots.txt", "_headers", "data", "feed.xml"}   # feed.xml: written at deploy (site_days.py)
     stray = sorted(set(os.listdir(OUT)) - expected)
     if stray:
         sys.exit(f"unexpected files in site/: {stray} (remove them, or add them to the build)")
