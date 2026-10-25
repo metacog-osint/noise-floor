@@ -8,6 +8,7 @@ stored as assets on this repo's pnt-data-YYYY-MM releases. The deploy job downlo
                                           # DIR/<day>.{anomalies,bursts,sbas}.json -> SITE/data/events/<day>.json;
                                           # DIR/<day>.hotspots.json (every day) -> SITE/data/trend.json;
                                           # DIR/faa_gps_tests.json -> announced tests in every events file
+                                          # then SITE/feed.xml: Atom feed of the latest 30 days' summaries
 
 A committed file wins over a downloaded one for the same day. The index keeps the committed days' notes and
 marks every other day "daily": made automatically, not reviewed by a person.
@@ -19,6 +20,7 @@ import re
 import shutil
 import sys
 from datetime import date, timedelta
+from xml.sax.saxutils import escape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GNSS = os.path.join(ROOT, "site", "data", "gnss")
@@ -26,6 +28,10 @@ EVENTS = os.path.join(ROOT, "site", "data", "events")
 MAP_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.map\.json$")
 HOT_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.hotspots\.json$")
 MEASURE = {"gross": "jam", "capable_10m": "acc"}
+FEED = os.path.join(ROOT, "site", "feed.xml")
+PLACES = os.path.join(ROOT, "site", "data", "places.json")
+SITE_URL = "https://noisefloor.theintelligence.company"
+TIER = {"major": "Major", "notable": "Notable", "minor": "Minor"}
 
 
 def stats(obj):
@@ -173,6 +179,97 @@ def annotate_all(events_dir, tests_path):
     return files, tagged
 
 
+def ll2(lat, lon):
+    return f"{abs(lat):.1f}°{'N' if lat >= 0 else 'S'} {abs(lon):.1f}°{'E' if lon >= 0 else 'W'}"
+
+
+def nearest(places, lat, lon, limit_km=350):
+    best, name = limit_km, None
+    for p in places:
+        d = km((lat, lon), (p[1], p[2]))
+        if d < best:
+            best, name = d, p[0]
+    return name
+
+
+def day_summary(d, prior, ev, places):
+    """(title, html) for one day: hexes at jamming scale against the 30 days before, the top jamming-scale events
+    with the nearest named place, burst and announced-test counts. Mirrors the home page's "on the map today"."""
+    med = sorted(prior)[len(prior) // 2] if prior else None
+    top = [e for e in (ev or {}).get("anomalies", []) if e.get("m") == "jam" and e.get("tier") != "minor"][:5]
+    n_major = sum(1 for e in (ev or {}).get("anomalies", []) if e.get("m") == "jam" and e.get("tier") == "major")
+    title = (f"{d['day']}: {d['jam_hexes']:,} hexes at jamming scale" + (f" (30-day median {med:,})" if med is not None else "")
+             + (f", {n_major} major event{'s' if n_major != 1 else ''}" if n_major else ""))
+    link = f"{SITE_URL}/map#day={d['day']}&m=jam"
+    parts = [f"<p>{d['jam_hexes']:,} hexes at jamming scale" + (f" (30-day median {med:,})" if med is not None else "")
+             + f", out of {d['hexes']:,} with 5 or more aircraft." + (f" Note: {escape(d['note'])}." if d.get("note") else "") + "</p>"]
+    if ev is None:
+        parts.append("<p>No event file for this day.</p>")
+    else:
+        items = []
+        for e in top:
+            near = nearest(places, e["lat"], e["lon"])
+            url = f"{SITE_URL}/map#day={d['day']}&m=jam&v={e['lat']:.2f},{e['lon']:.2f},6"
+            hs = e.get("hs")
+            items.append(f'<li><a href="{escape(url)}">{TIER.get(e["tier"], e["tier"])}: {e["peak"]:.0f}% of aircraft degraded around '
+                         f'{ll2(e["lat"], e["lon"])}' + (f" (near {escape(near)})" if near else "") + "</a>, "
+                         f'{e["h0"]:02d}:00–{e["h1"]:02d}:59 UTC, {e["excess"]:.0f} points above usual'
+                         + (f"; {hs * 100:.0f}% of the degraded aircraft were A350s or A380s" if hs is not None and hs >= 0.5 else "")
+                         + (f"; fits announced test {escape(e['test'])}" if e.get("test") else "") + ".</li>")
+        if items:
+            parts.append("<ul>" + "".join(items) + "</ul>")
+        else:
+            parts.append("<p>No major or notable jamming-scale anomaly events.</p>")
+        extra = []
+        if ev.get("bursts"):
+            extra.append(f"{len(ev['bursts'])} minute-level bursts.")
+        if ev.get("tests"):
+            extra.append(f"{len(ev['tests'])} announced US GPS tests.")
+        if extra:
+            parts.append("<p>" + " ".join(extra) + "</p>")
+    how = "From the automatic daily run, not reviewed by a person." if d.get("daily") else "One of the validated days, checked by hand."
+    parts.append(f'<p><a href="{escape(link)}">Open the map for {d["day"]}</a>. {how} Derived from adsb.lol data (ODbL 1.0).</p>')
+    return title, "".join(parts)
+
+
+def write_feed(index, events_dir, path=None, places_path=None, n=30):
+    """Atom feed of the latest n days. Each entry's updated time is the end of its UTC day, so a redeploy doesn't
+    re-announce old days. Returns the number of entries."""
+    path, places_path = path or FEED, places_path or PLACES
+    places = []
+    if os.path.exists(places_path):
+        with open(places_path, encoding="utf-8") as f:
+            places = [p for p in json.load(f).get("places", []) if p[3] <= 5]
+    days = sorted(index, key=lambda d: d["day"])
+    entries = []
+    for i in range(len(days) - 1, max(-1, len(days) - 1 - n), -1):
+        d = days[i]
+        prior = [x["jam_hexes"] for x in days[max(0, i - 30):i]]
+        ev_path = os.path.join(events_dir, f"{d['day']}.json")
+        ev = None
+        if os.path.exists(ev_path):
+            with open(ev_path, encoding="utf-8") as f:
+                ev = json.load(f)
+        title, html = day_summary(d, prior, ev, places)
+        updated = f"{d['day']}T23:59:59Z"
+        entries.append(f"<entry><id>tag:noisefloor.theintelligence.company,2026:gnss-day-{d['day']}</id>"
+                       f"<title>{escape(title)}</title><updated>{updated}</updated>"
+                       f'<link rel="alternate" type="text/html" href="{escape(SITE_URL + "/map#day=" + d["day"] + "&m=jam")}"/>'
+                       f'<content type="html">{escape(html)}</content></entry>')
+    feed_updated = f"{days[-1]['day']}T23:59:59Z" if days else "2026-01-01T00:00:00Z"
+    xml = ('<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">'
+           "<id>tag:noisefloor.theintelligence.company,2026:gnss-daily</id>"
+           "<title>Noise Floor: daily GNSS interference summary</title>"
+           "<subtitle>GNSS degradation seen by aircraft worldwide, one entry per UTC day, from the automatic daily run.</subtitle>"
+           f'<link rel="self" type="application/atom+xml" href="{SITE_URL}/feed.xml"/>'
+           f'<link rel="alternate" type="text/html" href="{SITE_URL}/map"/>'
+           f"<updated>{feed_updated}</updated><author><name>Noise Floor</name><uri>{SITE_URL}</uri></author>"
+           "<rights>Derived from adsb.lol data, ODbL 1.0</rights>" + "".join(entries) + "</feed>\n")
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(xml)
+    return len(entries)
+
+
 def entry(day, note="", daily=False):
     path = os.path.join(GNSS, f"{day}.json")
     with open(path, encoding="utf-8") as f:
@@ -186,12 +283,13 @@ def entry(day, note="", daily=False):
 
 
 def main():
-    global GNSS, EVENTS
+    global GNSS, EVENTS, FEED, PLACES
     if len(sys.argv) not in (2, 3):
         sys.exit(__doc__)
     src = sys.argv[1]
     if len(sys.argv) == 3:
         GNSS, EVENTS = os.path.join(sys.argv[2], "data", "gnss"), os.path.join(sys.argv[2], "data", "events")
+        FEED, PLACES = os.path.join(sys.argv[2], "feed.xml"), os.path.join(sys.argv[2], "data", "places.json")
     index_path = os.path.join(GNSS, "days.json")
     with open(index_path, encoding="utf-8") as f:
         committed = {d["day"]: d for d in json.load(f)}
@@ -210,6 +308,8 @@ def main():
     index.sort(key=lambda d: d["day"])
     with open(index_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(index, f, separators=(",", ":"), ensure_ascii=False)
+    n_feed = write_feed(index, EVENTS)
+    print(f"feed.xml: {n_feed} entries")
     print(f"days.json: {len(committed)} committed + {len(added)} daily"
           + (f" ({added[0]} to {added[-1]}); event files for {len(with_events)}; trend days {trend}" if added else "")
           + (f"; announced tests on {n_files} event files, {n_tagged} events tagged" if n_files else ""))
