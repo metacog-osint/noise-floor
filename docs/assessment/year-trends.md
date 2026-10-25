@@ -25,10 +25,10 @@ reviewed by a person beyond the checks below.*
 - **The same dates surge in several areas at once:** around New Year (Kaliningrad, the southern Black Sea and the
   Caucasus, 28 Dec – 3 Jan) and around 7–17 May (Kaliningrad, the Gulf of Finland, the southern Black Sea and the
   Caucasus). The May run brackets 9 May. A link to Victory Day security measures is a hypothesis, not tested here.
-- **The one "new" area is a returning season, not a new area.** A res-3 cell centred at 53.92N 23.70E, where Lithuania,
-  Belarus and Poland meet, went from active on 4% of days (Oct–Dec 2025) to 96% (late Jul – Oct 2026). Raw traces show
-  near-total position loss in that area and the Suwałki–Ełk box in May–June 2025 as well, an easing in winter, and its
-  return from May 2026, lasting longer this year (`docs/validation/phase1.md`, verdict 45).
+- **The one "new" area isn't new this year, but it is new since 2025.** A res-3 cell centred at 53.92N 23.70E, where
+  Lithuania, Belarus and Poland meet, went from active on 4% of days (Oct–Dec 2025) to 96% (late Jul – Oct 2026). Raw
+  traces show near-total position loss there in summer 2025 too, a partial easing in winter, and its return from May 2026,
+  lasting longer this year. In 2024 the same boxes were clean (`docs/validation/phase1.md`, verdicts 45 and 46).
 - **No weekday pattern of any practical size.** The night peak is strong everywhere in the
   Baltic and Black Sea: 63–87% of aircraft-hexes degraded at 00–02 UTC against 4–19% in the morning.
 - **Worldwide, the count of jamming-scale hexes held steady** (a median 231 a day in the first 92 days and 245 in the
@@ -142,8 +142,9 @@ it (p = 0.007; Saturday 31.9% against 27–30% on other days). No other area com
 **Started (1 cell):** 53.92N 23.70E (centre of a res-3 cell, about 12,400 km², covering the Lithuania–Belarus–Poland
 border area around Druskininkai and Grodno). Active on 4.3% of covered days from 1 Oct to 1 Jan, and 95.7% from 22 Jul to
 21 Oct 2026; by month, active on 0–2 days a month Oct–Dec 2025, 17 of 26 days in May 2026 and 28–30 a month from July.
-**Checked in the raw traces the same night (verdict 45): not new.** The area had near-total position loss in May–June
-2025 too; the year window starts in a quiet season. The cell marks where aircraft were affected, not where a transmitter
+**Checked in the raw traces the same night (verdicts 45 and 46): not new this year.** The area had near-total position
+loss in summer 2025 too, and the year window starts in a quieter period; nine days of 2024 were clean, so it began in early
+2025. The cell marks where aircraft were affected, not where a transmitter
 is. Lithuania's regulator reports ongoing GNSS interference nationally
 ([LRT, 9 Mar 2026](https://www.lrt.lt/en/news-in-english/19/2862230/gps-jamming-incidents-reported-by-pilots-continue-in-lithuania-regulator-says)).
 
@@ -206,7 +207,7 @@ box sent no GNSS position (13–18% in Jan–Feb), and the crossing test east of
 1. ~~Gulf of Finland decline~~ **Explained (position loss, not a decline):** a position-loss measure is needed beside
    every share trend; the AIS GNSS-interference counts from Finland's open AIS remain a useful independent check.
 2. ~~Kaliningrad from May~~ **Settled: position loss** (79–86% of aircraft heard sending no position, Jun–Oct).
-3. ~~The Grodno-area cell~~ **Done (verdict 45):** position loss across all types, a recurring summer season, longer in
+3. ~~The Grodno-area cell~~ **Done (verdicts 45–46):** position loss across all types, summer 2025 and 2026 (2024 clean), longer in
    2026. Next: a position-loss measure (MLAT-only and dark aircraft per hex) in the daily pipeline.
 4. **Ankara and northeast Bulgaria:** check the aircraft types and hours; a single operator's fleet can make a cell
    look persistent.
