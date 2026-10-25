@@ -180,6 +180,11 @@ dark).
 
 - **Registry first:** every source is recorded with its licence before it feeds anything; non-commercial sources are
   visual comparison only; AIS-derived records stay private unless the source allows publishing.
+- **Public Sea map (from 25 Oct 2026):** Digitraffic's CC BY 4.0 allows publishing, so the Sea page names vessels in a
+  few categories only: those on official sanctions lists (OFAC SDN, UK Sanctions List, matched by IMO), those declaring
+  military or law-enforcement work (AIS types 35 and 55), and Russian, Chinese, Iranian or North Korean-flagged commercial
+  or state vessels. A listing is quoted as a government designation, not a finding. No pleasure craft, fishing boats or
+  crew. Everything else, and anything from aisstream, stays on the private site.
 - **Receiving maritime radio (US):** the Wiretap Act allows intercepting radio "by any marine or aeronautical
   communications system", and from public stations and distress traffic (18 U.S.C. § 2511(2)(g)(ii)).
 - **Publishing is narrower:** 47 U.S.C. § 605 bars divulging the content or existence of radio communications except as
