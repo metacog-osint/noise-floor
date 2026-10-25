@@ -306,6 +306,7 @@ Then:
 | 39 | False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024 (66.5–69.5°N, 17–25°E) | 0.0% and 1.0% degraded, against 0.0% on 27 Feb (88–104 aircraft-hexes a day) | **Pass.** A weather-radar artefact leaves no GNSS signal (coverage there is thin) |
 | 40 | Radio-horizon localizer, first version (southern Baltic; 9 May, 2 Jan, 1 Feb, 24 Feb 2026) | Stacked best crossing at 55.10°N 19.52°E, offshore about 55 km NW of Baltiysk, with NACp events at 80% of the radio horizon. Day by day, every top peak lies within about 20–80 km of the western Sambia peninsula | **Points at the Sambia coast, not yet a fix.** The reach scale was tuned on the same days and moves the peak by up to about 50 km |
 | 41 | Localizer against the 2025 TDOA fixes (Gattis, Cydejko & Akos 2026), scored with settings fixed in advance | Top peak 20 km from the Baltiysk-harbour fix on 3 Apr; 37, 48 and 45 km from the coastal-site fix on 15 Apr, 17 Apr and 21 Jun (1 hit of 4 at 25 km; 0 of 2 in the interference windows). The target cell always ranked in the top 2% of 3,496 cells. Mean miss 38 km, against 38 km for naming Kaliningrad city and 52 km for the centroid of onsets | **Fail.** It finds the area but not the site: the two TDOA sites are 21 km apart, finer than the localizer resolves |
+| 47 | Gulf of Finland: when did aircraft start losing positions? Crossing test (wide-region extracts) on 9 days of 2024–2025 beside the 8 days of 2026 | Eastern Gulf seen: 71–100% in 2024 (7–21 crossings a day), 60–87% Feb–Jun 2025, 21–28% Oct–Dec 2025, 25–37% Jan–Jul 2026, 6–11% Aug–Oct 2026; western Gulf 52–84% to Jun 2025, 39–46% Oct–Dec 2025, 20–27% Aug–Oct 2026; Sweden control 94–100% throughout | **Position loss began between June and October 2025, a few months after the area east of Kaliningrad, and deepened through 2026.** Degraded-but-kept positions were common there already in 2024 |
 | 46 | When did the loss east of Kaliningrad start? The same crossing test on every other raw day on disk: 9 days of 2024, 8 more of Feb–Jun 2025, 5 of Oct–Dec 2025 | Suwałki–Ełk box seen: 89–100% on all 9 days of 2024 (Feb–Oct, including 20 Jun 2024); 47% on 20 Feb 2025; 2–26% from late Apr to Jun 2025; 63–74% Oct–Dec 2025; 0.5–3% Jun–Oct 2026. Central Poland 37–70% throughout | **A change that began between late Oct 2024 and Feb 2025, not a long-running season.** It eased only partly in winter 2025–26 and has been heavier and longer in 2026 |
 | 45 | Position loss east of Kaliningrad, Apr 2025 – Oct 2026: crossing test in four boxes (Suwałki–Ełk, Grodno area, Kaunas, central Poland as control) on 20 days of raw traces | Suwałki–Ełk box seen on ADS-B: 20–36% (Apr 2025), 2–5% (late May–Jun 2025), 57–72% (Jan–Feb 2026, outside the holiday surge), 1–3% (Jun–Oct 2026). Grodno and Kaunas boxes the same shape; central Poland 37–68% throughout | **Recurring summer position loss, longer in 2026.** Aircraft fly through but lose GNSS positions (in 2026 mostly seen as MLAT-only, in 2025 as dark). The daily per-hex share understates it, because aircraft without positions drop out |
 | 44 | Localizer v3 (heading-balanced) against v2 on a second held-out set (10 and 20 Apr, 10 and 20 May, 20 Jun 2025; rules fixed before download) | v3: 3 hits of 5 at 25 km, mean 23.1 km (5.5 km on 10 Apr). v2: 2 of 5, 30.6 km. Baselines: Kaliningrad city 0 of 5 (38.4 km), onset centroid 2 of 5 (42.9 km), fixed point 54.70°N 20.24°E 5 of 5 (22.9 km) | **Fail against the constant guess.** v3 improves on v2, but one fixed point between the two sites does as well every day. The 25 km rule can't separate a localizer from a constant when two sites 21 km apart are both active; the next test needs single-site days or a tighter radius |
@@ -690,6 +691,35 @@ on disk is a truncated copy). Share of crossings seen on ADS-B:
 - Not localized, and the cause isn't tested here. Three of the 2024 days (20 Feb, 20 Jun, 20 Oct) were chosen by a date
   rule for the spoofing held-out test; the other six were 2024 validation cases. Nine clean days out of nine across eight
   months is a clear contrast with 2025–26.
+
+## Gulf of Finland: when aircraft started losing positions (verdict 47, 25 Oct 2026)
+
+The crossing test on wide-region extracts (52–61.5N, 8–34E, `data/trace_box_wide/`), eastern Gulf (59.3–60.4N,
+26.5–29.5E), western Gulf (59.3–60.0N, 24.5–26.5E) and a Swedish control (58.4–59.2N, 14–16E). The 2026 days are from
+`position-loss.md`; the 2024–2025 days are new. Share of crossings seen on ADS-B:
+
+| Day | Eastern Gulf | Western Gulf | Sweden (control) |
+|---|---|---|---|
+| 27 Feb 2024 | 71% (21 crossings) | 54% | 97% |
+| 20 Jun 2024 | 71% (7 crossings) | 78% | 97% |
+| 14 Oct 2024 | 100% (15 crossings) | 68% | 96% |
+| 20 Feb 2025 | 85% | 84% | 96% |
+| 15 Apr 2025 | 64% | 67% | 94% |
+| 15 May 2025 | 60% | 56% | 95% |
+| 20 Jun 2025 | 87% (15 crossings) | 52% | 96% |
+| 20 Oct 2025 | 28% | 46% | 96% |
+| 15 Dec 2025 | 21% | 39% | 99% |
+| 17 Jan – 20 Jun 2026 (5 days) | 25–37% | 34–41% | 98–100% |
+| 15 Jul – 15 Oct 2026 (4 days) | 6–26% | 20–29% | 96–98% |
+
+- **The change came between June and October 2025**, a few months after the area east of Kaliningrad (verdict 46), and it
+  deepened through 2026: 6% of eastern crossings had positions on 15 September and 15 October 2026.
+- **It isn't an artefact of the archive change** found by the roll-turn check (15 Nov – 15 Dec 2025): 20 October 2025,
+  before it, already reads 28%, and the Swedish control stays at 94–100% throughout.
+- **Degraded positions were common before.** In the east, half or more of the seen ADS-B points were already degraded
+  (NACp < 8) on most days of 2024 and 2025; what changed is that aircraft stopped sending positions at all.
+- The eastern box has few crossings at 10,000 ft or more on some 2024 days (7–21), so those percentages are rough. The
+  western box's long dark gaps near Tallinn and Helsinki are aircraft descending below the floor, not interference.
 
 ## Next
 

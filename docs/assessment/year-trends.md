@@ -11,7 +11,8 @@ reviewed by a person beyond the checks below.*
   21 Oct). **Corrected the same night:** raw traces show aircraft in the eastern Gulf stopped sending positions at all
   from August (6–11% of crossings with positions on 15 Aug, 15 Sep and 15 Oct, against 25–37% before), so the most degraded
   aircraft dropped out of the count (`docs/validation/position-loss.md`). An earlier draft of this page called it the
-  year's clearest decline; that was wrong.
+  year's clearest decline; that was wrong. Aircraft there began losing positions outright between June and October 2025
+  (`phase1.md`, verdict 47).
 - **Southern Baltic: a regional increase from May 2026, and near-total position loss east of Kaliningrad.** Northeast
   Poland and inland Lithuania roughly doubled their shares from May and stayed up; Gdańsk Bay rose from May to August,
   then returned to its spring level. In the Kaliningrad box 79–86% of aircraft heard sent no position at all on the
