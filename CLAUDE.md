@@ -38,7 +38,10 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   `tools/cygnss_rfi.py` (CYGNSS noise floor, needs `EARTHDATA_TOKEN`; held-out checks in `tools/cygnss_checks.py`), `tools/s1_rfi.py` (Sentinel-1 RFI annotations),
   `tools/events.py` (observations → graded events, private register in `data/events/`), `collectors/digitraffic_ais.py` and
   `tools/ais_detect.py` (Finland's open AIS), `tools/station_cn0.py` (EPN station C/N0), `tools/trace_box.py types` (by aircraft family),
-  `tools/horizon_fix.py --balance`, `tools/spoof_day.py` (ADS-B spoofing; reads the raw archives). CI runs each `tests/test_*.py` as a plain script with only `requirements.txt` and
+  `tools/horizon_fix.py --balance`, `tools/spoof_day.py` (ADS-B spoofing; reads the raw archives), `tools/year_trends.py`
+  (`docs/assessment/year-trends.md`), and position loss: aircraft heard by MLAT but sending no GNSS position
+  (`tools/position_loss.py`, and `pipeline/pnt_daily.py --position-loss`, off by default; `docs/validation/position-loss.md`).
+  The degraded share can't see those aircraft: check position loss before reading any share trend. CI runs each `tests/test_*.py` as a plain script with only `requirements.txt` and
   `nisar/requirements.txt` installed (no matplotlib, no pytest).
 - **The public site `site/` is generated.** Edit `site_src/` (page bodies, `lanes.json`) and run `python tools/build_site.py`;
   the Sources page comes from `registry/sources.csv`. CI fails if `site/` is out of step. Cloudflare Pages deploys `site/` from `main`.
