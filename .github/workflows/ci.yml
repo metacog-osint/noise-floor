@@ -25,3 +25,5 @@ jobs:
         run: python tools/build_site.py && git diff --exit-code -- site
       - name: Offline tests
         run: for t in tests/test_*.py; do python "$t" || exit 1; done
+      - name: Browser-code tests (Node, preinstalled on the runner)
+        run: for t in tests/test_*.mjs; do node "$t" || exit 1; done
