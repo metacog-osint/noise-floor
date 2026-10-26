@@ -42,5 +42,7 @@
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
 /data/charts.json
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
+/data/events-monthly.json
+  Cache-Control: public, max-age=300, stale-while-revalidate=3600
 /feed.xml
   Cache-Control: public, max-age=300, stale-while-revalidate=3600

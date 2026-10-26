@@ -172,6 +172,9 @@ def dtg_iso(s):
 
 
 NGA_AREAS = {"4": "NAVAREA IV", "12": "NAVAREA XII", "A": "HYDROLANT", "P": "HYDROPAC", "C": "HYDROARC"}
+# NAVAREA IV and XII issue warnings every day. On 26 Oct 2026 the API's newest in-force warning dated from 10 May 2024
+# (its own latest-warning endpoint agreed), so a feed with nothing newer than this is reported as an error, not OK.
+NGA_STALE_DAYS = 30
 
 
 def src_nga(ctx):
@@ -179,6 +182,10 @@ def src_nga(ctx):
     items = d.get("broadcast-warn") if isinstance(d, dict) else d
     if not isinstance(items, list):
         raise ValueError(f"NGA MSI: unexpected shape {list(d)[:6] if isinstance(d, dict) else type(d)}")
+    issued = [t for t in (dtg_iso(w.get("issueDate")) for w in items) if re.match(r"\d{4}-\d\d-\d\dT", t)]
+    if issued and max(issued) < (ctx.now - timedelta(days=NGA_STALE_DAYS)).strftime("%Y-%m-%dT%H:%MZ"):
+        raise ValueError(f"NGA MSI: feed looks frozen: the newest of {len(items)} in-force warnings was issued "
+                         f"{max(issued)}")
     out = []
     for w in items:
         text = w.get("text") or w.get("msgText") or ""

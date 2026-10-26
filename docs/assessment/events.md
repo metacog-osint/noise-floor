@@ -1,8 +1,16 @@
-# Events and grading (v0.2)
+# Events and grading (v1.0)
 
-**Date:** 24 Oct 2026 (v0.1: 23 Oct) · **Status:** working version, built overnight and not yet reviewed by a person · **Code:** `tools/events.py` · **Tests:** `tests/test_events.py` · **Register:** `data/events/register.sqlite` (gitignored)
+**Date:** 26 Oct 2026 (v1.0; v0.2: 24 Oct; v0.1: 23 Oct) · **Status:** rules frozen as v1.0 on 26 Oct 2026 (Tom approved the five open choices with the recommended defaults); the rules are stated choices, not yet validated against held-out cases · **Public output:** monthly counts by grade only (`site/data/events-monthly.json`, Validation page); the register is never published · **Code:** `tools/events.py` · **Tests:** `tests/test_events.py` · **Register:** `data/events/register.sqlite` (gitignored)
 
 ## Bottom line
+
+> **v1.0, 26 Oct 2026: rules frozen.** Rebuilt register: 388 days (1 Oct 2025 – 25 Oct 2026), 964,600 observations,
+> **160,147 events** (159,317 EFFECT, 756 WARNING, 74 NATURAL). 8,632 events reach "Multiple sources", 1,058
+> "Partially corroborated". Verdicts of the EFFECT events: 157,721 open, 905 benign_natural (N2 818, N1 87, N3 0),
+> **691 planned**, **0 deliberate_suspected** (no official jamming notice is on file). The FL250 radius is the change
+> that shows: over the same days as v0.2 (to 22 Oct), planned effect events fall from 908 to 685 (−25%) and lone test
+> notices rise from 644 to 753. Monthly counts by grade are public (Validation page); the register stays private.
+> Details: "Results, v1.0" below.
 
 > **Update, 24 Oct 2026 (evening): a full year of CYGNSS.** CYGNSS now covers all 383 days with aircraft data. Two rule fixes came with it: (1) a CYGNSS cell may attach to one event but never bridge two events that hold time-resolved observations (before this, chains of CYGNSS cells merged separate aircraft events); (2) rule P1 is decided on the time-resolved effects alone, with CYGNSS cells riding along. Register: 963,819 observations, 159,585 events, **8,632 "Multiple sources"** (499–863 a month, every month), 908 planned effect events, none resting on CYGNSS alone.
 >
@@ -22,9 +30,58 @@ The run covers 385 days (1 Oct 2025 – 22 Oct 2026, UTC): 94,651 observations f
 
 **What this version can't do yet:**
 
-- `deliberate_suspected` needs an interference warning that isn't a planned test. No such input is wired in.
+- `deliberate_suspected` is wired (rule D1, v1.0) but no notice reporting jamming or spoofing is on file. NGA's
+  broadcast-warning feed has been frozen since 10 May 2024, and no other official warning feed is ingested yet.
 - No localization method feeds the lane, so `localization_error_km` is null everywhere.
 - CYGNSS exists for six days only, and it agrees with ADS-B in time only to the day.
+
+## v1.0: what was frozen (26 Oct 2026)
+
+Five choices were open in v0.2. Tom approved the recommended default for each on 26 Oct 2026. None of them is validated;
+each is a stated choice that a held-out test can later confirm or replace.
+
+1. **Announced-test radius: FL250.** Rule P1 now uses the FL250 ring, the one the public map draws, instead of the widest
+   (FL400) ring. An advisory with no FL250 ring (the area-type notices) uses its widest. The FL400 ring reaches about
+   1,200 km for some ranges, so `planned` could excuse effects far from the range; the tighter ring excuses only effects
+   well inside the footprint and leaves the rest `open`. The site's own test tags on the map's events panel still use the
+   widest ring: a tag there means "consistent with an announced test", not a verdict.
+2. **Ionospheric scintillation: rule N3.** A located 10 m-only effect is `benign_natural` when ESA's scintillation nowcast
+   shows ICAO-moderate scintillation or worse (S4 ≥ 0.5 or sigma-phi ≥ 0.4 rad) in a cell within 300 km of it, in an hour
+   from 1 h before it starts to 1 h after it ends. Unlike N1 and N2 it doesn't need a storm: post-sunset equatorial
+   scintillation happens at any Kp. Worse-than-93 m loss is never excused. The nowcast is archived privately from
+   21 Oct 2026 (ESA keeps only the current hour), and so far only about one hour in five is kept, because GitHub runs the
+   twice-hourly capture every 2–5 hours. No archived hour to 26 Oct reached moderate anywhere (highest S4 0.18, highest
+   sigma-phi 0.19 rad), so N3 hasn't fired yet.
+3. **Announced test = partially corroborated, with the FAA test ID as the candidate.** As in v0.2 (rules S2 and A1); now
+   frozen.
+4. **Official notices drive `deliberate_suspected` (rule D1); NOTAMs later.** The plan was NGA MSI first. Checked live on
+   26 Oct 2026, NGA's broadcast-warning API serves the same 386 in-force warnings it served on 22 Oct, the newest issued
+   10 May 2024, and its own latest-warning endpoint gives the same date; the only GNSS notice among them is a standing 2021
+   "GPS unreliable in vicinity Malta". It can't feed D1. D1 therefore reads a curated file of official notices,
+   `data/declared/notices.json`, kept the way the sun-outage reports file is: each entry is one official notice (NGA,
+   a NAVAREA coordinator, a NOTAM) with its link, validity and text, and its issuer must be in the source registry first.
+   The file is empty on 26 Oct 2026, so D1 hasn't fired. The watch collector now reports NGA as an error while its feed
+   stays frozen.
+5. **The 600 km event cap and the 3-hex level threshold stay**, flagged as unvalidated. **Publication:** monthly counts by
+   grade (`python tools/events.py publish`), never the register.
+
+**How a notice is read (v1.0).**
+
+- **Class**, from its wording. *jamming*: a GNSS word (GPS, GNSS, GLONASS, Galileo, BeiDou) with jamming or spoofing
+  wording; it can set D1. *interference*: a GNSS word with "interference", "unreliable", "unavailable", "degraded",
+  "disrupted" or "outage"; it counts as corroboration (S2) but never sets D1, because interference can be unintentional.
+  *test*: any test, exercise or trial wording; it makes no observation (FAA SPANS stays the planned-test source).
+  Test wording wins over the rest.
+- **Place**, from the positions in its text (NAVAREA style, `35-53N 014-27E` or `59-30-15N 024-10-00E`) and a stated
+  radius (`WITHIN 25 NM OF`); positions, radius and class can also be given in the entry. Three or more points make a
+  polygon. One or two points with no stated radius get 100 km (unvalidated). A notice without positions makes no
+  observation.
+- **Time**: its whole validity, clipped to the UTC day. Daily windows written in the text aren't read: coarse.
+- **Matching** (rule `covers`): the effect observation's centroid or one of its res-2 cell centres lies inside the
+  polygon, or within the radius of a notice point, while the notice is in force. Notices attach to events like
+  announced tests, but an unmatched notice makes no event of its own (a standing notice would repeat every day).
+- **D1 needs a time-resolved effect** (aircraft, not only CYGNSS cells, which are timed to the day) covered by a
+  jamming-class notice. Planned and natural verdicts outrank D1; the notice check then records `outranked_by`.
 
 ## The model
 
@@ -99,18 +156,19 @@ Each grade is stored as (value, rule, reason, basis observations). `python tools
 | | T2 | No EFFECT, a WARNING observation | WARNING |
 | | T3 | NATURAL observations only | NATURAL |
 | support | S3 | A pair of counting observations from two independent sensor families **agrees**: they link directly (not through a chain of other members), and for ADS-B with CYGNSS the extra conditions below hold | Multiple sources |
-| | S2 | No agreeing pair; sensor evidence plus an independent notice consistent with it in time and place (an attached announced test) | Partially corroborated |
+| | S2 | No agreeing pair; sensor evidence plus an independent notice consistent with it in time and place (an attached announced test or official notice) | Partially corroborated |
 | | S1 | Anything else: any number of ADS-B measures, CYGNSS alone, both families without an agreeing pair, dropouts only, or a lone notice | Single-source, unverified |
 | localization_error_km | L0 | No localization method feeds the lane yet | null |
 | attribution_status | A1 | Verdict `planned` by rule P1: the candidate is the announced test, named by its FAA identifier | candidate |
 | | A0 | Otherwise | none |
-| | (A2) | Would need a fix, a candidate and no surviving benign explanation. Never applies in v0.2 | attributed |
-| verdict | P1 | Every located EFFECT observation lies inside an announced test window **and** within its widest published radius (the FL400 one), measured from the observation's centroid | planned |
+| | (A2) | Would need a fix, a candidate and no surviving benign explanation. Never applies in v1.0 | attributed |
+| verdict | P1 | Every time-resolved located EFFECT observation lies inside an announced test window **and** within its FL250 radius (its widest when it has no FL250 ring), measured from the observation's centroid | planned |
 | | P2 | The event is an announced test with no effect matched to it | planned |
 | | N0 | The event is a Kp storm run | benign_natural |
 | | N1 | SBAS-only event with every flagged hour within 3 h of Kp ≥ 5; **or** a 10 m-only located event inside an SBAS area flagged at storm time in the same or an adjacent hour | benign_natural |
 | | N2 | A 10 m-only located event during Kp ≥ 5 (within 3 h), poleward of a geomagnetic-latitude gate: \|mlat\| ≥ 50° for Kp 5–6.x, ≥ 40° for Kp 7–7.x, any latitude for Kp ≥ 8 | benign_natural |
-| | D1 | An EFFECT corroborated by an interference warning that isn't a planned test, with the natural and planned checks failing. **No input feeds this yet** | deliberate_suspected |
+| | N3 | A 10 m-only located event with ICAO-moderate scintillation or worse (S4 ≥ 0.5 or sigma-phi ≥ 0.4 rad) in ESA's nowcast within 300 km and 1 h, at any Kp | benign_natural |
+| | D1 | An official notice reporting GNSS jamming or spoofing covers a time-resolved EFFECT observation in place and time (rule `covers`), and the planned and natural checks fail. **No such notice is on file yet** | deliberate_suspected |
 | | V0 | Otherwise | open |
 
 **S3 for ADS-B with CYGNSS.** All three conditions must hold:
@@ -124,7 +182,7 @@ Conditions 1 and 3 come from the chance rates below:
 - 10 m observations meet the simpler "any raised cell within 300 km" test exactly as often as random land points do.
 - One raised cell in an otherwise quiet neighbourhood is common.
 
-**Precedence.** P1 outranks N1/N2: a notice matched in time and place is more specific than a storm-time heuristic. Both checks are still recorded.
+**Precedence.** P1 outranks N1–N3: a notice matched in time and place is more specific than a storm-time heuristic. The natural rules outrank D1, because they apply only to 10 m-only effects and a jamming notice usually covers a wide area for weeks. Every check is still recorded.
 
 **Basis for the NATURAL rules.**
 
@@ -140,14 +198,67 @@ Conditions 1 and 3 come from the chance rates below:
 
 | Check | Results |
 |---|---|
-| `space_weather` | benign_natural (N1/N2) · storm_partial (storm present, but the event has 93 m loss or CYGNSS evidence, is outside the gate, or is an SBAS flag only partly at storm time) · not_indicated · not_applicable (CYGNSS evidence only) · unknown (no Kp) |
+| `space_weather` | benign_natural (N1/N2/N3) · storm_partial (storm present, but the event has 93 m loss or CYGNSS evidence, is outside the gate, or is an SBAS flag only partly at storm time) · not_indicated · not_applicable (CYGNSS evidence only) · unknown (no Kp) |
 | `planned_test` | planned (P1) · partial (some effects consistent) · not_indicated |
 | `receiver_fault` | screened_upstream: the processor drops avionics suspects (peer test) and post-exposure aircraft before anything is counted (`docs/method-card.md`, steps 3–4) |
 | `sbas_service` | probable (SBAS flag at quiet Kp: probable service problem) · likely_benign (GAGAN or SouthPAN, where most aircraft don't use the service and the flag fires on most days) |
+| `scintillation` | moderate · below_moderate, with the highest S4 and sigma-phi and the hours used. Recorded only when an archived nowcast hour covers the event (rule N3 when it sets the verdict) |
+| `notice` | jamming_reported (D1 when it sets the verdict) · interference_reported, with each notice, what it covers and `outranked_by` when a planned or natural rule won |
 
-An `open` event also carries a hint when a benign explanation is plausible but no verdict value fits it: `sbas_service`, `sbas_equipage`, `storm_partial` or `test_partial`.
+An `open` event also carries a hint when a benign explanation is plausible but no verdict value fits it: `sbas_service`, `sbas_equipage`, `storm_partial` or `test_partial`; or, from v1.0, `notice_interference` when an official notice reports interference there without jamming or spoofing wording.
 
-## Results: 1 Oct 2025 – 22 Oct 2026
+## Results, v1.0 (1 Oct 2025 – 25 Oct 2026, built 26 Oct 2026)
+
+388 days, 964,600 observations (853,022 CYGNSS raised cells, 29,759 CYGNSS dropout cells, 57,439 ADS-B anomaly events,
+11,431 bursts, 10,530 level regions, 990 SBAS runs, 1,355 announced-test days, 74 Kp storm runs, 0 notices), fused into
+160,147 events. The 22–25 Oct per-hex tables came from the October data release, so those days have the level check too.
+
+| Field | Counts |
+|---|---|
+| signal_type | EFFECT 159,317 · WARNING 756 · NATURAL 74 |
+| support | Single-source 150,457 · Partially corroborated 1,058 · Multiple sources 8,632 |
+| attribution_status | none 159,456 · candidate 691 · attributed 0 |
+| verdict (all events) | open 157,721 · benign_natural 979 · planned 1,447 · deliberate_suspected 0 |
+| verdict rules | V0 157,721 · P2 756 · P1 691 · N2 818 · N1 87 · N0 74 · N3 0 · D1 0 |
+
+**EFFECT events by measure and verdict:**
+
+| Measure | open | benign_natural | planned |
+|---|---|---|---|
+| gross (93 m) | 22,645 | 0 | 117 |
+| both | 4,455 | 0 | 99 |
+| capable (10 m only) | 25,665 | 905 | 475 |
+| rf (CYGNSS) | 99,511 | 0 | 0 |
+| dropout (CYGNSS) | 5,445 | 0 | 0 |
+
+**Open events with a benign hint:** `storm_partial` 4,984 · `sbas_equipage` 649 · `test_partial` 359 · `sbas_service` 102 ·
+`notice_interference` 0.
+
+**What v1.0 changed, same days as v0.2 (1 Oct 2025 – 22 Oct 2026):**
+
+| | v0.2 | v1.0 |
+|---|---|---|
+| Events | 159,585 | 159,688 |
+| EFFECT events `planned` (P1) | 908 | 685 |
+| Lone announced tests (P2, WARNING events) | 644 | 753 |
+| Partially corroborated | 1,352 | 1,052 |
+| Open with hint `test_partial` | 432 | 359 |
+| EFFECT events `benign_natural` | 901 | 905 |
+
+All of it comes from the FL250 radius: effects between the FL250 and FL400 rings no longer match, so fewer events are
+`planned`, more test notices stand alone, and the four effect events that were `planned` only because of the wider ring
+now fall to a natural rule. N3 and D1 changed nothing yet: the scintillation check ran on 419 events (21–25 Oct, the
+hours archived so far), all below moderate, and no notice is on file.
+
+**Planned-test cross-check.** The site's event files tag 1,292 anomalies and bursts as consistent with an announced
+test, using the widest ring; rules P1 and P- match 1,054 with the FL250 ring; 983 have both. The 309 tags the rule
+doesn't match lie between the two rings. The 71 matches without a site tag weren't examined.
+
+**Episodes:** 1,391 in 150 regions; 15 last 90 days or more. Five regions are at jamming scale on 383–387 of the 388
+days: centres near 55.6°N 20.1°E (Kaliningrad), 44.0°N 27.0°E (the Romania–Bulgaria border region inland of the Black Sea), 41.3°N 41.1°E
+(eastern Black Sea coast), 58.8°N 27.6°E (the Estonia–Russia border) and 57.1°N 24.0°E (Riga and its gulf); res-2 regions are about 300 km across, so these are areas, not sites.
+
+## Results: 1 Oct 2025 – 22 Oct 2026 (v0.2, six-day CYGNSS build; kept for the record)
 
 The register was built on 23–24 Oct 2026 from:
 
@@ -328,25 +439,27 @@ A full build takes about 4 minutes on this PC.
   - **Place:** to the beam. The noise enters through a beam a few hundred km wide plus sidelobes, so one strong emitter raises a region. "Multiple sources" here means both sensors were exposed in the same area on the same day, not that the same transmitter was measured twice.
   - **Chance:** the field condition fires for about 22% of random land points in the band (an upper bound that includes the real interference regions).
   - **Validation:** the CYGNSS validation rests on four regions and six days. Nothing here is a region-held-out test.
-- **No interference warnings yet.**
-  - NGA broadcast warnings, NOTAMs and similar notices would be WARNING observations of a different kind from planned tests. Without them `deliberate_suspected` can't be set.
-  - That is deliberate. "Multiple sources" raises support, not the verdict.
+- **Official notices are curated by hand, and none is on file yet.**
+  - NGA's feed is frozen (10 May 2024) and no other official warning feed is ingested, so `deliberate_suspected` stays at zero until notices are added to `data/declared/notices.json` or a NOTAM source is wired in.
+  - That is deliberate. "Multiple sources" raises support, not the verdict, and our own data never sets D1: the notice is the evidence of intent.
 - **The 10 m measure dominates the count.** Most events are 10 m-only departures from baseline. Those are weak signals: SBAS use, equipage and the ionosphere all move them. Filter on `effect_measure` (gross, both, capable, rf, dropout) when reading the register.
-- **Announced-test radii are generous.** P1 uses the widest published radius (FL400), as the map's test tags do. For some ranges that is over 1,000 km (White Sands and Point Mugu notices reach about 1,200 km), so `planned` can cover effects far from the range. A tighter radius (for example the 10,000 ft one) is a design choice still open.
-- **Equatorial scintillation isn't handled.** Post-sunset scintillation at low latitudes happens at any Kp. Ingesting the ionospheric nowcast archive (context lane) is the next step for the NATURAL check.
+- **Announced-test radius.** From v1.0, P1 uses the FL250 ring the map draws. Aircraft at cruise above FL250 can be affected farther out, so some effects of a real test now stay `open` (hint `test_partial` when part of the event matches). The site's event-panel tags still use the widest ring.
+- **Scintillation coverage is thin.** Rule N3 has the nowcast for about one hour in five since 21 Oct 2026, and nothing before. Moving the capture off GitHub's scheduler would close most gaps.
 - **SBAS service problems have no verdict value.** They stay `open` with a hint. The plan's verdict list has nothing for a benign, non-natural system fault.
 - **Day-bounded events.** An event that runs across midnight UTC appears as two events. Level and CYGNSS observations have day resolution, so they link to anything nearby that day.
 - **Event IDs depend on the inputs.** An event ID is a hash of its member observations, so it stays the same across rebuilds as long as the inputs don't change. If an input day is reprocessed, or a CYGNSS grid is added, its event IDs change.
 - **Inherited limits.** Everything in `docs/method-card.md` "What it can't tell you" and in `docs/validation/cygnss.md` "Limits" still applies: strong jamming removes aircraft, coverage depends on volunteer feeders, spoofing can look clean, and CYGNSS censors the strongest interference through dropouts.
-- **No person has reviewed these grades yet.** Spot checks are above; the rules haven't been tested against held-out cases.
+- **The rules are frozen, not validated.** Spot checks are above; no rule has been tested against held-out cases.
 
 ## Reproduce
 
 ```
-python tools/events.py fetch                 # public inputs not on disk: the site's daily event files (~10 MB) and GFZ Kp
+python tools/events.py fetch                 # public inputs not on disk: the site's daily event files (~10 MB) and GFZ Kp;
+                                             # also clones or pulls the private scintillation archive when this machine can read it
 python tools/cygnss_rfi.py grid <day>        # optional: CYGNSS grids (data/cygnss/grid/<day>.r3.parquet), read when present
 python tools/events.py build --all           # or --days 2026-03-01..2026-03-31
 python tools/events.py stats
+python tools/events.py publish               # monthly counts by grade -> site/data/events-monthly.json
 python tools/events.py show --day 2026-05-10 --full
 python tools/events.py show --event EV-...
 python tests/test_events.py
@@ -366,4 +479,6 @@ ADS-B observations on CYGNSS days carry the local CYGNSS field median and cell c
 - NASA CYGNSS Level 1 Science Data Record V3.2 (PO.DAAC; NASA open data, which ESDIS treats as CC0; registry id `cygnss-l1`), through `tools/cygnss_rfi.py`.
 - FAA SPANS flight advisories (US government, public domain).
 - GFZ Potsdam Kp index (CC BY 4.0), `kp.gfz.de`.
+- ESA SWE ISM scintillation nowcast (ESA S2P Space Weather Data Terms; registry id `esa-swe-scint`), archived privately because the raw grids may be passed on only to people who accept the same terms. Published aggregates carry the credit: "Data provided by the European Space Agency (ESA) as part of its Space Safety Programme (S2P)", © ESA 2026.
+- Official notices in `data/declared/notices.json`, each with its issuer's link; each issuer has a registry row first.
 - Natural Earth populated places (public domain), used only to label `show` output.

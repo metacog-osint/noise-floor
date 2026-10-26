@@ -125,6 +125,20 @@
 </table></div>
 <p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/radar-spokes.md">Full weather-radar report</a></p>
 
+<h2 id="events">Graded events ({{EVENTS_VERSION}}, rules not yet validated)</h2>
+<p>What the lanes above observe in one place and time window is joined into an event, and every event is graded on five fields: signal type, support, localization, attribution and verdict. The rules were frozen as version 1.0 on 26 Oct 2026. They are stated choices, not yet tested against held-out cases. The register of events stays private; only these monthly counts are published.</p>
+<ul>
+  <li><strong>Support.</strong> "Multiple sources" needs two independent sensor families agreeing in place and time (aircraft and CYGNSS). "Partially corroborated" is one sensor family plus an official notice consistent with it, such as an announced FAA GPS test. Support says how well an event is evidenced, not what caused it.</li>
+  <li><strong>Verdict.</strong> <em>Planned:</em> every effect lies inside an announced FAA test window and its FL250 radius, the one the map draws. <em>Benign natural:</em> a 10 m-only effect during a geomagnetic storm (poleward of a latitude gate, or inside a storm-flagged SBAS area) or with ICAO-moderate ionospheric scintillation in ESA's nowcast; worse-than-93 m loss is never excused this way. <em>Deliberate suspected:</em> an official notice reporting GNSS jamming or spoofing covers the event; none is on file yet, so this stays at zero. <em>Open:</em> none of these.</li>
+  <li><strong>No grade names a perpetrator,</strong> and no event has a position fix yet.</li>
+</ul>
+<p>Effect events, {{EVENTS_RANGE}} (UTC). Besides these, {{EVENTS_WARNING}} announced tests had no measured effect matched to them, and {{EVENTS_NATURAL}} geomagnetic storm periods are recorded as events of their own.</p>
+<h3>By support</h3>
+{{TABLE:events_support}}
+<h3>By verdict</h3>
+{{TABLE:events_verdict}}
+<p class="small">Most effect events are 10 m-only departures from a region's own recent baseline, a weak signal; the method report splits them by measure. Data: <a href="/data/events-monthly.json">events-monthly.json</a>, derived from the <a href="https://www.adsb.lol/">adsb.lol</a> archive and published under ODbL 1.0 with attribution; also NASA CYGNSS, FAA flight advisories, the GFZ Potsdam Kp index (CC BY 4.0) and ESA's scintillation nowcast: data provided by the European Space Agency (ESA) as part of its Space Safety Programme (S2P), © ESA 2026. <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/assessment/events.md">Method and full results</a></p>
+
 <h2 id="next">Validation still to come</h2>
 <ul>
   <li><strong>A localizer that resolves sites,</strong> not just areas. It failed its first scored test against the 2025 TDOA fixes, and its positions stay off the map until it passes one: two-emitter fits and fix-window timing were tried and dropped, and a heading-balanced third version improved on the second but didn't beat a constant guess. Next: days with a single known active site, scored at about 10 km.</li>

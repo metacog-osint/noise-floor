@@ -176,7 +176,7 @@ def lanes_page(data):
 <tr><td>3. SATCOM v1</td><td>Sun outages with alerts (running; the interference register folded in), GEO threat board (next), satellite-internet health (parked until permissions); the L-band risk overlay was dropped</td><td>""" + chip("running") + """ sun outages</td></tr>
 <tr><td>4. Spoofing and maritime</td><td>ADS-B spoofing (validated), AIS spoofing at sea and dark ships (prototypes, held-out tests next), declared-warning layers</td><td>""" + chip("validated") + """ ADS-B spoofing</td></tr>
 <tr><td>5. Emitters</td><td>Sentinel-1 RFI board, weather-radar spokes</td><td>""" + chip("parked") + """</td></tr>
-<tr><td>6. Assessment</td><td>Event model and grading (v0.2; exclusions folded in), community lane, the home status board as the daily status; weekly assessment later</td><td>""" + chip("prototype") + """ events; community collection running</td></tr>
+<tr><td>6. Assessment</td><td>Event model and grading (v1.0, rules frozen; exclusions folded in), community lane, the home status board as the daily status; weekly assessment later</td><td>""" + chip("built") + """ events; community collection running</td></tr>
 <tr><td>7. Extensions</td><td>Spaceborne and network GNSS; NISAR L-band emitters (pulled forward)</td><td>""" + chip("partial") + """ NISAR</td></tr>
 </tbody></table></div>""")
     return "\n".join(parts)
@@ -253,6 +253,40 @@ def chart_fills():
     }
 
 
+MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def _day(d):
+    return f"{int(d[8:10])} {MONTHS[int(d[5:7]) - 1]} {d[:4]}"
+
+
+def events_fills():
+    """Graded-event counts by UTC month (site/data/events-monthly.json, written by tools/events.py publish)."""
+    path = os.path.join(OUT, "data", "events-monthly.json")
+    if not os.path.exists(path):
+        sys.exit("site/data/events-monthly.json missing: run tools/events.py publish first")
+    d = json.load(open(path, encoding="utf-8"))
+    ms = d["months"]
+    mon = lambda m: f'{MONTHS[int(m[5:7]) - 1]} {m[:4]}'  # noqa: E731
+    n = lambda v: f"{v:,}"  # noqa: E731
+    tot = lambda f, k: sum(m[f][k] for m in ms)  # noqa: E731
+    sup = ["Single-source, unverified", "Partially corroborated", "Multiple sources"]
+    ver = ["open", "benign_natural", "planned", "deliberate_suspected"]
+    rows_s = [[mon(m["month"]), m["days"], n(m["signal_type"]["EFFECT"])] + [n(m["effect_support"][k]) for k in sup] for m in ms]
+    rows_s.append(["Total", sum(m["days"] for m in ms), n(tot("signal_type", "EFFECT"))] + [n(tot("effect_support", k)) for k in sup])
+    rows_v = [[mon(m["month"])] + [n(m["effect_verdict"][k]) for k in ver] for m in ms]
+    rows_v.append(["Total"] + [n(tot("effect_verdict", k)) for k in ver])
+    return {
+        "{{EVENTS_VERSION}}": e(d["version"]),
+        "{{EVENTS_RANGE}}": f'{_day(d["first_day"])} – {_day(d["last_day"])}',
+        "{{EVENTS_WARNING}}": n(tot("signal_type", "WARNING")),
+        "{{EVENTS_NATURAL}}": n(tot("signal_type", "NATURAL")),
+        "{{TABLE:events_support}}": _table(["Month (UTC)", "Days", "Effect events", "Single-source", "Partially corroborated",
+                                            "Multiple sources"], rows_s),
+        "{{TABLE:events_verdict}}": _table(["Month (UTC)", "Open", "Benign natural", "Planned", "Deliberate suspected"], rows_v),
+    }
+
+
 def main():
     asset_versions()
     data = json.load(open(os.path.join(SRC, "lanes.json"), encoding="utf-8"))
@@ -266,6 +300,7 @@ def main():
              "{{STATUS_COUNTS}}": status_counts(data["lanes"]), "{{LANE_GRID}}": lane_grid(data),
              "{{SOURCE_COUNT}}": str(len(rows)), "{{VESSELS_V}}": data_version("vessels")}
     fills.update(chart_fills())
+    fills.update(events_fills())
     written = []
     for name in ("index.html", "map.html", "sea.html", "sun.html", "charts.html", "methods.html", "validation.html", "data.html", "terms.html", "404.html"):
         meta, body = read_page(name)
@@ -293,7 +328,8 @@ def main():
     rules += [(f"/data/{f}", f"Cache-Control: {day}") for f in ("land.json", "borders.json", "places.json")]
     rules += [(p, f"Cache-Control: {hour}") for p in ("/data/gnss/2*", "/data/events/*", "/data/history/*")]   # day files
     rules += [("/data/vessels/*", f"Cache-Control: {hour}")]                  # Sea map data, refreshed by hand
-    rules += [(f"/data/{f}", f"Cache-Control: {short}") for f in ("gnss/days.json", "trend.json", "charts.json")]
+    rules += [(f"/data/{f}", f"Cache-Control: {short}") for f in ("gnss/days.json", "trend.json", "charts.json",
+                                                                  "events-monthly.json")]
     rules += [("/feed.xml", f"Cache-Control: {short}")]
     open(os.path.join(OUT, "_headers"), "w", newline="\n").write("".join(f"{p}\n  {h}\n" for p, h in rules))
     for name in written:                      # a duplicate id once broke the charts page (two elements, one anchor)

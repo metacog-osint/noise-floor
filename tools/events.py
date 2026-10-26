@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""events.py: the Events and grading lane (v0.1). Observations fuse into events; each event gets five grade fields.
+"""events.py: the Events and grading lane (v1.0, rules frozen 26 Oct 2026). Observations fuse into events; each event
+gets five grade fields.
 
 Every input item becomes an observation. Observations on the same UTC day fuse into events (space-time clustering),
 the exclusion checks run, and each event is graded on five independent fields: signal_type, support,
@@ -8,10 +9,14 @@ observations behind it. Method and rules: docs/assessment/events.md.
 
 Commands
   python tools/events.py fetch [--days A..B]      public inputs that aren't on disk: the site's daily event files
-                                                   (about 25 KB a day) and GFZ Kp (one request). Cached in data/events/.
+                                                   (about 25 KB a day) and GFZ Kp (one request), cached in data/events/;
+                                                   and the ESA scintillation archive (a git clone of the private data
+                                                   repo into data/ism-archive/, when this machine can read it)
   python tools/events.py build --days 2025-10-01..2026-10-21   (or --days D1,D2,... or --all)
   python tools/events.py show --day 2026-03-10 [--limit 40]    or   show --event EV-20260310-ab12cd
   python tools/events.py stats
+  python tools/events.py publish                  monthly counts by grade -> site/data/events-monthly.json. Aggregates
+                                                   only: no event, place or observation from the register is published
 
 Inputs per UTC day (first found wins):
   anomaly and burst events, SBAS runs   site/data/events/<day>.json, data/events/inputs/<day>.json (fetched), or
@@ -19,15 +24,21 @@ Inputs per UTC day (first found wins):
   per-hex daily table (level check)     data/pnt/daily/<day>.parquet or data/pnt/year/<day>.parquet
   announced GPS tests                   data/declared/faa_gps_tests.json (FAA SPANS flight advisories)
   Kp                                    data/events/kp.json (GFZ Potsdam, fetched)
+  official notices (rule D1)            data/declared/notices.json (curated by hand, each notice cited; see load_notices)
+  scintillation nowcast (rule N3)       data/ism-archive/ism/ (ESA SWE ISM hourly grids; private archive, ESA S2P terms)
 
 Output: data/events/register.sqlite (gitignored, like all of data/). Times are UTC.
 """
 import argparse
+import csv
+import gzip
 import hashlib
 import json
 import math
 import os
+import re
 import sqlite3
+import subprocess
 import sys
 import urllib.request
 from collections import Counter, defaultdict
@@ -41,7 +52,7 @@ sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 from pnt_analysis import SBAS_AREAS  # noqa: E402  (one source of truth for the SBAS boxes)
 
-VERSION = "events v0.2"
+VERSION = "events v1.0"
 EVENTS_DIR = os.path.join(ROOT, "data", "events")
 REGISTER = os.path.join(EVENTS_DIR, "register.sqlite")
 INPUTS = os.path.join(EVENTS_DIR, "inputs")
@@ -50,6 +61,10 @@ SITE_EVENTS = os.path.join(ROOT, "site", "data", "events")
 ANALYSIS = os.path.join(ROOT, "data", "pnt", "analysis")
 DAILY_DIRS = [os.path.join(ROOT, "data", "pnt", "daily"), os.path.join(ROOT, "data", "pnt", "year")]
 FAA_FILE = os.path.join(ROOT, "data", "declared", "faa_gps_tests.json")
+NOTICES_FILE = os.path.join(ROOT, "data", "declared", "notices.json")
+ISM_DIR = os.environ.get("NF_ISM_DIR") or os.path.join(ROOT, "data", "ism-archive")
+ISM_REPO = "https://github.com/metacog-osint/noise-floor-data.git"   # private: ESA's terms bar passing the raw grids on
+MONTHLY_OUT = os.path.join(ROOT, "site", "data", "events-monthly.json")
 CYGNSS_GRID = os.path.join(ROOT, "data", "cygnss", "grid")
 PLACES = os.path.join(ROOT, "site", "data", "places.json")
 SITE_URL = "https://noisefloor.theintelligence.company"
@@ -80,6 +95,12 @@ BEAM_LINK_KM = 300        # beam-scale observations link by distance, not by cel
 BEAM_KINDS = ("cygnss_noise",)          # located only to an antenna beam a few hundred km wide
 APART_KINDS = ("cygnss_dropout",)       # located by the spacecraft, not the beam: fuse only with their own kind
 NO_SUPPORT_KINDS = ("cygnss_dropout",)  # recorded, but never counted toward support
+# v1.0 additions (26 Oct 2026). None of these is validated: each is a stated choice, flagged as such in the method doc
+FAA_RADIUS_KEY = "FL250"  # rule P1 uses the ring the public map draws; the widest ring when an advisory has no FL250
+NOTICE_POINT_KM = 100     # a notice placed by one or two points with no stated radius ("in the vicinity of")
+ISM_S4, ISM_SIGMA_PHI = 0.5, 0.4   # ICAO "moderate" GNSS scintillation: S4, and sigma-phi in radians
+ISM_NEAR_KM = 300         # nowcast cells (2.5 deg grid, about 280 km) with a centre within 300 km of the event
+ISM_PAD_H = 1             # nowcast hours from 1 h before the event starts to 1 h after it ends
 
 SUPPORT = ("Single-source, unverified", "Partially corroborated", "Multiple sources")
 SIGNAL = ("EFFECT", "WARNING", "NATURAL")
@@ -92,6 +113,7 @@ SOURCES = {   # family -> (source text, sensor?)  Sensors in one family are not 
     "cygnss": ("NASA CYGNSS L1 SDR V3.2 DDM noise floor through tools/cygnss_rfi.py (NASA open data)", True),
     "faa": ("FAA SPANS flight advisory, announced GPS test (US public domain)", False),
     "gfz_kp": ("GFZ Potsdam Kp index (CC BY 4.0)", False),
+    "notice": ("Official navigational or aeronautical notice, curated in data/declared/notices.json (each cited)", False),
 }
 
 
@@ -320,9 +342,11 @@ def faa_observations(day, tests):
                 wins.append([int(max(0, m0)), int(min(1439, m1))])
         if not wins:
             continue
-        radius = max((t.get("radii_nm") or {}).values() or [0]) * 1.852
-        det = {"test_id": t["id"], "place": t.get("place", ""), "centre": t["centre"], "radius_km": round(radius, 1),
-               "windows": wins, "url": t.get("notice_url") or t.get("url", "")}
+        radii = t.get("radii_nm") or {}
+        nm = radii.get(FAA_RADIUS_KEY) or max(radii.values() or [0])
+        det = {"test_id": t["id"], "place": t.get("place", ""), "centre": t["centre"], "radius_km": round(nm * 1.852, 1),
+               "radius_ring": FAA_RADIUS_KEY if radii.get(FAA_RADIUS_KEY) else "widest", "windows": wins,
+               "url": t.get("notice_url") or t.get("url", "")}
         out.append(obs(day, "faa_test", "WARNING", "faa", min(w[0] for w in wins), max(w[1] for w in wins), "minute",
                        t["centre"][0], t["centre"][1], detail=det, ref="faa_gps_tests.json", key=t["id"]))
     return out
@@ -402,15 +426,192 @@ def sbas_storm(o, kp):
     return k >= STORM_KP
 
 
+# ---------------------------------------------------------------- official notices (rule D1)
+GNSS_WORDS = re.compile(r"\b(GPS|GNSS|GLONASS|GALILEO|BEIDOU|SATNAV|SATELLITE NAVIGATION|RNSS)\b", re.I)
+TEST_WORDS = re.compile(r"\b(TEST\w*|EXERCIS\w*|TRIALS?)\b", re.I)
+JAM_WORDS = re.compile(r"\b(JAMM\w*|SPOOF\w*)\b", re.I)
+INTF_WORDS = re.compile(r"\b(INTERFERENCE|UNRELIABLE|UNAVAILABLE|DEGRAD\w*|DISRUPT\w*|OUTAGES?|INACCURA\w*)\b", re.I)
+POS = re.compile(r"(\d{1,2})-(\d{2}(?:\.\d+)?)(?:-(\d{2}(?:\.\d+)?))?\s*([NS])[\s,/]*"
+                 r"(\d{1,3})-(\d{2}(?:\.\d+)?)(?:-(\d{2}(?:\.\d+)?))?\s*([EW])")
+RADIUS = re.compile(r"(?:WITHIN|RADIUS(?: OF)?)\s+(\d+(?:\.\d+)?)\s*(NM|NAUTICAL MILES?|MILES?|KM|KILOMET\w*)|"
+                    r"(\d+(?:\.\d+)?)\s*(NM|NAUTICAL MILES?|MILES?|KM|KILOMET\w*)\s+RADIUS", re.I)
+
+
+def notice_class(text):
+    """'jamming' (GNSS with jamming or spoofing wording), 'interference' (GNSS unreliable, degraded, interference...),
+    'test' (a GNSS test, exercise or trial: planned, never evidence for deliberate_suspected) or 'other'. Test wording
+    wins over the rest; "interference" alone doesn't say deliberate, so only jamming or spoofing wording drives D1."""
+    if not GNSS_WORDS.search(text or ""):
+        return "other"
+    if TEST_WORDS.search(text):
+        return "test"
+    if JAM_WORDS.search(text):
+        return "jamming"
+    return "interference" if INTF_WORDS.search(text) else "other"
+
+
+def notice_positions(text):
+    """NAVAREA- and NOTAM-style positions, e.g. '35-53N 014-27E', '19-23.0N 092-03.1W', '59-30-15N 024-10-00E'."""
+    out = []
+    for m in POS.finditer(text or ""):
+        d, mi, sec, ns, dd, mm, ss, ew = m.groups()
+        if float(mi) >= 60 or float(mm) >= 60:
+            continue
+        lat = int(d) + float(mi) / 60 + float(sec or 0) / 3600
+        lon = int(dd) + float(mm) / 60 + float(ss or 0) / 3600
+        if lat <= 90 and lon <= 180:
+            out.append((round(-lat if ns == "S" else lat, 4), round(-lon if ew == "W" else lon, 4)))
+    return out
+
+
+def notice_radius_km(text):
+    """A stated radius ('WITHIN 25 NM OF', '10 MILE RADIUS'), in km; 'miles' in navigational warnings are nautical."""
+    m = RADIUS.search(text or "")
+    if not m:
+        return None
+    v, unit = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
+    return round(float(v) * (1.0 if unit.upper().startswith("K") else 1.852), 1)
+
+
+def in_polygon(lat, lon, poly):
+    """Ray casting in plain lat/lon: fine for notice areas that don't cross the antimeridian or a pole."""
+    inside = False
+    for (a1, o1), (a2, o2) in zip(poly, poly[1:] + poly[:1]):
+        if (a1 > lat) != (a2 > lat) and lon < (o2 - o1) * (lat - a1) / (a2 - a1) + o1:
+            inside = not inside
+    return inside
+
+
+def load_notices(path=NOTICES_FILE):
+    """Curated official notices: {"notices": [{"id", "source", "url", "issued_utc", "valid_from_utc"?, "valid_to_utc"?,
+    "text", "points"?, "radius_km"?, "class"?}]}, times as 'YYYY-MM-DDTHH:MMZ'. Positions, radius and class are read from
+    the text unless given. No valid_to_utc means still in force. Returns [] without the file."""
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        items = json.load(f).get("notices", [])
+    out = []
+    for n in items:
+        text = n.get("text", "")
+        out.append({**n, "class": n.get("class") or notice_class(text),
+                    "points": [tuple(p) for p in (n.get("points") or notice_positions(text))],
+                    "radius_km": n.get("radius_km") or notice_radius_km(text),
+                    "valid_from_utc": n.get("valid_from_utc") or n.get("issued_utc")})
+    return out
+
+
+def notice_observations(day, notices):
+    """One WARNING observation per notice in force on the UTC day that reports GNSS jamming or interference and can be
+    placed. Test notices and notices without positions stay in the file but make no observation. A notice's time is its
+    whole validity, clipped to the day: daily windows in the text aren't read (coarse, stated in the method doc)."""
+    e, out = _epoch_min(day), []
+    for n in notices:
+        if n["class"] not in ("jamming", "interference") or not n["points"] or not n.get("valid_from_utc"):
+            continue
+        m0 = _win_min(n["valid_from_utc"]) - e
+        m1 = _win_min(n["valid_to_utc"]) - e if n.get("valid_to_utc") else 10 ** 9
+        if m1 < 0 or m0 > 1439:
+            continue
+        lat, lon = mean_ll(n["points"])
+        poly = len(n["points"]) >= 3
+        det = {"notice_id": n["id"], "source": n.get("source") or n["id"], "class": n["class"],
+               "points": [list(p) for p in n["points"]], "polygon": poly,
+               "radius_km": n["radius_km"] or (None if poly else NOTICE_POINT_KM), "radius_stated": bool(n["radius_km"]),
+               "url": n.get("url", ""), "issued_utc": n.get("issued_utc"), "valid_to_utc": n.get("valid_to_utc"),
+               "text": " ".join(n.get("text", "").split())[:400]}
+        out.append(obs(day, "notice", "WARNING", "notice", int(max(0, m0)), int(min(1439, m1)), "minute", lat, lon,
+                       detail=det, ref="notices.json", key=n["id"]))
+    return out
+
+
+# ---------------------------------------------------------------- scintillation nowcast (rule N3)
+class ISM:
+    """ESA SWE ISM nowcast archive: hourly S4 and sigma-phi on a 2.5 deg grid (rows follow ism/grid.csv). Each file
+    holds integers: S4 and sigma-phi x 1000 (then their errors x 100, TEC and its error)."""
+
+    def __init__(self, root):
+        base = os.path.join(root, "ism")
+        with open(os.path.join(base, "grid.csv"), encoding="utf-8") as f:
+            rows = list(csv.reader(f))[1:]
+        self.cells = [(float(la), float(lo)) for lo, la in rows]
+        self.hours = {}
+        for folder, _, names in os.walk(base):
+            for n in names:
+                if n.startswith("ism_") and n.endswith("Z.csv.gz"):
+                    self.hours[n[4:15]] = os.path.join(folder, n)       # 'YYYYMMDDTHH'
+        self._grids, self._near = {}, {}
+
+    def __bool__(self):
+        return bool(self.hours)
+
+    def grid(self, key):
+        if key not in self._grids:
+            with gzip.open(self.hours[key], "rt", encoding="utf-8") as f:
+                rows = f.read().split()[1:]
+            vals = []
+            for r in rows:
+                p = r.split(",")
+                s4, sp = int(p[0]) / 1000, int(p[2]) / 1000
+                vals.append((s4 if s4 >= 0 else None, sp if sp >= 0 else None))
+            self._grids[key] = vals
+        return self._grids[key]
+
+    def cells_near(self, p):
+        k = (round(p[0], 2), round(p[1], 2))
+        if k not in self._near:
+            self._near[k] = [i for i, c in enumerate(self.cells) if abs(c[0] - p[0]) <= 3.0 and km(c, p) <= ISM_NEAR_KM]
+        return self._near[k]
+
+    def near(self, day, t0, t1, points):
+        """Highest S4 and sigma-phi in nowcast hours overlapping [t0 - pad, t1 + pad] (minutes on `day`) and cells within
+        ISM_NEAR_KM of any point; None when no such hour is archived."""
+        d0 = datetime.fromisoformat(day).replace(tzinfo=timezone.utc)
+        keys = [(d0 + timedelta(hours=k)).strftime("%Y%m%dT%H")
+                for k in range((t0 - 60 * ISM_PAD_H) // 60, (t1 + 60 * ISM_PAD_H) // 60 + 1)]
+        keys = [k for k in keys if k in self.hours]
+        idx = sorted({i for p in points if p[0] is not None for i in self.cells_near(p)})
+        if not keys or not idx:
+            return None
+        s4 = [g[i][0] for g in map(self.grid, keys) for i in idx if g[i][0] is not None]
+        sp = [g[i][1] for g in map(self.grid, keys) for i in idx if g[i][1] is not None]
+        if not s4 and not sp:
+            return None
+        return {"s4": round(max(s4, default=0.0), 3), "sigma_phi": round(max(sp, default=0.0), 3), "cells": len(idx),
+                "hours": [f"{k[:4]}-{k[4:6]}-{k[6:8]}T{k[9:11]}Z" for k in keys]}
+
+
+def load_ism(root=ISM_DIR):
+    try:
+        ism = ISM(root)
+    except OSError:
+        return None
+    return ism or None
+
+
 # ---------------------------------------------------------------- fusion
 def consistent(o, f):
-    """Distance (km) if H3 observation o overlaps announced test f in time and lies within its widest radius."""
+    """Distance (km) if H3 observation o overlaps announced test f in time and lies within its radius (FAA_RADIUS_KEY)."""
     if not o["cells"] or o["signal_type"] != "EFFECT" or o["lat"] is None or o["kind"] in APART_KINDS:
         return None
     if not any(o["t0"] <= w1 and o["t1"] >= w0 for w0, w1 in f["detail"]["windows"]):
         return None
     d = km((o["lat"], o["lon"]), f["detail"]["centre"])
     return round(d) if d <= f["detail"]["radius_km"] else None
+
+
+def covers(o, f):
+    """Distance (km; 0 inside a polygon) if H3 effect observation o overlaps notice f in time and place, else None. In
+    place: an anchor of o (its centroid or a res-2 cell centre) inside the notice's polygon, or within its radius of a
+    notice point (the stated radius; NOTICE_POINT_KM for a one- or two-point notice without one)."""
+    if not o["cells"] or o["signal_type"] != "EFFECT" or o["lat"] is None or o["kind"] in APART_KINDS or gap(o, f) > 0:
+        return None
+    det, pts, anc = f["detail"], [tuple(p) for p in f["detail"]["points"]], anchors(o)
+    if det["polygon"] and any(in_polygon(a, b, pts) for a, b in anc):
+        return 0
+    if det["radius_km"]:
+        d = min(km(a, p) for a in anc for p in pts)
+        return round(d) if d <= det["radius_km"] else None
+    return None
 
 
 def anchors(o):
@@ -461,8 +662,10 @@ def fuse(observations):
                             time-resolved observations: CYGNSS cells attach to an event, they don't bridge two.
       SBAS runs             linked when in the same service area and at most FUSE_GAP_MIN minutes apart.
       announced tests       never fuse anything. Each attaches to every event holding a located EFFECT observation
-                            consistent with it (inside a window and within the widest radius); with none, it is its own
+                            consistent with it (inside a window and within its FL250 radius); with none, it is its own
                             event.
+      official notices      never fuse anything. Each attaches to every event holding a located EFFECT observation it
+                            covers (rule `covers`); with none, it makes no event (standing notices would repeat daily).
       Kp storms             never linked: each is its own NATURAL event (Kp is planetary, not local)."""
     n = len(observations)
     uf = UF(n)
@@ -508,7 +711,7 @@ def fuse(observations):
         for b in sb:
             if a < b and observations[a]["area"] == observations[b]["area"] and gap(observations[a], observations[b]) <= FUSE_GAP_MIN:
                 uf.join(a, b)
-    groups = [g for g in uf.groups() if observations[g[0]]["kind"] != "faa_test"]
+    groups = [g for g in uf.groups() if observations[g[0]]["kind"] not in ("faa_test", "notice")]
     for i, f in enumerate(observations):
         if f["kind"] != "faa_test":
             continue
@@ -517,13 +720,19 @@ def fuse(observations):
             g.append(i)
         if not hit:
             groups.append([i])
+    for i, f in enumerate(observations):
+        if f["kind"] == "notice":
+            for g in groups:
+                if any(covers(observations[j], f) is not None for j in g):
+                    g.append(i)
     return sorted(groups, key=lambda g: (min(observations[i]["t0"] for i in g), g[0]))
 
 
 # ---------------------------------------------------------------- grading
-def grade(members, day_obs, kp):
+def grade(members, day_obs, kp, ism=None):
     """Five grade fields with rule, reason and basis each, plus the exclusion checks. `members` are the event's
-    observations, `day_obs` every observation that day (for context: announced tests, SBAS storm runs)."""
+    observations, `day_obs` every observation that day (for context: announced tests, SBAS storm runs), `ism` the
+    scintillation archive (rule N3) or None."""
     effects = [o for o in members if o["signal_type"] == "EFFECT"]
     warnings = [o for o in members if o["signal_type"] == "WARNING"]
     naturals = [o for o in members if o["signal_type"] == "NATURAL"]
@@ -589,6 +798,10 @@ def grade(members, day_obs, kp):
     # exclusion: space weather
     measures = {o["measure"] for o in effects}
     cap_only = bool(effects) and measures == {"capable"}
+    located = bool(h3eff) and len(h3eff) == len(effects)
+    scint = ism.near(day, t0, t1, [a for o in h3eff for a in anchors(o)]) if ism and h3eff else None
+    if scint:
+        scint["moderate"] = scint["s4"] >= ISM_S4 or scint["sigma_phi"] >= ISM_SIGMA_PHI
     natural = None
     if naturals:
         k = max(o["detail"]["kp_max"] for o in naturals)
@@ -612,6 +825,12 @@ def grade(members, day_obs, kp):
         elif not measures & {"gross", "capable"}:
             excl["space_weather"] = ("not_applicable", "N-", {"kp_max": k, "why": "CYGNSS evidence only: the noise "
                                      "floor measures RF power, which the Kp rules don't address"})
+        elif cap_only and located and scint and scint["moderate"]:
+            natural = "N3"
+            excl["space_weather"] = ("benign_natural", "N3", {"kp_max": k, "s4": scint["s4"], "sigma_phi": scint["sigma_phi"],
+                                     "hours": scint["hours"], "why": "10 m-only effect with ICAO-moderate scintillation "
+                                     f"or worse in ESA's nowcast (S4 >= {ISM_S4:g} or sigma-phi >= {ISM_SIGMA_PHI:g} rad) "
+                                     f"within {ISM_NEAR_KM} km and {ISM_PAD_H} h"})
         elif k is None:
             excl["space_weather"] = ("unknown", "N-", {"why": "Kp unavailable for this time"})
         elif k >= STORM_KP:
@@ -640,6 +859,10 @@ def grade(members, day_obs, kp):
             context += [o["id"] for o in day_obs if o["kind"] == "kp_storm" and gap(o, {"t0": t0 - 60 * KP_PAD_H,
                                                                                        "t1": t1 + 60 * KP_PAD_H}) <= 0]
 
+    if scint:
+        excl["scintillation"] = ("moderate" if scint["moderate"] else "below_moderate", "N3" if natural == "N3" else "N3-",
+                                 {x: scint[x] for x in ("s4", "sigma_phi", "hours", "cells")})
+
     # exclusion: planned test
     tests = [o for o in day_obs if o["kind"] == "faa_test"]
     planned = None
@@ -665,6 +888,18 @@ def grade(members, day_obs, kp):
     elif effects:
         excl["planned_test"] = ("not_indicated", "P-", {"tests_that_day": len(tests)})
 
+    # exclusion: official notices (rule D1). Only a notice covering a time-resolved effect counts: CYGNSS cells are timed
+    # to the day, which can't place an effect inside a notice's validity on that day any better than the day itself.
+    notices = [o for o in warnings if o["kind"] == "notice"]
+    cover = {f["id"]: [{"obs": o["id"], "km": d} for o in timed_eff for d in (covers(o, f),) if d is not None]
+             for f in notices}
+    jam = [f for f in notices if f["detail"]["class"] == "jamming" and cover[f["id"]]]
+    if notices:
+        excl["notice"] = ("jamming_reported" if any(f["detail"]["class"] == "jamming" for f in notices)
+                          else "interference_reported", "D1" if jam else "D-", {"notices": [
+                              {"id": f["detail"]["notice_id"], "source": f["detail"]["source"], "class": f["detail"]["class"],
+                               "covers": cover[f["id"]], "url": f["detail"]["url"]} for f in notices]})
+
     # exclusion: receiver fault and SBAS service
     if any(o["family"] == "adsb" for o in effects):
         excl["receiver_fault"] = ("screened_upstream", "R0", {"why": "the PNT processor drops avionics suspects (peer "
@@ -684,19 +919,29 @@ def grade(members, day_obs, kp):
     # verdict (planned outranks natural: a matched notice is more specific than a storm-time heuristic)
     if planned:
         rule = planned
-        why = ("every effect observation lies inside an announced test's window and widest radius" if planned == "P1"
-               else "the event is an announced test notice")
+        why = (f"every effect observation lies inside an announced test's window and its {FAA_RADIUS_KEY} radius"
+               if planned == "P1" else "the event is an announced test notice")
         grades["verdict"] = ("planned", rule, why, ids(warnings) + ids(h3eff))
     elif natural:
         grades["verdict"] = ("benign_natural", natural, excl["space_weather"][2].get("why", "space-weather alert"),
                              ids(naturals) + context + ids(effects))
+    elif jam:
+        src = "; ".join(sorted({f["detail"]["source"] for f in jam}))
+        grades["verdict"] = ("deliberate_suspected", "D1", "an official notice reports GNSS jamming or spoofing covering "
+                             f"this place and time ({src}); the notice, not our data, is the evidence of deliberate "
+                             "activity", ids(jam) + sorted({c["obs"] for f in jam for c in cover[f["id"]]}))
     else:
-        grades["verdict"] = ("open", "V0", "no exclusion check explains the event, and no interference warning "
-                             "corroborates it (deliberate_suspected needs one: rule D1)", ids(effects))
+        why = ("no exclusion check explains the event; an official notice reports GNSS interference here, but not "
+               "jamming or spoofing (rule D1 needs that wording, and a time-resolved effect it covers)" if notices else
+               "no exclusion check explains the event, and no official notice of jamming or spoofing covers it (rule D1)")
+        grades["verdict"] = ("open", "V0", why, ids(effects))
         if not hint:
             sw = excl.get("space_weather", ("",))[0]
             pt = excl.get("planned_test", ("",))[0]
-            hint = "storm_partial" if sw == "storm_partial" else "test_partial" if pt == "partial" else None
+            hint = ("storm_partial" if sw == "storm_partial" else "test_partial" if pt == "partial"
+                    else "notice_interference" if notices else None)
+    if jam and grades["verdict"][1] != "D1":
+        excl["notice"][2]["outranked_by"] = grades["verdict"][1]       # planned and natural rules outrank D1
 
     # attribution
     if planned == "P1":
@@ -750,6 +995,8 @@ def summary(members, g):
             parts.append(f"announced test {o['detail']['test_id']} ({o['detail']['place']})")
         elif o["kind"] == "kp_storm":
             parts.append(f"Kp {o['detail']['kp_max']:.1f} (GFZ) {hhmm(o['t0'])}-{hhmm(o['t1'])}Z")
+        elif o["kind"] == "notice":
+            parts.append(f"notice {o['detail']['source']} ({o['detail']['class']})")
     return "; ".join(parts)
 
 
@@ -757,7 +1004,7 @@ def event_id(day, members):
     return f"EV-{day.replace('-', '')}-" + h("|".join(sorted(o["id"] for o in members)))[:8]
 
 
-def build_day(day, observations, kp, field=None):
+def build_day(day, observations, kp, field=None, ism=None):
     """Fuse one day's observations and grade each event. Returns a list of event dicts. `field` (cygnss_field) lets
     rule S3 read the CYGNSS neighbourhood of each ADS-B observation; the result is kept in the observation's detail."""
     if field:
@@ -773,7 +1020,7 @@ def build_day(day, observations, kp, field=None):
     groups = fuse(observations)
     for g in groups:
         members = [observations[i] for i in g]
-        gr = grade(members, observations, kp)
+        gr = grade(members, observations, kp, ism)
         cells = sorted({c for o in members for c in o["cells"]})
         areas = sorted({o["area"] for o in members if o["area"]})
         eid = event_id(day, members)
@@ -849,7 +1096,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS day_inputs(day TEXT PRIMARY KEY, events_src TEXT, level_src TEXT, n_anomalies INT,
   n_bursts INT, n_sbas INT, n_level INT, n_tests INT, n_kp INT, kp TEXT, built_at TEXT, cygnss_src TEXT,
-  n_cygnss INT, n_cygnss_dropout INT);
+  n_cygnss INT, n_cygnss_dropout INT, n_notices INT);
 CREATE TABLE IF NOT EXISTS observations(id TEXT PRIMARY KEY, day TEXT, kind TEXT, signal_type TEXT, family TEXT,
   source TEXT, sensor INT, start_utc TEXT, end_utc TEXT, time_res TEXT, lat REAL, lon REAL, cells TEXT, area TEXT,
   measure TEXT, detail TEXT, ref TEXT);
@@ -880,8 +1127,8 @@ def connect(path=None):
     db.execute("PRAGMA synchronous=NORMAL")
     db.executescript(SCHEMA)
     have = {r[1] for r in db.execute("PRAGMA table_info(day_inputs)")}
-    for col, typ in (("cygnss_src", "TEXT"), ("n_cygnss", "INT"), ("n_cygnss_dropout", "INT")):
-        if col not in have:                       # registers built by v0.1
+    for col, typ in (("cygnss_src", "TEXT"), ("n_cygnss", "INT"), ("n_cygnss_dropout", "INT"), ("n_notices", "INT")):
+        if col not in have:                       # registers built by earlier versions
             db.execute(f"ALTER TABLE day_inputs ADD COLUMN {col} {typ}")
     return db
 
@@ -910,10 +1157,11 @@ def write_day(db, day, observations, events, inputs):
             (e["id"], k, v[0], v[1], json.dumps(v[2], ensure_ascii=False)) for k, v in e["exclusions"].items()])
     n = Counter(o["kind"] for o in observations)
     db.execute("INSERT OR REPLACE INTO day_inputs (day, events_src, level_src, n_anomalies, n_bursts, n_sbas, n_level, "
-               "n_tests, n_kp, kp, built_at, cygnss_src, n_cygnss, n_cygnss_dropout) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+               "n_tests, n_kp, kp, built_at, cygnss_src, n_cygnss, n_cygnss_dropout, n_notices) "
+               "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
         day, inputs.get("events_src"), inputs.get("level_src"), n["adsb_anomaly"], n["adsb_burst"], n["adsb_sbas"],
         n["adsb_level"], n["faa_test"], n["kp_storm"], inputs.get("kp"), datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
-        inputs.get("cygnss_src"), n["cygnss_noise"], n["cygnss_dropout"]))
+        inputs.get("cygnss_src"), n["cygnss_noise"], n["cygnss_dropout"], n["notice"]))
 
 
 def episodes(db):
@@ -962,6 +1210,8 @@ def cmd_build(a):
     days = available_days() if a.all else parse_days(a.days)
     kp = load_kp()
     tests = faa_tests()
+    notices = load_notices()
+    ism = load_ism()
     db = connect()
     tot = Counter()
     for day in days:
@@ -980,8 +1230,9 @@ def cmd_build(a):
             observations += cygnss_observations(day, cyg, cy_src)
         observations += faa_observations(day, tests if tests is not None else ev.get("tests", []) if ev else [])
         observations += kp_observations(day, kp)
+        observations += notice_observations(day, notices)
         kmax = kp_max(kp, day, 0, 1439, pad_h=0)
-        events = build_day(day, observations, kp, cygnss_field(cyg) if cyg is not None else None)
+        events = build_day(day, observations, kp, cygnss_field(cyg) if cyg is not None else None, ism)
         write_day(db, day, observations, events, {"events_src": ev_src, "level_src": lv_src, "cygnss_src": cy_src,
                                                    "kp": None if kmax is None else f"max {kmax:.1f}"})
         tot["days"] += 1
@@ -996,10 +1247,15 @@ def cmd_build(a):
         "REGION_RES": REGION_RES, "FUSE_RING": FUSE_RING, "FUSE_GAP_MIN": FUSE_GAP_MIN, "MAX_EVENT_KM": MAX_EVENT_KM, "LEVEL_MIN_AIRCRAFT": LEVEL_MIN_AIRCRAFT,
         "LEVEL_SHARE": LEVEL_SHARE, "LEVEL_MIN_HEXES": LEVEL_MIN_HEXES, "STORM_KP": STORM_KP, "KP_PAD_H": KP_PAD_H,
         "MLAT_GATE": MLAT_GATE, "EPISODE_GAP_DAYS": EPISODE_GAP_DAYS, "CYG_MIN_DDM": CYG_MIN_DDM,
-        "CYG_ELEVATED_DB": CYG_ELEVATED_DB, "CYG_DROPOUT": CYG_DROPOUT, "BEAM_LINK_KM": BEAM_LINK_KM, "DIPOLE_POLE": DIPOLE_POLE, "SBAS_UNRELIABLE": SBAS_UNRELIABLE}),))
+        "CYG_ELEVATED_DB": CYG_ELEVATED_DB, "CYG_DROPOUT": CYG_DROPOUT, "BEAM_LINK_KM": BEAM_LINK_KM, "DIPOLE_POLE": DIPOLE_POLE, "SBAS_UNRELIABLE": SBAS_UNRELIABLE,
+        "FAA_RADIUS_KEY": FAA_RADIUS_KEY, "NOTICE_POINT_KM": NOTICE_POINT_KM, "ISM_S4": ISM_S4, "ISM_SIGMA_PHI": ISM_SIGMA_PHI,
+        "ISM_NEAR_KM": ISM_NEAR_KM, "ISM_PAD_H": ISM_PAD_H}),))
     db.commit()
     print(f"built {tot['days']} day(s): {tot['observations']} observations, {tot['events']} events -> "
           f"{os.path.relpath(REGISTER, ROOT)}" + ("" if kp else "  (no Kp file: run `fetch` first)"))
+    print(f"inputs: {len(notices)} curated notice(s) ({sum(1 for n in notices if n['class'] == 'jamming')} jamming); "
+          f"ESA scintillation nowcast: {len(ism.hours) if ism else 0} archived hours"
+          + ("" if ism else " (no archive: run `fetch` on a machine that can read the private data repo)"))
 
 
 # ---------------------------------------------------------------- fetch
@@ -1036,6 +1292,24 @@ def cmd_fetch(a):
         json.dump(kp, f)
     st = Counter(kp.get("status") or [])
     print(f"Kp: {len(kp['Kp'])} intervals {kp['datetime'][0][:10]} to {kp['datetime'][-1][:16]}Z; status {dict(st)}")
+    print(fetch_ism())
+
+
+def fetch_ism(root=ISM_DIR):
+    """Clone or update the private scintillation archive with git (this machine's GitHub credentials). Never fatal."""
+    try:
+        if os.path.isdir(os.path.join(root, ".git")):
+            r = subprocess.run(["git", "-C", root, "pull", "--ff-only", "--quiet"], capture_output=True, text=True,
+                               timeout=300)
+        else:
+            r = subprocess.run(["git", "clone", "--quiet", "--depth", "1", ISM_REPO, root], capture_output=True,
+                               text=True, timeout=600)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"ESA scintillation archive: not updated ({e})"
+    if r.returncode:
+        return f"ESA scintillation archive: not updated ({(r.stderr or '').strip()[:200]})"
+    ism = load_ism(root)
+    return f"ESA scintillation archive: {len(ism.hours) if ism else 0} hours in {root}"
 
 
 # ---------------------------------------------------------------- show / stats
@@ -1084,6 +1358,10 @@ def describe_obs(r):
     elif kind == "faa_test":
         s = f"announced test {det['test_id']}, {det['place']}, radius {det['radius_km']:.0f} km, windows " + ", ".join(
             f"{hhmm(a)}-{hhmm(b)}Z" for a, b in det["windows"])
+    elif kind == "notice":
+        where = (f"polygon of {len(det['points'])} points" if det["polygon"] else f"{len(det['points'])} point(s)")
+        s = (f"official notice {det['source']} ({det['class']}), {where}"
+             + (f", radius {det['radius_km']:g} km{'' if det['radius_stated'] else ' (default)'}" if det["radius_km"] else ""))
     else:
         s = f"Kp max {det['kp_max']:.1f} ({', '.join(det['status'])})"
     return f"{r['id']}  {r['signal_type']:<7} {t:<13} {s}  @ {fmt_ll(r['lat'], r['lon'])}"
@@ -1139,7 +1417,8 @@ def cmd_show(a):
         return
     print(f"{a.day} (UTC). Inputs: events {inp['events_src']}; level {inp['level_src']}; {inp['n_anomalies']} anomaly "
           f"events, {inp['n_bursts']} bursts, {inp['n_sbas']} SBAS runs, {inp['n_level']} level regions, "
-          f"{inp['n_tests']} announced tests, {inp['n_kp']} Kp storm runs; Kp {inp['kp'] or 'unavailable'}"
+          f"{inp['n_tests']} announced tests, {inp['n_kp']} Kp storm runs, {inp['n_notices'] or 0} notices; "
+          f"Kp {inp['kp'] or 'unavailable'}"
           + (f"; CYGNSS {inp['n_cygnss']} raised cells, {inp['n_cygnss_dropout']} dropout cells" if inp["cygnss_src"] else ""))
     evs = db.execute("SELECT * FROM events WHERE day=?", (a.day,)).fetchall()
     c = Counter((e["signal_type"], e["verdict"]) for e in evs)
@@ -1209,6 +1488,53 @@ def cmd_stats(a):
           f"both {agree}")
 
 
+PUBLIC_SOURCES = [
+    "adsb.lol daily archive through the PNT processor (ODbL 1.0)",
+    "NASA CYGNSS L1 SDR V3.2 (NASA open data)",
+    "FAA SPANS flight advisories (US public domain)",
+    "GFZ Potsdam Kp index (CC BY 4.0)",
+    "ESA SWE ISM scintillation nowcast: data provided by the European Space Agency (ESA) as part of its Space Safety "
+    "Programme (S2P), (c) ESA 2026",
+]
+
+
+def monthly(db):
+    """Counts by UTC month: all events by signal type; EFFECT events by support, verdict and attribution."""
+    days = dict(db.execute("SELECT substr(day,1,7), COUNT(*) FROM day_inputs GROUP BY 1"))
+    out = []
+    for m in sorted(days):
+        def cnt(field, effect_only):
+            return dict(db.execute(f"SELECT {field}, COUNT(*) FROM events WHERE substr(day,1,7)=?"
+                                   + (" AND signal_type='EFFECT'" if effect_only else "") + f" GROUP BY {field}", (m,)))
+        sig, sup, ver, att = cnt("signal_type", False), cnt("support", True), cnt("verdict", True), cnt("attribution_status", True)
+        out.append({"month": m, "days": days[m], "events": sum(sig.values()),
+                    "signal_type": {x: sig.get(x, 0) for x in SIGNAL}, "effect_support": {x: sup.get(x, 0) for x in SUPPORT},
+                    "effect_verdict": {x: ver.get(x, 0) for x in VERDICT},
+                    "effect_attribution": {x: att.get(x, 0) for x in ATTRIB}})
+    return out
+
+
+def cmd_publish(a):
+    """Monthly aggregates for the public site. Never the register: no event, place or observation leaves it."""
+    db = connect()
+    meta = dict(db.execute("SELECT key, value FROM meta"))
+    if meta.get("version") != VERSION:
+        sys.exit(f"register built by {meta.get('version')}, not {VERSION}: run `build --all` first")
+    first, last = db.execute("SELECT MIN(day), MAX(day) FROM day_inputs").fetchone()
+    out = {"version": VERSION, "register_built_utc": meta.get("built_at"), "first_day": first, "last_day": last,
+           "unit": "events per UTC month", "licence": "ODbL 1.0 (derived from the adsb.lol archive); attribution below",
+           "method": "https://github.com/metacog-osint/noise-floor/blob/main/docs/assessment/events.md",
+           "note": "Aggregate counts only. Grades describe the strength of evidence; they never name a perpetrator. "
+                   "deliberate_suspected needs an official notice reporting jamming or spoofing (rule D1). The rules are "
+                   "frozen but not yet validated.",
+           "sources": PUBLIC_SOURCES, "months": monthly(db)}
+    os.makedirs(os.path.dirname(a.out), exist_ok=True)
+    with open(a.out, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(out, f, indent=1, ensure_ascii=False)
+        f.write("\n")
+    print(f"wrote {a.out}: {len(out['months'])} months, {first} to {last}")
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -1232,8 +1558,10 @@ def main():
     s.add_argument("--limit", type=int, default=25)
     s.add_argument("--full", action="store_true", help="evidence and grade reasons for every event of the day")
     sub.add_parser("stats")
+    p = sub.add_parser("publish")
+    p.add_argument("--out", default=MONTHLY_OUT)
     a = ap.parse_args()
-    {"fetch": cmd_fetch, "build": cmd_build, "show": cmd_show, "stats": cmd_stats}[a.cmd](a)
+    {"fetch": cmd_fetch, "build": cmd_build, "show": cmd_show, "stats": cmd_stats, "publish": cmd_publish}[a.cmd](a)
 
 
 if __name__ == "__main__":
