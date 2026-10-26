@@ -484,8 +484,10 @@ def in_polygon(lat, lon, poly):
 
 def load_notices(path=NOTICES_FILE):
     """Curated official notices: {"notices": [{"id", "source", "url", "issued_utc", "valid_from_utc"?, "valid_to_utc"?,
-    "text", "points"?, "radius_km"?, "class"?}]}, times as 'YYYY-MM-DDTHH:MMZ'. Positions, radius and class are read from
-    the text unless given. No valid_to_utc means still in force. Returns [] without the file."""
+    "text", "points"?, "radius_km"?, "shape"?, "class"?, "note"?}]}, times as 'YYYY-MM-DDTHH:MMZ'. Positions, radius and
+    class are read from the text unless given. Three or more points make a polygon unless "shape" is "points" (circles of
+    radius_km around each point, for a sea area that a polygon would spill onto land). No valid_to_utc means still in
+    force. Returns [] without the file."""
     if not os.path.exists(path):
         return []
     with open(path, encoding="utf-8") as f:
@@ -513,7 +515,7 @@ def notice_observations(day, notices):
         if m1 < 0 or m0 > 1439:
             continue
         lat, lon = mean_ll(n["points"])
-        poly = len(n["points"]) >= 3
+        poly = len(n["points"]) >= 3 and n.get("shape") != "points"
         det = {"notice_id": n["id"], "source": n.get("source") or n["id"], "class": n["class"],
                "points": [list(p) for p in n["points"]], "polygon": poly,
                "radius_km": n["radius_km"] or (None if poly else NOTICE_POINT_KM), "radius_stated": bool(n["radius_km"]),

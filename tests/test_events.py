@@ -489,6 +489,12 @@ def test_notice_rules():
     poly = notice_obs(notice("GPS JAMMING IN AREA BOUND BY 54-00N 019-00E, 54-00N 021-30E, 56-30N 021-30E, 56-30N 019-00E."))
     assert poly[0]["detail"]["polygon"] and poly[0]["detail"]["radius_km"] is None
     assert field(effects(run(from_file(bursts=[burst(C0, "10:30Z", "10:40Z")]) + poly))[0], "verdict") == "deliberate_suspected"
+    # "shape": "points": circles around each point, not a polygon (a burst at the centre of a 3-point line is covered
+    # by the polygon test only if it falls inside the triangle; here it sits on the first point)
+    line = notice_obs(notice("GPS JAMMING ALONG THE GULF", points=[[lat, lon], [lat + 0.5, lon + 3.0], [lat - 0.4, lon + 6.0]],
+                             radius_km=30, shape="points"))
+    assert not line[0]["detail"]["polygon"] and line[0]["detail"]["radius_km"] == 30
+    assert field(effects(run(from_file(bursts=[burst(C0, "10:30Z", "10:40Z")]) + line))[0], "verdict") == "deliberate_suspected"
     # a matched announced test outranks D1; the notice check records it
     tests = E.faa_observations(DAY, [faa(lat, lon)])
     e = effects(run(from_file(bursts=[burst(C0, "10:30Z", "10:40Z")]) + tests + jam))[0]
