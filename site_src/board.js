@@ -109,6 +109,15 @@
       }).join("") + "</ul>" : "") + '<p class="small">' + esc(cy.note) + ' NASA CYGNSS (open data). <a href="/validation#cygnss">Validation</a></p>'
       : '<p class="small">CYGNSS summaries start with the next daily collection on our side; the data arrive over several days. <a href="/validation#cygnss">Validation</a></p>');
 
+    var g = b.geo;
+    card("bgeo-body", g ? "<p><strong>" + n(g.counts.objects) + "</strong> active GEO objects; <strong>" + n(g.counts.drifting) + "</strong> drifting; <strong>" +
+      n(g.close_count) + "</strong> within 100 km of a satellite of another owner" + (g.snapshots > 1 ? "; " + n(g.manoeuvre_count) + " manoeuvres in the last week" : "") + ".</p>" +
+      (g.close.length ? '<ul class="dash-list">' + g.close.slice(0, 4).map(function (p) {
+        return "<li>" + esc(p.a[1]) + " (" + esc(p.a[2]) + ") and " + esc(p.b[1]) + " (" + esc(p.b[2]) + "): " + p.km + " km, " + Math.abs(p.lon).toFixed(1) + "°" + (p.lon < 0 ? "W" : "E") + "</li>";
+      }).join("") + "</ul>" : "") +
+      '<p class="small">Proximity and behaviour, never intent; public elements are good to tens of km. ' + esc(g.source) + ' <a href="/geo">GEO board</a></p>'
+      : '<p class="small">The GEO board is not available at the last build.</p>');
+
     var ev = b.events;
     if (ev) {
       var v = ev.effect_verdict, su = ev.effect_support;
@@ -122,7 +131,7 @@
     }
 
     var rows = [["Aircraft (daily run)", f.aircraft_day], ["Spoofing", f.spoofing_day], ["Ships (Finnish AIS)", f.ships_built && f.ships_built.slice(0, 16).replace("T", " ") + "Z"],
-      ["CYGNSS", f.cygnss_day], ["Scintillation (ESA)", f.scintillation_valid], ["EASA FIR table", f.easa_table], ["This board", f.board_built && f.board_built.replace("T", " ")]];
+      ["CYGNSS", f.cygnss_day], ["GEO elements (CelesTrak)", f.geo_snapshot], ["Scintillation (ESA)", f.scintillation_valid], ["EASA FIR table", f.easa_table], ["This board", f.board_built && f.board_built.replace("T", " ")]];
     card("bfresh-body", '<table class="dash-table"><tbody>' + rows.map(function (r) {
       return "<tr><td>" + esc(r[0]) + '</td><td class="num">' + (r[1] ? esc(r[1]) : '<span class="mut">not yet</span>') + "</td></tr>";
     }).join("") + '</tbody></table><p class="small">Times UTC. Sun outages and solar radio update live in your browser.</p>');

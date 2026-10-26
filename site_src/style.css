@@ -360,3 +360,11 @@ details.table-view .tw { max-height: 22rem; overflow: auto; }
 .spark { display: block; overflow: visible; }
 .spark polyline { fill: none; stroke: var(--fg); stroke-width: 1.4; stroke-linejoin: round; }
 .spark circle { fill: var(--fg); }
+/* GEO board */
+.geo-strip { width: 100%; height: auto; display: block; margin: .3rem 0; }
+.geo-strip line { stroke-width: 1.2; }
+.geo-strip text { font-size: 20px; fill: var(--mut); }
+.geo-kept { stroke: var(--st-built); background: var(--st-built); }
+.geo-inc { stroke: var(--st-prototype); background: var(--st-prototype); }
+.geo-drift { stroke: var(--st-failed); background: var(--st-failed); }
+.geo-key { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; vertical-align: -1px; }

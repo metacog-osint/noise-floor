@@ -33,7 +33,7 @@ STATUS = {  # key: (label, css class, one-line meaning)
     "planned": ("Planned", "st-planned", "designed, not built"),
     "parked": ("Parked", "st-parked", "set aside with its final state written down; revisited on a named trigger"),
 }
-NAV = [("home", "Home", ""), ("map", "Map", "map"), ("sea", "Sea", "sea"), ("sun", "Sun", "sun"), ("charts", "Charts", "charts"),
+NAV = [("home", "Home", ""), ("map", "Map", "map"), ("sea", "Sea", "sea"), ("sun", "Sun", "sun"), ("geo", "GEO", "geo"), ("charts", "Charts", "charts"),
        ("lanes", "Lanes", "lanes"), ("methods", "Methods", "methods"), ("validation", "Validation", "validation"), ("data", "Data", "data"), ("sources", "Sources", "sources")]
 USE = {  # registry `use` values in plain words
     "ingest": "Feeds a layer", "ingest-after-ok": "After permission", "visual-only": "Visual comparison only",
@@ -92,7 +92,7 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
-ASSETS = ("style.css", "map.js", "sea.js", "charts.js", "home.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js")
+ASSETS = ("style.css", "map.js", "sea.js", "charts.js", "home.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js", "geo.js")
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
 
@@ -302,7 +302,7 @@ def main():
     fills.update(chart_fills())
     fills.update(events_fills())
     written = []
-    for name in ("index.html", "map.html", "sea.html", "sun.html", "charts.html", "methods.html", "validation.html", "data.html", "terms.html", "404.html"):
+    for name in ("index.html", "map.html", "sea.html", "sun.html", "geo.html", "charts.html", "methods.html", "validation.html", "data.html", "terms.html", "404.html"):
         meta, body = read_page(name)
         for k, v in fills.items():
             body = body.replace(k, v)
@@ -329,7 +329,7 @@ def main():
     rules += [(p, f"Cache-Control: {hour}") for p in ("/data/gnss/2*", "/data/events/*", "/data/history/*")]   # day files
     rules += [("/data/vessels/*", f"Cache-Control: {hour}")]                  # Sea map data, refreshed by hand
     rules += [(f"/data/{f}", f"Cache-Control: {short}") for f in ("gnss/days.json", "trend.json", "charts.json",
-                                                                  "events-monthly.json", "board.json")]
+                                                                  "events-monthly.json", "board.json", "geo.json")]
     rules += [("/feed.xml", f"Cache-Control: {short}")]
     open(os.path.join(OUT, "_headers"), "w", newline="\n").write("".join(f"{p}\n  {h}\n" for p, h in rules))
     for name in written:                      # a duplicate id once broke the charts page (two elements, one anchor)

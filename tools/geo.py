@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+"""geo.py: the GEO threat board: where every active geosynchronous object is, which are drifting, which manoeuvred, and
+which come close to an object of another owner. Proximity and behaviour only, never intent.
+
+  python tools/geo.py snapshot [--day D] [--out DIR] [--upload]   # CelesTrak GEO elements + catalogue -> DIR/<day>.geo.json
+  python tools/geo.py build RELEASE_DIR [SITE]                    # snapshots -> SITE/data/geo.json (the /geo page, board card)
+
+Data: CelesTrak GP (GROUP=geo, OMM JSON) and SATCAT (owner, type). The elements are USSPACECOM basic SSA data, which
+Space-Track allows to be redistributed and used in published analysis with citation; cite "Orbital data: USSPACECOM
+(space-track.org) via CelesTrak". CelesTrak's usage policy: download once per 2-hour update and stop on any non-200
+response, so the daily workflow takes at most one snapshot per run (two runs a day).
+
+Method (coarse, stated on the page):
+  longitude   sub-satellite longitude at the element epoch from the mean elements (two-body, near-circular), and at a
+              common time by two-body propagation; public elements at GEO are good to tens of km
+  drift       (mean motion x 360 - 360.9856) deg/day; station-kept objects drift under DRIFT_KEPT deg/day
+  close       pairs of different owners within CLOSE_KM of each other at the common time; pairs of one owner are
+              listed apart (operators co-locate their own satellites on purpose)
+  manoeuvre   between consecutive snapshots: drift rate changed by more than MAN_DRIFT deg/day, inclination by more
+              than MAN_INC deg, or the longitude moved more than MAN_LON deg from where the earlier drift put it
+"""
+import argparse
+import glob
+import json
+import math
+import os
+import subprocess
+import sys
+import urllib.request
+from datetime import datetime, timedelta, timezone
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UA = {"User-Agent": "noise-floor (github.com/metacog-osint/noise-floor)"}
+GP_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=geo&FORMAT=json"
+SATCAT_URL = "https://celestrak.org/satcat/records.php?GROUP=geo&FORMAT=json"
+MU = 398600.4418                  # km^3/s^2
+SIDEREAL = 360.98564736629        # deg/day, Earth's rotation
+DRIFT_KEPT, INC_KEPT = 0.1, 1.0   # deg/day, deg: station-kept
+CLOSE_KM = 100.0
+MAN_DRIFT, MAN_INC, MAN_LON = 0.02, 0.02, 0.15
+CITE = "Orbital data: USSPACECOM (space-track.org) via CelesTrak; basic SSA data, redistributed with citation."
+REPO = "metacog-osint/noise-floor"
+
+
+def gmst_deg(t):
+    """Greenwich mean sidereal time (deg) at datetime t (UTC), IAU 1982."""
+    jd = t.timestamp() / 86400.0 + 2440587.5
+    d = jd - 2451545.0
+    T = d / 36525.0
+    return (280.46061837 + 360.98564736629 * d + 0.000387933 * T * T - T ** 3 / 38710000.0) % 360.0
+
+
+def kepler(M, e):
+    E = M
+    for _ in range(8):
+        E -= (E - e * math.sin(E) - M) / (1 - e * math.cos(E))
+    return E
+
+
+def epoch_of(s):
+    s = s.replace("Z", "")
+    fmt = "%Y-%m-%dT%H:%M:%S.%f" if "." in s else "%Y-%m-%dT%H:%M:%S"
+    return datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
+
+
+def state(o, t):
+    """ECI position (km) and sub-satellite longitude (deg, -180..180) of object o at time t, two-body from its epoch."""
+    n = o["n"] * 2 * math.pi / 86400.0                       # rad/s
+    a = (MU / n ** 2) ** (1 / 3)
+    dt = (t - epoch_of(o["epoch"])).total_seconds()
+    M = math.radians(o["M"]) + n * dt
+    E = kepler(M % (2 * math.pi), o["e"])
+    nu = 2 * math.atan2(math.sqrt(1 + o["e"]) * math.sin(E / 2), math.sqrt(1 - o["e"]) * math.cos(E / 2))
+    r = a * (1 - o["e"] * math.cos(E))
+    i, W, w = math.radians(o["i"]), math.radians(o["raan"]), math.radians(o["argp"])
+    u = w + nu
+    x = r * (math.cos(W) * math.cos(u) - math.sin(W) * math.sin(u) * math.cos(i))
+    y = r * (math.sin(W) * math.cos(u) + math.cos(W) * math.sin(u) * math.cos(i))
+    z = r * math.sin(u) * math.sin(i)
+    lon = (math.degrees(math.atan2(y, x)) - gmst_deg(t) + 540) % 360 - 180
+    return (x, y, z), lon
+
+
+def fetch(url):
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:
+        if r.status != 200:
+            raise RuntimeError(f"CelesTrak returned {r.status}: stopping, as its usage policy asks")
+        return json.load(r)
+
+
+def snapshot(day, gp=None, satcat=None):
+    gp = gp if gp is not None else fetch(GP_URL)
+    satcat = satcat if satcat is not None else fetch(SATCAT_URL)
+    cat = {s["NORAD_CAT_ID"]: s for s in satcat}
+    objs = []
+    for g in gp:
+        o = {"id": g["NORAD_CAT_ID"], "name": g["OBJECT_NAME"], "cospar": g.get("OBJECT_ID"), "epoch": g["EPOCH"],
+             "n": g["MEAN_MOTION"], "e": g["ECCENTRICITY"], "i": g["INCLINATION"], "raan": g["RA_OF_ASC_NODE"],
+             "argp": g["ARG_OF_PERICENTER"], "M": g["MEAN_ANOMALY"]}
+        c = cat.get(g["NORAD_CAT_ID"], {})
+        o.update(owner=c.get("OWNER"), type=c.get("OBJECT_TYPE"), status=c.get("OPS_STATUS_CODE"), launch=c.get("LAUNCH_DATE"))
+        _, o["lon"] = state(o, epoch_of(o["epoch"]))
+        o["lon"] = round(o["lon"], 3)
+        o["drift"] = round(o["n"] * 360 - SIDEREAL, 4)
+        objs.append(o)
+    return {"day": day, "fetched_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "source": CITE,
+            "count": len(objs), "objects": objs}
+
+
+def classify(o):
+    if abs(o["drift"]) >= DRIFT_KEPT:
+        return "drifting"
+    return "station-kept" if o["i"] < INC_KEPT else "inclined"
+
+
+def manoeuvres(prev, cur):
+    """Objects whose elements changed between two snapshots more than drift alone explains."""
+    p = {o["id"]: o for o in prev["objects"]}
+    out = []
+    for o in cur["objects"]:
+        q = p.get(o["id"])
+        if not q or q["epoch"] == o["epoch"]:
+            continue
+        days = (epoch_of(o["epoch"]) - epoch_of(q["epoch"])).total_seconds() / 86400
+        pred = (q["lon"] + q["drift"] * days + 540) % 360 - 180
+        dlon = (o["lon"] - pred + 540) % 360 - 180
+        why = []
+        if abs(o["drift"] - q["drift"]) > MAN_DRIFT:
+            why.append(f"drift {q['drift']:+.3f} -> {o['drift']:+.3f} deg/day")
+        if abs(o["i"] - q["i"]) > MAN_INC:
+            why.append(f"inclination {q['i']:.3f} -> {o['i']:.3f} deg")
+        if abs(dlon) > MAN_LON:
+            why.append(f"longitude {dlon:+.2f} deg off the earlier drift")
+        if why:
+            out.append({"id": o["id"], "name": o["name"], "owner": o["owner"], "lon": o["lon"], "between": [q["epoch"][:16], o["epoch"][:16]],
+                        "what": "; ".join(why)})
+    return out
+
+
+def build(release, site, now=None):
+    now = now or datetime.now(timezone.utc)
+    snaps = []
+    for f in sorted(glob.glob(os.path.join(release, "*.geo.json"))):
+        try:
+            snaps.append(json.load(open(f, encoding="utf-8")))
+        except ValueError:
+            pass
+    if not snaps:
+        raise SystemExit("no GEO snapshots")
+    cur = snaps[-1]
+    objs = cur["objects"]
+    t = now.replace(second=0, microsecond=0)
+    pos = {}
+    for o in objs:
+        try:
+            pos[o["id"]], o["lon_now"] = state(o, t)
+        except (ValueError, ZeroDivisionError):
+            continue
+        o["class"] = classify(o)
+    close, same = [], []
+    ids = [o for o in objs if o["id"] in pos]
+    for k, a in enumerate(ids):
+        for b in ids[k + 1:]:
+            if abs(((a["lon_now"] - b["lon_now"] + 540) % 360) - 180) > 1.0:
+                continue
+            d = math.dist(pos[a["id"]], pos[b["id"]])
+            if d <= CLOSE_KM:
+                row = {"a": [a["id"], a["name"], a["owner"]], "b": [b["id"], b["name"], b["owner"]], "km": round(d),
+                       "lon": round(a["lon_now"], 2)}
+                (same if a["owner"] and a["owner"] == b["owner"] else close).append(row)
+    close.sort(key=lambda r: r["km"])
+    mans = []
+    for prev, nxt in zip(snaps[-8:-1], snaps[-7:]):
+        for m in manoeuvres(prev, nxt):
+            m["day"] = nxt["day"]
+            mans.append(m)
+    drifting = sorted((o for o in objs if o.get("class") == "drifting"), key=lambda o: -abs(o["drift"]))
+    out = {"built_utc": now.strftime("%Y-%m-%dT%H:%MZ"), "at_utc": t.strftime("%Y-%m-%dT%H:%MZ"), "snapshot_day": cur["day"],
+           "snapshots": len(snaps), "source": CITE, "method": {"close_km": CLOSE_KM, "drift_kept": DRIFT_KEPT,
+           "inc_kept": INC_KEPT, "manoeuvre": [MAN_DRIFT, MAN_INC, MAN_LON]},
+           "counts": {"objects": len(objs), "station-kept": sum(1 for o in objs if o.get("class") == "station-kept"),
+                      "inclined": sum(1 for o in objs if o.get("class") == "inclined"), "drifting": len(drifting)},
+           "close_other_owner": close[:40], "close_same_owner_count": len(same), "manoeuvres": mans[-40:],
+           "drifting": [{"id": o["id"], "name": o["name"], "owner": o["owner"], "lon": round(o["lon_now"], 2),
+                         "drift": o["drift"]} for o in drifting[:40]],
+           "objects": [{"id": o["id"], "name": o["name"], "owner": o["owner"], "type": o.get("type"),
+                        "lon": round(o.get("lon_now", o["lon"]), 2), "drift": o["drift"], "i": round(o["i"], 2),
+                        "class": o.get("class"), "epoch": o["epoch"][:16]} for o in sorted(objs, key=lambda o: o.get("lon_now", o["lon"]))]}
+    path = os.path.join(site, "data", "geo.json")
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(out, f, separators=(",", ":"), ensure_ascii=False)
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    s = sub.add_parser("snapshot")
+    s.add_argument("--day", default=datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    s.add_argument("--out", default=os.path.join(ROOT, "data", "geo"))
+    s.add_argument("--upload", action="store_true", help="upload to this repo's release pnt-data-<YYYY-MM> (gh CLI)")
+    b = sub.add_parser("build")
+    b.add_argument("release")
+    b.add_argument("site", nargs="?", default=os.path.join(ROOT, "site"))
+    a = ap.parse_args()
+    if a.cmd == "snapshot":
+        os.makedirs(a.out, exist_ok=True)
+        snap = snapshot(a.day)
+        path = os.path.join(a.out, f"{a.day}.geo.json")
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(snap, f, separators=(",", ":"), ensure_ascii=False)
+        print(f"{path}: {snap['count']} objects")
+        if a.upload:
+            r = subprocess.run(["gh", "release", "upload", f"pnt-data-{a.day[:7]}", "-R", os.environ.get("GITHUB_REPOSITORY", REPO),
+                                "--clobber", path], capture_output=True, text=True)
+            if r.returncode:
+                sys.exit(f"upload failed: {r.stderr.strip()[:300]}")
+            print("uploaded")
+            if os.environ.get("GITHUB_OUTPUT"):
+                with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                    f.write("geo_changed=true\n")
+    else:
+        out = build(a.release, a.site)
+        c = out["counts"]
+        print(f"geo: {c['objects']} objects ({c['station-kept']} station-kept, {c['inclined']} inclined, {c['drifting']} drifting); "
+              f"{len(out['close_other_owner'])} close pairs of different owners; {len(out['manoeuvres'])} manoeuvres "
+              f"from {out['snapshots']} snapshots")
+
+
+if __name__ == "__main__":
+    main()

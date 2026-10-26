@@ -277,6 +277,15 @@ def cygnss(release, places):
 
 
 # ---------------------------------------------------------------- the board
+def geo_card(site):
+    g = load(os.path.join(site, "data", "geo.json"))
+    if not g:
+        raise ValueError("no geo.json (tools/geo.py build runs first)")
+    return {"at_utc": g["at_utc"], "snapshot_day": g["snapshot_day"], "snapshots": g["snapshots"], "counts": g["counts"],
+            "close": g["close_other_owner"][:5], "close_count": len(g["close_other_owner"]),
+            "manoeuvres": g["manoeuvres"][-4:], "manoeuvre_count": len(g["manoeuvres"]), "source": g["source"]}
+
+
 def summary_line(b):
     parts = []
     ch = b.get("changes")
@@ -326,6 +335,7 @@ def build(release, site, now=None):
     section("scintillation", scintillation)
     section("spoofing", spoofing, release, places)
     section("cygnss", cygnss, release, places)
+    section("geo", geo_card, site)
     em = load(os.path.join(site, "data", "events-monthly.json"))
     if em and em.get("months"):
         m = em["months"][-1]
@@ -340,6 +350,7 @@ def build(release, site, now=None):
         "easa_table": ((board.get("easa") or {}).get("tables") or [{}])[0].get("date"),
         "spoofing_day": (board.get("spoofing") or {}).get("day"),
         "cygnss_day": (board.get("cygnss") or {}).get("day"),
+        "geo_snapshot": (board.get("geo") or {}).get("snapshot_day"),
         "board_built": board["built_utc"],
     }
     board["summary"] = summary_line(board)

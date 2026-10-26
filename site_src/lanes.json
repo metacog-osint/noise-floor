@@ -352,16 +352,21 @@
       "id": "geo-board",
       "group": "satcom",
       "name": "GEO threat board",
-      "status": "planned",
-      "phase": "Phase 3",
+      "status": "built",
+      "phase": "Built (Oct 2026)",
       "summary": "Known inspector satellites near commercial comsats, with drift and manoeuvre flags.",
       "what": "Daily positions of known GEO inspector satellites, such as the Olymp-K (Luch) and Shijian series, against the communications satellites near them.",
       "how": "Longitude-drift and manoeuvre flags from public orbital elements. Proximity thresholds are no tighter than public element accuracy (about 50 km).",
       "data": [
         "CelesTrak orbital elements (terms UNVERIFIED)"
       ],
-      "notes": "Next after the current lane wrap-up. Terms read 26 Oct 2026: CelesTrak's orbital elements are USSPACECOM basic SSA data, which Space-Track allows to be redistributed and used in published analysis with citation; CelesTrak adds a usage policy (download once per 2-hour update). Objects catalogued since July 2026 come only in the newer OMM format. Public elements are good to tens of km at GEO, so no separation under about 50 km is claimed. Shows proximity and behaviour, never intent.",
-      "links": []
+      "notes": "Built 26 Oct 2026 (the GEO page): every active geosynchronous object from CelesTrak's public elements (USSPACECOM basic SSA data, used with citation), with its longitude, drift and class, pairs of different owners within 100 km, and manoeuvres between daily snapshots (from 26 Oct 2026). Public elements at GEO are good to tens of km, so no separation under about 50 km is claimed. Operators co-locate on purpose and servicing vehicles dock, so it shows proximity and behaviour, never intent. Not validated: a check against announced manoeuvres and published rendezvous comes next.",
+      "links": [
+        [
+          "GEO board",
+          "/geo"
+        ]
+      ]
     },
     {
       "id": "satisp",
