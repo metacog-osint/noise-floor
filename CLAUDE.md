@@ -57,7 +57,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   reads `site/data/board.json`, built at deploy by `tools/board.py` (day maps, trend, events, position loss, FAA tests,
   `site_src/official_notices.json`, and live EASA FIR and ESA scintillation snapshots; a failing source is listed in
   `problems`, never fatal). The daily run also uploads `<day>.spoof.json` (`daily_job.py --spoofing`, from late Oct 2026).
-  `tools/cygnss_daily.py` makes CYGNSS day summaries on this PC (needs `EARTHDATA_TOKEN`); publishing them waits for Tom's OK. The 20 validated days are
+  `tools/cygnss_daily.py` makes CYGNSS day summaries on this PC (needs `EARTHDATA_TOKEN`) from the 06:30 collectors task
+  (`collectors/run_daily.cmd`) and uploads them to the `cygnss-data` release (Tom approved 26 Oct 2026); the newest
+  complete day runs about six days behind. The 20 validated days are
   in the releases too (`pnt-data-2025-10`, `-2025-11`, `-2026-09`; uploaded with `daily_job.py ... --upload-local`).
 - **Backfill (22–23 Oct 2026):** `.github/workflows/backfill.yml` (Run workflow: `start`, `end`) filled 1 Oct 2025 – 6 Oct 2026.
   Phase 1 processes one month per job, two at a time (`--skip-analysis`); phase 2 runs the analyses in date order
