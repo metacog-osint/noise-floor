@@ -35,6 +35,7 @@ jobs:
     outputs:
       changed: ${{ steps.run.outputs.changed }}
       tests_changed: ${{ steps.tests.outputs.tests_changed }}
+      geo_changed: ${{ steps.geo.outputs.geo_changed }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -62,8 +63,16 @@ jobs:
           gh release download declared-data -p faa_gps_tests.json -D data/declared --clobber
           python pipeline/faa_gps_tests.py --rss
           gh release upload declared-data data/declared/faa_gps_tests.json --clobber
+      # the GEO board: one CelesTrak snapshot per run (its usage policy: once per 2-hour update), tools/geo.py
+      - name: GEO snapshot
+        id: geo
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/geo.py snapshot --upload
   deploy:
     needs: process
-    if: ${{ !cancelled() && (needs.process.outputs.changed == 'true' || needs.process.outputs.tests_changed == 'true') }}
+    if: ${{ !cancelled() && (needs.process.outputs.changed == 'true' || needs.process.outputs.tests_changed == 'true' || needs.process.outputs.geo_changed == 'true') }}
     uses: ./.github/workflows/deploy-site.yml
     secrets: inherit

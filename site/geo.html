@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GEO board · Noise Floor</title>
+<meta name="description" content="Every active geosynchronous object from public orbital data: which are drifting, which manoeuvred, and which sit close to a satellite of another owner. Proximity and behaviour, never intent.">
+<meta property="og:title" content="GEO board · Noise Floor">
+<meta property="og:description" content="Every active geosynchronous object from public orbital data: which are drifting, which manoeuvred, and which sit close to a satellite of another owner. Proximity and behaviour, never intent.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="/style.css?v=e1c22abad5">
+<link rel="alternate" type="application/atom+xml" title="Noise Floor: daily GNSS summary" href="/feed.xml">
+<script defer src="/geo.js?v=4d6a1675f6"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site"><div class="in">
+<a class="brand" href="/">Noise Floor</a>
+<nav aria-label="Main"><a href="/">Home</a><a href="/map">Map</a><a href="/sea">Sea</a><a href="/sun">Sun</a><a href="/geo" aria-current="page">GEO</a><a href="/charts">Charts</a><a href="/lanes">Lanes</a><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data</a><a href="/sources">Sources</a></nav>
+</div></header>
+<main id="main">
+<p class="kicker">Space</p>
+<h1>GEO board</h1>
+<p class="lede">Every active object in the geosynchronous belt, from public orbital elements: where it is, which are moving, which changed their orbit, and which sit close to a satellite of another owner. It shows proximity and behaviour. It never states intent.</p>
+
+<div class="callout"><p><strong>Read this first.</strong> Public elements place a satellite at GEO only to within tens of kilometres, so no separation under about 50 km is claimed, and a listed pair may be farther apart or closer than shown. Operators also place satellites close together on purpose, including across companies by agreement, and a servicing vehicle docked to its client shows as 0 km. Close approaches by inspection satellites are what this board is meant to show; it doesn't tell the two apart.</p></div>
+
+<p id="geo-status" class="small">Loading…</p>
+
+<h2 id="close">Close to a satellite of another owner</h2>
+<div id="geo-close"></div>
+
+<h2 id="manoeuvres">Manoeuvres</h2>
+<div id="geo-man"></div>
+
+<h2 id="drifting">Drifting</h2>
+<div id="geo-drift"></div>
+
+<h2 id="belt">The belt</h2>
+<div id="geo-strip"></div>
+<p><label for="geo-q">Filter</label> <input id="geo-q" type="search" placeholder="Name or owner, such as Luch or CIS" style="width:min(100%,24rem)"> <span id="geo-n" class="small"></span></p>
+<div id="geo-table"></div>
+
+<h2 id="method">Method</h2>
+<ul>
+  <li><strong>Data.</strong> CelesTrak's active geosynchronous group (GP elements in OMM format) and its catalogue records for owner and object type, taken once or twice a day by the daily run, within CelesTrak's usage policy. The elements are USSPACECOM basic SSA data, which Space-Track allows to be redistributed and used in published analysis with citation.</li>
+  <li><strong>Longitude.</strong> The sub-satellite longitude from the mean elements, carried to a common time with two-body motion. Good to a few tenths of a degree, which is tens of kilometres at GEO.</li>
+  <li><strong>Classes.</strong> Station-kept: drift under 0.1° a day and inclination under 1°. Inclined: drift under 0.1° a day, inclination 1° or more (often older satellites saving fuel). Drifting: 0.1° a day or more.</li>
+  <li><strong>Close.</strong> Objects of different owners within 100 km of each other at the common time. Pairs with the same owner are counted, not listed.</li>
+  <li><strong>Manoeuvres.</strong> Between consecutive snapshots: the drift rate changed by more than 0.02° a day, the inclination by more than 0.02°, or the longitude moved more than 0.15° from where the earlier drift put it. Snapshots began on 26 Oct 2026, so this list fills over the following days.</li>
+  <li><strong>Owners</strong> are CelesTrak's codes: CIS is Russia and the former Soviet states, PRC China, ITSO Intelsat, EUTE Eutelsat, SES SES.</li>
+</ul>
+<p class="small">Orbital data: USSPACECOM (space-track.org) via <a href="https://celestrak.org/">CelesTrak</a>; basic SSA data, redistributed with citation. Code: <a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/geo.py">tools/geo.py</a>. Data file: <a href="/data/geo.json">geo.json</a>.</p>
+
+</main>
+<footer class="site"><div class="in">
+<p>A project of The Intelligence Company. Updated 26 Oct 2026. <a href="https://github.com/metacog-osint/noise-floor">Source code</a> (MIT). <a href="/terms">Terms of use</a>.</p>
+<p>ADS-B data: <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources">Sources</a>.</p>
+</div></footer>
+</body>
+</html>
