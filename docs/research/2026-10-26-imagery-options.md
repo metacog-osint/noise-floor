@@ -172,6 +172,8 @@ Tom chose A, B and C.
   option loads tiles, and the credits show. **Not verifiable from outside:** Esri's tile server returned tiles for a
   wrong referrer and, the day before, for a made-up token, so neither the referrer restriction nor the usage count can
   be confirmed by request; the account's usage page is the check.
+- **Interference map (Tom, 26 Oct):** the same Esri option under Map options → Layers (7976ecf): no land fill, quiet
+  hexes faint and interference hexes strong, zoom to 10; not remembered between visits, so tiles load only on request.
 
 ## Not confirmed
 
