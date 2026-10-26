@@ -194,15 +194,19 @@ def read_kind(days, kind):
     return pa.concat_tables(tables, promote_options="default")
 
 
-def load_locations(days):
+def load_locations(days, since=None, until=None):
     """Positions as numpy arrays sorted by (mmsi, time), exact duplicates removed. Positions 'not available'
-    (lat 91 / lon 181) and out-of-range values are split off and counted."""
+    (lat 91 / lon 181) and out-of-range values are split off and counted. since/until (epoch seconds) keep
+    [since, until), so one collection run can be read apart from another in the same UTC day folder."""
     t = read_kind(days, "locations")
     if t is None:
         raise SystemExit("no location files found")
     d = {k: t.column(k).to_numpy(zero_copy_only=False) for k in
          ("mmsi", "time", "lat", "lon", "sog", "cog", "heading", "navStat", "posAcc", "raim", "rx_ms")}
     d["time"] = np.where(d["time"] > 0, d["time"], d["rx_ms"] // 1000).astype(np.int64)
+    if since is not None or until is not None:
+        keep = (d["time"] >= (since if since is not None else -2**62)) & (d["time"] < (until if until is not None else 2**62))
+        d = {k: v[keep] for k, v in d.items()}
     for k in ("lat", "lon", "sog", "cog"):
         d[k] = np.asarray(d[k], dtype=float)
     d["heading"] = np.nan_to_num(np.asarray(d["heading"], dtype=float), nan=511).astype(np.int16)
@@ -1252,10 +1256,13 @@ def main():
     ap.add_argument("--dest-patterns", help="file of extra destination-text regexes (one per line), e.g. in private/")
     ap.add_argument("--aircraft-days", type=int, default=14, help="aircraft GNSS days to compare (latest available)")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--since", help="keep positions from this UTC time (e.g. 2026-10-25T19:51:00Z)")
+    ap.add_argument("--until", help="keep positions before this UTC time")
     args = ap.parse_args()
 
     days = args.days or days_available()
-    L, load_stats, U = load_locations(days)
+    ep = lambda s: int(datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()) if s else None
+    L, load_stats, U = load_locations(days, ep(args.since), ep(args.until))
     meta = load_metadata(days)
     t_first, t_last = int(L["time"].min()), int(L["time"].max())
     hours = (t_last - t_first) / 3600

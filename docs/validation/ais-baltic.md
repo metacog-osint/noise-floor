@@ -292,3 +292,37 @@ New-Item -ItemType File data\ais\digitraffic\STOP
 - Yle News, Finnish Coast Guard on GNSS jamming and AIS spoofing in the Gulf of Finland (31 Oct 2024): https://yle.fi/a/74-20121555
 - Windward via Hellenic Shipping News, tanker AIS circles off the Gulf of Finland with no ship in satellite images (25 Oct 2025; vendor analysis): https://www.hellenicshippingnews.com/?p=1110298
 - C4ADS, "Above Us Only Stars: Exposing GPS Spoofing in Russia and Syria" (2019; from memory, not re-read this session)
+
+## Held-out test (pre-registered 26 Oct 2026, before the run was read)
+
+**Why.** The detector (D7 "GNSS interference likely") was built and described on 24 Oct (1.9 h, then 14 h). The 24-hour
+collection that started at **19:51:35 UTC on 25 Oct 2026** and ends about 19:51 UTC on 26 Oct had not been read by any
+detector when this section was written. It is the held-out set. Nothing above this line changes after scoring.
+
+**Frozen.** `tools/ais_detect.py` rules version "ais-0.1 (2026-10-24)", unchanged except the `--since`/`--until` time
+window added with this section (data selection only). Command:
+`python tools/ais_detect.py --days 2026-10-25 2026-10-26 --since 2026-10-25T19:51:00Z --preset plan`.
+The ship-reported fix flags come from the same run's REST polls (`fixflags.parquet`, rows from 19:51 UTC on 25 Oct on).
+
+**Development-day reference (24 Oct, 14 h).** 26 of 206 vessels in the Gulf of Finland east of 27°E were flagged
+(12.6%); 3 of 813 in the other covered sea areas (0.37%); 26 of 29 flagged vessels with a trusted position were in the
+eastern Gulf (90%).
+
+**Definitions.** A flagged vessel is one in the detector's `spoof_victims` list; its area is the region of its trusted
+positions (`victims_by_trusted_region`). The eastern Gulf is the region "Gulf of Finland east of 27E"
+(59.3–60.8°N, 27.0–30.6°E). Control areas: every other named sea region in the detector (Bothnian Bay and Kvarken,
+Bothnian Sea, Archipelago Sea and Aland, Gulf of Finland 22.5–27E, Northern Baltic Proper, Gulf of Riga, Narva Bay);
+not "Other" or the inland lakes. Denominators: vessels with positions in each region (`gnss_by_region[...].vessels`).
+
+| # | Check | Pass if |
+|---|---|---|
+| H1 | False-positive rate in the control areas | flagged ÷ vessels ≤ 1.5% |
+| H2 | Concentration where interference is known | ≥ 60% of flagged vessels with a trusted position are in the eastern Gulf, **and** the eastern Gulf's flagged share is ≥ 10× the control share |
+| H3 | The ships' own reports (independent of the detector, which never reads them) | Among vessels with positions in the eastern Gulf and at least one REST poll, the share reporting UTC-second 62 (dead reckoning) or 63 (positioning inoperative) at least once is ≥ 3× higher for flagged than for unflagged vessels, with at least 3 flagged vessels reporting 62 or 63 |
+| H4 | The aircraft map (independent sensor, area level) | On 26 Oct (the daily table published on 27 Oct; if it isn't out at scoring, 25 Oct, stated), the share of aircraft at jamming scale (`bad_nacp_live` ÷ `aircraft`, summed over hexes whose centres fall in the region box) in the eastern Gulf is ≥ 5× the share over the control-area boxes combined |
+
+**Verdict rule.** Validated (regional: Finnish waters and the approaches) if H1 and H2 pass and at least one of H3 and
+H4 passes. Partly validated if H1 and H2 pass but neither H3 nor H4 does. Not validated if H1 or H2 fails. H4 is the
+weaker independent check, because the eastern Gulf's aircraft degradation was known before this test; H3 is the
+stronger. Reported but not scored: flagged vessels per hour, the spoofed-to centres, and whether the circle near
+57.7°N 32.5°E is used again.
