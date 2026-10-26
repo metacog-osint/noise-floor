@@ -1,6 +1,6 @@
 # CYGNSS noise-floor lane: first validation (23 Oct 2026)
 
-**Lane:** spaceborne (planned, Phase 7). **Tool:** `tools/cygnss_rfi.py`, tests in `tests/test_cygnss_rfi.py`.
+**Lane:** spaceborne (**CYGNSS validated, coarse**, 26 Oct 2026: all six pre-registered held-out checks hold, section 9; the announced-US-test check came out "not shown"). **Tool:** `tools/cygnss_rfi.py`, tests in `tests/test_cygnss_rfi.py`.
 **Data:** NASA CYGNSS Level 1 Science Data Record V3.2 (PO.DAAC), six UTC days: 2 Jan, 24 Feb, 9, 10 and 16 May, and 19 Oct 2026.
 **Reference:** the project's aircraft map, H3 res-4 daily tables in `data/pnt/year/<day>.parquet`, aggregated to res 3.
 **Held-out test (24 Oct 2026):** 21 more days chosen by a date rule, with the rules pre-registered in section 8 before any was fetched; results in section 9. Same-hour and FAA-test checks are in sections 9.5 and 9.6.
