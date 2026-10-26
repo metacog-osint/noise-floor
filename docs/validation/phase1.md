@@ -258,6 +258,28 @@ Then:
 | 26 | Do post-exposure aircraft explain the nightly central-Europe bursts? | 33 → 26 events, smaller peaks, 6 quiet nights vs 2; 38–47% of aircraft in the remaining bursts tagged | **Partly** |
 | 27 | Type concentration, all days | A359 19.4×, A388 19.2×, B77W 4.7×. Narrowbodies are about 1×, except the A321 at 3.0× | **Found** |
 
+## A350/A380: no clean fix by type (verdict 48, 26 Oct 2026)
+
+Verdict 43 found that A350s and A380s report degraded accuracy when a single satellite is flagged, stay visible while
+degraded where other types go dark, and stay degraded 4–8 times longer. The question here: can the daily method drop
+that artefact without losing real detections? Seven variants were run on the 20 validated days, one read per day.
+
+- **A350s and A380s carry the suspect bursts and the real ones.** They are a median 61% of the degraded aircraft-minutes
+  in central and western European night bursts (24 of 39 bursts are more than half A350/A380) and 71% in Black Sea and
+  Caucasus bursts (50 of 60). Removing them by type removes both.
+- **"Accuracy-only" can't be read from the messages.** On these types NIC drops to 0 together with NACp in 87% of their
+  degraded reports outside the Baltic box, as for other types. Any variant has to decide by context.
+- **Their degradation is rarely corroborated.** Only 6% of their degraded hex-hours had other aircraft degraded in the
+  same hex-hour; 11% counting the six neighbouring hexes.
+- **Every type-based variant cost real detections.** Setting unsupported A350/A380 hex-hours apart cut major 93 m anomaly
+  events from 35 to 13 and erased the Estonia–Russia border hotspot (94.3% → 5.0%), because few other aircraft fly
+  there. Judging on the hex and its neighbours ("ring") kept 33 of 35 major events and the border hotspot (92.0%) and cut
+  central and western European night bursts from 38 to 30, but its thresholds were chosen on these same days.
+- **What changed instead (no threshold):** the type chart shows A350s and A380s apart, and every daily, hourly and minute
+  table counts how many of the degraded aircraft were A350s or A380s (`heavy_live`, `heavy`; from 25 Oct 2026), so each
+  event says how much it rests on those types. v1.5 stays in the code, off by default; a switch to "ring" needs a
+  held-out check on backfill days first.
+
 ## Next
 
 1. **Why the rest of the burst aircraft go untagged.** Two possible causes, not yet checked:
@@ -306,6 +328,7 @@ Then:
 | 39 | False look-alike: Kiruna weather-radar fault and exercise chaff, 5–6 Mar 2024 (66.5–69.5°N, 17–25°E) | 0.0% and 1.0% degraded, against 0.0% on 27 Feb (88–104 aircraft-hexes a day) | **Pass.** A weather-radar artefact leaves no GNSS signal (coverage there is thin) |
 | 40 | Radio-horizon localizer, first version (southern Baltic; 9 May, 2 Jan, 1 Feb, 24 Feb 2026) | Stacked best crossing at 55.10°N 19.52°E, offshore about 55 km NW of Baltiysk, with NACp events at 80% of the radio horizon. Day by day, every top peak lies within about 20–80 km of the western Sambia peninsula | **Points at the Sambia coast, not yet a fix.** The reach scale was tuned on the same days and moves the peak by up to about 50 km |
 | 41 | Localizer against the 2025 TDOA fixes (Gattis, Cydejko & Akos 2026), scored with settings fixed in advance | Top peak 20 km from the Baltiysk-harbour fix on 3 Apr; 37, 48 and 45 km from the coastal-site fix on 15 Apr, 17 Apr and 21 Jun (1 hit of 4 at 25 km; 0 of 2 in the interference windows). The target cell always ranked in the top 2% of 3,496 cells. Mean miss 38 km, against 38 km for naming Kaliningrad city and 52 km for the centroid of onsets | **Fail.** It finds the area but not the site: the two TDOA sites are 21 km apart, finer than the localizer resolves |
+| 48 | Can the A350/A380 reporting artefact (verdict 43) be removed by aircraft type? Seven variants on the 20 validated days, including v1.5 (`pnt_daily.py --heavy-apart`, off by default) | A350/A380 carry a median 61% of degraded aircraft-minutes in central/western European night bursts and 71% in Black Sea/Caucasus bursts; 6% of their degraded hex-hours had other aircraft degraded there (11% with neighbours). Setting unsupported ones apart: major 93 m anomaly events 35 → 13, Estonia–Russia border 94.3% → 5.0%. The 'ring' variant keeps 33 of 35, but its thresholds were set on these days | **No clean fix by type; the method stays v1.4.** A350s and A380s are shown apart in the type chart, every daily table counts them (`heavy_live`, from 25 Oct 2026), and any detector change waits for a held-out check |
 | 47 | Gulf of Finland: when did aircraft start losing positions? Crossing test (wide-region extracts) on 9 days of 2024–2025 beside the 8 days of 2026 | Eastern Gulf seen: 71–100% in 2024 (7–21 crossings a day), 60–87% Feb–Jun 2025, 21–28% Oct–Dec 2025, 25–37% Jan–Jul 2026, 6–11% Aug–Oct 2026; western Gulf 52–84% to Jun 2025, 39–46% Oct–Dec 2025, 20–27% Aug–Oct 2026; Sweden control 94–100% throughout | **Position loss began between June and October 2025, a few months after the area east of Kaliningrad, and deepened through 2026.** Degraded-but-kept positions were common there already in 2024 |
 | 46 | When did the loss east of Kaliningrad start? The same crossing test on every other raw day on disk: 9 days of 2024, 8 more of Feb–Jun 2025, 5 of Oct–Dec 2025 | Suwałki–Ełk box seen: 89–100% on all 9 days of 2024 (Feb–Oct, including 20 Jun 2024); 47% on 20 Feb 2025; 2–26% from late Apr to Jun 2025; 63–74% Oct–Dec 2025; 0.5–3% Jun–Oct 2026. Central Poland 37–70% throughout | **A change that began between late Oct 2024 and Feb 2025, not a long-running season.** It eased only partly in winter 2025–26 and has been heavier and longer in 2026 |
 | 45 | Position loss east of Kaliningrad, Apr 2025 – Oct 2026: crossing test in four boxes (Suwałki–Ełk, Grodno area, Kaunas, central Poland as control) on 20 days of raw traces | Suwałki–Ełk box seen on ADS-B: 20–36% (Apr 2025), 2–5% (late May–Jun 2025), 57–72% (Jan–Feb 2026, outside the holiday surge), 1–3% (Jun–Oct 2026). Grodno and Kaunas boxes the same shape; central Poland 37–68% throughout | **Recurring summer position loss, longer in 2026.** Aircraft fly through but lose GNSS positions (in 2026 mostly seen as MLAT-only, in 2025 as dark). The daily per-hex share understates it, because aircraft without positions drop out |
@@ -729,7 +752,7 @@ The crossing test on wide-region extracts (52–61.5N, 8–34E, `data/trace_box_
 2. ~~A missing-aircraft measure~~ **Done (22 Oct 2026):** the map's "Fewer aircraft than usual" view (each hex's count against its 14-day median), and hollow dots on the daily trend for days under half the area's usual aircraft-hexes.
 3. **Why the Baltic is worse at night: partly answered** (verdict 36). It's not altitude, it's partly carried in, and mostly local. Left: a route-by-route comparison, and more days.
 4. **Positive controls for the ADS-B lane** remain the announced US tests: WSMR is verified and Point Mugu is confirmed. The Kurils and Jammertest don't work for this lane.
-5. ~~Test the A350 visibility hypothesis~~ **Done (verdict 43):** confirmed. A350/A380 degraded episodes also last 4–8 times longer, which fits a documented avionics behaviour. Next: count A350/A380 accuracy-only drops apart in the burst and post-exposure measures, and rerun the validated days.
+5. ~~Test the A350 visibility hypothesis~~ **Done (verdict 43):** confirmed. A350/A380 degraded episodes also last 4–8 times longer, which fits a documented avionics behaviour. Counting them apart (verdict 48): no clean fix by type; the method stays v1.4, with A350/A380 counted in every table.
 
 Sources for this section (retrieved 22 Oct 2026):
 - Danish Defence, "Danish and Polish forces will be training together on Bornholm", 4 May 2026: [forsvaret.dk](https://www.forsvaret.dk/en/news/2026/danske-og-polske-soldater-traner-sammen-pa-bornholm/).
