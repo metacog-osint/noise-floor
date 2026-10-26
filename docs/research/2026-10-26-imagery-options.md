@@ -161,20 +161,17 @@ Tom chose A, B and C.
 - **A, link-outs:** live on the Sea ship panel and the GNSS map's area history (36e9c30).
 - **B, Sentinel-2 by month:** live on the Sea map (36e9c30). Built on Planetary Computer's tile service rather than
   chips we host, so it works anywhere in the map without a list of places (a list would be watch configuration).
-- **C, Esri World Imagery:** built on the `esri-imagery` branch: the Sea map option, `functions/api/imagery.js` (a
+- **C, Esri World Imagery:** live from 26 Oct 2026 (48baa95): the Sea map option, `functions/api/imagery.js` (a
   Cloudflare Pages Function that hands out the key only outside the barred countries and regions, tested on 16 cases),
-  the `/terms` page, and attribution. It stays hidden until the key exists. Tom's steps:
-  1. Sign up for ArcGIS Location Platform at location.arcgis.com. Check that no card is asked for; leave pay-as-you-go
-     off, so use stops at the free tier instead of billing.
-  2. Create an API key credential with the basemap privilege, restricted to the referrer
-     `https://noisefloor.theintelligence.company`, expiring in at most a year (note the date for renewal).
-  3. Store it as a Cloudflare Pages secret named `ESRI_API_KEY` for production, without passing it through Claude:
-     `npx wrangler pages secret put ESRI_API_KEY --project-name noise-floor` (it prompts for the value), or in the
-     Cloudflare dashboard under the noise-floor Pages project's variables and secrets.
-  4. Merge the pull request and run Actions → deploy-site → Run workflow, so a new deployment picks up the secret.
-  Steps 1–3 follow Esri's and Cloudflare's documentation; they were not checked against today's screens. The tile
-  address (`ibasemaps-api.arcgis.com/.../World_Imagery/MapServer/tile/{z}/{y}/{x}?token=`) matches what Esri's own
-  Leaflet plugin requests, but it can only be tested once the key exists.
+  the `/terms` page, and attribution. Tom created the key on 26 Oct with one privilege (Location services → Basemaps →
+  Static basemap tiles, as in Esri's Leaflet raster tutorial), the referrer `https://noisefloor.theintelligence.company`
+  and an expiry of **26 Oct 2027 (renew before then)**, and stored it as the Pages secret `ESRI_API_KEY` with
+  `npx wrangler pages secret put`. One key per app: the free allowance is per account anyway, and separate keys can be
+  rotated, scoped and checked against Esri's export terms app by app.
+  Checked live: `/api/imagery` returns the key to a US visitor (`Cache-Control: private, no-store`), the Sea map's Esri
+  option loads tiles, and the credits show. **Not verifiable from outside:** Esri's tile server returned tiles for a
+  wrong referrer and, the day before, for a made-up token, so neither the referrer restriction nor the usage count can
+  be confirmed by request; the account's usage page is the check.
 
 ## Not confirmed
 
