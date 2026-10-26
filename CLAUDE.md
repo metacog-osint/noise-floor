@@ -53,7 +53,11 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   as the done marker) and calls `deploy-site.yml`, which adds every release's map files to `site/data/gnss/`
   (`tools/site_days.py`). Rerun or fill days with Actions → daily → Run workflow (`days`, `force`; `reanalyse` reruns only the analyses,
   with no adsb.lol download, after `pnt_analysis.py` changes). The map page's events panel reads `site/data/events/<day>.json`;
-  the charts page's daily trend reads `site/data/trend.json` (both built at deploy for daily days). The 20 validated days are
+  the charts page's daily trend reads `site/data/trend.json` (both built at deploy for daily days). The home page status board
+  reads `site/data/board.json`, built at deploy by `tools/board.py` (day maps, trend, events, position loss, FAA tests,
+  `site_src/official_notices.json`, and live EASA FIR and ESA scintillation snapshots; a failing source is listed in
+  `problems`, never fatal). The daily run also uploads `<day>.spoof.json` (`daily_job.py --spoofing`, from late Oct 2026).
+  `tools/cygnss_daily.py` makes CYGNSS day summaries on this PC (needs `EARTHDATA_TOKEN`); publishing them waits for Tom's OK. The 20 validated days are
   in the releases too (`pnt-data-2025-10`, `-2025-11`, `-2026-09`; uploaded with `daily_job.py ... --upload-local`).
 - **Backfill (22–23 Oct 2026):** `.github/workflows/backfill.yml` (Run workflow: `start`, `end`) filled 1 Oct 2025 – 6 Oct 2026.
   Phase 1 processes one month per job, two at a time (`--skip-analysis`); phase 2 runs the analyses in date order
