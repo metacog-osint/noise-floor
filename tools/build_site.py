@@ -66,7 +66,7 @@ PAGE = """<!doctype html>
 {body}
 </main>
 <footer class="site"><div class="in">
-<p>A project of The Intelligence Company. Updated {updated}. <a href="{repo}">Source code</a> (MIT).</p>
+<p>A project of The Intelligence Company. Updated {updated}. <a href="{repo}">Source code</a> (MIT). <a href="/terms">Terms of use</a>.</p>
 <p>ADS-B data: <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources">Sources</a>.</p>
 </div></footer>
 </body>
@@ -262,14 +262,14 @@ def main():
              "{{SOURCE_COUNT}}": str(len(rows)), "{{VESSELS_V}}": data_version("vessels")}
     fills.update(chart_fills())
     written = []
-    for name in ("index.html", "map.html", "sea.html", "charts.html", "methods.html", "validation.html", "data.html", "404.html"):
+    for name in ("index.html", "map.html", "sea.html", "charts.html", "methods.html", "validation.html", "data.html", "terms.html", "404.html"):
         meta, body = read_page(name)
         for k, v in fills.items():
             body = body.replace(k, v)
         if "{{" in body:
             sys.exit(f"{name}: unfilled placeholder")
         open(os.path.join(OUT, name), "w", encoding="utf-8", newline="\n").write(
-            render(meta, body, updated, narrow=name in ("methods.html", "404.html")))
+            render(meta, body, updated, narrow=name in ("methods.html", "terms.html", "404.html")))
         written.append(name)
     open(os.path.join(OUT, "lanes.html"), "w", encoding="utf-8", newline="\n").write(render(
         {"title": "Lanes · Noise Floor", "description": "Every Noise Floor lane, built and planned: what it measures, how, which sources, and its limits.",
