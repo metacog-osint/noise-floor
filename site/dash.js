@@ -205,8 +205,10 @@
     state.alerts = r[1] ? radioAlerts(r[1]) : [];
     state.deploy = r[2];
     renderAll();
-    var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 1200); };
-    idle(function () {                    // the event list is large: fetch it after the page has settled
+    var later = function (fn) {           // the event list is large: fetch it after the page has settled, within 3 s at most
+      if (window.requestIdleCallback) window.requestIdleCallback(fn, { timeout: 3000 }); else setTimeout(fn, 1200);
+    };
+    later(function () {
       get(SWPC + "json/edited_events.json").then(function (ev) { state.bursts = ev ? burstsFrom(ev) : []; renderAll(); });
     });
   });
