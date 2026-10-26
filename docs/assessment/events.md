@@ -5,8 +5,8 @@
 ## Bottom line
 
 > **v1.0, 26 Oct 2026: rules frozen.** Rebuilt register: 388 days (1 Oct 2025 – 25 Oct 2026), 964,600 observations,
-> **160,147 events** (159,317 EFFECT, 756 WARNING, 74 NATURAL). 8,632 events reach "Multiple sources", 1,058
-> "Partially corroborated". Verdicts of the EFFECT events: 157,721 open, 905 benign_natural (N2 818, N1 87, N3 0),
+> **160,147 events** (159,317 EFFECT, 756 WARNING, 74 NATURAL). 8,632 events reach "Multiple sources", 1,538
+> "Partially corroborated" (480 of them through the two official Baltic notices). Verdicts of the EFFECT events: 157,721 open, 905 benign_natural (N2 818, N1 87, N3 0),
 > **691 planned**, **0 deliberate_suspected** (no official jamming notice is on file). The FL250 radius is the change
 > that shows: over the same days as v0.2 (to 22 Oct), planned effect events fall from 908 to 685 (−25%) and lone test
 > notices rise from 644 to 753. Monthly counts by grade are public (Validation page); the register stays private.
@@ -31,7 +31,8 @@ The run covers 385 days (1 Oct 2025 – 22 Oct 2026, UTC): 94,651 observations f
 **What this version can't do yet:**
 
 - `deliberate_suspected` is wired (rule D1, v1.0) but no notice reporting jamming or spoofing is on file. NGA's
-  broadcast-warning feed has been frozen since 10 May 2024, and no other official warning feed is ingested yet.
+  broadcast-warning feed has been frozen since 10 May 2024, and the official Baltic notices say "interference", which
+  corroborates but doesn't set D1.
 - No localization method feeds the lane, so `localization_error_km` is null everywhere.
 - CYGNSS exists for six days only, and it agrees with ADS-B in time only to the day.
 
@@ -60,8 +61,11 @@ each is a stated choice that a held-out test can later confirm or replace.
    "GPS unreliable in vicinity Malta". It can't feed D1. D1 therefore reads a curated file of official notices,
    `data/declared/notices.json`, kept the way the sun-outage reports file is: each entry is one official notice (NGA,
    a NAVAREA coordinator, a NOTAM) with its link, validity and text, and its issuer must be in the source registry first.
-   The file is empty on 26 Oct 2026, so D1 hasn't fired. The watch collector now reports NGA as an error while its feed
-   stays frozen.
+   Two official notices are on file from 26 Oct 2026: BALTIC SEA NAV WARN 030/26 (from 12 Oct 2026) and the joint
+   Estonia–Finland Gulf of Finland warning (from 17 Jun 2025). Both say "interference", not jamming, so they corroborate
+   (S2) and D1 hasn't fired; the sources checked are in `docs/research/2026-10-26-official-gnss-notices.md`. EASA's weekly
+   FIR table, which marks spoofing by area, is the open candidate for D1 (Tom's decision). The watch collector now
+   reports NGA as an error while its feed stays frozen.
 5. **The 600 km event cap and the 3-hex level threshold stay**, flagged as unvalidated. **Publication:** monthly counts by
    grade (`python tools/events.py publish`), never the register.
 
@@ -209,14 +213,14 @@ An `open` event also carries a hint when a benign explanation is plausible but n
 
 ## Results, v1.0 (1 Oct 2025 – 25 Oct 2026, built 26 Oct 2026)
 
-388 days, 964,600 observations (853,022 CYGNSS raised cells, 29,759 CYGNSS dropout cells, 57,439 ADS-B anomaly events,
-11,431 bursts, 10,530 level regions, 990 SBAS runs, 1,355 announced-test days, 74 Kp storm runs, 0 notices), fused into
-160,147 events. The 22–25 Oct per-hex tables came from the October data release, so those days have the level check too.
+388 days, 965,002 observations (853,022 CYGNSS raised cells, 29,759 CYGNSS dropout cells, 57,439 ADS-B anomaly events,
+11,431 bursts, 10,530 level regions, 990 SBAS runs, 1,355 announced-test days, 402 notice-days from the two official Baltic
+notices, 74 Kp storm runs), fused into 160,147 events. The 22–25 Oct per-hex tables came from the October data release, so those days have the level check too.
 
 | Field | Counts |
 |---|---|
 | signal_type | EFFECT 159,317 · WARNING 756 · NATURAL 74 |
-| support | Single-source 150,457 · Partially corroborated 1,058 · Multiple sources 8,632 |
+| support | Single-source 149,977 · Partially corroborated 1,538 · Multiple sources 8,632 |
 | attribution_status | none 159,456 · candidate 691 · attributed 0 |
 | verdict (all events) | open 157,721 · benign_natural 979 · planned 1,447 · deliberate_suspected 0 |
 | verdict rules | V0 157,721 · P2 756 · P1 691 · N2 818 · N1 87 · N0 74 · N3 0 · D1 0 |
@@ -231,8 +235,11 @@ An `open` event also carries a hint when a benign explanation is plausible but n
 | rf (CYGNSS) | 99,511 | 0 | 0 |
 | dropout (CYGNSS) | 5,445 | 0 | 0 |
 
-**Open events with a benign hint:** `storm_partial` 4,984 · `sbas_equipage` 649 · `test_partial` 359 · `sbas_service` 102 ·
-`notice_interference` 0.
+**Open events with a benign hint:** `storm_partial` 4,984 · `sbas_equipage` 649 · `notice_interference` 400 ·
+`test_partial` 359 · `sbas_service` 102.
+
+**The two official notices** attach to 480 events (all `interference_reported`, rule D-): they raise those events to
+"Partially corroborated" and change no verdict, because neither says jamming or spoofing.
 
 **What v1.0 changed, same days as v0.2 (1 Oct 2025 – 22 Oct 2026):**
 
@@ -247,8 +254,9 @@ An `open` event also carries a hint when a benign explanation is plausible but n
 
 All of it comes from the FL250 radius: effects between the FL250 and FL400 rings no longer match, so fewer events are
 `planned`, more test notices stand alone, and the four effect events that were `planned` only because of the wider ring
-now fall to a natural rule. N3 and D1 changed nothing yet: the scintillation check ran on 419 events (21–25 Oct, the
-hours archived so far), all below moderate, and no notice is on file.
+now fall to a natural rule. N3 and D1 changed no verdict: the scintillation check ran on 419 events (21–25 Oct, the
+hours archived so far), all below moderate, and the two notices on file say "interference". (The same-days table above
+is from the build before the notices were added; the notices change only support.)
 
 **Planned-test cross-check.** The site's event files tag 1,292 anomalies and bursts as consistent with an announced
 test, using the widest ring; rules P1 and P- match 1,054 with the FL250 ring; 983 have both. The 309 tags the rule
@@ -439,8 +447,8 @@ A full build takes about 4 minutes on this PC.
   - **Place:** to the beam. The noise enters through a beam a few hundred km wide plus sidelobes, so one strong emitter raises a region. "Multiple sources" here means both sensors were exposed in the same area on the same day, not that the same transmitter was measured twice.
   - **Chance:** the field condition fires for about 22% of random land points in the band (an upper bound that includes the real interference regions).
   - **Validation:** the CYGNSS validation rests on four regions and six days. Nothing here is a region-held-out test.
-- **Official notices are curated by hand, and none is on file yet.**
-  - NGA's feed is frozen (10 May 2024) and no other official warning feed is ingested, so `deliberate_suspected` stays at zero until notices are added to `data/declared/notices.json` or a NOTAM source is wired in.
+- **Official notices are curated by hand, and none that reports jamming is on file.**
+  - NGA's feed is frozen (10 May 2024); the two Baltic notices on file say "interference" and have no coordinates, so their positions are approximate circles along the named sea areas. `deliberate_suspected` stays at zero until a notice with jamming or spoofing wording is added, EASA's FIR marks are adopted, or a NOTAM source is wired in.
   - That is deliberate. "Multiple sources" raises support, not the verdict, and our own data never sets D1: the notice is the evidence of intent.
 - **The 10 m measure dominates the count.** Most events are 10 m-only departures from baseline. Those are weak signals: SBAS use, equipage and the ionosphere all move them. Filter on `effect_measure` (gross, both, capable, rf, dropout) when reading the register.
 - **Announced-test radius.** From v1.0, P1 uses the FL250 ring the map draws. Aircraft at cruise above FL250 can be affected farther out, so some effects of a real test now stay `open` (hint `test_partial` when part of the event matches). The site's event-panel tags still use the widest ring.

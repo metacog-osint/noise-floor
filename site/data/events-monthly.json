@@ -1,6 +1,6 @@
 {
  "version": "events v1.0",
- "register_built_utc": "2026-10-26T17:40Z",
+ "register_built_utc": "2026-10-26T18:52Z",
  "first_day": "2025-10-01",
  "last_day": "2026-10-25",
  "unit": "events per UTC month",
@@ -25,8 +25,8 @@
     "NATURAL": 11
    },
    "effect_support": {
-    "Single-source, unverified": 11292,
-    "Partially corroborated": 57,
+    "Single-source, unverified": 11251,
+    "Partially corroborated": 98,
     "Multiple sources": 512
    },
    "effect_verdict": {
@@ -51,8 +51,8 @@
     "NATURAL": 7
    },
    "effect_support": {
-    "Single-source, unverified": 12261,
-    "Partially corroborated": 68,
+    "Single-source, unverified": 12229,
+    "Partially corroborated": 100,
     "Multiple sources": 596
    },
    "effect_verdict": {
@@ -77,8 +77,8 @@
     "NATURAL": 5
    },
    "effect_support": {
-    "Single-source, unverified": 11933,
-    "Partially corroborated": 11,
+    "Single-source, unverified": 11895,
+    "Partially corroborated": 49,
     "Multiple sources": 655
    },
    "effect_verdict": {
@@ -103,8 +103,8 @@
     "NATURAL": 10
    },
    "effect_support": {
-    "Single-source, unverified": 12283,
-    "Partially corroborated": 89,
+    "Single-source, unverified": 12244,
+    "Partially corroborated": 128,
     "Multiple sources": 637
    },
    "effect_verdict": {
@@ -129,8 +129,8 @@
     "NATURAL": 5
    },
    "effect_support": {
-    "Single-source, unverified": 10714,
-    "Partially corroborated": 63,
+    "Single-source, unverified": 10678,
+    "Partially corroborated": 99,
     "Multiple sources": 499
    },
    "effect_verdict": {
@@ -155,8 +155,8 @@
     "NATURAL": 10
    },
    "effect_support": {
-    "Single-source, unverified": 12913,
-    "Partially corroborated": 162,
+    "Single-source, unverified": 12878,
+    "Partially corroborated": 197,
     "Multiple sources": 844
    },
    "effect_verdict": {
@@ -181,8 +181,8 @@
     "NATURAL": 7
    },
    "effect_support": {
-    "Single-source, unverified": 11560,
-    "Partially corroborated": 161,
+    "Single-source, unverified": 11529,
+    "Partially corroborated": 192,
     "Multiple sources": 592
    },
    "effect_verdict": {
@@ -207,8 +207,8 @@
     "NATURAL": 4
    },
    "effect_support": {
-    "Single-source, unverified": 11614,
-    "Partially corroborated": 86,
+    "Single-source, unverified": 11577,
+    "Partially corroborated": 123,
     "Multiple sources": 711
    },
    "effect_verdict": {
@@ -233,8 +233,8 @@
     "NATURAL": 3
    },
    "effect_support": {
-    "Single-source, unverified": 11394,
-    "Partially corroborated": 62,
+    "Single-source, unverified": 11358,
+    "Partially corroborated": 98,
     "Multiple sources": 656
    },
    "effect_verdict": {
@@ -259,8 +259,8 @@
     "NATURAL": 3
    },
    "effect_support": {
-    "Single-source, unverified": 11687,
-    "Partially corroborated": 60,
+    "Single-source, unverified": 11653,
+    "Partially corroborated": 94,
     "Multiple sources": 863
    },
    "effect_verdict": {
@@ -285,8 +285,8 @@
     "NATURAL": 4
    },
    "effect_support": {
-    "Single-source, unverified": 11483,
-    "Partially corroborated": 99,
+    "Single-source, unverified": 11448,
+    "Partially corroborated": 134,
     "Multiple sources": 783
    },
    "effect_verdict": {
@@ -311,8 +311,8 @@
     "NATURAL": 1
    },
    "effect_support": {
-    "Single-source, unverified": 11632,
-    "Partially corroborated": 95,
+    "Single-source, unverified": 11597,
+    "Partially corroborated": 130,
     "Multiple sources": 776
    },
    "effect_verdict": {
@@ -337,8 +337,8 @@
     "NATURAL": 4
    },
    "effect_support": {
-    "Single-source, unverified": 8861,
-    "Partially corroborated": 45,
+    "Single-source, unverified": 8810,
+    "Partially corroborated": 96,
     "Multiple sources": 508
    },
    "effect_verdict": {
