@@ -126,6 +126,22 @@ touched; the detector then drops detections on or within 40 m of that land and r
 stays the pre-registered primary. Both will be scored on the held-out pass with the same checks and verdict rule, and
 both reported.
 
+**Amendment 3 (26 Oct 2026, committed before the held-out pass was read).** Two rules, both from the development
+findings above, applied to variant A and variant B alike (`dark_match.py score --amend3`):
+
+- **Fixed-object map.** Every Sentinel-1 pass over the scored regions from 10 to 23 Oct 2026 (39 passes, development
+  period only, no AIS) is run through the same detector (`dark_match.py clutter`). A place where a detection falls
+  within 100 m in at least half of the passes whose scoring area covers it, with at least 4 covering passes, is a fixed
+  object (rocks and islets missing from the coastlines, beacons, buoys, aquaculture). Detections there count neither as
+  ships nor as dark ships. A vessel anchored at one spot through most of those passes would also be removed: stated, not
+  corrected.
+- **Ghost rule.** An unmatched detection lying 3.5–7.5 km from a matched detection, or from a known AIS vessel of 50 m or
+  more, along the satellite track (the pass's along-track bearing from the image geometry) and within 800 m across it,
+  is an azimuth ghost, not a dark ship.
+
+H1–H3 and the verdict rule are unchanged. The held-out pass is scored for variant A as pre-registered, and for both
+variants with amendments 2 and 3; all are reported.
+
 **Not scored yet, on purpose.** On the development passes both variants would come out "partly validated" (H3 fails). A
 ghost rule that uses AIS-positioned ships, and a fixed-site map from more passes, would be decided and written here as
 amendment 3 before the held-out pass is read. Until then the held-out pass stays unread.
