@@ -1,6 +1,8 @@
 name: daily
 # Phase 2: process each new adsb.lol day (pipeline/daily_job.py), publish the outputs as assets on this repo's
 # release pnt-data-YYYY-MM (ODbL 1.0), then redeploy the site so the map shows the day.
+# --position-loss adds <day>.loss.parquet and <day>.loss_daily.parquet (docs/validation/position-loss.md); reanalyse runs
+# ignore it.
 # adsb.lol publishes day D at about 03:30 UTC on D+1. Each run checks the last 7 days and fills any gap.
 on:
   schedule:
@@ -47,7 +49,7 @@ jobs:
           DAYS: ${{ inputs.days }}
           FORCE: ${{ inputs.force && '--force' || '' }}
           REANALYSE: ${{ inputs.reanalyse && '--reanalyse' || '' }}
-        run: python pipeline/daily_job.py $DAYS $FORCE $REANALYSE
+        run: python pipeline/daily_job.py $DAYS $FORCE $REANALYSE --position-loss
       # declared events: announced US GPS interference tests from the FAA's public flight advisories
       - name: Announced GPS tests
         id: tests
