@@ -15,7 +15,6 @@ import html
 import json
 import os
 import re
-import shutil
 import sys
 from collections import Counter
 
@@ -96,9 +95,14 @@ ASSETS = ("style.css", "map.js", "sea.js", "charts.js", "home.js", "data.js", "i
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
 
+def asset_bytes(f):
+    """An asset's bytes with line endings normalised, so a Windows checkout (core.autocrlf) and CI build the same site."""
+    return open(os.path.join(SRC, f), "rb").read().replace(b"\r\n", b"\n")
+
+
 def asset_versions():
     for f in ASSETS:
-        ASSET_V[f] = hashlib.sha256(open(os.path.join(SRC, f), "rb").read()).hexdigest()[:10]
+        ASSET_V[f] = hashlib.sha256(asset_bytes(f)).hexdigest()[:10]
 
 
 def data_version(folder):
@@ -279,7 +283,7 @@ def main():
          "nav": "sources"}, sources_page(rows), updated))
     written += ["lanes.html", "sources.html"]
     for f in ASSETS:
-        shutil.copy(os.path.join(SRC, f), os.path.join(OUT, f))
+        open(os.path.join(OUT, f), "wb").write(asset_bytes(f))
     open(os.path.join(OUT, "robots.txt"), "w", newline="\n").write("User-agent: *\nAllow: /\n")
     year, day, hour, short = ("public, max-age=31536000, immutable", "public, max-age=86400, stale-while-revalidate=604800",
                               "public, max-age=3600, stale-while-revalidate=86400", "public, max-age=300, stale-while-revalidate=3600")
