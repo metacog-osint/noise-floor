@@ -1,0 +1,64 @@
+{
+  "_about": "Pre-registered NISAR test against announced US GPS tests (docs/validation/nisar.md section 6): site US14, Lakewood, MI, tests NSWCSC GPS 26-25 (FAA SPANS). Run from nisar/: python -m nisar_rfi run --config validation/faa/US14.json --start 2026-06-17 --end 2026-10-26 --seed",
+  "aoi": {
+    "name": "FAA test site US14 (Lakewood, MI)",
+    "bbox": [
+      -84.009,
+      44.56,
+      -82.809,
+      45.76
+    ]
+  },
+  "collections": [
+    "NISAR_L2_GCOV_PROVISIONAL_V1"
+  ],
+  "max_granules_per_run": 200,
+  "keep_days": 400,
+  "cell_m": 500,
+  "frequencies": [
+    "A",
+    "B"
+  ],
+  "alert_min_confidence": "MEDIUM",
+  "detect": {
+    "seed_z": 5.0,
+    "grow_z": 2.0,
+    "min_cells": 4,
+    "min_excess_db": 1.5,
+    "line_km": 4.5
+  },
+  "sites": {
+    "site_prefix": "US14",
+    "match_km": 25,
+    "quiet_after": 2,
+    "fix_min_cross_deg": 20
+  },
+  "ignore": [],
+  "state_dir": "private/nisar/validation-faa/US14/state",
+  "out_dir": "private/nisar/validation-faa/US14/out",
+  "method": "tables",
+  "screen": {
+    "min_score": 0.0,
+    "every": 1
+  },
+  "tables": {
+    "height_m": 1500.0
+  },
+  "cache_tables": true,
+  "faa_site": {
+    "centre": [
+      45.1603,
+      -83.4094
+    ],
+    "centres": [
+      [
+        45.1603,
+        -83.4094
+      ]
+    ],
+    "tests": [
+      "NSWCSC GPS 26-25"
+    ],
+    "place": "Lakewood, MI"
+  }
+}

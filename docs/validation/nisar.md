@@ -147,6 +147,39 @@ A 30-day run over a private watch area (429 passes, 22 Sep – 21 Oct 2026) incl
 - the accuracy of positions against a surveyed emitter;
 - behaviour on horizontally polarized emitters, which raise HH more than HV and are under-detected by design.
 
+## 6. Announced US GPS tests (pre-registered 26 Oct 2026, before any of these frames was run)
+
+**Why.** Section 5 left position accuracy open for want of an emitter with a known place and time. Announced US GPS
+interference tests give both: each FAA flight advisory (SPANS, US public domain; `data/declared/faa_gps_tests.json`)
+states a centre point and the transmission windows. A CMR search on 26 Oct 2026 found 77 NISAR frames acquired over a
+test centre inside an announced window, 62 of them PROVISIONAL products (which carry the processor's RFI tables), at 16
+sites from Hawaii to New Jersey (`nisar/validation/faa/frames_in_window.json`; sites and configs from
+`nisar/validation/faa_tests.py configs`).
+
+**Two limits stated in advance.** An announced window doesn't prove the jammer was transmitting at the second NISAR
+passed: test activity inside a window is intermittent. And the advisories don't say which GPS bands are jammed; NISAR's
+band A (1215–1300 MHz) contains L2 (1227.6 MHz) but not L1, so an L1-only test is invisible to it. Both limits push the
+in-window hit rate down, never up, so they make the test harder to pass, not easier.
+
+**Frozen.** `nisar_rfi` as of this commit, combined pipeline (processor tables and the broadband detector, section 5
+gates unchanged), run per site over every PROVISIONAL GCOV pass from 17 Jun to 26 Oct 2026:
+`python -m nisar_rfi run --config validation/faa/<site>.json --start 2026-06-17 --end 2026-10-26 --seed`.
+Scored with `python validation/faa_tests.py score`.
+
+**Definitions.** A pass counts when its frame footprint contains the site's announced centre. It is *in-window* if it
+started inside an announced window of any test at that site (±5 min), and a *control* otherwise (the same sites and
+geometries on days without an announced test). A *hit* is a MEDIUM or HIGH detection, tone or broadband, within 50 km
+of the announced centre.
+
+| # | Check | Pass if |
+|---|---|---|
+| N1 | Announced tests are seen | at least 3 in-window hits, and the in-window hit rate at least twice the control hit rate |
+| N2 | Position accuracy (descriptive) | reported: the distance from each in-window hit to the announced centre, and the median |
+
+**Verdict rule.** N1 passing means NISAR shows announced US tests. N2 is the lane's first measure of position accuracy.
+The announced centre is the advisory's reference point; a test range may have several transmitter sites, so a few km
+of error may belong to the reference, not the method. Results go below, without changing anything above.
+
 ## Reproduce
 
 ```sh

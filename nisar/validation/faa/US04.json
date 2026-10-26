@@ -1,0 +1,64 @@
+{
+  "_about": "Pre-registered NISAR test against announced US GPS tests (docs/validation/nisar.md section 6): site US04, Dugway Proving Ground, UT, tests DPG GPS 26-17 REV 1 (FAA SPANS). Run from nisar/: python -m nisar_rfi run --config validation/faa/US04.json --start 2026-06-17 --end 2026-10-26 --seed",
+  "aoi": {
+    "name": "FAA test site US04 (Dugway Proving Ground, UT)",
+    "bbox": [
+      -113.857,
+      39.572,
+      -112.657,
+      40.773
+    ]
+  },
+  "collections": [
+    "NISAR_L2_GCOV_PROVISIONAL_V1"
+  ],
+  "max_granules_per_run": 200,
+  "keep_days": 400,
+  "cell_m": 500,
+  "frequencies": [
+    "A",
+    "B"
+  ],
+  "alert_min_confidence": "MEDIUM",
+  "detect": {
+    "seed_z": 5.0,
+    "grow_z": 2.0,
+    "min_cells": 4,
+    "min_excess_db": 1.5,
+    "line_km": 4.5
+  },
+  "sites": {
+    "site_prefix": "US04",
+    "match_km": 25,
+    "quiet_after": 2,
+    "fix_min_cross_deg": 20
+  },
+  "ignore": [],
+  "state_dir": "private/nisar/validation-faa/US04/state",
+  "out_dir": "private/nisar/validation-faa/US04/out",
+  "method": "tables",
+  "screen": {
+    "min_score": 0.0,
+    "every": 1
+  },
+  "tables": {
+    "height_m": 1500.0
+  },
+  "cache_tables": true,
+  "faa_site": {
+    "centre": [
+      40.1725,
+      -113.2569
+    ],
+    "centres": [
+      [
+        40.1725,
+        -113.2569
+      ]
+    ],
+    "tests": [
+      "DPG GPS 26-17 REV 1"
+    ],
+    "place": "Dugway Proving Ground, UT"
+  }
+}

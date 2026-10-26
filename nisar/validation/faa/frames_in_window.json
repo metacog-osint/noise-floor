@@ -1,0 +1,2057 @@
+[
+ {
+  "test": "CHLKCA GPS 26-07",
+  "place": "China Lake, CA",
+  "centre": [
+   35.765,
+   -117.7314
+  ],
+  "radii_nm": {
+   "10000FT": 201,
+   "4000FT AGL": 174,
+   "50FT AGL": 136,
+   "FL250": 299,
+   "FL400": 346
+  },
+  "window": [
+   "2026-09-25T06:01:00+00:00",
+   "2026-09-25T13:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_031_106_A_020_4005_DHDH_A_20260925T130037_20260925T130112_P05023_N_F_J_001",
+  "start": "2026-09-25T13:00:37Z",
+  "track": 106,
+  "frame": 20,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15193"
+ },
+ {
+  "test": "CHLKCA GPS 26-07",
+  "place": "China Lake, CA",
+  "centre": [
+   35.765,
+   -117.7314
+  ],
+  "radii_nm": {
+   "10000FT": 201,
+   "4000FT AGL": 174,
+   "50FT AGL": 136,
+   "FL250": 299,
+   "FL400": 346
+  },
+  "window": [
+   "2026-09-25T06:01:00+00:00",
+   "2026-09-25T13:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_031_106_A_020_4005_DHDH_A_20260925T130037_20260925T130112_P05023_N_F_J_001",
+  "start": "2026-09-25T13:00:37Z",
+  "track": 106,
+  "frame": 20,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15193"
+ },
+ {
+  "test": "CPGRMI GPS 26-02",
+  "place": "Camp Grayling, MI",
+  "centre": [
+   44.7272,
+   -84.7356
+  ],
+  "radii_nm": {
+   "10000FT": 47,
+   "4000FT AGL": 44,
+   "50FT AGL": 32,
+   "FL250": 48,
+   "FL400": 47
+  },
+  "window": [
+   "2026-08-14T03:00:00+00:00",
+   "2026-08-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_028_018_A_024_2005_QPDH_A_20260814T103301_20260814T103338_P05023_N_F_J_001",
+  "start": "2026-08-14T10:33:01Z",
+  "track": 18,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15116"
+ },
+ {
+  "test": "CPGRMI GPS 26-02",
+  "place": "Camp Grayling, MI",
+  "centre": [
+   44.7272,
+   -84.7356
+  ],
+  "radii_nm": {
+   "10000FT": 47,
+   "4000FT AGL": 44,
+   "50FT AGL": 32,
+   "FL250": 48,
+   "FL400": 47
+  },
+  "window": [
+   "2026-08-14T03:00:00+00:00",
+   "2026-08-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_028_018_A_024_2005_QPDH_A_20260814T103301_20260814T103338_P05023_N_F_J_001",
+  "start": "2026-08-14T10:33:01Z",
+  "track": 18,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15116"
+ },
+ {
+  "test": "CPGRMI GPS 26-51 REV 1",
+  "place": "Camp Grayling, MI",
+  "centre": [
+   44.7006,
+   -84.6439
+  ],
+  "radii_nm": {
+   "10000FT": 177,
+   "4000FT AGL": 137,
+   "50FT AGL": 80,
+   "FL250": 242,
+   "FL400": 294
+  },
+  "window": [
+   "2026-06-22T04:00:00+00:00",
+   "2026-06-22T11:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_023_119_A_024_2005_QPDH_A_20260622T104124_20260622T104201_P05023_N_F_J_001",
+  "start": "2026-06-22T10:41:24Z",
+  "track": 119,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15015"
+ },
+ {
+  "test": "CPGRMI GPS 26-51 REV 1",
+  "place": "Camp Grayling, MI",
+  "centre": [
+   44.7006,
+   -84.6439
+  ],
+  "radii_nm": {
+   "10000FT": 177,
+   "4000FT AGL": 137,
+   "50FT AGL": 80,
+   "FL250": 242,
+   "FL400": 294
+  },
+  "window": [
+   "2026-06-27T04:00:00+00:00",
+   "2026-06-27T11:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_024_018_A_024_2005_QPDH_A_20260627T103304_20260627T103341_P05023_N_F_J_001",
+  "start": "2026-06-27T10:33:04Z",
+  "track": 18,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15015"
+ },
+ {
+  "test": "CPGRMI GPS 26-51 REV 1",
+  "place": "Camp Grayling, MI",
+  "centre": [
+   44.7006,
+   -84.6439
+  ],
+  "radii_nm": {
+   "10000FT": 177,
+   "4000FT AGL": 137,
+   "50FT AGL": 80,
+   "FL250": 242,
+   "FL400": 294
+  },
+  "window": [
+   "2026-06-22T04:00:00+00:00",
+   "2026-06-22T11:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_023_119_A_024_2005_QPDH_A_20260622T104124_20260622T104201_P05023_N_F_J_001",
+  "start": "2026-06-22T10:41:24Z",
+  "track": 119,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15015"
+ },
+ {
+  "test": "CPGRMI GPS 26-51 REV 1",
+  "place": "Camp Grayling, MI",
+  "centre": [
+   44.7006,
+   -84.6439
+  ],
+  "radii_nm": {
+   "10000FT": 177,
+   "4000FT AGL": 137,
+   "50FT AGL": 80,
+   "FL250": 242,
+   "FL400": 294
+  },
+  "window": [
+   "2026-06-27T04:00:00+00:00",
+   "2026-06-27T11:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_024_018_A_024_2005_QPDH_A_20260627T103304_20260627T103341_P05023_N_F_J_001",
+  "start": "2026-06-27T10:33:04Z",
+  "track": 18,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15015"
+ },
+ {
+  "test": "CPGRMI GPS 26-79 REV 1",
+  "place": "Camp Grayling, MI",
+  "centre": [
+   44.7006,
+   -84.6439
+  ],
+  "radii_nm": {
+   "10000FT": 177,
+   "4000FT AGL": 137,
+   "50FT AGL": 80,
+   "FL250": 242,
+   "FL400": 294
+  },
+  "window": [
+   "2026-09-14T04:00:00+00:00",
+   "2026-09-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_030_119_A_024_2005_QPDH_A_20260914T104121_20260914T104157_P05023_N_F_J_001",
+  "start": "2026-09-14T10:41:21Z",
+  "track": 119,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15173"
+ },
+ {
+  "test": "CPGRMI GPS 26-79 REV 1",
+  "place": "Camp Grayling, MI",
+  "centre": [
+   44.7006,
+   -84.6439
+  ],
+  "radii_nm": {
+   "10000FT": 177,
+   "4000FT AGL": 137,
+   "50FT AGL": 80,
+   "FL250": 242,
+   "FL400": 294
+  },
+  "window": [
+   "2026-09-14T04:00:00+00:00",
+   "2026-09-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_030_119_A_024_2005_QPDH_A_20260914T104121_20260914T104157_P05023_N_F_J_001",
+  "start": "2026-09-14T10:41:21Z",
+  "track": 119,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15173"
+ },
+ {
+  "test": "CSG4 GPS 26-04 REV 3",
+  "place": "Off the Coast, SC",
+  "centre": [
+   32.25,
+   -79.75
+  ],
+  "radii_nm": {
+   "10000FT": 178,
+   "4000FT AGL": 132,
+   "50FT AGL": 66,
+   "FL250": 247,
+   "FL400": 295
+  },
+  "window": [
+   "2026-09-07T10:00:00+00:00",
+   "2026-09-07T22:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_030_018_A_018_4005_SHSH_A_20260907T102951_20260907T103014_P05023_N_P_J_001",
+  "start": "2026-09-07T10:29:51Z",
+  "track": 18,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15171"
+ },
+ {
+  "test": "CSG4 GPS 26-04 REV 3",
+  "place": "Off the Coast, SC",
+  "centre": [
+   32.25,
+   -79.75
+  ],
+  "radii_nm": {
+   "10000FT": 178,
+   "4000FT AGL": 132,
+   "50FT AGL": 66,
+   "FL250": 247,
+   "FL400": 295
+  },
+  "window": [
+   "2026-09-07T10:00:00+00:00",
+   "2026-09-07T22:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_030_018_A_018_4005_SHSH_A_20260907T102951_20260907T103014_P05023_N_P_J_002",
+  "start": "2026-09-07T10:29:51Z",
+  "track": 18,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15171"
+ },
+ {
+  "test": "CSG4 GPS 26-04 REV 3",
+  "place": "Off the Coast, SC",
+  "centre": [
+   32.25,
+   -79.75
+  ],
+  "radii_nm": {
+   "10000FT": 178,
+   "4000FT AGL": 132,
+   "50FT AGL": 66,
+   "FL250": 247,
+   "FL400": 295
+  },
+  "window": [
+   "2026-09-07T10:00:00+00:00",
+   "2026-09-07T22:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_030_018_A_018_4005_SHSH_A_20260907T102951_20260907T103014_P05023_N_P_J_001",
+  "start": "2026-09-07T10:29:51Z",
+  "track": 18,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15171"
+ },
+ {
+  "test": "CSG4 GPS 26-04 REV 3",
+  "place": "Off the Coast, SC",
+  "centre": [
+   32.25,
+   -79.75
+  ],
+  "radii_nm": {
+   "10000FT": 178,
+   "4000FT AGL": 132,
+   "50FT AGL": 66,
+   "FL250": 247,
+   "FL400": 295
+  },
+  "window": [
+   "2026-09-07T10:00:00+00:00",
+   "2026-09-07T22:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_030_018_A_018_4005_SHSH_A_20260907T102951_20260907T103014_P05023_N_P_J_002",
+  "start": "2026-09-07T10:29:51Z",
+  "track": 18,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15171"
+ },
+ {
+  "test": "DPG GPS 26-17 REV 1",
+  "place": "Dugway Proving Ground, UT",
+  "centre": [
+   40.1725,
+   -113.2569
+  ],
+  "radii_nm": {
+   "10000FT": 187,
+   "4000FT AGL": 187,
+   "50FT AGL": 157,
+   "FL250": 245,
+   "FL400": 304
+  },
+  "window": [
+   "2026-08-18T06:01:00+00:00",
+   "2026-08-18T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_028_077_A_022_4005_DHDH_A_20260818T124506_20260818T124541_P05023_N_F_J_001",
+  "start": "2026-08-18T12:45:06Z",
+  "track": 77,
+  "frame": 22,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15140"
+ },
+ {
+  "test": "DPG GPS 26-17 REV 1",
+  "place": "Dugway Proving Ground, UT",
+  "centre": [
+   40.1725,
+   -113.2569
+  ],
+  "radii_nm": {
+   "10000FT": 187,
+   "4000FT AGL": 187,
+   "50FT AGL": 157,
+   "FL250": 245,
+   "FL400": 304
+  },
+  "window": [
+   "2026-08-23T06:01:00+00:00",
+   "2026-08-23T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_028_149_A_022_4005_DHDH_A_20260823T123650_20260823T123721_P05023_N_F_J_001",
+  "start": "2026-08-23T12:36:50Z",
+  "track": 149,
+  "frame": 22,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15140"
+ },
+ {
+  "test": "DPG GPS 26-17 REV 1",
+  "place": "Dugway Proving Ground, UT",
+  "centre": [
+   40.1725,
+   -113.2569
+  ],
+  "radii_nm": {
+   "10000FT": 187,
+   "4000FT AGL": 187,
+   "50FT AGL": 157,
+   "FL250": 245,
+   "FL400": 304
+  },
+  "window": [
+   "2026-08-18T06:01:00+00:00",
+   "2026-08-18T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_028_077_A_022_4005_DHDH_A_20260818T124506_20260818T124541_P05023_N_F_J_001",
+  "start": "2026-08-18T12:45:06Z",
+  "track": 77,
+  "frame": 22,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15140"
+ },
+ {
+  "test": "DPG GPS 26-17 REV 1",
+  "place": "Dugway Proving Ground, UT",
+  "centre": [
+   40.1725,
+   -113.2569
+  ],
+  "radii_nm": {
+   "10000FT": 187,
+   "4000FT AGL": 187,
+   "50FT AGL": 157,
+   "FL250": 245,
+   "FL400": 304
+  },
+  "window": [
+   "2026-08-23T06:01:00+00:00",
+   "2026-08-23T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_028_149_A_022_4005_DHDH_A_20260823T123650_20260823T123721_P05023_N_F_J_001",
+  "start": "2026-08-23T12:36:50Z",
+  "track": 149,
+  "frame": 22,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15140"
+ },
+ {
+  "test": "EPG_AZ GPS 25-14",
+  "place": "Electronic Proving Ground, AZ",
+  "centre": [
+   31.5964,
+   -110.2847
+  ],
+  "radii_nm": {
+   "10000FT": 101,
+   "4000FT AGL": 108,
+   "50FT AGL": 69,
+   "FL250": 138,
+   "FL400": 138
+  },
+  "window": [
+   "2025-12-09T07:00:00+00:00",
+   "2025-12-09T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_BETA_V1",
+  "granule": "NISAR_L2_PR_GCOV_007_077_A_017_4005_DHDH_A_20251209T124219_20251209T124254_X05009_N_F_J_001",
+  "start": "2025-12-09T12:42:19Z",
+  "track": 77,
+  "frame": 17,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14746"
+ },
+ {
+  "test": "EPG_AZ GPS 25-14",
+  "place": "Electronic Proving Ground, AZ",
+  "centre": [
+   31.5964,
+   -110.2847
+  ],
+  "radii_nm": {
+   "10000FT": 101,
+   "4000FT AGL": 108,
+   "50FT AGL": 69,
+   "FL250": 138,
+   "FL400": 138
+  },
+  "window": [
+   "2025-12-09T07:00:00+00:00",
+   "2025-12-09T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_BETA_V1",
+  "granule": "NISAR_L1_PR_RSLC_007_077_A_017_4005_DHDH_A_20251209T124219_20251209T124254_X05009_N_F_J_001",
+  "start": "2025-12-09T12:42:19Z",
+  "track": 77,
+  "frame": 17,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14746"
+ },
+ {
+  "test": "EPG_AZ GPS 26-09",
+  "place": "Fort Huachuca, AZ",
+  "centre": [
+   31.5792,
+   -110.2792
+  ],
+  "radii_nm": {
+   "10000FT": 158,
+   "4000FT AGL": 158,
+   "50FT AGL": 128,
+   "FL250": 210,
+   "FL400": 271
+  },
+  "window": [
+   "2026-08-23T07:00:00+00:00",
+   "2026-08-23T13:30:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_028_149_A_017_4005_DHDH_A_20260823T123358_20260823T123432_P05023_N_F_J_001",
+  "start": "2026-08-23T12:33:58Z",
+  "track": 149,
+  "frame": 17,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15144"
+ },
+ {
+  "test": "EPG_AZ GPS 26-09",
+  "place": "Fort Huachuca, AZ",
+  "centre": [
+   31.5792,
+   -110.2792
+  ],
+  "radii_nm": {
+   "10000FT": 158,
+   "4000FT AGL": 158,
+   "50FT AGL": 128,
+   "FL250": 210,
+   "FL400": 271
+  },
+  "window": [
+   "2026-08-23T07:00:00+00:00",
+   "2026-08-23T13:30:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_028_149_A_018_4005_DHDH_A_20260823T123431_20260823T123506_P05023_N_F_J_001",
+  "start": "2026-08-23T12:34:31Z",
+  "track": 149,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15144"
+ },
+ {
+  "test": "EPG_AZ GPS 26-09",
+  "place": "Fort Huachuca, AZ",
+  "centre": [
+   31.5792,
+   -110.2792
+  ],
+  "radii_nm": {
+   "10000FT": 158,
+   "4000FT AGL": 158,
+   "50FT AGL": 128,
+   "FL250": 210,
+   "FL400": 271
+  },
+  "window": [
+   "2026-08-23T07:00:00+00:00",
+   "2026-08-23T13:30:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_028_149_A_017_4005_DHDH_A_20260823T123358_20260823T123432_P05023_N_F_J_001",
+  "start": "2026-08-23T12:33:58Z",
+  "track": 149,
+  "frame": 17,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15144"
+ },
+ {
+  "test": "EPG_AZ GPS 26-09",
+  "place": "Fort Huachuca, AZ",
+  "centre": [
+   31.5792,
+   -110.2792
+  ],
+  "radii_nm": {
+   "10000FT": 158,
+   "4000FT AGL": 158,
+   "50FT AGL": 128,
+   "FL250": 210,
+   "FL400": 271
+  },
+  "window": [
+   "2026-08-23T07:00:00+00:00",
+   "2026-08-23T13:30:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_028_149_A_018_4005_DHDH_A_20260823T123431_20260823T123506_P05023_N_F_J_001",
+  "start": "2026-08-23T12:34:31Z",
+  "track": 149,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15144"
+ },
+ {
+  "test": "FTBRNC GPS 26-80 REV 1",
+  "place": "Fort Bragg, NC",
+  "centre": [
+   35.1417,
+   -79.2822
+  ],
+  "radii_nm": {
+   "10000FT": 46,
+   "4000FT AGL": 42,
+   "50FT AGL": 22,
+   "FL250": 45,
+   "FL400": 45
+  },
+  "window": [
+   "2026-09-25T00:00:00+00:00",
+   "2026-09-25T09:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_031_098_D_071_4005_DHDH_A_20260925T001044_20260925T001118_P05023_N_F_J_001",
+  "start": "2026-09-25T00:10:44Z",
+  "track": 98,
+  "frame": 71,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15192"
+ },
+ {
+  "test": "FTBRNC GPS 26-80 REV 1",
+  "place": "Fort Bragg, NC",
+  "centre": [
+   35.1417,
+   -79.2822
+  ],
+  "radii_nm": {
+   "10000FT": 46,
+   "4000FT AGL": 42,
+   "50FT AGL": 22,
+   "FL250": 45,
+   "FL400": 45
+  },
+  "window": [
+   "2026-09-25T00:00:00+00:00",
+   "2026-09-25T09:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_031_098_D_071_4005_DHDH_A_20260925T001044_20260925T001118_P05023_N_F_J_001",
+  "start": "2026-09-25T00:10:44Z",
+  "track": 98,
+  "frame": 71,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15192"
+ },
+ {
+  "test": "FTDXNJ GPS 26-60",
+  "place": "Fort Dix, NJ",
+  "centre": [
+   40.0203,
+   -74.4706
+  ],
+  "radii_nm": {
+   "10000FT": 142,
+   "4000FT AGL": 104,
+   "50FT AGL": 58,
+   "FL250": 207,
+   "FL400": 254
+  },
+  "window": [
+   "2026-08-10T07:00:00+00:00",
+   "2026-08-10T09:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_027_133_A_022_4005_DHDH_A_20260810T095840_20260810T095913_P05023_N_F_J_001",
+  "start": "2026-08-10T09:58:40Z",
+  "track": 133,
+  "frame": 22,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15126"
+ },
+ {
+  "test": "FTDXNJ GPS 26-60",
+  "place": "Fort Dix, NJ",
+  "centre": [
+   40.0203,
+   -74.4706
+  ],
+  "radii_nm": {
+   "10000FT": 142,
+   "4000FT AGL": 104,
+   "50FT AGL": 58,
+   "FL250": 207,
+   "FL400": 254
+  },
+  "window": [
+   "2026-08-10T07:00:00+00:00",
+   "2026-08-10T09:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_027_133_A_022_4005_DHDH_A_20260810T095840_20260810T095913_P05023_N_F_J_001",
+  "start": "2026-08-10T09:58:40Z",
+  "track": 133,
+  "frame": 22,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15126"
+ },
+ {
+  "test": "FTIRCA GPS 26-54 REV 2",
+  "place": "Fort Irwin, CA",
+  "centre": [
+   35.3628,
+   -116.5392
+  ],
+  "radii_nm": {
+   "AREA": 300
+  },
+  "window": [
+   "2026-07-20T11:00:00+00:00",
+   "2026-07-20T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_026_005_A_019_4005_DHDH_A_20260720T125145_20260720T125220_P05023_N_F_J_001",
+  "start": "2026-07-20T12:51:45Z",
+  "track": 5,
+  "frame": 19,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15085"
+ },
+ {
+  "test": "FTIRCA GPS 26-54 REV 2",
+  "place": "Fort Irwin, CA",
+  "centre": [
+   35.3628,
+   -116.5392
+  ],
+  "radii_nm": {
+   "AREA": 300
+  },
+  "window": [
+   "2026-07-20T11:00:00+00:00",
+   "2026-07-20T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_026_005_A_020_4005_DHDH_A_20260720T125219_20260720T125254_P05023_N_F_J_001",
+  "start": "2026-07-20T12:52:19Z",
+  "track": 5,
+  "frame": 20,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15085"
+ },
+ {
+  "test": "FTIRCA GPS 26-54 REV 2",
+  "place": "Fort Irwin, CA",
+  "centre": [
+   35.3628,
+   -116.5392
+  ],
+  "radii_nm": {
+   "AREA": 300
+  },
+  "window": [
+   "2026-07-27T11:00:00+00:00",
+   "2026-07-27T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_026_106_A_019_4005_DHDH_A_20260727T130005_20260727T130039_P05023_N_F_J_001",
+  "start": "2026-07-27T13:00:05Z",
+  "track": 106,
+  "frame": 19,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15085"
+ },
+ {
+  "test": "FTIRCA GPS 26-54 REV 2",
+  "place": "Fort Irwin, CA",
+  "centre": [
+   35.3628,
+   -116.5392
+  ],
+  "radii_nm": {
+   "AREA": 300
+  },
+  "window": [
+   "2026-07-20T11:00:00+00:00",
+   "2026-07-20T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_026_005_A_019_4005_DHDH_A_20260720T125145_20260720T125220_P05023_N_F_J_001",
+  "start": "2026-07-20T12:51:45Z",
+  "track": 5,
+  "frame": 19,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15085"
+ },
+ {
+  "test": "FTIRCA GPS 26-54 REV 2",
+  "place": "Fort Irwin, CA",
+  "centre": [
+   35.3628,
+   -116.5392
+  ],
+  "radii_nm": {
+   "AREA": 300
+  },
+  "window": [
+   "2026-07-20T11:00:00+00:00",
+   "2026-07-20T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_026_005_A_020_4005_DHDH_A_20260720T125219_20260720T125254_P05023_N_F_J_001",
+  "start": "2026-07-20T12:52:19Z",
+  "track": 5,
+  "frame": 20,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15085"
+ },
+ {
+  "test": "FTIRCA GPS 26-54 REV 2",
+  "place": "Fort Irwin, CA",
+  "centre": [
+   35.3628,
+   -116.5392
+  ],
+  "radii_nm": {
+   "AREA": 300
+  },
+  "window": [
+   "2026-07-27T11:00:00+00:00",
+   "2026-07-27T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_026_106_A_019_4005_DHDH_A_20260727T130005_20260727T130039_P05023_N_F_J_001",
+  "start": "2026-07-27T13:00:05Z",
+  "track": 106,
+  "frame": 19,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15085"
+ },
+ {
+  "test": "FTPKLA GPS 26-06",
+  "place": "Fort Polk, LA",
+  "centre": [
+   31.1986,
+   -93.1053
+  ],
+  "radii_nm": {
+   "10000FT": 151,
+   "4000FT AGL": 106,
+   "50FT AGL": 54,
+   "FL250": 216,
+   "FL400": 264
+  },
+  "window": [
+   "2026-01-15T00:01:00+00:00",
+   "2026-01-15T04:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_BETA_V1",
+  "granule": "NISAR_L2_PR_GCOV_010_084_D_073_4005_DHDH_A_20260115T005334_20260115T005407_X05010_N_F_J_001",
+  "start": "2026-01-15T00:53:34Z",
+  "track": 84,
+  "frame": 73,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14779"
+ },
+ {
+  "test": "FTPKLA GPS 26-06",
+  "place": "Fort Polk, LA",
+  "centre": [
+   31.1986,
+   -93.1053
+  ],
+  "radii_nm": {
+   "10000FT": 151,
+   "4000FT AGL": 106,
+   "50FT AGL": 54,
+   "FL250": 216,
+   "FL400": 264
+  },
+  "window": [
+   "2026-01-15T00:01:00+00:00",
+   "2026-01-15T04:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_BETA_V1",
+  "granule": "NISAR_L1_PR_RSLC_010_084_D_073_4005_DHDH_A_20260115T005334_20260115T005407_X05010_N_F_J_001",
+  "start": "2026-01-15T00:53:34Z",
+  "track": 84,
+  "frame": 73,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14779"
+ },
+ {
+  "test": "FTPKLA GPS 26-58 REV 1",
+  "place": "Fort Polk, LA",
+  "centre": [
+   31.1983,
+   -93.1053
+  ],
+  "radii_nm": {
+   "10000FT": 151,
+   "4000FT AGL": 106,
+   "50FT AGL": 54,
+   "FL250": 216,
+   "FL400": 264
+  },
+  "window": [
+   "2026-08-27T00:01:00+00:00",
+   "2026-08-27T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_029_033_A_017_4005_DHDH_A_20260827T112722_20260827T112757_P05023_N_F_J_001",
+  "start": "2026-08-27T11:27:22Z",
+  "track": 33,
+  "frame": 17,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15156"
+ },
+ {
+  "test": "FTPKLA GPS 26-58 REV 1",
+  "place": "Fort Polk, LA",
+  "centre": [
+   31.1983,
+   -93.1053
+  ],
+  "radii_nm": {
+   "10000FT": 151,
+   "4000FT AGL": 106,
+   "50FT AGL": 54,
+   "FL250": 216,
+   "FL400": 264
+  },
+  "window": [
+   "2026-08-31T00:01:00+00:00",
+   "2026-08-31T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_029_084_D_073_4005_DHDH_A_20260831T005330_20260831T005403_P05023_N_F_J_001",
+  "start": "2026-08-31T00:53:30Z",
+  "track": 84,
+  "frame": 73,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15156"
+ },
+ {
+  "test": "FTPKLA GPS 26-58 REV 1",
+  "place": "Fort Polk, LA",
+  "centre": [
+   31.1983,
+   -93.1053
+  ],
+  "radii_nm": {
+   "10000FT": 151,
+   "4000FT AGL": 106,
+   "50FT AGL": 54,
+   "FL250": 216,
+   "FL400": 264
+  },
+  "window": [
+   "2026-09-07T00:01:00+00:00",
+   "2026-09-07T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_030_012_D_073_4005_DHDH_A_20260907T010148_20260907T010222_P05023_N_F_J_001",
+  "start": "2026-09-07T01:01:48Z",
+  "track": 12,
+  "frame": 73,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15156"
+ },
+ {
+  "test": "FTPKLA GPS 26-58 REV 1",
+  "place": "Fort Polk, LA",
+  "centre": [
+   31.1983,
+   -93.1053
+  ],
+  "radii_nm": {
+   "10000FT": 151,
+   "4000FT AGL": 106,
+   "50FT AGL": 54,
+   "FL250": 216,
+   "FL400": 264
+  },
+  "window": [
+   "2026-08-27T00:01:00+00:00",
+   "2026-08-27T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_029_033_A_017_4005_DHDH_A_20260827T112722_20260827T112757_P05023_N_F_J_001",
+  "start": "2026-08-27T11:27:22Z",
+  "track": 33,
+  "frame": 17,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15156"
+ },
+ {
+  "test": "FTPKLA GPS 26-58 REV 1",
+  "place": "Fort Polk, LA",
+  "centre": [
+   31.1983,
+   -93.1053
+  ],
+  "radii_nm": {
+   "10000FT": 151,
+   "4000FT AGL": 106,
+   "50FT AGL": 54,
+   "FL250": 216,
+   "FL400": 264
+  },
+  "window": [
+   "2026-08-31T00:01:00+00:00",
+   "2026-08-31T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_029_084_D_073_4005_DHDH_A_20260831T005330_20260831T005403_P05023_N_F_J_001",
+  "start": "2026-08-31T00:53:30Z",
+  "track": 84,
+  "frame": 73,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15156"
+ },
+ {
+  "test": "FTPKLA GPS 26-58 REV 1",
+  "place": "Fort Polk, LA",
+  "centre": [
+   31.1983,
+   -93.1053
+  ],
+  "radii_nm": {
+   "10000FT": 151,
+   "4000FT AGL": 106,
+   "50FT AGL": 54,
+   "FL250": 216,
+   "FL400": 264
+  },
+  "window": [
+   "2026-09-07T00:01:00+00:00",
+   "2026-09-07T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_030_012_D_073_4005_DHDH_A_20260907T010148_20260907T010222_P05023_N_F_J_001",
+  "start": "2026-09-07T01:01:48Z",
+  "track": 12,
+  "frame": 73,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15156"
+ },
+ {
+  "test": "GAFCFL GPS 26-07",
+  "place": "Eglin AFB, FL",
+  "centre": [
+   30.485,
+   -86.5211
+  ],
+  "radii_nm": {
+   "10000FT": 185,
+   "4000FT AGL": 137,
+   "50FT AGL": 83,
+   "FL250": 257,
+   "FL400": 307
+  },
+  "window": [
+   "2026-10-17T00:00:00+00:00",
+   "2026-10-17T10:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_033_076_A_017_4005_DHDH_A_20261017T110224_20261017T110259_P05023_N_F_J_001",
+  "start": "2026-10-17T11:02:24Z",
+  "track": 76,
+  "frame": 17,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15246"
+ },
+ {
+  "test": "GAFCFL GPS 26-07",
+  "place": "Eglin AFB, FL",
+  "centre": [
+   30.485,
+   -86.5211
+  ],
+  "radii_nm": {
+   "10000FT": 185,
+   "4000FT AGL": 137,
+   "50FT AGL": 83,
+   "FL250": 257,
+   "FL400": 307
+  },
+  "window": [
+   "2026-10-17T00:00:00+00:00",
+   "2026-10-17T10:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_033_076_A_017_4005_DHDH_A_20261017T110224_20261017T110259_P05023_N_F_J_001",
+  "start": "2026-10-17T11:02:24Z",
+  "track": 76,
+  "frame": 17,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15246"
+ },
+ {
+  "test": "GAFCFL GPS 26-11",
+  "place": "Eglin AFB, FL",
+  "centre": [
+   30.6419,
+   -86.3631
+  ],
+  "radii_nm": {
+   "10000FT": 209,
+   "4000FT AGL": 160,
+   "50FT AGL": 124,
+   "FL250": 282,
+   "FL400": 330
+  },
+  "window": [
+   "2026-10-21T00:00:00+00:00",
+   "2026-10-21T13:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_033_127_D_073_4005_DHDH_A_20261021T002830_20261021T002905_P05023_N_F_J_001",
+  "start": "2026-10-21T00:28:30Z",
+  "track": 127,
+  "frame": 73,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15272"
+ },
+ {
+  "test": "GAFCFL GPS 26-11",
+  "place": "Eglin AFB, FL",
+  "centre": [
+   30.6419,
+   -86.3631
+  ],
+  "radii_nm": {
+   "10000FT": 209,
+   "4000FT AGL": 160,
+   "50FT AGL": 124,
+   "FL250": 282,
+   "FL400": 330
+  },
+  "window": [
+   "2026-10-21T00:00:00+00:00",
+   "2026-10-21T13:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_033_127_D_073_4005_DHDH_A_20261021T002830_20261021T002905_P05023_N_F_J_001",
+  "start": "2026-10-21T00:28:30Z",
+  "track": 127,
+  "frame": 73,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15272"
+ },
+ {
+  "test": "GAFCMS GPS 26-06",
+  "place": "Camp Shelby, MS",
+  "centre": [
+   31.1533,
+   -89.1197
+  ],
+  "radii_nm": {
+   "10000FT": 135,
+   "4000FT AGL": 93,
+   "50FT AGL": 41,
+   "FL250": 205,
+   "FL400": 253
+  },
+  "window": [
+   "2026-08-17T00:00:00+00:00",
+   "2026-08-17T10:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_028_055_D_073_4005_DHDH_A_20260817T003648_20260817T003724_P05023_N_F_J_001",
+  "start": "2026-08-17T00:36:48Z",
+  "track": 55,
+  "frame": 73,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15136"
+ },
+ {
+  "test": "GAFCMS GPS 26-06",
+  "place": "Camp Shelby, MS",
+  "centre": [
+   31.1533,
+   -89.1197
+  ],
+  "radii_nm": {
+   "10000FT": 135,
+   "4000FT AGL": 93,
+   "50FT AGL": 41,
+   "FL250": 205,
+   "FL400": 253
+  },
+  "window": [
+   "2026-08-17T00:00:00+00:00",
+   "2026-08-17T10:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_028_055_D_073_4005_DHDH_A_20260817T003648_20260817T003724_P05023_N_F_J_001",
+  "start": "2026-08-17T00:36:48Z",
+  "track": 55,
+  "frame": 73,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15136"
+ },
+ {
+  "test": "MUSKIN GPS 26-82",
+  "place": "Muscatatuck Training Center, IN",
+  "centre": [
+   39.0483,
+   -85.5292
+  ],
+  "radii_nm": {
+   "10000FT": 144,
+   "4000FT AGL": 107,
+   "50FT AGL": 58,
+   "FL250": 208,
+   "FL400": 254
+  },
+  "window": [
+   "2026-09-21T04:00:00+00:00",
+   "2026-09-21T10:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_031_047_A_021_2005_DHDH_M_20260921T104800_20260921T104835_P05023_N_F_J_001",
+  "start": "2026-09-21T10:48:00Z",
+  "track": 47,
+  "frame": 21,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15195"
+ },
+ {
+  "test": "MUSKIN GPS 26-82",
+  "place": "Muscatatuck Training Center, IN",
+  "centre": [
+   39.0483,
+   -85.5292
+  ],
+  "radii_nm": {
+   "10000FT": 144,
+   "4000FT AGL": 107,
+   "50FT AGL": 58,
+   "FL250": 208,
+   "FL400": 254
+  },
+  "window": [
+   "2026-09-21T04:00:00+00:00",
+   "2026-09-21T10:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_031_047_A_021_2005_QPDH_A_20260921T104823_20260921T104835_P05023_N_P_J_001",
+  "start": "2026-09-21T10:48:23Z",
+  "track": 47,
+  "frame": 21,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15195"
+ },
+ {
+  "test": "MUSKIN GPS 26-82",
+  "place": "Muscatatuck Training Center, IN",
+  "centre": [
+   39.0483,
+   -85.5292
+  ],
+  "radii_nm": {
+   "10000FT": 144,
+   "4000FT AGL": 107,
+   "50FT AGL": 58,
+   "FL250": 208,
+   "FL400": 254
+  },
+  "window": [
+   "2026-09-21T04:00:00+00:00",
+   "2026-09-21T10:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_031_047_A_021_2005_DHDH_M_20260921T104800_20260921T104835_P05023_N_F_J_001",
+  "start": "2026-09-21T10:48:00Z",
+  "track": 47,
+  "frame": 21,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15195"
+ },
+ {
+  "test": "MUSKIN GPS 26-82",
+  "place": "Muscatatuck Training Center, IN",
+  "centre": [
+   39.0483,
+   -85.5292
+  ],
+  "radii_nm": {
+   "10000FT": 144,
+   "4000FT AGL": 107,
+   "50FT AGL": 58,
+   "FL250": 208,
+   "FL400": 254
+  },
+  "window": [
+   "2026-09-21T04:00:00+00:00",
+   "2026-09-21T10:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_031_047_A_021_2005_QPDH_A_20260921T104823_20260921T104835_P05023_N_P_J_001",
+  "start": "2026-09-21T10:48:23Z",
+  "track": 47,
+  "frame": 21,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15195"
+ },
+ {
+  "test": "NSWCSC GPS 26-25",
+  "place": "Lakewood, MI",
+  "centre": [
+   45.1603,
+   -83.4094
+  ],
+  "radii_nm": {
+   "10000FT": 123,
+   "4000FT AGL": 86,
+   "50FT AGL": 38,
+   "FL250": 189,
+   "FL400": 228
+  },
+  "window": [
+   "2026-07-14T04:00:00+00:00",
+   "2026-07-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_025_090_A_024_2005_DHDH_M_20260714T102445_20260714T102520_P05023_F_F_J_001",
+  "start": "2026-07-14T10:24:45Z",
+  "track": 90,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15071"
+ },
+ {
+  "test": "NSWCSC GPS 26-25",
+  "place": "Lakewood, MI",
+  "centre": [
+   45.1603,
+   -83.4094
+  ],
+  "radii_nm": {
+   "10000FT": 123,
+   "4000FT AGL": 86,
+   "50FT AGL": 38,
+   "FL250": 189,
+   "FL400": 228
+  },
+  "window": [
+   "2026-07-14T04:00:00+00:00",
+   "2026-07-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_025_090_A_024_2005_QPDH_A_20260714T102459_20260714T102520_P05023_F_P_J_001",
+  "start": "2026-07-14T10:24:59Z",
+  "track": 90,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15071"
+ },
+ {
+  "test": "NSWCSC GPS 26-25",
+  "place": "Lakewood, MI",
+  "centre": [
+   45.1603,
+   -83.4094
+  ],
+  "radii_nm": {
+   "10000FT": 123,
+   "4000FT AGL": 86,
+   "50FT AGL": 38,
+   "FL250": 189,
+   "FL400": 228
+  },
+  "window": [
+   "2026-07-14T04:00:00+00:00",
+   "2026-07-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_025_090_A_025_2005_QPDH_A_20260714T102519_20260714T102538_P05023_F_P_J_001",
+  "start": "2026-07-14T10:25:19Z",
+  "track": 90,
+  "frame": 25,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15071"
+ },
+ {
+  "test": "NSWCSC GPS 26-25",
+  "place": "Lakewood, MI",
+  "centre": [
+   45.1603,
+   -83.4094
+  ],
+  "radii_nm": {
+   "10000FT": 123,
+   "4000FT AGL": 86,
+   "50FT AGL": 38,
+   "FL250": 189,
+   "FL400": 228
+  },
+  "window": [
+   "2026-07-14T04:00:00+00:00",
+   "2026-07-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_025_090_A_025_2005_DHDH_M_20260714T102519_20260714T102555_P05023_F_F_J_001",
+  "start": "2026-07-14T10:25:19Z",
+  "track": 90,
+  "frame": 25,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15071"
+ },
+ {
+  "test": "NSWCSC GPS 26-25",
+  "place": "Lakewood, MI",
+  "centre": [
+   45.1603,
+   -83.4094
+  ],
+  "radii_nm": {
+   "10000FT": 123,
+   "4000FT AGL": 86,
+   "50FT AGL": 38,
+   "FL250": 189,
+   "FL400": 228
+  },
+  "window": [
+   "2026-07-21T04:00:00+00:00",
+   "2026-07-21T10:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_026_018_A_024_2005_QPDH_A_20260721T103302_20260721T103339_P05023_N_F_J_001",
+  "start": "2026-07-21T10:33:02Z",
+  "track": 18,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15071"
+ },
+ {
+  "test": "NSWCSC GPS 26-25",
+  "place": "Lakewood, MI",
+  "centre": [
+   45.1603,
+   -83.4094
+  ],
+  "radii_nm": {
+   "10000FT": 123,
+   "4000FT AGL": 86,
+   "50FT AGL": 38,
+   "FL250": 189,
+   "FL400": 228
+  },
+  "window": [
+   "2026-07-14T04:00:00+00:00",
+   "2026-07-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_025_090_A_024_2005_DHDH_M_20260714T102445_20260714T102520_P05023_F_F_J_001",
+  "start": "2026-07-14T10:24:45Z",
+  "track": 90,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15071"
+ },
+ {
+  "test": "NSWCSC GPS 26-25",
+  "place": "Lakewood, MI",
+  "centre": [
+   45.1603,
+   -83.4094
+  ],
+  "radii_nm": {
+   "10000FT": 123,
+   "4000FT AGL": 86,
+   "50FT AGL": 38,
+   "FL250": 189,
+   "FL400": 228
+  },
+  "window": [
+   "2026-07-14T04:00:00+00:00",
+   "2026-07-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_025_090_A_024_2005_QPDH_A_20260714T102459_20260714T102520_P05023_F_P_J_001",
+  "start": "2026-07-14T10:24:59Z",
+  "track": 90,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15071"
+ },
+ {
+  "test": "NSWCSC GPS 26-25",
+  "place": "Lakewood, MI",
+  "centre": [
+   45.1603,
+   -83.4094
+  ],
+  "radii_nm": {
+   "10000FT": 123,
+   "4000FT AGL": 86,
+   "50FT AGL": 38,
+   "FL250": 189,
+   "FL400": 228
+  },
+  "window": [
+   "2026-07-14T04:00:00+00:00",
+   "2026-07-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_025_090_A_025_2005_QPDH_A_20260714T102519_20260714T102538_P05023_F_P_J_001",
+  "start": "2026-07-14T10:25:19Z",
+  "track": 90,
+  "frame": 25,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15071"
+ },
+ {
+  "test": "NSWCSC GPS 26-25",
+  "place": "Lakewood, MI",
+  "centre": [
+   45.1603,
+   -83.4094
+  ],
+  "radii_nm": {
+   "10000FT": 123,
+   "4000FT AGL": 86,
+   "50FT AGL": 38,
+   "FL250": 189,
+   "FL400": 228
+  },
+  "window": [
+   "2026-07-14T04:00:00+00:00",
+   "2026-07-14T10:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_025_090_A_025_2005_DHDH_M_20260714T102519_20260714T102555_P05023_F_F_J_001",
+  "start": "2026-07-14T10:25:19Z",
+  "track": 90,
+  "frame": 25,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15071"
+ },
+ {
+  "test": "NSWCSC GPS 26-25",
+  "place": "Lakewood, MI",
+  "centre": [
+   45.1603,
+   -83.4094
+  ],
+  "radii_nm": {
+   "10000FT": 123,
+   "4000FT AGL": 86,
+   "50FT AGL": 38,
+   "FL250": 189,
+   "FL400": 228
+  },
+  "window": [
+   "2026-07-21T04:00:00+00:00",
+   "2026-07-21T10:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_026_018_A_024_2005_QPDH_A_20260721T103302_20260721T103339_P05023_N_F_J_001",
+  "start": "2026-07-21T10:33:02Z",
+  "track": 18,
+  "frame": 24,
+  "direction": "A",
+  "mode": "20+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15071"
+ },
+ {
+  "test": "SCHFHI GPS 25-74",
+  "place": "Schofield Barracks, HI",
+  "centre": [
+   20.4439,
+   -156.7444
+  ],
+  "radii_nm": {
+   "10000FT": 308,
+   "4000FT AGL": 269,
+   "50FT AGL": 220,
+   "FL250": 373,
+   "FL400": 419
+  },
+  "window": [
+   "2025-11-08T02:00:00+00:00",
+   "2025-11-08T16:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_BETA_V1",
+  "granule": "NISAR_L2_PR_GCOV_004_151_A_012_4005_DHDH_A_20251108T155057_20251108T155130_X05009_N_F_J_001",
+  "start": "2025-11-08T15:50:57Z",
+  "track": 151,
+  "frame": 12,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14708"
+ },
+ {
+  "test": "SCHFHI GPS 25-74",
+  "place": "Schofield Barracks, HI",
+  "centre": [
+   20.4439,
+   -156.7444
+  ],
+  "radii_nm": {
+   "10000FT": 308,
+   "4000FT AGL": 269,
+   "50FT AGL": 220,
+   "FL250": 373,
+   "FL400": 419
+  },
+  "window": [
+   "2025-11-15T02:00:00+00:00",
+   "2025-11-15T16:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_BETA_V1",
+  "granule": "NISAR_L2_PR_GCOV_005_072_D_078_4005_DHDH_A_20251115T045757_20251115T045816_X05009_N_P_J_001",
+  "start": "2025-11-15T04:57:57Z",
+  "track": 72,
+  "frame": 78,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14708"
+ },
+ {
+  "test": "SCHFHI GPS 25-74",
+  "place": "Schofield Barracks, HI",
+  "centre": [
+   20.4439,
+   -156.7444
+  ],
+  "radii_nm": {
+   "10000FT": 308,
+   "4000FT AGL": 269,
+   "50FT AGL": 220,
+   "FL250": 373,
+   "FL400": 419
+  },
+  "window": [
+   "2025-11-08T02:00:00+00:00",
+   "2025-11-08T16:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_BETA_V1",
+  "granule": "NISAR_L1_PR_RSLC_004_151_A_012_4005_DHDH_A_20251108T155057_20251108T155130_X05009_N_F_J_001",
+  "start": "2025-11-08T15:50:57Z",
+  "track": 151,
+  "frame": 12,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14708"
+ },
+ {
+  "test": "SCHFHI GPS 25-74",
+  "place": "Schofield Barracks, HI",
+  "centre": [
+   20.4439,
+   -156.7444
+  ],
+  "radii_nm": {
+   "10000FT": 308,
+   "4000FT AGL": 269,
+   "50FT AGL": 220,
+   "FL250": 373,
+   "FL400": 419
+  },
+  "window": [
+   "2025-11-15T02:00:00+00:00",
+   "2025-11-15T16:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_BETA_V1",
+  "granule": "NISAR_L1_PR_RSLC_005_072_D_078_4005_DHDH_A_20251115T045757_20251115T045816_X05009_N_P_J_001",
+  "start": "2025-11-15T04:57:57Z",
+  "track": 72,
+  "frame": 78,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14708"
+ },
+ {
+  "test": "SCHFHI GPS 26-71",
+  "place": "Schofield Barracks, HI",
+  "centre": [
+   21.4794,
+   -158.0297
+  ],
+  "radii_nm": {
+   "10000FT": 215,
+   "4000FT AGL": 193,
+   "50FT AGL": 185,
+   "FL250": 280,
+   "FL400": 326
+  },
+  "window": [
+   "2026-09-18T00:01:00+00:00",
+   "2026-09-18T06:00:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_030_173_D_078_4005_DHDH_A_20260918T050559_20260918T050620_P05023_F_P_J_001",
+  "start": "2026-09-18T05:05:59Z",
+  "track": 173,
+  "frame": 78,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15182"
+ },
+ {
+  "test": "SCHFHI GPS 26-71",
+  "place": "Schofield Barracks, HI",
+  "centre": [
+   21.4794,
+   -158.0297
+  ],
+  "radii_nm": {
+   "10000FT": 215,
+   "4000FT AGL": 193,
+   "50FT AGL": 185,
+   "FL250": 280,
+   "FL400": 326
+  },
+  "window": [
+   "2026-09-18T00:01:00+00:00",
+   "2026-09-18T06:00:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_030_173_D_078_4005_DHDH_A_20260918T050559_20260918T050620_P05023_F_P_J_001",
+  "start": "2026-09-18T05:05:59Z",
+  "track": 173,
+  "frame": 78,
+  "direction": "D",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15182"
+ },
+ {
+  "test": "WSMRNM GPS 25-17",
+  "place": "at White Sands Missile Range Oct 30 to Nov 07",
+  "centre": [
+   33.6428,
+   -106.5478
+  ],
+  "radii_nm": {
+   "10000FT": 396,
+   "4000FT AGL": 384,
+   "50FT AGL": 320,
+   "FL250": 478,
+   "FL400": 505
+  },
+  "window": [
+   "2025-11-06T07:30:00+00:00",
+   "2025-11-06T12:30:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_BETA_V1",
+  "granule": "NISAR_L2_PR_GCOV_004_120_A_019_4005_DHDH_A_20251106T121827_20251106T121902_X05009_N_F_J_001",
+  "start": "2025-11-06T12:18:27Z",
+  "track": 120,
+  "frame": 19,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14702"
+ },
+ {
+  "test": "WSMRNM GPS 25-17",
+  "place": "at White Sands Missile Range Oct 30 to Nov 07",
+  "centre": [
+   33.6428,
+   -106.5478
+  ],
+  "radii_nm": {
+   "10000FT": 396,
+   "4000FT AGL": 384,
+   "50FT AGL": 320,
+   "FL250": 478,
+   "FL400": 505
+  },
+  "window": [
+   "2025-11-06T07:30:00+00:00",
+   "2025-11-06T12:30:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_BETA_V1",
+  "granule": "NISAR_L1_PR_RSLC_004_120_A_019_4005_DHDH_A_20251106T121827_20251106T121902_X05009_N_F_J_001",
+  "start": "2025-11-06T12:18:27Z",
+  "track": 120,
+  "frame": 19,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14702"
+ },
+ {
+  "test": "WSMRNM GPS 26-45",
+  "place": "White Sands Missile Range, NM",
+  "centre": [
+   33.5514,
+   -106.5553
+  ],
+  "radii_nm": {
+   "10000FT": 298,
+   "4000FT AGL": 281,
+   "50FT AGL": 229,
+   "FL250": 364,
+   "FL400": 410
+  },
+  "window": [
+   "2026-10-15T11:00:00+00:00",
+   "2026-10-15T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_PROVISIONAL_V1",
+  "granule": "NISAR_L2_PR_GCOV_033_048_A_018_4005_DHDH_A_20261015T122612_20261015T122647_P05023_N_F_J_001",
+  "start": "2026-10-15T12:26:12Z",
+  "track": 48,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15250"
+ },
+ {
+  "test": "WSMRNM GPS 26-45",
+  "place": "White Sands Missile Range, NM",
+  "centre": [
+   33.5514,
+   -106.5553
+  ],
+  "radii_nm": {
+   "10000FT": 298,
+   "4000FT AGL": 281,
+   "50FT AGL": 229,
+   "FL250": 364,
+   "FL400": 410
+  },
+  "window": [
+   "2026-10-15T11:00:00+00:00",
+   "2026-10-15T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_PROVISIONAL_V1",
+  "granule": "NISAR_L1_PR_RSLC_033_048_A_018_4005_DHDH_A_20261015T122612_20261015T122647_P05023_N_F_J_001",
+  "start": "2026-10-15T12:26:12Z",
+  "track": 48,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=15250"
+ },
+ {
+  "test": "YPG_AZ GPS 25-17",
+  "place": "Yuma, AZ",
+  "centre": [
+   32.9669,
+   -113.7706
+  ],
+  "radii_nm": {
+   "10000FT": 235,
+   "4000FT AGL": 203,
+   "50FT AGL": 170,
+   "FL250": 302,
+   "FL400": 346
+  },
+  "window": [
+   "2025-10-29T06:01:00+00:00",
+   "2025-10-29T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_BETA_V1",
+  "granule": "NISAR_L2_PR_GCOV_004_005_A_018_4005_DHDH_A_20251029T125111_20251029T125131_X05009_N_P_J_001",
+  "start": "2025-10-29T12:51:11Z",
+  "track": 5,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14695"
+ },
+ {
+  "test": "YPG_AZ GPS 25-17",
+  "place": "Yuma, AZ",
+  "centre": [
+   32.9669,
+   -113.7706
+  ],
+  "radii_nm": {
+   "10000FT": 235,
+   "4000FT AGL": 203,
+   "50FT AGL": 170,
+   "FL250": 302,
+   "FL400": 346
+  },
+  "window": [
+   "2025-10-29T06:01:00+00:00",
+   "2025-10-29T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_BETA_V1",
+  "granule": "NISAR_L1_PR_RSLC_004_005_A_018_4005_DHDH_A_20251029T125111_20251029T125131_X05010_N_P_J_001",
+  "start": "2025-10-29T12:51:11Z",
+  "track": 5,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14695"
+ },
+ {
+  "test": "YPG_AZ GPS 25-17",
+  "place": "Yuma, AZ",
+  "centre": [
+   32.9669,
+   -113.7706
+  ],
+  "radii_nm": {
+   "10000FT": 235,
+   "4000FT AGL": 203,
+   "50FT AGL": 170,
+   "FL250": 302,
+   "FL400": 346
+  },
+  "window": [
+   "2025-10-29T06:01:00+00:00",
+   "2025-10-29T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_BETA_V1",
+  "granule": "NISAR_L1_PR_RSLC_004_005_A_018_4005_DHDH_A_20251029T125111_20251029T125131_X05009_N_P_J_001",
+  "start": "2025-10-29T12:51:11Z",
+  "track": 5,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14695"
+ },
+ {
+  "test": "YPG_AZ GPS 25-18",
+  "place": "Yuma Proving Ground, AZ",
+  "centre": [
+   32.9669,
+   -113.7706
+  ],
+  "radii_nm": {
+   "10000FT": 235,
+   "4000FT AGL": 203,
+   "50FT AGL": 170,
+   "FL250": 302,
+   "FL400": 346
+  },
+  "window": [
+   "2025-12-04T07:01:00+00:00",
+   "2025-12-04T12:59:00+00:00"
+  ],
+  "product": "NISAR_L2_GCOV_BETA_V1",
+  "granule": "NISAR_L2_PR_GCOV_007_005_A_018_4005_DHDH_A_20251204T125112_20251204T125147_X05009_N_F_J_001",
+  "start": "2025-12-04T12:51:12Z",
+  "track": 5,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14735"
+ },
+ {
+  "test": "YPG_AZ GPS 25-18",
+  "place": "Yuma Proving Ground, AZ",
+  "centre": [
+   32.9669,
+   -113.7706
+  ],
+  "radii_nm": {
+   "10000FT": 235,
+   "4000FT AGL": 203,
+   "50FT AGL": 170,
+   "FL250": 302,
+   "FL400": 346
+  },
+  "window": [
+   "2025-12-04T07:01:00+00:00",
+   "2025-12-04T12:59:00+00:00"
+  ],
+  "product": "NISAR_L1_RSLC_BETA_V1",
+  "granule": "NISAR_L1_PR_RSLC_007_005_A_018_4005_DHDH_A_20251204T125112_20251204T125147_X05009_N_F_J_001",
+  "start": "2025-12-04T12:51:12Z",
+  "track": 5,
+  "frame": 18,
+  "direction": "A",
+  "mode": "40+5",
+  "url": "https://www.faasafety.gov/SPANS/noticeView.aspx?nid=14735"
+ }
+]
