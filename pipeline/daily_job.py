@@ -21,7 +21,9 @@ Usage
   python pipeline/daily_job.py 2025-10-09:2025-10-25 --upload-local # publish days already processed on this PC
   python pipeline/daily_job.py 2025-11-01:2025-11-30 --skip-analysis  # backfill phase 1 (.github/workflows/backfill.yml)
   python pipeline/daily_job.py 2026-10-20 --position-loss   # also make and upload <day>.loss.parquet and .loss_daily.parquet
-                                                           # (off by default; the workflow doesn't set it)
+  python pipeline/daily_job.py 2026-10-20 --spoofing        # also run tools/spoof_day.py on the raw archive and upload a
+                                                           # small public summary, <day>.spoof.json (the home board's
+                                                           # spoofing card). Never fatal: the day publishes without it.
 """
 import argparse, json, os, shutil, subprocess, sys, time, traceback, urllib.request
 from datetime import date, datetime, timedelta, timezone
@@ -38,6 +40,7 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "metacog-osint/noise-floor")
 DAILY, ANALYSIS = A.DAILY, A.OUT
 SITE = os.path.join(ROOT, "data", "pnt", "site")
 WORK = os.path.join(ROOT, "data", "raw", "daily_job")
+SPOOF = os.path.join(ROOT, "data", "spoofing_daily")
 NOTES = """GNSS degradation outputs for {month}, one set per UTC day, made automatically by the daily workflow
 (`.github/workflows/daily.yml`) from the [adsb.lol](https://www.adsb.lol/) globe_history archive. Not reviewed by a person.
 
@@ -195,14 +198,55 @@ def upload_local(day, a):
     return {"day": day, "status": "published"}
 
 
+def spoof_summary(day, raw, workers):
+    """Spoofing indicators for the day (tools/spoof_day.py, its default version) -> SITE/<day>.spoof.json: counts by
+    class, the H3 res-2 regions where aircraft really were during active episodes, and the places receivers were
+    spoofed to. Aggregates only (ODbL 1.0). Returns the file, or None if the run failed (the day publishes anyway)."""
+    try:
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "spoof_day.py"), "run", day, "--raw", raw,
+                            "--out", SPOOF, "--workers", str(workers)], capture_output=True, text=True, encoding="utf-8",
+                           timeout=5400)
+        if r.returncode:
+            print(f"spoofing {day}: spoof_day failed: {r.stderr.strip()[-400:]}", file=sys.stderr)
+            return None
+        import gzip
+        from collections import Counter
+        import h3
+        with open(os.path.join(SPOOF, f"{day}.summary.json"), encoding="utf-8") as f:
+            s = json.load(f)
+        with gzip.open(os.path.join(SPOOF, f"{day}.events.json.gz"), "rt", encoding="utf-8") as f:
+            ev = json.load(f)
+        ev = ev.get("events", ev) if isinstance(ev, dict) else ev
+        active = [e for e in ev if e.get("class") == "active"]
+        regions = Counter(h3.cell_to_parent(c, 2) for e in active for c in set(e.get("victim_cells") or []))
+        out = {"day": day, "version": s.get("version"), "licence": "ODbL 1.0; derived from adsb.lol",
+               "active": len(active), "episodes": s.get("episodes"), "classes": s.get("episodes_by_class"),
+               "aircraft_with_episodes": len({e.get("hex") or e.get("icao") for e in active}) or s.get("aircraft_with_episodes"),
+               "victim_res2_top": [{"region": c, "lat": round(h3.cell_to_latlng(c)[0], 2), "lon": round(h3.cell_to_latlng(c)[1], 2),
+                                    "episodes": n} for c, n in regions.most_common(10)],
+               "spoofed_to_top": [{"lat": la, "lon": lo, "episodes": n} for _, la, lo, n in (s.get("spoofed_to_res6_top") or [])[:10]],
+               "method": "tools/spoof_day.py; docs/validation/spoofing.md. Victim regions count active episodes."}
+        p = os.path.join(SITE, f"{day}.spoof.json")
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(out, f, separators=(",", ":"))
+        return p
+    except Exception as e:                # never fatal
+        print(f"spoofing {day}: skipped ({type(e).__name__}: {e})", file=sys.stderr)
+        return None
+
+
 def process(day, a):
     t0 = time.time()
     raw = a.raw_dir or download_raw(day)
     if raw is None:
         return {"day": day, "status": "not published yet"}
     t_dl = time.time() - t0
+    spoof = None
     try:
         s = P.run(day, raw, DAILY, a.workers, position_loss=a.position_loss)
+        if a.spoofing:
+            os.makedirs(SITE, exist_ok=True)
+            spoof = spoof_summary(day, raw, a.workers)
     finally:
         if not a.raw_dir and not a.keep_raw:
             shutil.rmtree(raw, ignore_errors=True)
@@ -212,8 +256,10 @@ def process(day, a):
     hexes, jam = st["hexes"], st["jam_hexes"]
     E.hotspot_day(day, os.path.join(SITE, f"{day}.hotspots.json"))
     if not a.no_upload:
-        upload(day, with_analysis=not a.skip_analysis, extra=loss_outputs(day) if a.position_loss else ())
+        upload(day, with_analysis=not a.skip_analysis,
+               extra=(loss_outputs(day) if a.position_loss else []) + ([spoof] if spoof else []))
     return {"day": day, "status": "published" if not a.no_upload else "done (not uploaded)",
+            "spoofing": "summary made" if spoof else ("failed or skipped" if a.spoofing else "off"),
             "aircraft": s["aircraft"], "hexes_5plus": hexes, "jam_hexes": jam, "history_files": hist,
             "baseline_days": an.get("baseline_days"), "anomaly_region_hours": an.get("anomaly_region_hours"),
             "burst_events": an.get("burst_events"), "download_s": round(t_dl), "process_s": s["seconds"],
@@ -236,6 +282,8 @@ def main():
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--position-loss", action="store_true",
                     help="also make and upload the position-loss tables (off by default; the daily workflow sets it)")
+    ap.add_argument("--spoofing", action="store_true",
+                    help="also run tools/spoof_day.py and upload <day>.spoof.json (off by default; the daily workflow sets it)")
     a = ap.parse_args()
     today = datetime.now(timezone.utc).date()
     days = sorted(set(expand(a.days))) if a.days else [(today - timedelta(days=k)).isoformat() for k in range(a.lookback, 0, -1)]
