@@ -80,6 +80,35 @@ rows = [r for r in table.to_pylist() if r["aircraft"] &gt;= 5]
 jam = [r for r in rows if 100 * max(r["bad_nacp_live"] - 1, 0) / r["aircraft"] &gt;= 10]
 print(len(rows), "hexes with 5 or more aircraft;", len(jam), "at jamming scale")</code></pre>
 
+<h3 id="gis">Open the data in ArcGIS or QGIS</h3>
+<p>The tables give each hex as an <a href="https://h3geo.org/">H3</a> cell ID with its centre. This script turns one day into hexagon polygons in GeoJSON, which QGIS, ArcGIS Pro and ArcGIS Online all open:</p>
+<pre><code>import io, json, urllib.request
+import h3, pyarrow.parquet as pq          # pip install h3 pyarrow
+
+day = "2026-10-01"
+url = f"https://github.com/metacog-osint/noise-floor/releases/download/pnt-data-{day[:7]}/{day}.parquet"
+rows = pq.read_table(io.BytesIO(urllib.request.urlopen(url).read())).to_pylist()
+features = []
+for r in rows:
+    if r["aircraft"] &lt; 5:
+        continue
+    ring = [[round(lon, 5), round(lat, 5)] for lat, lon in h3.cell_to_boundary(r["h3"])]
+    if max(p[0] for p in ring) - min(p[0] for p in ring) &gt; 180:    # skip the few cells that cross 180 degrees
+        continue
+    ring.append(ring[0])
+    props = {k: r[k] for k in ("h3", "aircraft", "bad_nacp_live", "score_live")}
+    features.append({"type": "Feature", "properties": props, "geometry": {"type": "Polygon", "coordinates": [ring]}})
+with open(f"{day}.geojson", "w") as f:
+    json.dump({"type": "FeatureCollection", "features": features}, f)
+print(len(features), "hexes written to", f"{day}.geojson")</code></pre>
+<ul>
+  <li><strong>QGIS</strong> (free): Layer → Add Layer → Add Vector Layer, choose the file, then style by <code>score_live</code> with a graduated colour ramp.</li>
+  <li><strong>ArcGIS Pro</strong>: the JSON To Features tool reads GeoJSON into a feature class.</li>
+  <li><strong>ArcGIS Online</strong>: in Map Viewer, add a layer from a file. A whole day is about 24,000 hexes and 8 MB; to keep the file small, keep only hexes in your region, or only those with <code>bad_nacp_live</code> above 0.</li>
+  <li>The Sea page's ship downloads are already GeoJSON and CSV (with <code>lat</code> and <code>lon</code> columns), so they open directly.</li>
+</ul>
+<p class="small">The ODbL applies to whatever you build from these files: credit adsb.lol contributors and Noise Floor, and share derived databases under the same licence.</p>
+
 <h2 id="site-files">Site files</h2>
 <p>The pages read small JSON files that you can use directly. They're refreshed after each daily run.</p>
 <div class="tw"><table>
