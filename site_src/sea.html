@@ -57,11 +57,13 @@
         <fieldset class="mp-group"><legend>Satellite imagery</legend>
           <label><input type="radio" name="lyr-img" value="" checked> None</label>
           <label><input type="radio" name="lyr-img" value="s2"> Sentinel-2, 10 m, by month</label>
+          <label><input type="radio" name="lyr-img" value="s1"> Sentinel-1 radar, sees through cloud</label>
           <label id="img-esri-opt" hidden><input type="radio" name="lyr-img" value="esri"> Esri World Imagery, sharp, current</label>
           <div id="img-s2" class="img-when" hidden>
             <input type="range" id="img-when" min="0" max="24" step="1" value="24" aria-label="Month of imagery" aria-describedby="img-when-label">
             <span id="img-when-label"></span>
-            <span class="img-note">The clearest scenes of each month are drawn first; a cloudy month shows cloud.</span>
+            <span id="img-scene" class="img-note" aria-live="polite"></span>
+            <span id="img-help" class="img-note"></span>
           </div>
           <p id="img-note" class="img-note" aria-live="polite" hidden></p>
         </fieldset>
@@ -112,7 +114,7 @@
   <li><strong>Destination</strong> is read from the text the crew types, when it is a UN/LOCODE ("RUULU", "RU ULU"), a code after an arrow ("FIHEL&gt;EETLL") or a port name in the World Port Index. Ports and their codes come from the World Port Index; a code it lacks still gives the country. "FOR ORDERS" and similar stay unread.</li>
   <li><strong>Port calls</strong> are stops of an hour or more under 1 knot within 10 km of a World Port Index port, from the trusted positions in this data. Anchorages far from a listed port don't count. <strong>Home port</strong> (port of registry) is not in any open source we can use, so it is never shown.</li>
   <li><strong>Signals</strong> are what the ship broadcasts about itself: class (Class A is inferred when the ship sends voyage data that only Class A transponders send), destination and ETA as typed by the crew, draught, size from the antenna offsets, and the position source the transponder declares (GPS, GLONASS, Galileo, combined and so on), which is a setting, not a check of what the receiver uses. "IMO check digit" says whether the broadcast IMO number is internally valid.</li>
-  <li><strong>Satellite imagery</strong> on this map is Copernicus Sentinel-2 at 10 m, one mosaic per month with the clearest scenes drawn first, served by Microsoft Planetary Computer; it shows from zoom 10. It shows places such as ports and terminals, not a ship at a given moment, and a cloudy month shows cloud. The links in a ship's panel open other providers' own viewers at its last trusted position: Google Maps and Esri Wayback for sharper imagery (Wayback keeps versions back to 2014), and Copernicus Browser and NASA Worldview for imagery near that date. Where it is offered, <strong>Esri World Imagery</strong> adds sharp current imagery (about 15 cm to 1.2 m); it is not offered in places Esri's terms exclude (see the <a href="/terms#imagery">terms of use</a>), and it stops if the site's free monthly allowance runs out.</li>
+  <li><strong>Satellite imagery</strong> on this map is Copernicus data served by Microsoft Planetary Computer, from zoom 10: <strong>Sentinel-2</strong> at 10 m, one mosaic per month with the clearest scenes drawn first (it shows places such as ports and terminals, and a cloudy month shows cloud), and <strong>Sentinel-1 radar</strong>, the latest pass in the period drawn first, which sees through cloud and shows ships as bright points at the time of that pass, whether or not they broadcast AIS. The panel gives the date of the image at the map centre. The links in a ship's panel open other providers' own viewers at its last trusted position: Google Maps and Esri Wayback for sharper imagery (Wayback keeps versions back to 2014), and Copernicus Browser and NASA Worldview for imagery near that date. Where it is offered, <strong>Esri World Imagery</strong> adds sharp current imagery (about 15 cm to 1.2 m); it is not offered in places Esri's terms exclude (see the <a href="/terms#imagery">terms of use</a>), and it stops if the site's free monthly allowance runs out.</li>
   <li><strong>Times</strong> are UTC, with US Central time alongside.</li>
 </ul>
 

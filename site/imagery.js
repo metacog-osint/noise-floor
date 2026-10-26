@@ -2,13 +2,13 @@
    NFImagery.linksHtml(lat, lon, day, zoom): links that open the providers' own viewers at a place (and a date where the
    viewer takes one). Nothing is loaded from those providers until a visitor clicks; links open in a new tab and send no
    referrer.
-   NFImagery.sentinel2(map, opts): Sentinel-2 true-colour mosaics, one per month (least cloudy scenes first), from
-   Microsoft Planetary Computer's anonymous tile service. Copernicus Sentinel data is free for any use with attribution;
-   the tile service is a Microsoft "Preview", so failures are shown to the visitor rather than hidden. */
+   NFImagery.sentinel2(map, opts) / sentinel1(map, opts): one mosaic per month (or the last 30 days) from Microsoft
+   Planetary Computer's anonymous tile service: Sentinel-2 true colour, least cloudy scenes first; Sentinel-1 radar (VV),
+   latest pass first, which sees through cloud and shows ships as bright points. Copernicus Sentinel data is free for any
+   use with attribution; the tile service is a Microsoft "Preview", so failures are shown to the visitor, not hidden. */
 (function () {
   "use strict";
   var PC = "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/";
-  var TILE_Q = "?collection=sentinel-2-l2a&assets=visual&asset_bidx=visual%7C1%2C2%2C3&nodata=0&format=png";
   var MIN_ZOOM = 10;          // the service returns nothing below zoom 9, and zoom 9 is slow
   var NATIVE_ZOOM = 14;       // 10 m pixels; closer zooms stretch the zoom-14 tiles
   var MAX_CLOUD = 40;         // per-scene cloud cover limit, %; scenes are drawn least cloudy first
@@ -69,49 +69,100 @@
     for (var i = wins.length - 1; i >= 0; i--) if (day >= wins[i].start && day <= wins[i].end) return i;
     return null;
   }
-  var searches = {};
-  function register(w) {            // the service returns the same id for the same query, so this is cheap to repeat
-    if (searches[w.key]) return searches[w.key];
-    var body = {
-      collections: ["sentinel-2-l2a"], "filter-lang": "cql2-json",
-      filter: { op: "and", args: [
-        { op: "anyinteracts", args: [{ property: "datetime" }, { interval: [w.start + "T00:00:00Z", w.end + "T23:59:59Z"] }] },
-        { op: "<=", args: [{ property: "eo:cloud_cover" }, MAX_CLOUD] }] },
-      sortby: [{ field: "eo:cloud_cover", direction: "asc" }]
-    };
-    searches[w.key] = fetch(PC + "register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function (j) { if (!j.searchid) throw new Error("no search id"); return j.searchid; })
-      .catch(function (e) { delete searches[w.key]; throw e; });
-    return searches[w.key];
+  var STAC = "https://planetarycomputer.microsoft.com/api/stac/v1/search";
+  function utc(t) { return t ? t.slice(0, 10) + " " + t.slice(11, 16) + " UTC" : ""; }
+  // Two Planetary Computer collections, both Copernicus data (free for any use with attribution), both anonymous.
+  var KINDS = {
+    s2: { collection: "sentinel-2-l2a", word: "Imagery",
+          tiles: "collection=sentinel-2-l2a&assets=visual&asset_bidx=visual%7C1%2C2%2C3&nodata=0&format=png",
+          filter: { op: "<=", args: [{ property: "eo:cloud_cover" }, MAX_CLOUD] },
+          sortby: [{ field: "eo:cloud_cover", direction: "asc" }],
+          fields: ["properties.datetime", "properties.eo:cloud_cover"],
+          scene: function (p) {
+            return "Image at the map centre: " + p.datetime.slice(0, 10) +
+                   (p["eo:cloud_cover"] !== undefined ? " (" + Math.round(p["eo:cloud_cover"]) + "% cloud over that whole scene)" : "");
+          } },
+    s1: { collection: "sentinel-1-grd", word: "Radar",
+          tiles: "collection=sentinel-1-grd&assets=vv&rescale=0%2C250&colormap_name=gray&format=png",
+          filter: { op: "=", args: [{ property: "sar:polarizations" }, ["VV", "VH"]] },
+          sortby: [{ field: "datetime", direction: "desc" }],
+          fields: ["properties.datetime"],
+          scene: function (p) { return "Radar pass at the map centre: " + utc(p.datetime); } }
+  };
+  function timeFilter(K, w) {
+    var t = { op: "anyinteracts", args: [{ property: "datetime" }, { interval: [w.start + "T00:00:00Z", w.end + "T23:59:59Z"] }] };
+    return K.filter ? { op: "and", args: [t, K.filter] } : t;
   }
-  function sentinel2(map, opts) {
-    var wins = windows(), layer = null, want = null;
+  function post(url, body) {
+    return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+  }
+  var searches = {};
+  function register(K, w) {         // the service returns the same id for the same query, so this is cheap to repeat
+    var key = K.collection + ":" + w.key;
+    if (searches[key]) return searches[key];
+    searches[key] = post(PC + "register", { collections: [K.collection], "filter-lang": "cql2-json", filter: timeFilter(K, w), sortby: K.sortby })
+      .then(function (j) { if (!j.searchid) throw new Error("no search id"); return j.searchid; })
+      .catch(function (e) { delete searches[key]; throw e; });
+    return searches[key];
+  }
+  function sceneAt(K, w, lat, lon) { // the scene the mosaic draws first at a point: same collection, filter and order
+    return post(STAC, { collections: [K.collection], intersects: { type: "Point", coordinates: [+lon, +lat] },
+                        "filter-lang": "cql2-json", filter: timeFilter(K, w), sortby: K.sortby, limit: 1,
+                        fields: { include: K.fields, exclude: ["assets", "links"] } })
+      .then(function (j) { return j.features && j.features.length ? j.features[0].properties : null; });
+  }
+  // opts.status(text, isError): loading and failure messages; opts.scene(text): the date of the image at the map centre
+  function mosaic(kind, map, opts) {
+    var K = KINDS[kind], wins = windows(), layer = null, want = null, sceneT = null, seq = 0;
     function credit(w) {
       var y = w.start.slice(0, 4) === w.end.slice(0, 4) ? w.end.slice(0, 4) : w.start.slice(0, 4) + "–" + w.end.slice(0, 4);
-      return 'Imagery: contains modified Copernicus Sentinel data ' + y + ', via <a href="https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a" rel="noopener">Microsoft Planetary Computer</a>';
+      return K.word + ': contains modified Copernicus Sentinel data ' + y + ', via <a href="https://planetarycomputer.microsoft.com/dataset/' +
+             K.collection + '" rel="noopener">Microsoft Planetary Computer</a>';
     }
+    function scene() {
+      clearTimeout(sceneT);
+      if (want === null || !opts.scene) return;
+      if (map.getZoom() < MIN_ZOOM) { opts.scene(""); return; }
+      var w = wins[want], c = map.getCenter(), my = ++seq;
+      sceneT = setTimeout(function () {
+        sceneAt(K, w, c.lat, c.lng).then(function (p) {
+          if (my === seq && want !== null) opts.scene(p ? K.scene(p) : "No image of the map centre in this period.");
+        }).catch(function () { if (my === seq) opts.scene(""); });
+      }, 600);
+    }
+    function onMove() { if (want !== null) { seq++; scene(); } }
     function show(i) {
       var w = wins[i];
-      want = w.key;
+      want = i;
       opts.status("Loading " + w.label + "…", false);
-      register(w).then(function (id) {
-        if (want !== w.key) return;
-        var errors = 0, next = L.tileLayer(PC + id + "/tiles/WebMercatorQuad/{z}/{x}/{y}@1x" + TILE_Q,
+      if (opts.scene) opts.scene("");
+      register(K, w).then(function (id) {
+        if (want !== i) return;
+        var errors = 0, next = L.tileLayer(PC + id + "/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?" + K.tiles,
           { minZoom: MIN_ZOOM, maxNativeZoom: NATIVE_ZOOM, maxZoom: 19, attribution: credit(w), className: "img-tiles" });
         next.on("tileerror", function () { if (++errors === 3) opts.status("The imagery service isn't answering for some tiles. Try again later.", true); });
-        next.on("load", function () { if (want === w.key) opts.status("", false); });
+        next.on("load", function () { if (want === i) opts.status("", false); });
         next.addTo(map);
         if (layer) map.removeLayer(layer);
         layer = next;
         if (map.getZoom() < MIN_ZOOM) opts.status("", false);      // the page shows its zoom-in hint
+        map.off("moveend", onMove).on("moveend", onMove);
+        scene();
       }).catch(function (e) {
-        if (want === w.key) opts.status("The imagery service didn't respond (" + e.message + "). Try again later.", true);
+        if (want === i) opts.status("The imagery service didn't respond (" + e.message + "). Try again later.", true);
       });
     }
-    function hide() { want = null; if (layer) { map.removeLayer(layer); layer = null; } opts.status("", false); }
+    function hide() {
+      want = null; seq++; clearTimeout(sceneT); map.off("moveend", onMove);
+      if (layer) { map.removeLayer(layer); layer = null; }
+      opts.status("", false);
+      if (opts.scene) opts.scene("");
+    }
     return { windows: wins, show: show, hide: hide, windowFor: function (day) { return windowFor(wins, day); }, minZoom: MIN_ZOOM };
   }
+  function sentinel2(map, opts) { return mosaic("s2", map, opts); }
+  function sentinel1(map, opts) { return mosaic("s1", map, opts); }
 
-  window.NFImagery = { links: links, linksHtml: linksHtml, sentinel2: sentinel2 };
+  window.NFImagery = { links: links, linksHtml: linksHtml, sentinel2: sentinel2, sentinel1: sentinel1 };
 })();
