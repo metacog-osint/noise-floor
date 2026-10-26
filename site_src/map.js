@@ -671,6 +671,7 @@
     var sec = document.getElementById("hist");
     sec.hidden = false;
     document.getElementById("hist-sub").textContent = "Loading…";
+    histImagery();
     document.getElementById("hist-chart").textContent = "";
     (histCache[r2] ? Promise.resolve(histCache[r2]) : fetch("/data/history/" + r2 + ".json").then(function (r) { return r.ok ? r.json() : null; }))
       .then(function (j) {
@@ -680,9 +681,16 @@
         drawHistory();
       }).catch(function () { document.getElementById("hist-sub").textContent = "No history for this area in this build."; });
   }
+  function histImagery() {                 // links to the providers' own imagery viewers for the area's centre and the day shown
+    var hi = document.getElementById("hist-img");
+    if (!hi || !window.NFImagery || !state.hist) return;
+    var c = h3.cellToLatLng(state.hist.r3);
+    hi.innerHTML = "Satellite imagery of this area (opens the provider's viewer): " + NFImagery.linksHtml(c[0], c[1], state.day, 8);
+  }
   function drawHistory() {
     var hst = state.hist, box = document.getElementById("hist-chart"), sub = document.getElementById("hist-sub"), note = document.getElementById("hist-note");
     if (!hst) return;
+    histImagery();
     if (!hst.data) { sub.textContent = "No history for this area in this build."; box.textContent = ""; note.textContent = ""; return; }
     var acc = emeasure() === "acc", s = hst.data.s, dd = hst.data.days, n = dd.length;
     var vals = dd.map(function (_, i) {
@@ -700,6 +708,7 @@
       (cv !== null ? "On " + state.day + ": " + cv.toFixed(1) + "%. " : "") +
       (evs.length ? evs.length + " day" + (evs.length === 1 ? "" : "s") + " with an anomaly event over this region (marked above the line; darker = larger)." : "No anomaly events over this region.") +
       " Click a point to open that day.";
+    histImagery();
     // chart: one series, 2px line, crosshair tooltip, event marks, the selected day
     box.textContent = "";
     var NS = "http://www.w3.org/2000/svg", W = Math.max(300, box.clientWidth), H = 190, m = { l: 38, r: 12, t: 16, b: 24 };

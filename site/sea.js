@@ -23,6 +23,7 @@
   var HOME_PORT = "not in open data (the port of registry is held by commercial registries)";
   var vessels = [], shown = [], gnss = null, colors = {}, markers = {}, selected = null, trackLayer = null, dataEnd = 0;
   var on = { sanctioned: true, state: true, flag: true, gnss: true, borders: true };
+  var img = { kind: "", i: null }, imgWant = null;        // satellite imagery: kind "" (none) or "s2"; i = month window
   try { var saved = JSON.parse(localStorage.getItem("nf-sea-layers") || "null"); if (saved) on = Object.assign(on, saved); } catch (e) { /* defaults */ }
 
   function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
@@ -224,7 +225,8 @@
     if (borderLayer) { if (on.borders) borderLayer.addTo(map); else map.removeLayer(borderLayer); }
   }
   function styleBase() {
-    if (landLayer) landLayer.setStyle({ fillColor: colors.land, color: colors.coast, weight: 0.6, fillOpacity: 1 });
+    var under = !!(img.kind && s2 && map.getZoom() >= s2.minZoom);         // land fill off where imagery shows
+    if (landLayer) landLayer.setStyle({ fillColor: colors.land, color: colors.coast, weight: 0.6, fillOpacity: under ? 0 : 1 });
     if (borderLayer) borderLayer.setStyle({ color: colors.border, weight: 0.9, dashArray: "3 3" });
   }
 
@@ -294,6 +296,12 @@
            row("Status", esc(last.nav_status || "–")) + "</dl>" +
            '<p class="small">As the ship reported it. Positions can be spoofed or falsified.' +
            (r.spoofed_positions > r.positions / 2 ? " Most of this ship's reports failed the spoofing tests, so the remaining position and track may still be affected." : "") + "</p>";
+      if (window.NFImagery) {
+        h += "<h3>Satellite imagery of this position</h3>" + NFImagery.linksHtml(last.lat, last.lon, last.t ? last.t.slice(0, 10) : null, 15) +
+             (s2 ? '<p><button type="button" class="linkish" id="sd-s2">Show Sentinel-2 imagery on this map</button> ' +
+                   '<span class="small">(10 m, the 30 days or month of this position)</span></p>' : "") +
+             '<p class="small">Imagery shows the place, not the ship at that moment.</p>';
+      }
     }
     h += '<h3>Destination and port calls</h3><dl class="sd-dl">' +
          row("Destination (as typed)", esc(s.destination || "not given")) +
@@ -322,6 +330,12 @@
          row("IMO check digit", esc(s.imo_check_digit_ok === null || s.imo_check_digit_ok === undefined ? "no IMO" : s.imo_check_digit_ok ? "valid" : "invalid")) + "</dl>";
     box.innerHTML = h;
     document.getElementById("sd-close").addEventListener("click", function () { select(null, false); });
+    var b2 = document.getElementById("sd-s2");
+    if (b2) b2.addEventListener("click", function () {
+      var i = last.t ? s2.windowFor(last.t.slice(0, 10)) : null;
+      setImagery("s2", i === null ? s2.windows.length - 1 : i);
+      map.setView([last.lat, last.lon], Math.max(map.getZoom(), 12));
+    });
   }
   function byMmsi(m) { return vessels.filter(function (x) { return x.mmsi === m; })[0] || null; }
   function select(mmsi, fromTable) {
@@ -503,6 +517,7 @@
     if (F.gaps) parts.push("gaps=1");
     if (F.mism) parts.push("mism=1");
     if (F.seen) parts.push("seen=" + F.seen);
+    if (img.kind === "s2" && s2) parts.push("img=s2&when=" + s2.windows[img.i].key);
     var h = parts.length ? "#" + parts.join("&") : "";
     if (h !== location.hash && !(h === "" && location.hash === "")) {
       try { history.replaceState(null, "", h || location.pathname + location.search); } catch (e) { /* no history API */ }
@@ -521,6 +536,7 @@
     ["name", "imo", "mmsi", "cs"].forEach(function (k) { F[k] = one(k); var el = document.getElementById("sf-" + k); if (el) el.value = F[k]; });
     F.spoof = hp.spoof === "1"; F.gaps = hp.gaps === "1"; F.mism = hp.mism === "1";
     F.seen = [6, 24, 48].indexOf(+hp.seen) >= 0 ? +hp.seen : 0;
+    imgWant = { kind: hp.img === "s2" ? "s2" : "", key: one("when") };
     var m = /^\d+$/.test(hp.v || "") ? +hp.v : null;
     return m;
   }
@@ -571,12 +587,14 @@
       " military or law enforcement, " + counts.flag + " other state-flag ships. " + d.coverage;
     document.getElementById("sea-dates").textContent = "This data was built " + both(d.generated) + ". Sources: " + d.sources.slice(1).join("; ") + ".";
     var v0 = readHash();
+    applyImgWant();
     shown = vessels.filter(function (v) { return passes(v, null); });
     drawGnss(); renderGnss(); applyFilters();
     if (v0 !== null && shown.some(function (v) { return v.mmsi === v0; })) select(v0, true);
     if (activeCount() && window.innerWidth >= 700) setFilters(true);   // on a phone the chips show them; the panel stays shut
     window.addEventListener("hashchange", function () {
       var m = readHash();
+      applyImgWant();
       applyFilters();
       if (m !== selected && (m === null || shown.some(function (v) { return v.mmsi === m; }))) select(m, m !== null);
     });
@@ -601,6 +619,62 @@
       applyLayers();
     });
   });
+  // ---------- satellite imagery (imagery.js): Sentinel-2 mosaics by month
+  var BASE_MAX_ZOOM = 12, IMG_MAX_ZOOM = 16;
+  var imgNote = document.getElementById("img-note"), imgS2 = document.getElementById("img-s2");
+  var imgWhen = document.getElementById("img-when"), imgLabel = document.getElementById("img-when-label");
+  var imgMsg = "", imgErr = false, whenT = null;
+  function imgStatus(text, isErr) { imgMsg = text; imgErr = isErr; showImgNote(); }
+  var s2 = window.NFImagery ? NFImagery.sentinel2(map, { status: imgStatus }) : null;
+  function showImgNote() {
+    var low = !!(img.kind && s2 && map.getZoom() < s2.minZoom), t = imgMsg || (low ? "Imagery shows from zoom " + s2.minZoom + ". " : "");
+    imgNote.textContent = t;
+    imgNote.hidden = !t;
+    imgNote.classList.toggle("img-err", !!(imgMsg && imgErr));
+    if (low && !imgMsg) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "linkish"; b.textContent = "Zoom in";
+      b.addEventListener("click", function () { map.setZoom(s2.minZoom); });
+      imgNote.appendChild(b);
+    }
+  }
+  function setImagery(kind, i) {
+    if (!s2) kind = "";
+    img.kind = kind;
+    img.i = kind ? (i === null || i === undefined ? s2.windows.length - 1 : i) : null;
+    [].forEach.call(document.querySelectorAll('input[name="lyr-img"]'), function (r) { r.checked = r.value === kind; });
+    imgS2.hidden = kind !== "s2";
+    clearTimeout(whenT);
+    if (kind === "s2") {
+      imgWhen.max = s2.windows.length - 1; imgWhen.value = img.i;
+      imgLabel.textContent = s2.windows[img.i].label;
+      map.setMaxZoom(IMG_MAX_ZOOM);
+      s2.show(img.i);
+    } else {
+      if (s2) s2.hide();
+      map.setMaxZoom(BASE_MAX_ZOOM);
+    }
+    styleBase(); showImgNote(); writeHash();
+  }
+  function applyImgWant() {
+    if (!imgWant) return;
+    var w = imgWant, i = null;
+    imgWant = null;
+    if (w.kind === "s2" && s2) s2.windows.forEach(function (x, k) { if (x.key === w.key) i = k; });
+    if (w.kind !== img.kind || (w.kind && i !== null && i !== img.i)) setImagery(w.kind, i);
+  }
+  [].forEach.call(document.querySelectorAll('input[name="lyr-img"]'), function (r) {
+    r.addEventListener("change", function () { if (r.checked) setImagery(r.value, img.i); });
+  });
+  imgWhen.addEventListener("input", function () {
+    img.i = +imgWhen.value;
+    imgLabel.textContent = s2.windows[img.i].label;
+    clearTimeout(whenT);
+    whenT = setTimeout(function () { s2.show(img.i); writeHash(); }, 350);
+  });
+  map.on("zoomend", function () { showImgNote(); if (img.kind) styleBase(); });
+  if (!s2) document.getElementById("img-note").closest("fieldset").hidden = true;
+
   var sfToggle = document.getElementById("sf-toggle"), sfBody = document.getElementById("sf-body");
   function setFilters(open) { sfBody.hidden = !open; sfToggle.setAttribute("aria-expanded", open); }
   sfToggle.addEventListener("click", function () { setFilters(sfBody.hidden); });
