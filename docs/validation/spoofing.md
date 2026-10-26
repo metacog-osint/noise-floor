@@ -1,6 +1,6 @@
 # ADS-B spoofing detector: validation (24 Oct 2026)
 
-**Lane:** adsb-spoofing (planned). **Code:** `tools/spoof_day.py` v0.4 (v0.3 for the held-out test), tests in `tests/test_spoof_day.py`. **Data:** 22 full adsb.lol days (ODbL), Feb 2024 – May 2026. **Outputs:** `data/spoofing/` (gitignored; the event files hold ICAO addresses and stay local). **Known answers:** public reporting of where, when and to which points aircraft were spoofed (section 3). It is region-and-period evidence; no source gives day-level ground truth.
+**Lane:** adsb-spoofing (**validated**, 26 Oct 2026: v0.4 and v0.5 each passed the five pre-registered held-out checks; see the v0.5 section for its caveat). **Code:** `tools/spoof_day.py` v0.5 by default (v0.3 for the first held-out test), tests in `tests/test_spoof_day.py`. **Data:** 22 full adsb.lol days (ODbL), Feb 2024 – May 2026. **Outputs:** `data/spoofing/` (gitignored; the event files hold ICAO addresses and stay local). **Known answers:** public reporting of where, when and to which points aircraft were spoofed (section 3). It is region-and-period evidence; no source gives day-level ground truth.
 
 ## Bottom line
 
