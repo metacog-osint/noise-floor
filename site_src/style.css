@@ -284,7 +284,7 @@ details.table-view .tw { max-height: 22rem; overflow: auto; }
   .sea-wrap { grid-template-columns: minmax(0, 1fr); }
   .sea-detail { max-height: none; }
   #sea-map { height: 58vh; min-height: 360px; }
-  #sea-map .mp-body { max-height: calc(clamp(360px, 58vh, 760px) - 9rem); }
+  #sea-map .mp-body { max-height: calc(clamp(360px, 58vh, 760px) - 13rem); }   /* room for the long credit line on phones */
 }
 @media (max-width: 34rem) { .sd-dl { grid-template-columns: 7.5rem minmax(0, 1fr); } }
 
