@@ -20,6 +20,8 @@
   Cache-Control: public, max-age=31536000, immutable
 /sun.js
   Cache-Control: public, max-age=31536000, immutable
+/dash.js
+  Cache-Control: public, max-age=31536000, immutable
 /data/land.json
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 /data/borders.json

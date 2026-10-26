@@ -1,17 +1,38 @@
-<!--{"title": "Noise Floor", "description": "An open, licence-clean picture of contested radio spectrum: GNSS degradation, L-band emitters, satellite communications and the evidence behind each.", "nav": "home", "head": "<script defer src=\"/home.js\"></script>"}-->
+<!--{"title": "Noise Floor", "description": "An open, licence-clean picture of contested radio spectrum: GNSS degradation, L-band emitters, satellite communications and the evidence behind each.", "nav": "home", "head": "<script defer src=\"/sunoutage.js\"></script><script defer src=\"/dash.js\"></script><script defer src=\"/home.js\"></script>"}-->
 <h1>Noise Floor</h1>
 <p class="lede">An open, licence-clean picture of where the radio spectrum is contested, and what that does to navigation and satellite communications. It measures effects and states its evidence. It doesn't assign blame.</p>
 
-<div class="callout">
-  <p><strong>Status, {{UPDATED}}.</strong> The GNSS method is built and validated on 20 days of worldwide aircraft data, and those days are on the <a href="/map">map</a> and in the <a href="/charts">charts</a>. The <a href="/map">map</a> covers every day since 1 October 2025 and updates each morning. The <a href="/sea">Sea</a> page shows sanctioned, military and state-flag ships in Finland's open AIS, with GNSS interference at sea. The NISAR L-band emitter lane has passed its first positive control.</p>
-</div>
-
-<section id="today" class="today" aria-labelledby="today-h" hidden>
+<div class="dash" id="dash" aria-label="Status board">
+  <section class="dash-card dash-wide" aria-labelledby="dalerts-h">
+    <h2 id="dalerts-h">Alerts</h2>
+    <div id="dalerts-body"><p class="small">Loading…</p></div>
+    <p class="small">An alert means a predicted sun outage met observed evidence (the sun brighter than usual at that frequency, or a radio burst inside the window), or a strong radio burst was observed at GNSS frequencies. Thresholds are provisional. <a href="/sun">How sun outages work</a> · <a href="/feed.xml">Alerts in the feed (Atom)</a> · <span id="dash-updated"></span></p>
+  </section>
+  <section class="dash-card" aria-labelledby="dsun-h">
+    <h2 id="dsun-h">Sun outages</h2>
+    <div id="dsun-body"><p class="small">Calculating…</p></div>
+    <p class="small">Predicted in your browser for 32 orbital slots seen from 36 cities, for a 0.9 m Ku-band dish. <a href="/sun">Calculator for any place, satellite and dish</a></p>
+  </section>
+  <section class="dash-card" aria-labelledby="dsolar-h">
+    <h2 id="dsolar-h">Solar radio (NOAA, live)</h2>
+    <div id="dsolar-body"><p class="small">Loading…</p></div>
+    <p class="small">Daily solar flux from the US Air Force radio telescopes, and radio bursts, via <a href="https://www.swpc.noaa.gov/">NOAA SWPC</a> (US public domain). 1 sfu = 10<sup>−22</sup> W m<sup>−2</sup> Hz<sup>−1</sup>.</p>
+  </section>
+  <section id="today" class="today dash-card" aria-labelledby="today-h" hidden>
   <h2 id="today-h">On the map today: <span id="today-day"></span></h2>
   <p id="today-sum"></p>
   <ul id="today-list" class="today-list"></ul>
   <p class="small"><a id="today-link" href="/map">Open the map</a> · <a href="/feed.xml">Daily feed (Atom)</a> · From the automatic daily run, not reviewed by a person.</p>
 </section>
+  <section class="dash-card" aria-labelledby="dsea-h">
+    <h2 id="dsea-h">At sea</h2>
+    <div id="dsea-body"><p class="small">Loading…</p></div>
+  </section>
+</div>
+
+<div class="callout">
+  <p><strong>Status, {{UPDATED}}.</strong> The GNSS method is built and validated on 20 days of worldwide aircraft data, and those days are on the <a href="/map">map</a> and in the <a href="/charts">charts</a>. The <a href="/map">map</a> covers every day since 1 October 2025 and updates each morning. The <a href="/sea">Sea</a> page shows sanctioned, military and state-flag ships in Finland's open AIS, with GNSS interference at sea. The NISAR L-band emitter lane has passed its first positive control.</p>
+</div>
 
 <h2>Explore the data</h2>
 <div class="grid">
