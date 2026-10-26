@@ -1,0 +1,4 @@
+{
+ "about": "Curated public reports of satellite TV or link outages, each with its source, checked by tools/sun_alerts.py against the predicted sun-outage window for that receiver and satellite (alerts within 30 days of the report). Public sources only (operator notices, broadcaster notices to viewers, ITU Radio Regulations Board documents, news); community posts stay in the private watch. Fields: time_utc, lat, lon (where the loss was reported), satellite_lon (degrees east), source_name, source_url, summary.",
+ "reports": []
+}

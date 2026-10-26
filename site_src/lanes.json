@@ -414,17 +414,27 @@
     {
       "id": "sun-outage",
       "group": "satcom",
-      "name": "Sun-outage calculator",
-      "status": "built",
-      "phase": "Tool",
-      "summary": "Predictable daily losses when the sun passes behind a GEO satellite, to the minute.",
-      "what": "Twice a year the sun sits behind each GEO satellite as seen from a given receiver, and dishes lose the signal for a few minutes a day. Losses inside those windows are natural; losses outside them deserve a second look.",
-      "how": "A low-precision solar ephemeris (Meeus, about 0.01°), an ideal geostationary satellite and a WGS84 receiver. An outage is the sun within 1.2° of the satellite, which suits a 0.9 m Ku-band dish.",
+      "name": "Sun outages: calculator, board and alerts",
+      "status": "running",
+      "phase": "Running (from Oct 2026)",
+      "summary": "Predictable daily losses when the sun passes behind a GEO satellite, to the minute, with alerts when observed solar conditions make them worse.",
+      "what": "Twice a year the sun sits behind each GEO satellite as seen from a given receiver, and dishes lose the signal for a few minutes a day. Losses inside those windows are natural; losses outside them deserve a second look. A strong solar radio burst can black out sun-facing links, and GNSS on the sunlit side, at any time.",
+      "how": "A low-precision solar ephemeris (Meeus, about 0.01°), an ideal geostationary satellite and a WGS84 receiver; an outage is the sun within half the dish beamwidth plus the sun's radius of the satellite (1.2° for a 0.9 m Ku-band dish). The Sun page computes windows for any place, slot and dish in the browser; the home page predicts them live for 32 slots seen from 36 cities and sets them against NOAA's live solar radio flux and radio bursts. An alert fires when a predicted outage meets observed evidence, or when a strong L-band burst is observed; the feed carries them.",
       "data": [
-        "Computed; no external data"
+        "Computed geometry",
+        "NOAA SWPC solar radio flux, radio bursts and alerts (US public domain)",
+        "Curated public outage reports (cited)"
       ],
-      "notes": "Checked against an independently written calculator: the Tehran windows and times agree.",
+      "notes": "The browser code matches the project's Python tool on six pairs in both hemispheres, and the Python tool matched an independently written calculator for Tehran. Alert thresholds are provisional. Our own aircraft data joins the alerts once a check against archived radio bursts passes.",
       "links": [
+        [
+          "Sun page",
+          "/sun"
+        ],
+        [
+          "Design",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/design/sun-outage.md"
+        ],
         [
           "Code",
           "https://github.com/metacog-osint/noise-floor/blob/main/tools/sun_transit.py"
