@@ -10,7 +10,7 @@
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css?v=1d361b0ff2">
 <link rel="alternate" type="application/atom+xml" title="Noise Floor: daily GNSS summary" href="/feed.xml">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=b3a21a1ecf"></script><script defer src="/map.js?v=ef667e5f34"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=fc9742d9de"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -64,6 +64,8 @@
         <label><input type="checkbox" id="lyr-places" checked> Place names</label>
         <label><input type="checkbox" id="lyr-areas"> Monitored areas</label>
         <label><input type="checkbox" id="lyr-events" checked> Events and announced tests</label>
+        <label id="lyr-imagery-opt" hidden><input type="checkbox" id="lyr-imagery"> Satellite imagery (Esri)</label>
+        <p id="map-img-note" class="img-note" aria-live="polite" hidden></p>
       </fieldset>
       <label class="mp-group"><span>Jump to</span><select id="map-jump" aria-label="Jump to a region">
         <option value="">Choose a region…</option>
@@ -136,6 +138,7 @@
 <h2>Reading the map</h2>
 <ul>
   <li><strong>Click a hex</strong> to see the history of the area around it (an H3 resolution-3 cell, about 12,000 km²): its share for every day since 1 October 2025, with the days an anomaly event covered it. Click a point on that chart to open the day.</li>
+  <li><strong>Satellite imagery</strong> (Map options → Layers → Satellite imagery) puts Esri World Imagery under the hexes: quiet hexes turn faint, the coloured ones stay strong, and the map zooms closer (to zoom 10) to show what lies under a hotspot. It is offered only where Esri's terms allow (see the <a href="/terms#imagery">terms of use</a>) and stops if the site's free monthly allowance runs out.</li>
   <li><strong>Change from usual</strong> colours each hex by how far today's share sits above its own median over its previous 14 days with traffic. Persistent hotspots fade, so new or growing activity stands out. Hexes with fewer than 5 such days show as low coverage.</li>
   <li><strong>Fewer aircraft than usual</strong> compares each hex's aircraft count with its median over the previous 14 days. Strong jamming can stop aircraft sending a position at all, and then they vanish from the map instead of showing as degraded: on 9 May 2026 three in four aircraft crossing the southern Baltic lost their ADS-B position (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">validation notes</a>, verdict 34). Weekends, holidays, airspace closures and receiver outages lower counts too, so read it alongside the other views. Try 2026-05-09.</li>
   <li><strong>Play</strong> (▶ under the strip) steps through the days one by one; any other control stops it.</li>

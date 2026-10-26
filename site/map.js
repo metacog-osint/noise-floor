@@ -32,6 +32,8 @@
   var TIER = { major: "Major", notable: "Notable", minor: "Minor" };
   var days = [], cells = {}, cellList = [], land = [], colors = {}, borders = [], places = [], areas = [];
   var layersOn = { borders: true, places: true, areas: false };
+  var imagery = { on: false, want: false, key: null, layer: null };   // Esri World Imagery under the hexes (not remembered between visits)
+  var BASE_MAX_ZOOM = 7, IMG_MAX_ZOOM = 10;                            // imagery is worth a closer look
   try { var savedLayers = JSON.parse(localStorage.getItem("nf-map-layers") || "null"); if (savedLayers) layersOn = Object.assign(layersOn, savedLayers); } catch (e) { /* defaults */ }
   var mapEl = document.getElementById("map");
   if (!mapEl || !window.L || !window.h3) return;
@@ -71,7 +73,7 @@
     return { cls: k === 0 ? "quiet" : k - 1, share: share, n: n, bad: bad, today: today, usual: usual };
   }
 
-  var map = L.map(mapEl, { minZoom: 1, maxZoom: 7, zoomSnap: 0.5, worldCopyJump: false,
+  var map = L.map(mapEl, { minZoom: 1, maxZoom: BASE_MAX_ZOOM, zoomSnap: 0.5, worldCopyJump: false,
                            maxBounds: [[-85, -200], [85, 200]], attributionControl: true });
   map.attributionControl.setPrefix(false);
   map.attributionControl.addAttribution('ADS-B: <a href="https://www.adsb.lol/">adsb.lol</a> contributors (ODbL 1.0) · Land: Natural Earth');
@@ -134,10 +136,12 @@
       L.DomUtil.setPosition(c, m.containerPointToLayerPoint([0, 0]));
       var g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
       setView(m);
-      g.fillStyle = colors.land; g.strokeStyle = colors.coast; g.lineWidth = 0.6;
-      g.beginPath();
-      land.forEach(function (ring) { if (onScreen(ring.mb)) trace(g, ring.m, true); });
-      g.fill(); g.stroke();
+      if (!imagery.on) {                               // under satellite imagery the land fill would hide it
+        g.fillStyle = colors.land; g.strokeStyle = colors.coast; g.lineWidth = 0.6;
+        g.beginPath();
+        land.forEach(function (ring) { if (onScreen(ring.mb)) trace(g, ring.m, true); });
+        g.fill(); g.stroke();
+      }
       // one choice per view: a resolution-4 hex is about 45 km across (0.00112 of the equator), wider in Mercator nearer
       // the poles; under 6 pixels at the view's centre, every hex is drawn as a rectangle
       var useRects = 0.00112 / Math.max(0.2, Math.cos(m.getCenter().lat * Math.PI / 180)) * vw.k < 6;
@@ -150,6 +154,8 @@
       [["low", colors.low], ["quiet", colors.quiet], [0, colors.ramp[0]], [1, colors.ramp[1]], [2, colors.ramp[2]], [3, colors.ramp[3]]]
         .forEach(function (pair) {
           g.fillStyle = pair[1]; g.beginPath();
+          // over imagery: quiet and low-coverage hexes faint, the interference classes still strong
+          g.globalAlpha = !imagery.on ? 1 : pair[0] === "low" || pair[0] === "quiet" ? 0.22 : 0.72;
           var small = [];
           byCls[pair[0]].forEach(function (cl) {
             if (useRects) small.push(cl);              // hexes a few pixels across: rectangles look the same
@@ -161,6 +167,7 @@
             g.fillRect(x0, y0, Math.max(1, Math.ceil(bx[2] * vw.k + vw.ox) - x0), Math.max(1, Math.ceil(bx[3] * vw.k + vw.oy) - y0));   // whole pixels: no seams
           });
         });
+      g.globalAlpha = 1;
       if (state.focus && cells[state.focus]) {
         g.strokeStyle = colors.focus; g.lineWidth = 2; g.beginPath();
         trace(g, cells[state.focus].s.m, true); g.stroke();
@@ -588,7 +595,7 @@
   }
   function hashFor() {
     var c = map.getCenter();
-    return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") +
+    return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") + (imagery.on ? "&img=esri" : "") +
            "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
   }
   function writeHash() { if (state.day) history.replaceState(null, "", hashFor()); }
@@ -811,12 +818,14 @@
       if (hp.m === "chg") state.measure = "chg";
       var v = (hp.v || "").split(",").map(Number);
       state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
+      imagery.want = hp.img === "esri";
       return d;
     }
     var day = fromHash();
     window.addEventListener("hashchange", function () {
       if (location.hash === hashFor()) return;         // our own replaceState
       var d = fromHash(); renderLegend();
+      setImagery(imagery.want);
       if (state.view) map.setView([state.view[0], state.view[1]], state.view[2], { animate: false });
       if (d !== state.day) loadDay(d); else refresh();
     });
@@ -851,6 +860,35 @@
         try { localStorage.setItem("nf-map-layers", JSON.stringify(layersOn)); } catch (e) { /* this visit only */ }
         layer.redraw();
       });
+    });
+    // satellite imagery (Esri World Imagery, imagery.js): offered only where /api/imagery returns a key
+    var imgBox = document.getElementById("lyr-imagery"), imgNote = document.getElementById("map-img-note");
+    function setImagery(on) {
+      on = !!(on && imagery.key);
+      if (on === imagery.on) return;
+      imagery.on = on; imgBox.checked = on;
+      if (on) {
+        imagery.layer = NFImagery.esriLayer(imagery.key, function () {
+          imgNote.textContent = "Esri imagery isn't loading (the free monthly allowance may be used up).";
+          imgNote.hidden = false;
+        }).addTo(map);
+        map.setMaxZoom(IMG_MAX_ZOOM);
+      } else {
+        if (imagery.layer) { map.removeLayer(imagery.layer); imagery.layer = null; }
+        imgNote.hidden = true;
+        map.setMaxZoom(BASE_MAX_ZOOM);
+      }
+      layer.redraw(); writeHash();
+    }
+    imgBox.addEventListener("change", function () { setImagery(imgBox.checked); });
+    if (window.NFImagery) NFImagery.esriKey().then(function (k) {
+      if (!k) return;
+      imagery.key = k;
+      document.getElementById("lyr-imagery-opt").hidden = false;
+      if (imagery.want) {
+        setImagery(true);
+        if (state.view && state.view[2] > BASE_MAX_ZOOM) map.setView([state.view[0], state.view[1]], state.view[2], { animate: false });
+      }
     });
     // on-map panel: a Leaflet control so clicks and scrolls inside it don't move the map
     var panel = document.getElementById("map-panel"), ptoggle = document.getElementById("mp-toggle");

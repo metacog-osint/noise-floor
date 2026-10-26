@@ -624,11 +624,7 @@
   });
   // ---------- satellite imagery (imagery.js): Sentinel-2 mosaics by month
   var BASE_MAX_ZOOM = 12, IMG_MAX_ZOOM = 16, ESRI_MAX_ZOOM = 18;
-  // Esri World Imagery (ArcGIS Location Platform): the key comes from /api/imagery (functions/api/imagery.js), which
-  // withholds it where Esri's terms bar access. Without a key the option stays hidden.
-  var ESRI_TILES = "https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=";
-  var ESRI_CREDIT = 'Powered by <a href="https://www.esri.com/" rel="noopener">Esri</a> · Imagery: Esri, Vantor, Earthstar Geographics, ' +
-                    'and the GIS User Community · <a href="/terms#imagery">Terms</a>';
+  // Esri World Imagery (imagery.js): offered only where /api/imagery returns a key; otherwise the option stays hidden
   var esriKey = null, esriLayer = null, esriPending = false;
   var imgNote = document.getElementById("img-note"), imgS2 = document.getElementById("img-s2");
   var imgWhen = document.getElementById("img-when"), imgLabel = document.getElementById("img-when-label");
@@ -673,9 +669,9 @@
       imgHelp.textContent = "";
       map.setMaxZoom(ESRI_MAX_ZOOM);
       if (!esriLayer) {
-        var errs = 0;
-        esriLayer = L.tileLayer(ESRI_TILES + encodeURIComponent(esriKey), { maxZoom: 19, maxNativeZoom: 19, attribution: ESRI_CREDIT }).addTo(map);
-        esriLayer.on("tileerror", function () { if (++errs === 3) imgStatus("Esri imagery isn't loading (the free monthly allowance may be used up). Try Sentinel-2.", true); });
+        esriLayer = NFImagery.esriLayer(esriKey, function () {
+          imgStatus("Esri imagery isn't loading (the free monthly allowance may be used up). Try Sentinel-2.", true);
+        }).addTo(map);
       }
     } else {
       map.setMaxZoom(BASE_MAX_ZOOM);
@@ -701,13 +697,13 @@
     whenT = setTimeout(function () { M.show(img.i); writeHash(); }, 350);
   });
   map.on("zoomend", function () { showImgNote(); if (img.kind) styleBase(); });
-  fetch("/api/imagery", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-    if (!j || !j.esri || !j.esri.key) { esriPending = false; return; }
-    esriKey = j.esri.key;
+  if (window.NFImagery) NFImagery.esriKey().then(function (k) {
+    if (!k) { esriPending = false; return; }       // local preview, not configured, or not offered here: Sentinel layers only
+    esriKey = k;
     document.getElementById("img-esri-opt").hidden = false;
     document.getElementById("img-esri-opt").closest("fieldset").hidden = false;
     if (esriPending) { esriPending = false; setImagery("esri", null); }
-  }).catch(function () { esriPending = false; /* local preview or no function: Sentinel layers only */ });
+  });
   if (!s2) document.getElementById("img-note").closest("fieldset").hidden = true;
 
   var sfToggle = document.getElementById("sf-toggle"), sfBody = document.getElementById("sf-body");
