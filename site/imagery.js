@@ -5,7 +5,8 @@
    NFImagery.sentinel2(map, opts) / sentinel1(map, opts): one mosaic per month (or the last 30 days) from Microsoft
    Planetary Computer's anonymous tile service: Sentinel-2 true colour, least cloudy scenes first; Sentinel-1 radar (VV),
    latest pass first, which sees through cloud and shows ships as bright points. Copernicus Sentinel data is free for any
-   use with attribution; the tile service is a Microsoft "Preview", so failures are shown to the visitor, not hidden. */
+   use with attribution; the tile service is a Microsoft "Preview", so failures are shown to the visitor, not hidden.
+   NFImagery.esriKey() / esriLayer(key, onFail): Esri World Imagery, for the Sea and interference maps. */
 (function () {
   "use strict";
   var PC = "https://planetarycomputer.microsoft.com/api/data/v1/mosaic/";
@@ -161,8 +162,28 @@
     }
     return { windows: wins, show: show, hide: hide, windowFor: function (day) { return windowFor(wins, day); }, minZoom: MIN_ZOOM };
   }
+  // ---------- Esri World Imagery (ArcGIS Location Platform). The key comes from /api/imagery (functions/api/imagery.js),
+  // which withholds it where Esri's terms bar access; with no key the pages keep the option hidden.
+  var ESRI_TILES = "https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=";
+  var ESRI_CREDIT = 'Powered by <a href="https://www.esri.com/" rel="noopener">Esri</a> · Imagery: Esri, Vantor, Earthstar Geographics, ' +
+                    'and the GIS User Community · <a href="/terms#imagery">Terms</a>';
+  var esriKeyP = null;
+  function esriKey() {              // resolves to the key, or null (not offered here, not configured, or a local preview)
+    if (!esriKeyP) esriKeyP = fetch("/api/imagery", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { return j && j.esri && j.esri.key ? j.esri.key : null; })
+      .catch(function () { return null; });
+    return esriKeyP;
+  }
+  function esriLayer(key, onFail) { // onFail runs once, after the third tile error (e.g. the free allowance used up)
+    var errs = 0, l = L.tileLayer(ESRI_TILES + encodeURIComponent(key),
+      { maxZoom: 19, maxNativeZoom: 19, attribution: ESRI_CREDIT, className: "img-tiles" });
+    if (onFail) l.on("tileerror", function () { if (++errs === 3) onFail(); });
+    return l;
+  }
+
   function sentinel2(map, opts) { return mosaic("s2", map, opts); }
   function sentinel1(map, opts) { return mosaic("s1", map, opts); }
 
-  window.NFImagery = { links: links, linksHtml: linksHtml, sentinel2: sentinel2, sentinel1: sentinel1 };
+  window.NFImagery = { links: links, linksHtml: linksHtml, sentinel2: sentinel2, sentinel1: sentinel1, esriKey: esriKey, esriLayer: esriLayer };
 })();
