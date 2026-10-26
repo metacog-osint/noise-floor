@@ -23,7 +23,7 @@
   var HOME_PORT = "not in open data (the port of registry is held by commercial registries)";
   var vessels = [], shown = [], gnss = null, colors = {}, markers = {}, selected = null, trackLayer = null, dataEnd = 0;
   var on = { sanctioned: true, state: true, flag: true, gnss: true, borders: true };
-  var img = { kind: "", i: null }, imgWant = null;        // satellite imagery: kind "" (none), "s2" or "s1"; i = month window
+  var img = { kind: "", i: null }, imgWant = null;        // satellite imagery: kind "" (none), "s2", "s1" or "esri"; i = month window
   var MOS = null;                                          // the Sentinel mosaic layers by kind (imagery.js), set below
   try { var saved = JSON.parse(localStorage.getItem("nf-sea-layers") || "null"); if (saved) on = Object.assign(on, saved); } catch (e) { /* defaults */ }
 
@@ -226,7 +226,7 @@
     if (borderLayer) { if (on.borders) borderLayer.addTo(map); else map.removeLayer(borderLayer); }
   }
   function styleBase() {
-    var M = MOS && MOS[img.kind], under = !!(M && map.getZoom() >= M.minZoom);   // land fill off where imagery shows
+    var M = MOS && MOS[img.kind], under = !!(img.kind === "esri" || (M && map.getZoom() >= M.minZoom));   // land fill off under imagery
     if (landLayer) landLayer.setStyle({ fillColor: colors.land, color: colors.coast, weight: 0.6, fillOpacity: under ? 0 : 1 });
     if (borderLayer) borderLayer.setStyle({ color: colors.border, weight: 0.9, dashArray: "3 3" });
   }
@@ -520,6 +520,7 @@
     if (F.mism) parts.push("mism=1");
     if (F.seen) parts.push("seen=" + F.seen);
     if (MOS && MOS[img.kind]) parts.push("img=" + img.kind + "&when=" + MOS[img.kind].windows[img.i].key);
+    if (img.kind === "esri") parts.push("img=esri");
     var h = parts.length ? "#" + parts.join("&") : "";
     if (h !== location.hash && !(h === "" && location.hash === "")) {
       try { history.replaceState(null, "", h || location.pathname + location.search); } catch (e) { /* no history API */ }
@@ -538,7 +539,7 @@
     ["name", "imo", "mmsi", "cs"].forEach(function (k) { F[k] = one(k); var el = document.getElementById("sf-" + k); if (el) el.value = F[k]; });
     F.spoof = hp.spoof === "1"; F.gaps = hp.gaps === "1"; F.mism = hp.mism === "1";
     F.seen = [6, 24, 48].indexOf(+hp.seen) >= 0 ? +hp.seen : 0;
-    imgWant = { kind: hp.img === "s2" || hp.img === "s1" ? hp.img : "", key: one("when") };
+    imgWant = { kind: ["s2", "s1", "esri"].indexOf(hp.img) >= 0 ? hp.img : "", key: one("when") };
     var m = /^\d+$/.test(hp.v || "") ? +hp.v : null;
     return m;
   }
@@ -622,7 +623,13 @@
     });
   });
   // ---------- satellite imagery (imagery.js): Sentinel-2 mosaics by month
-  var BASE_MAX_ZOOM = 12, IMG_MAX_ZOOM = 16;
+  var BASE_MAX_ZOOM = 12, IMG_MAX_ZOOM = 16, ESRI_MAX_ZOOM = 18;
+  // Esri World Imagery (ArcGIS Location Platform): the key comes from /api/imagery (functions/api/imagery.js), which
+  // withholds it where Esri's terms bar access. Without a key the option stays hidden.
+  var ESRI_TILES = "https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=";
+  var ESRI_CREDIT = 'Powered by <a href="https://www.esri.com/" rel="noopener">Esri</a> · Imagery: Esri, Vantor, Earthstar Geographics, ' +
+                    'and the GIS User Community · <a href="/terms#imagery">Terms</a>';
+  var esriKey = null, esriLayer = null, esriPending = false;
   var imgNote = document.getElementById("img-note"), imgS2 = document.getElementById("img-s2");
   var imgWhen = document.getElementById("img-when"), imgLabel = document.getElementById("img-when-label");
   var imgScene = document.getElementById("img-scene"), imgHelp = document.getElementById("img-help");
@@ -646,8 +653,10 @@
     }
   }
   function setImagery(kind, i) {
+    if (kind === "esri" && !esriKey) { esriPending = true; return; }       // applied once /api/imagery answers
     var M = MOS && MOS[kind], prev = MOS && MOS[img.kind];
-    if (kind && !M) kind = "";
+    if (kind && !M && kind !== "esri") kind = "";
+    if (kind !== "esri" && esriLayer) { map.removeLayer(esriLayer); esriLayer = null; }
     img.kind = kind;
     img.i = M ? (i === null || i === undefined ? M.windows.length - 1 : i) : null;
     [].forEach.call(document.querySelectorAll('input[name="lyr-img"]'), function (r) { r.checked = r.value === kind; });
@@ -660,6 +669,14 @@
       imgHelp.textContent = HELP[kind];
       map.setMaxZoom(IMG_MAX_ZOOM);
       M.show(img.i);
+    } else if (kind === "esri") {
+      imgHelp.textContent = "";
+      map.setMaxZoom(ESRI_MAX_ZOOM);
+      if (!esriLayer) {
+        var errs = 0;
+        esriLayer = L.tileLayer(ESRI_TILES + encodeURIComponent(esriKey), { maxZoom: 19, maxNativeZoom: 19, attribution: ESRI_CREDIT }).addTo(map);
+        esriLayer.on("tileerror", function () { if (++errs === 3) imgStatus("Esri imagery isn't loading (the free monthly allowance may be used up). Try Sentinel-2.", true); });
+      }
     } else {
       map.setMaxZoom(BASE_MAX_ZOOM);
     }
@@ -684,6 +701,13 @@
     whenT = setTimeout(function () { M.show(img.i); writeHash(); }, 350);
   });
   map.on("zoomend", function () { showImgNote(); if (img.kind) styleBase(); });
+  fetch("/api/imagery", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (!j || !j.esri || !j.esri.key) { esriPending = false; return; }
+    esriKey = j.esri.key;
+    document.getElementById("img-esri-opt").hidden = false;
+    document.getElementById("img-esri-opt").closest("fieldset").hidden = false;
+    if (esriPending) { esriPending = false; setImagery("esri", null); }
+  }).catch(function () { esriPending = false; /* local preview or no function: Sentinel layers only */ });
   if (!s2) document.getElementById("img-note").closest("fieldset").hidden = true;
 
   var sfToggle = document.getElementById("sf-toggle"), sfBody = document.getElementById("sf-body");
