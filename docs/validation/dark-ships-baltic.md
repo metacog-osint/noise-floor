@@ -94,6 +94,42 @@ transmit, which is a legitimate reason for a dark ship, not evidence of wrongdoi
   about them.
 - Positions and identities of individual vessels stay private. Only counts and the verdict are published.
 
+## Development notes (24 Oct passes; not the held-out test)
+
+The matcher (`tools/dark_match.py`) was built and run on the two development passes only (Sentinel-1C, 24 Oct 2026,
+04:57 UTC descending and 16:12 UTC ascending, with the 24 Oct AIS capture). The held-out pass hasn't been read.
+
+| | Variant A (as pre-registered) | Variant B (amendment 2) |
+|---|---|---|
+| Detections in the scored area | 5,831 | 85 |
+| AIS vessels scored (known position) | 59 | 45 |
+| H1: ships of 100 m or more matched | 36 of 37 (97%) | 34 of 34 (100%) |
+| H2: median position gap, matched ships of 100 m or more | 404 m | 404 m |
+| H3: large detections (50 m or more) with no AIS match | 3,524 of 3,576 (98.5%) | 36 of 81 (44%) |
+| 50–100 m ships matched (reported) | 11 of 12 | 11 of 11 |
+
+- **The detector finds the ships AIS says are there.** Both variants pass H1 and H2 on the development passes. The
+  ~400 m median gap is the along-track shift of moving ships in radar images, as expected.
+- **Variant A is swamped by land.** 2,625 of the 2,911 detections on the first pass were in the Archipelago Sea: skerries
+  and islets that the Natural Earth 10 m coastline doesn't contain. The Finnish and Estonian coasts of the Gulf of
+  Finland show the same.
+- **Variant B removes most of it, not all.** With OpenStreetMap land added, 40 detections stay unmatched, 36 of them 50 m
+  or more. None lies within 2 km of any AIS vessel, so they aren't shifted images of moving ships. About a third lie
+  2–8 km straight along the satellite track from a large ship, which fits azimuth ghosts (the Sentinel-2 check found
+  ghosts 4.3–6.3 km along track); the detector's ghost filter, tuned at Singapore, misses them here. The rest lie
+  across track and are unexplained so far (uncharted rocks, navigation marks, aquaculture, or vessels without AIS).
+
+**Amendment 2 (26 Oct 2026, before any held-out data was read).** Variant B is added: identical to variant A except that
+OpenStreetMap land polygons (`osm-land-polygons` in the registry, ODbL; `data/ref/osm/baltic_land.json`, cut from the
+26 Oct 2026 download) are passed to `ship_detect.detect_array` as its extra land mask (rasterised at 20 m, all pixels
+touched; the detector then drops detections on or within 40 m of that land and removes it from the sea area). Variant A
+stays the pre-registered primary. Both will be scored on the held-out pass with the same checks and verdict rule, and
+both reported.
+
+**Not scored yet, on purpose.** On the development passes both variants would come out "partly validated" (H3 fails). A
+ghost rule that uses AIS-positioned ships, and a fixed-site map from more passes, would be decided and written here as
+amendment 3 before the held-out pass is read. Until then the held-out pass stays unread.
+
 ---
 
 ## Results
