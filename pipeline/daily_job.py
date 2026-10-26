@@ -235,7 +235,7 @@ def main():
     ap.add_argument("--no-upload", action="store_true")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--position-loss", action="store_true",
-                    help="also make and upload the position-loss tables (off by default; not set by the workflow)")
+                    help="also make and upload the position-loss tables (off by default; the daily workflow sets it)")
     a = ap.parse_args()
     today = datetime.now(timezone.utc).date()
     days = sorted(set(expand(a.days))) if a.days else [(today - timedelta(days=k)).isoformat() for k in range(a.lookback, 0, -1)]
