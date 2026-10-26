@@ -1,6 +1,6 @@
 # Dark ships and phantom tracks in Finnish waters (maritime M2): pre-registration
 
-**Written 26 Oct 2026 at about 18:00 UTC, before any matching code existed and before the held-out data was read.**
+**Written 26 Oct 2026, committed 17:57 UTC (8b1554c), before any matching code existed and before the held-out data was read.**
 Nothing in the "Frozen" and "Checks" sections changes after scoring. Results go below the line at the end.
 
 **Lane:** maritime, step M2 (detectors D1 "dark ship" and D2 "phantom track", `docs/maritime-plan.md` section 5).
@@ -50,8 +50,8 @@ are rare enough that each one is worth a person's look, rather than clutter that
 - **Fixed sites:** a detection within 100 m of a site that `ship_detect.py persist` finds in at least 60% of the
   development and held-out passes (buoys, beacons, turbines) is a fixed structure, not a ship.
 
-**Amendment 1 (26 Oct 2026, about 18:20 UTC, before any held-out data was read and before the matcher was run on
-anything).** Four gaps in the text above, closed here:
+**Amendment 1 (26 Oct 2026, committed 17:59 UTC (ba70c1f), before any held-out data was read and before the matcher
+existed).** Four gaps in the text above, closed here:
 
 - **Scored area:** also restricted to the AIS detector's named regions "Gulf of Finland 22.5-27E", "Gulf of Finland east
   of 27E" and "Archipelago Sea and Aland" (`ais_detect.REGIONS`, first match, so Narva Bay is excluded), where Finnish
