@@ -93,7 +93,10 @@
       }
       if (open) out.push(open);
     });
-    out.forEach(function (o) { o.start = new Date(o.start); o.end = new Date(o.end); o.peak = new Date(o.peak); });
+    out.forEach(function (o) {
+      o.start = new Date(o.start); o.end = new Date(o.end); o.peak = new Date(o.peak);
+      for (var k in o.pair) if (!(k in o)) o[k] = o.pair[k];        // the pair's own fields (city, slot, ...) on the result
+    });
     return out.sort(function (a, b) { return a.start - b.start; });
   }
 
