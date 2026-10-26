@@ -1,0 +1,14 @@
+{
+  "about": "Official notices about GNSS interference shown on the home board, each linked to its issuer. Wording is the issuer's; positions are not given here. Curated by hand; see docs/research/2026-10-26-official-gnss-notices.md.",
+  "notices": [
+    {"id": "BALTIC SEA NAV WARN 030/26", "issuer": "Swedish Maritime Administration (BALTICO)", "issued_utc": "2026-10-12T09:12Z", "valid_to_utc": null,
+     "area": "Southern, south-eastern, central and northern Baltic, Gulf of Finland, Gulf of Riga, Sea of Åland",
+     "wording": "GNSS, AIS, radar and DGPS interference observed in area", "url": "https://navvarn.sjofartsverket.se/en/Navigationsvarningar/"},
+    {"id": "Finnish NtM *182/2026", "issuer": "Traficom (Finnish Notices to Mariners)", "issued_utc": "2026-06-30T00:00Z", "valid_to_utc": null,
+     "area": "Gulf of Finland",
+     "wording": "GNSS and AIS interference in waterborne transport, begun in spring 2024, continuing", "url": "https://traficom.fi/files/media/file/TM_2026_18_EN.pdf"},
+    {"id": "Estonia–Finland navigation warning", "issuer": "Estonian Transport Administration and Finland", "issued_utc": "2025-06-17T11:02Z", "valid_to_utc": null,
+     "area": "Gulf of Finland: both countries' territorial waters and EEZs",
+     "wording": "GNSS interference", "url": "https://transpordiamet.ee/en/news/eesti-ja-soome-hoiatavad-laevu-soome-lahes-sagenenud-gnss-hairete-eest"}
+  ]
+}
