@@ -170,8 +170,8 @@
       "id": "ais",
       "group": "pnt",
       "name": "Spoofing at sea (AIS)",
-      "status": "prototype",
-      "phase": "Phase 4 (prototype, Oct 2026)",
+      "status": "validated",
+      "phase": "Validated, regional (Oct 2026)",
       "summary": "Ship position reports that jump, circle or land ashore.",
       "what": "Ships broadcast GNSS-derived positions over AIS. Spoofed fixes appear as impossible tracks, ships placed on land and clusters in patterns.",
       "how": "A collector records Finland's open AIS stream (Digitraffic), and detectors flag impossible speeds, course swinging against a fixed heading, positions on land, and many ships reported on one spot. The same detectors also look for rendezvous, loitering, going dark and identity changes, for the maritime lane.",
@@ -179,7 +179,7 @@
         "Digitraffic AIS (CC BY 4.0)",
         "Kystverket AIS (NLOD; licence text not yet read)"
       ],
-      "notes": "First 14 hours, 24 Oct 2026: 26 ships in the eastern Gulf of Finland showed GNSS interference; 13 were shown on one circle in inland north-western Russia at 66–81 knots, which points to their GNSS being spoofed rather than false AIS. One ship was shown east of St Petersburg, 0.5 km from a point where the aircraft spoofing detector found 57 aircraft on 20 Jun 2026. Coverage is regional, with none of Kaliningrad. Identities are published only for the Sea map's categories.",
+      "notes": "Validated 26 Oct 2026 for Finnish waters and the approaches, on a 24-hour capture held out and checked by rules set in advance: flagged ships were 0.13% in the control areas, 97% of those with a trusted position were in the eastern Gulf of Finland (140 times the control rate), and the aircraft map agreed (22 times). The ships' own lost-fix reports agreed less than set in advance (2.6 times against 3). Flagged ships peak at night, and the circle in inland Russia (Tver region) that their receivers were moved to on 24 Oct was used again by 19 ships. The flags point to GNSS spoofing of the ships' receivers rather than false AIS. Coverage is regional: Finland's open AIS only.",
       "links": [
         [
           "First results",

@@ -9,6 +9,8 @@ for detectors meant to move later to the South China Sea and Indian Ocean, where
 AIS-derived event lists (vessel identities, positions) stay private in `data/ais/digitraffic/events/` (gitignored), as
 the plan requires (Section 11). This page gives counts and anonymised examples only.
 
+**Update, 26 Oct 2026: detector D7 (GNSS interference likely) passed its pre-registered held-out test, regional (Finnish waters and the approaches); see "Held-out test: results" at the end. The check against the ships' own lost-fix reports came out 2.6x, short of the 3x set in advance.**
+
 **This is one short development sample: 1.9 hours, 03:31–05:27 UTC on 24 Oct 2026** (06:31–08:27 Finnish time;
 22:31–00:27 US Central, CDT). Nothing here is validated. Durations for D3–D5 were scaled down to fit it (Section 2).
 
@@ -326,3 +328,39 @@ H4 passes. Partly validated if H1 and H2 pass but neither H3 nor H4 does. Not va
 weaker independent check, because the eastern Gulf's aircraft degradation was known before this test; H3 is the
 stronger. Reported but not scored: flagged vessels per hour, the spoofed-to centres, and whether the circle near
 57.7°N 32.5°E is used again.
+
+## Held-out test: results (scored 26 Oct 2026, 19:55–20:05 UTC)
+
+Scored exactly as pre-registered above: `python tools/ais_detect.py --days 2026-10-25 2026-10-26 --since
+2026-10-25T19:51:00Z --preset plan` (with `--quiet`, which only stops the printout), rules "ais-0.1 (2026-10-24)",
+unchanged since the pre-registration commit. The capture ran from 19:51:35 UTC on 25 Oct to its 24-hour limit at
+19:51:35 UTC on 26 Oct: 2,998,814 position messages, 164,549 metadata messages, 144 REST polls (122,517 rows from 19:51
+on), 792 lost-fix reports, no failed polls. The scoring code was checked first against the development day: it
+reproduces the reference numbers above (26 of 206, 3 of 813, 26 of 29).
+
+| # | Check | Result | Pass if | Verdict |
+|---|---|---|---|---|
+| H1 | False positives in the control areas | 1 of 746 vessels flagged (0.13%) | ≤ 1.5% | **Pass** |
+| H2 | Concentration in the eastern Gulf | 37 of 38 flagged vessels with a trusted position there (97.4%); 37 of 197 vessels there flagged (18.8%), 140× the control share | ≥ 60% and ≥ 10× | **Pass** |
+| H3 | The ships' own reports (UTC second 62 or 63) | Eastern-Gulf vessels with a REST poll: 8 of 40 flagged reported it (20.0%), 12 of 157 unflagged (7.6%): 2.6× | ≥ 3× with ≥ 3 flagged reporting | **Fail** (2.6×) |
+| H4 | The aircraft map | Eastern Gulf 85.7% of aircraft at jamming scale against 3.9% over the control boxes: 22× (25 Oct table: the 26 Oct table publishes on 27 Oct, as provided for above) | ≥ 5× | **Pass** |
+
+**Verdict by the rule set in advance: validated (regional: Finnish waters and the approaches).** H1 and H2 pass, and so
+does H4. **H3, the stronger independent check, failed narrowly:** flagged ships did report dead reckoning or
+positioning inoperative more often than unflagged ships in the same water, 2.6 times as often, but not the 3 times set
+in advance. Two readings, neither tested: many unflagged ships in the eastern Gulf were also affected but kept a
+plausible track (the detector flags impossible positions, not every affected receiver), which lifts the unflagged
+rate; and the field depends on how each ship's AIS unit reports a lost fix. H4 is the weaker check, because the eastern
+Gulf's aircraft degradation was known before the test, and its table covers 25 Oct, of which only the last four hours
+fall inside the capture.
+
+**Reported, not scored:**
+
+- **Flagged vessels by hour (UTC):** a night peak of 8–15 an hour from 21:00 to 06:00 (23:00–08:00 Finnish time,
+  EET since 25 Oct), against 2–8 an hour from 09:00 to 18:00.
+- **Where receivers were spoofed to:** the circle near 57.7°N 32.5°E (inland Russia, Tver region; seen on 24 Oct) was
+  used again, by 19 ships; one ship each near 59.6°N 33.0°E and 60.5°N 28.0°E.
+- **Other readings:** 8 vessels came out "shared MMSI, data error or interference: check", as on the development day;
+  they aren't counted as flagged.
+- **To add when published:** H4 recomputed on the 26 Oct aircraft table (reported beside the scored result, not
+  replacing it).
