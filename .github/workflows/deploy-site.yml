@@ -68,8 +68,9 @@ jobs:
           python3 tools/fetch_release_files.py "$RUNNER_TEMP/release-files"
           python3 tools/sun_alerts.py || echo "::warning::sun-outage alerts skipped (NOAA or script failure); the feed goes out without them"
           python3 tools/site_days.py "$RUNNER_TEMP/release-files"
-          python3 -m pip install --quiet --user h3
+          python3 -m pip install --quiet --user h3 pyarrow
           python3 tools/site_history.py site
+          python3 tools/board.py "$RUNNER_TEMP/release-files" site || echo "::warning::status board skipped; the home page shows its loading text"
       - name: Save the release-file cache
         if: steps.files.outputs.changed == 'true'
         uses: actions/cache/save@v6

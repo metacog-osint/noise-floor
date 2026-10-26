@@ -45,7 +45,7 @@
         a.textContent = TIER[e.tier] + ": " + e.peak.toFixed(0) + "% of aircraft degraded around " + ll2(e.lat, e.lon) + (near ? " (near " + near + ")" : "");
         li.appendChild(a);
         li.appendChild(document.createTextNode(", " + pad(e.h0) + ":00–" + pad(e.h1) + ":59Z, " + e.excess.toFixed(0) + " points above usual" +
-          (e.test ? "; fits announced test " + e.test : "") + "."));
+          (e.hs != null ? "; A350/A380 share " + Math.round(e.hs * 100) + "%" : "") + (e.test ? "; fits announced test " + e.test : "") + "."));
         list.appendChild(li);
       });
       if (extra.length) { var li = document.createElement("li"); li.className = "mut"; li.textContent = extra.join(" "); list.appendChild(li); }
