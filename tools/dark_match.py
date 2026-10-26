@@ -16,12 +16,21 @@ For each Sentinel-1 pass over the scored regions:
      vessel's nearest report isn't dark;
   4. fixed structures: covered by at least two passes and detected within 100 m in at least 60% of them.
 
+Amendment 3 (fixed objects and ghosts, both decided on development data only):
+  - a fixed-object map from every Sentinel-1 pass over the scored regions from 10 to 23 Oct 2026 (`clutter`): a place
+    detected (within FIXED_M) in at least CLUTTER_SHARE of the passes whose scoring area covers it, with at least
+    CLUTTER_MIN_COVER covering passes, is a fixed object (rocks, beacons, buoys, aquaculture); detections there aren't
+    counted as ships or dark ships;
+  - azimuth ghosts: an unmatched detection whose offset from a matched detection, or from a known AIS vessel of 50 m or
+    more, is GHOST_ALONG_KM along the satellite track and within GHOST_ACROSS_M across it is a ghost, not a dark ship.
+
 Variants (amendment 2): A is the pre-registered setting (Natural Earth land only). B adds OpenStreetMap land polygons
 (data/ref/osm/baltic_land.json, ODbL) through the detector's own extra-land step, because Natural Earth misses the
 skerries of the Archipelago Sea and the Gulf of Finland. Everything else is identical; both are scored.
 
   python tools/dark_match.py run --variant A|B --scenes <frame id prefix> [...] --days 2026-10-24 [--summary <json>]
   python tools/dark_match.py score --variant A|B --set dev        (or --set heldout; reads private/maritime/dark/<variant>/)
+  python tools/dark_match.py clutter --variant B --start 2026-10-10 --end 2026-10-23   (fixed-object map; resumable)
 
 Outputs (private, gitignored): private/maritime/dark/<pass>.json with every detection and vessel; score prints H1-H3.
 Positions and identities stay private; only counts and the verdict are published.
@@ -53,6 +62,9 @@ WIN_S, NEAR_S, SCENE_S = 600, 120, 1800
 MAX_KN = 60.0
 FIXED_M, FIXED_SHARE = 100.0, 0.6
 SETS = {"dev": ["2026-10-24"], "heldout": ["2026-10-26"]}
+CLUTTER_SHARE, CLUTTER_MIN_COVER = 0.5, 4       # amendment 3
+GHOST_ALONG_KM, GHOST_ACROSS_M = (3.5, 7.5), 800.0
+SCORED_BOX = (59.1, 60.8, 19.0, 30.6)           # lat0, lat1, lon0, lon1: the three scored regions' extent
 OSM_LAND = os.path.join(ROOT, "data", "ref", "osm", "baltic_land.json")
 _OSM = {}
 
@@ -123,7 +135,7 @@ class Tile:
 def detect_pass(group, variant="A"):
     """Detections and covered tiles for one acquisition over every scored region."""
     from scipy.ndimage import distance_transform_edt
-    dets, cover = [], []
+    dets, cover, bearings = [], [], []
     for name in SCORED:
         for core, padded in tiles(BOXES[name]):
             frames = [f for f in group["frames"] if f["bbox"][0] < padded[3] and f["bbox"][2] > padded[2]
@@ -141,6 +153,8 @@ def detect_pass(group, variant="A"):
             extra = osm_land(padded, a.shape, tr, crs) if variant == "B" else None
             px, sea = SD.detect_array(a, tr, crs, valid, padded, RES, along_bearing=info.get("along_bearing"),
                                       extra_land=extra, **DETECT)
+            if info.get("along_bearing") is not None:
+                bearings.append(info["along_bearing"])
             score = sea & (distance_transform_edt(sea) * RES >= EDGE_M)
             t = Tile(core, tr, crs, score)
             ll = SD.to_lonlat([dict(d) for d in px], tr, crs, RES)
@@ -150,7 +164,8 @@ def detect_pass(group, variant="A"):
                                  "contrast_db": round(10 * math.log10(max(d.get("peak_ratio", 1e-9), 1e-9)), 1),
                                  "region": A.region_of(d["lat"], d["lon"])})
             cover.append(t)
-    return dets, cover
+    bearing = sorted(bearings)[len(bearings) // 2] if bearings else None
+    return dets, cover, bearing
 
 
 def spoof_spans(summary_path):
@@ -251,14 +266,14 @@ def cmd_run(a):
         t = g["t"].timestamp()
         tag = g["frames"][0]["id"]
         print(f"{tag} {g['t']:%Y-%m-%d %H:%M:%S}Z {g['orbit']}: {len(g['frames'])} frame(s)")
-        dets, cover = detect_pass(g, a.variant)
+        dets, cover, bearing = detect_pass(g, a.variant)
         vessels = ais_at(a.days, t, spans)
         for mm, v in vessels.items():
             v["length_m"] = (meta.get(mm) or {}).get("length")
             if v["length_m"] is not None and not 5 <= v["length_m"] <= 400:
                 v["length_m"] = None
         match(dets, vessels, cover)
-        rec = {"rules": RULES, "variant": a.variant, "pass": tag, "frames": [f["id"] for f in g["frames"]], "time": g["t"].isoformat(),
+        rec = {"rules": RULES, "variant": a.variant, "pass": tag, "along_bearing": bearing, "frames": [f["id"] for f in g["frames"]], "time": g["t"].isoformat(),
                "orbit": g["orbit"], "detections": dets,
                "vessels": {str(k): v for k, v in vessels.items() if v.get("scored") or v.get("match_m") is not None},
                "vessels_heard": len(vessels), "tiles": len(cover),
@@ -280,6 +295,74 @@ def pack(t):
 
 
 _MASKS = {}
+
+
+def cmd_clutter(a):
+    """Detections and coverage for every pass over the scored regions in [start, end] (no AIS): the fixed-object map."""
+    start = datetime.fromisoformat(a.start).replace(tzinfo=timezone.utc)
+    end = datetime.fromisoformat(a.end).replace(tzinfo=timezone.utc) + timedelta(days=1)
+    groups = SD.passes(SD.search(SCORED_BOX, start, end))
+    out_dir = os.path.join(OUT, "clutter", a.variant)
+    os.makedirs(out_dir, exist_ok=True)
+    print(f"{len(groups)} passes from {a.start} to {a.end}")
+    for g in groups:
+        tag = g["frames"][0]["id"]
+        path = os.path.join(out_dir, f"{tag}.json")
+        if os.path.exists(path):
+            continue
+        dets, cover, bearing = detect_pass(g, a.variant)
+        rec = {"pass": tag, "time": g["t"].isoformat(), "orbit": g["orbit"], "variant": a.variant, "along_bearing": bearing,
+               "detections": [{"lat": d["lat"], "lon": d["lon"], "length_m": d["length_m"]} for d in dets],
+               "cover": [pack(t) for t in cover]}
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(rec, f)
+        print(f"  {tag[:40]} {g['t']:%Y-%m-%d %H:%M}Z {g['orbit']}: {len(dets)} detections, {len(cover)} tiles", flush=True)
+
+
+def load_clutter(variant):
+    d = os.path.join(OUT, "clutter", variant)
+    return [json.load(open(os.path.join(d, n), encoding="utf-8")) for n in sorted(os.listdir(d)) if n.endswith(".json")] \
+        if os.path.isdir(d) else []
+
+
+def clutter_flags(recs, clutter):
+    """Amendment 3: mark detections at places seen in >= CLUTTER_SHARE of the >= CLUTTER_MIN_COVER clutter passes
+    covering them."""
+    for r in recs:
+        for d in r["detections"]:
+            cov = hit = 0
+            for c in clutter:
+                if covered_by(c, d["lat"], d["lon"]):
+                    cov += 1
+                    hit += any(abs(e["lat"] - d["lat"]) < 0.002 and km((d["lat"], d["lon"]), (e["lat"], e["lon"])) * 1000
+                               <= FIXED_M for e in c["detections"])
+            d["clutter_cover"], d["clutter_hits"] = cov, hit
+            d["fixed_map"] = cov >= CLUTTER_MIN_COVER and hit / cov >= CLUTTER_SHARE
+
+
+def along_across(src, d, bearing):
+    """(along-track, across-track) offset in km of d from src, for a pass whose along-track bearing is `bearing`."""
+    dn = (d["lat"] - src[0]) * 111.2
+    de = (d["lon"] - src[1]) * 111.2 * math.cos(math.radians((d["lat"] + src[0]) / 2))
+    b = math.radians(bearing)
+    return dn * math.cos(b) + de * math.sin(b), -dn * math.sin(b) + de * math.cos(b)
+
+
+def ghost_flags(r):
+    """Amendment 3: unmatched detections that sit GHOST_ALONG_KM along track (and within GHOST_ACROSS_M across) from a
+    matched detection or a known AIS vessel of 50 m or more."""
+    b = r.get("along_bearing")
+    srcs = [(d["lat"], d["lon"]) for d in r["detections"] if d.get("match")]
+    srcs += [(v["lat"], v["lon"]) for v in r["vessels"].values() if v.get("known") and (v.get("length_m") or 0) >= 50]
+    for d in r["detections"]:
+        d["ghost"] = False
+        if d.get("match") or b is None:
+            continue
+        for s0 in srcs:
+            al, ac = along_across(s0, d, b)
+            if GHOST_ALONG_KM[0] <= abs(al) <= GHOST_ALONG_KM[1] and abs(ac) * 1000 <= GHOST_ACROSS_M:
+                d["ghost"] = True
+                break
 
 
 def covered_by(rec, lat, lon):
@@ -318,8 +401,14 @@ def fixed_flags(recs):
             d["fixed"] = cov >= 2 and hit / cov >= FIXED_SHARE
 
 
-def score(recs):
+def score(recs, amend3=False):
     fixed_flags(recs)
+    if amend3:
+        clutter_flags(recs, load_clutter(recs[0].get("variant", "B")))
+        for r in recs:
+            ghost_flags(r)
+            for d in r["detections"]:
+                d["fixed"] = d.get("fixed") or d.get("fixed_map")
     v = [x for r in recs for x in r["vessels"].values() if x.get("scored")]
     big = [x for x in v if (x.get("length_m") or 0) >= 100]
     mid = [x for x in v if 50 <= (x.get("length_m") or 0) < 100]
@@ -327,7 +416,7 @@ def score(recs):
     dists = sorted(x["match_m"] for x in found)
     dets = [d for r in recs for d in r["detections"]]
     large = [d for d in dets if d["length_m"] >= 50 and not d.get("fixed")]
-    dark_large = [d for d in large if d.get("dark")]
+    dark_large = [d for d in large if d.get("dark") and not d.get("ghost")]
     east = [d for d in dark_large if d["region"] == "Gulf of Finland east of 27E"]
     h1 = len(found) / len(big) if big else float("nan")
     h2 = dists[len(dists) // 2] if dists else float("nan")
@@ -338,7 +427,9 @@ def score(recs):
            "H3": {"dark_large": len(dark_large), "of_large": len(large), "share": round(h3, 3), "pass": bool(h3 <= 0.10)},
            "reported": {"recall_50_100m": f"{sum(1 for x in mid if x.get('match_m') is not None)} of {len(mid)}",
                         "detections": len(dets), "fixed": sum(1 for d in dets if d.get("fixed")),
-                        "dark_all": sum(1 for d in dets if d.get("dark")), "dark_large_east_of_27E": len(east),
+                        "dark_all": sum(1 for d in dets if d.get("dark") and not d.get("ghost") and not d.get("fixed")),
+                        "ghosts": sum(1 for d in dets if d.get("ghost")), "fixed_map": sum(1 for d in dets if d.get("fixed_map")),
+                        "dark_large_east_of_27E": len(east),
                         "phantom_candidates_50m": sum(1 for x in v if (x.get("length_m") or 0) >= 50
                                                       and x.get("match_m") is None)}}
     few = len(big) < 20
@@ -358,7 +449,7 @@ def cmd_score(a):
                 recs.append(r)
     if not recs:
         sys.exit(f"no passes for set {a.set} in {d}")
-    print(json.dumps(score(recs), indent=1))
+    print(json.dumps(score(recs, amend3=a.amend3), indent=1))
 
 
 def main():
@@ -371,9 +462,14 @@ def main():
     r.add_argument("--variant", choices=["A", "B"], default="A", help="A: pre-registered; B: plus OpenStreetMap land")
     s = sub.add_parser("score")
     s.add_argument("--variant", choices=["A", "B"], default="A")
+    s.add_argument("--amend3", action="store_true", help="apply amendment 3 (fixed-object map and ghost rule)")
+    c = sub.add_parser("clutter")
+    c.add_argument("--variant", choices=["A", "B"], default="B")
+    c.add_argument("--start", required=True)
+    c.add_argument("--end", required=True)
     s.add_argument("--set", choices=sorted(SETS), required=True)
     a = ap.parse_args()
-    {"run": cmd_run, "score": cmd_score}[a.cmd](a)
+    {"run": cmd_run, "score": cmd_score, "clutter": cmd_clutter}[a.cmd](a)
 
 
 if __name__ == "__main__":
