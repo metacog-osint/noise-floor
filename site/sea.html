@@ -8,9 +8,9 @@
 <meta property="og:title" content="Sea · Noise Floor">
 <meta property="og:description" content="Sanctioned, military, law-enforcement and state-flag vessels in Finland&#x27;s open AIS, with what each ship broadcasts about itself, its reporting pattern and GNSS interference at sea.">
 <meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="/style.css?v=2de601be5a">
+<link rel="stylesheet" href="/style.css?v=fc40cb7571">
 <link rel="alternate" type="application/atom+xml" title="Noise Floor: daily GNSS summary" href="/feed.xml">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="/sea.js?v=8de9cbf0e0"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="/imagery.js?v=09f88ddafe"></script><script defer src="/sea.js?v=2afd7c044d"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -74,6 +74,16 @@
           <label><input type="checkbox" id="lyr-gnss" checked> <i class="sea-key k-gnss" aria-hidden="true"></i> GNSS interference at sea</label>
           <label><input type="checkbox" id="lyr-borders" checked> Country borders</label>
         </fieldset>
+        <fieldset class="mp-group"><legend>Satellite imagery</legend>
+          <label><input type="radio" name="lyr-img" value="" checked> None</label>
+          <label><input type="radio" name="lyr-img" value="s2"> Sentinel-2, 10 m, by month</label>
+          <div id="img-s2" class="img-when" hidden>
+            <input type="range" id="img-when" min="0" max="24" step="1" value="24" aria-label="Month of imagery" aria-describedby="img-when-label">
+            <span id="img-when-label"></span>
+            <span class="img-note">The clearest scenes of each month are drawn first; a cloudy month shows cloud.</span>
+          </div>
+          <p id="img-note" class="img-note" aria-live="polite" hidden></p>
+        </fieldset>
       </div>
     </div>
   </div>
@@ -121,6 +131,7 @@
   <li><strong>Destination</strong> is read from the text the crew types, when it is a UN/LOCODE ("RUULU", "RU ULU"), a code after an arrow ("FIHEL&gt;EETLL") or a port name in the World Port Index. Ports and their codes come from the World Port Index; a code it lacks still gives the country. "FOR ORDERS" and similar stay unread.</li>
   <li><strong>Port calls</strong> are stops of an hour or more under 1 knot within 10 km of a World Port Index port, from the trusted positions in this data. Anchorages far from a listed port don't count. <strong>Home port</strong> (port of registry) is not in any open source we can use, so it is never shown.</li>
   <li><strong>Signals</strong> are what the ship broadcasts about itself: class (Class A is inferred when the ship sends voyage data that only Class A transponders send), destination and ETA as typed by the crew, draught, size from the antenna offsets, and the position source the transponder declares (GPS, GLONASS, Galileo, combined and so on), which is a setting, not a check of what the receiver uses. "IMO check digit" says whether the broadcast IMO number is internally valid.</li>
+  <li><strong>Satellite imagery</strong> on this map is Copernicus Sentinel-2 at 10 m, one mosaic per month with the clearest scenes drawn first, served by Microsoft Planetary Computer; it shows from zoom 10. It shows places such as ports and terminals, not a ship at a given moment, and a cloudy month shows cloud. The links in a ship's panel open other providers' own viewers at its last trusted position: Google Maps and Esri Wayback for sharper imagery (Wayback keeps versions back to 2014), and Copernicus Browser and NASA Worldview for imagery near that date.</li>
   <li><strong>Times</strong> are UTC, with US Central time alongside.</li>
 </ul>
 

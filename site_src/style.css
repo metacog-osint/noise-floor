@@ -152,6 +152,13 @@ main.wide { max-width: 80rem; }
 .mp-group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
 .mp-group legend, .mp-group > span { color: var(--mut); font-size: .78rem; margin-bottom: .1rem; padding: 0; }
 .mp-group label { display: flex; gap: .35rem; align-items: center; }
+.img-when { display: flex; flex-direction: column; gap: .15rem; padding-left: 1.35rem; }
+.img-when input[type=range] { width: 100%; margin: 0; }
+.img-note { margin: .15rem 0 0; color: var(--mut); font-size: .8rem; }
+.img-note.img-err { color: var(--acc); }
+.img-links { list-style: none; padding: 0; margin: .25rem 0 .45rem; display: flex; flex-wrap: wrap; gap: .25rem .9rem; }
+.img-links li { display: flex; gap: .3rem; align-items: baseline; flex-wrap: wrap; }
+.sea-detail .img-links { flex-direction: column; }
 .mp-group select { font: inherit; padding: .25rem .35rem; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); }
 #mp-chg-wrap.off { opacity: .45; }
 .tl-play { font-size: .9rem; }
@@ -240,6 +247,7 @@ details.table-view .tw { max-height: 22rem; overflow: auto; }
 }
 .sea-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 24rem; gap: .8rem; align-items: start; }
 #sea-map { height: 68vh; min-height: 420px; max-height: 760px; background: var(--map-ocean); }
+#sea-map .mp-body { max-height: calc(clamp(420px, 68vh, 760px) - 9rem); overflow-y: auto; }   /* the panel scrolls inside the map */
 .sea-detail { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: .7rem 1rem .8rem;
   max-height: 760px; overflow-y: auto; font-size: .9rem; }
 .sea-detail:focus { outline: 2px solid var(--acc); outline-offset: 2px; }
@@ -276,6 +284,7 @@ details.table-view .tw { max-height: 22rem; overflow: auto; }
   .sea-wrap { grid-template-columns: minmax(0, 1fr); }
   .sea-detail { max-height: none; }
   #sea-map { height: 58vh; min-height: 360px; }
+  #sea-map .mp-body { max-height: calc(clamp(360px, 58vh, 760px) - 9rem); }
 }
 @media (max-width: 34rem) { .sd-dl { grid-template-columns: 7.5rem minmax(0, 1fr); } }
 
