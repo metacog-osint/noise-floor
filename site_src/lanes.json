@@ -230,7 +230,7 @@
       "status": "running",
       "phase": "Phase 1–2",
       "summary": "Geomagnetic storms and ionospheric scintillation, to separate natural degradation from deliberate interference.",
-      "what": "Storms and scintillation degrade GNSS too. The Kp index already labels SBAS flags. ESA's worldwide scintillation nowcast (S4, sigma-phi and TEC on a 2.5° grid) is being archived hourly, because ESA keeps only the current hour.",
+      "what": "Storms and scintillation degrade GNSS too. The Kp index already labels SBAS flags. ESA's worldwide scintillation nowcast (S4, sigma-phi and TEC on a 2.5° grid) has been archived since 21 Oct 2026, because ESA keeps only the current hour. So far about one hour in five is kept, because GitHub runs the capture only every few hours. The events grader reads it (rule N3).",
       "how": "Context layers sit beside the observed lanes. Thresholds follow ICAO's scintillation categories (S4 0.5/0.8, sigma-phi 0.4/0.7 rad).",
       "data": [
         "GFZ Potsdam Kp (CC BY 4.0)",
@@ -360,7 +360,7 @@
       "data": [
         "CelesTrak orbital elements (terms UNVERIFIED)"
       ],
-      "notes": "Next after the current lane wrap-up; the first step is reading CelesTrak's terms. Shows proximity and behaviour, never intent.",
+      "notes": "Next after the current lane wrap-up. Terms read 26 Oct 2026: CelesTrak's orbital elements are USSPACECOM basic SSA data, which Space-Track allows to be redistributed and used in published analysis with citation; CelesTrak adds a usage policy (download once per 2-hour update). Objects catalogued since July 2026 come only in the newer OMM format. Public elements are good to tens of km at GEO, so no separation under about 50 km is claimed. Shows proximity and behaviour, never intent.",
       "links": []
     },
     {
@@ -414,19 +414,23 @@
       "id": "events",
       "group": "assessment",
       "name": "Events and grading",
-      "status": "prototype",
-      "phase": "Phase 6 (v0.2, Oct 2026)",
+      "status": "built",
+      "phase": "Phase 6 (v1.0, rules frozen 26 Oct 2026)",
       "summary": "Fusing lanes into events, each graded on five fields.",
       "what": "An event joins what the lanes saw in one place and time window. It is graded on signal type, support, localization, attribution and verdict.",
-      "how": "tools/events.py turns lane outputs into observations (ADS-B anomalies, bursts, all-day jamming-scale regions and SBAS flags; FAA announced GPS tests; GFZ Kp storms) and fuses them per UTC day: same or adjacent H3 res-2 region, overlapping or adjacent hours, no two members more than 600 km apart. Exclusion checks (announced test, space weather) set the verdict. Every grade stores its rule and the observations behind it.",
+      "how": "tools/events.py turns lane outputs into observations (ADS-B anomalies, bursts, all-day jamming-scale regions and SBAS flags; CYGNSS noise-floor cells; FAA announced GPS tests; GFZ Kp storms; curated official notices) and fuses them per UTC day: same or adjacent H3 res-2 region, overlapping or adjacent hours, no two members more than 600 km apart. Exclusion checks (announced test, geomagnetic storm, ionospheric scintillation, official notice) set the verdict. Every grade stores its rule and the observations behind it.",
       "data": [
         "All lanes"
       ],
-      "notes": "1 Oct 2025 – 22 Oct 2026: about 160,000 events. Every announced-test tag on the map comes out 'planned', 10 m-only effects at storm time come out 'benign_natural' where the rules allow, and the persistent hotspots are EFFECT, single-source, open. Since v0.2, CYGNSS is a second, independent sensor. With a full year of CYGNSS, 8,632 events have an aircraft 93 m signal and a raised CYGNSS noise field agreeing within 300 km, so they reach 'Multiple sources', in every month. Nothing can be 'deliberate_suspected' until an interference-warning feed exists. The register is private. Grades describe evidence strength. They don't name perpetrators. Known look-alikes, such as radar faults, are kept here as test cases (this absorbed the planned exclusion-layer lane).",
+      "notes": "Rules frozen as v1.0 on 26 Oct 2026; they are stated choices, not yet validated. 1 Oct 2025 – 25 Oct 2026: about 160,000 events. 8,632 reach 'Multiple sources' (an aircraft 93 m signal and a raised CYGNSS noise field agreeing within 300 km). 691 effect events are 'planned': inside an announced FAA test window and its FL250 radius, the one the map draws. 905 are 'benign_natural' (10 m-only effects at storm time). Nothing is 'deliberate_suspected': that needs an official notice reporting jamming or spoofing, and NGA's warning feed has been frozen since May 2024, so notices are added by hand, each cited, and none is on file yet. The scintillation rule reads ESA's nowcast, archived since 21 Oct 2026. Only monthly counts are published (Validation page); the register stays private. Grades describe evidence strength. They don't name perpetrators. Known look-alikes, such as radar faults, are kept here as test cases (this absorbed the planned exclusion-layer lane).",
       "links": [
         [
           "Method and results",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/assessment/events.md"
+        ],
+        [
+          "Monthly counts by grade",
+          "/validation#events"
         ]
       ]
     },

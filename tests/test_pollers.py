@@ -93,7 +93,7 @@ class Fake:
                  "message": "ALERT: Geomagnetic K-index of 4\r\n"}]).encode()
         if "msi.nga.mil" in url:
             return json.dumps({"broadcast-warn": [
-                {"navArea": "4", "msgNumber": 1, "msgYear": 2026, "subregion": "11", "issueDate": "101133Z MAY 2026",
+                {"navArea": "4", "msgNumber": 1, "msgYear": 2026, "subregion": "11", "issueDate": "051133Z OCT 2026",
                  "text": "GPS SIGNALS\nUNRELIABLE IN AREA"},
                 {"navArea": "4", "msgNumber": 2, "msgYear": 2026, "text": "DERELICT VESSEL"},
                 {"navArea": "12", "msgNumber": 3, "msgYear": 2026, "text": "BARRIER MARKED WITH WHITE LIGHTS AND RADAR REFLECTORS"},
@@ -155,6 +155,21 @@ def test_dtg_and_keywords():
     assert W.dtg_iso("101133Z MAY 2024") == "2024-05-10T11:33Z"
     assert W.MSI_KEYWORDS.search("GPS SIGNALS UNRELIABLE") and W.MSI_KEYWORDS.search("RADAR TRIALS IN AREA")
     assert not W.MSI_KEYWORDS.search("LIGHTS AND RADAR REFLECTORS"), "radar reflectors on buoys aren't radar activity"
+
+
+def test_nga_frozen_feed_is_an_error():
+    class Old(Fake):
+        def __call__(self, url, headers, timeout):
+            if "msi.nga.mil" in url:
+                return json.dumps({"broadcast-warn": [{"navArea": "4", "msgNumber": 517, "msgYear": 2024,
+                                                       "issueDate": "101542Z MAY 2024", "text": "GPS UNRELIABLE"}]}).encode()
+            return super().__call__(url, headers, timeout)
+    ctx = W.Ctx(NOW, {"health": {}}, None, tempfile.gettempdir(), tempfile.gettempdir(), opener=Old())
+    try:
+        W.src_nga(ctx)
+        raise AssertionError("a feed whose newest warning is 2024 must not pass as OK")
+    except ValueError as e:
+        assert "frozen" in str(e) and "2024-05-10T15:42Z" in str(e), e
 
 
 def test_navcen_tests_parse():
@@ -257,7 +272,7 @@ def test_end_to_end():
         assert srcs == {"NOAA SWPC", "NGA MSI", "USCG NAVCEN", "USCG NAVCEN reports"}, srcs
         assert len([a for a in alerts if a["source"] == "NOAA SWPC"]) == 1, "alerts only, not watches or old messages"
         nga = [a for a in alerts if a["source"] == "NGA MSI"]
-        assert len(nga) == 1 and nga[0]["event_time"] == "2026-05-10T11:33Z", nga
+        assert len(nga) == 1 and nga[0]["event_time"] == "2026-10-05T11:33Z", nga
         assert nga[0]["title"].startswith("NAVAREA IV 1/2026 (subregion 11): GPS SIGNALS"), nga
         tests = [a for a in alerts if a["source"] == "USCG NAVCEN"]
         assert len(tests) == 1 and "RANGE_C" in tests[0]["title"], "tests already over when first seen aren't listed"

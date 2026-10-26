@@ -1,0 +1,357 @@
+{
+ "version": "events v1.0",
+ "register_built_utc": "2026-10-26T17:40Z",
+ "first_day": "2025-10-01",
+ "last_day": "2026-10-25",
+ "unit": "events per UTC month",
+ "licence": "ODbL 1.0 (derived from the adsb.lol archive); attribution below",
+ "method": "https://github.com/metacog-osint/noise-floor/blob/main/docs/assessment/events.md",
+ "note": "Aggregate counts only. Grades describe the strength of evidence; they never name a perpetrator. deliberate_suspected needs an official notice reporting jamming or spoofing (rule D1). The rules are frozen but not yet validated.",
+ "sources": [
+  "adsb.lol daily archive through the PNT processor (ODbL 1.0)",
+  "NASA CYGNSS L1 SDR V3.2 (NASA open data)",
+  "FAA SPANS flight advisories (US public domain)",
+  "GFZ Potsdam Kp index (CC BY 4.0)",
+  "ESA SWE ISM scintillation nowcast: data provided by the European Space Agency (ESA) as part of its Space Safety Programme (S2P), (c) ESA 2026"
+ ],
+ "months": [
+  {
+   "month": "2025-10",
+   "days": 31,
+   "events": 11943,
+   "signal_type": {
+    "EFFECT": 11861,
+    "WARNING": 71,
+    "NATURAL": 11
+   },
+   "effect_support": {
+    "Single-source, unverified": 11292,
+    "Partially corroborated": 57,
+    "Multiple sources": 512
+   },
+   "effect_verdict": {
+    "open": 11765,
+    "benign_natural": 57,
+    "planned": 39,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 11822,
+    "candidate": 39,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2025-11",
+   "days": 30,
+   "events": 12992,
+   "signal_type": {
+    "EFFECT": 12925,
+    "WARNING": 60,
+    "NATURAL": 7
+   },
+   "effect_support": {
+    "Single-source, unverified": 12261,
+    "Partially corroborated": 68,
+    "Multiple sources": 596
+   },
+   "effect_verdict": {
+    "open": 12779,
+    "benign_natural": 102,
+    "planned": 44,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 12881,
+    "candidate": 44,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2025-12",
+   "days": 30,
+   "events": 12633,
+   "signal_type": {
+    "EFFECT": 12599,
+    "WARNING": 29,
+    "NATURAL": 5
+   },
+   "effect_support": {
+    "Single-source, unverified": 11933,
+    "Partially corroborated": 11,
+    "Multiple sources": 655
+   },
+   "effect_verdict": {
+    "open": 12530,
+    "benign_natural": 62,
+    "planned": 7,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 12592,
+    "candidate": 7,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2026-01",
+   "days": 31,
+   "events": 13068,
+   "signal_type": {
+    "EFFECT": 13009,
+    "WARNING": 49,
+    "NATURAL": 10
+   },
+   "effect_support": {
+    "Single-source, unverified": 12283,
+    "Partially corroborated": 89,
+    "Multiple sources": 637
+   },
+   "effect_verdict": {
+    "open": 12799,
+    "benign_natural": 185,
+    "planned": 25,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 12984,
+    "candidate": 25,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2026-02",
+   "days": 28,
+   "events": 11333,
+   "signal_type": {
+    "EFFECT": 11276,
+    "WARNING": 52,
+    "NATURAL": 5
+   },
+   "effect_support": {
+    "Single-source, unverified": 10714,
+    "Partially corroborated": 63,
+    "Multiple sources": 499
+   },
+   "effect_verdict": {
+    "open": 11170,
+    "benign_natural": 52,
+    "planned": 54,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 11222,
+    "candidate": 54,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2026-03",
+   "days": 31,
+   "events": 14006,
+   "signal_type": {
+    "EFFECT": 13919,
+    "WARNING": 77,
+    "NATURAL": 10
+   },
+   "effect_support": {
+    "Single-source, unverified": 12913,
+    "Partially corroborated": 162,
+    "Multiple sources": 844
+   },
+   "effect_verdict": {
+    "open": 13703,
+    "benign_natural": 136,
+    "planned": 80,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 13839,
+    "candidate": 80,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2026-04",
+   "days": 30,
+   "events": 12383,
+   "signal_type": {
+    "EFFECT": 12313,
+    "WARNING": 63,
+    "NATURAL": 7
+   },
+   "effect_support": {
+    "Single-source, unverified": 11560,
+    "Partially corroborated": 161,
+    "Multiple sources": 592
+   },
+   "effect_verdict": {
+    "open": 12126,
+    "benign_natural": 85,
+    "planned": 102,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 12211,
+    "candidate": 102,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2026-05",
+   "days": 30,
+   "events": 12463,
+   "signal_type": {
+    "EFFECT": 12411,
+    "WARNING": 48,
+    "NATURAL": 4
+   },
+   "effect_support": {
+    "Single-source, unverified": 11614,
+    "Partially corroborated": 86,
+    "Multiple sources": 711
+   },
+   "effect_verdict": {
+    "open": 12317,
+    "benign_natural": 41,
+    "planned": 53,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 12358,
+    "candidate": 53,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2026-06",
+   "days": 30,
+   "events": 12159,
+   "signal_type": {
+    "EFFECT": 12112,
+    "WARNING": 44,
+    "NATURAL": 3
+   },
+   "effect_support": {
+    "Single-source, unverified": 11394,
+    "Partially corroborated": 62,
+    "Multiple sources": 656
+   },
+   "effect_verdict": {
+    "open": 12040,
+    "benign_natural": 19,
+    "planned": 53,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 12059,
+    "candidate": 53,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2026-07",
+   "days": 31,
+   "events": 12668,
+   "signal_type": {
+    "EFFECT": 12610,
+    "WARNING": 55,
+    "NATURAL": 3
+   },
+   "effect_support": {
+    "Single-source, unverified": 11687,
+    "Partially corroborated": 60,
+    "Multiple sources": 863
+   },
+   "effect_verdict": {
+    "open": 12519,
+    "benign_natural": 44,
+    "planned": 47,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 12563,
+    "candidate": 47,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2026-08",
+   "days": 31,
+   "events": 12436,
+   "signal_type": {
+    "EFFECT": 12365,
+    "WARNING": 67,
+    "NATURAL": 4
+   },
+   "effect_support": {
+    "Single-source, unverified": 11483,
+    "Partially corroborated": 99,
+    "Multiple sources": 783
+   },
+   "effect_verdict": {
+    "open": 12249,
+    "benign_natural": 45,
+    "planned": 71,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 12294,
+    "candidate": 71,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2026-09",
+   "days": 30,
+   "events": 12584,
+   "signal_type": {
+    "EFFECT": 12503,
+    "WARNING": 80,
+    "NATURAL": 1
+   },
+   "effect_support": {
+    "Single-source, unverified": 11632,
+    "Partially corroborated": 95,
+    "Multiple sources": 776
+   },
+   "effect_verdict": {
+    "open": 12410,
+    "benign_natural": 19,
+    "planned": 74,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 12429,
+    "candidate": 74,
+    "attributed": 0
+   }
+  },
+  {
+   "month": "2026-10",
+   "days": 25,
+   "events": 9479,
+   "signal_type": {
+    "EFFECT": 9414,
+    "WARNING": 61,
+    "NATURAL": 4
+   },
+   "effect_support": {
+    "Single-source, unverified": 8861,
+    "Partially corroborated": 45,
+    "Multiple sources": 508
+   },
+   "effect_verdict": {
+    "open": 9314,
+    "benign_natural": 58,
+    "planned": 42,
+    "deliberate_suspected": 0
+   },
+   "effect_attribution": {
+    "none": 9372,
+    "candidate": 42,
+    "attributed": 0
+   }
+  }
+ ]
+}

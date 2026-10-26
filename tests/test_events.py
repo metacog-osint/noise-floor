@@ -398,6 +398,187 @@ def test_register_roundtrip():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+# ---------------------------------------------------------------- v1.0: FL250 radius, notices (D1), scintillation (N3)
+def test_faa_radius_fl250():
+    lat, lon = ll(C0)
+    t = faa(lat, lon)
+    t["radii_nm"] = {"50FT AGL": 30, "FL250": 50, "FL400": 100}
+    o = E.faa_observations(DAY, [t])[0]
+    assert o["detail"]["radius_km"] == 92.6 and o["detail"]["radius_ring"] == "FL250", o["detail"]
+    assert E.faa_observations(DAY, [faa(lat, lon)])[0]["detail"]["radius_ring"] == "widest"   # no FL250 ring
+    # a burst ~150 km out: inside the FL400 ring (185 km), outside the FL250 ring (93 km) -> not planned
+    at = (lat, lon + 2.35)
+    d = E.km(at, (lat, lon))
+    assert 100 < d < 180, d
+    ev = effects(run(from_file(bursts=[burst(h3.latlng_to_cell(*at, 2), "10:30Z", "10:40Z", at=at)]) + [o]))
+    assert [field(e, "verdict") for e in ev] == ["open"]
+    t["radii_nm"] = {"FL400": 100}                                            # widest ring: planned
+    ev = effects(run(from_file(bursts=[burst(h3.latlng_to_cell(*at, 2), "10:30Z", "10:40Z", at=at)])
+                     + E.faa_observations(DAY, [t])))
+    assert [field(e, "verdict") for e in ev] == ["planned"]
+
+
+def test_notice_parsing():
+    assert E.notice_class("GPS JAMMING REPORTED IN AREA") == "jamming"
+    assert E.notice_class("GNSS SPOOFING HAS BEEN REPORTED") == "jamming"
+    assert E.notice_class("GPS UNRELIABLE IN VICINITY MALTA") == "interference"
+    assert E.notice_class("GPS JAMMING EXERCISE 0600Z TO 1800Z") == "test"     # test wording wins
+    assert E.notice_class("GPS SIGNALS MAY BE UNRELIABLE DUE TO TESTING") == "test"
+    assert E.notice_class("LATEST GPS INTERFERENCE REPORTS") == "interference"  # LATEST is not TEST
+    assert E.notice_class("JAMMING OF RADIO COMMUNICATIONS") == "other"        # no GNSS word
+    assert E.notice_class("DERELICT VESSEL") == "other"
+    assert E.notice_positions("IN VICINITY MALTA (35-53N 014-27E).") == [(35.8833, 14.45)]
+    assert E.notice_positions("A. 19-23.0N 092-03.1W. B. 59-30-15N 024-10-00E") == [(19.3833, -92.0517), (59.5042, 24.1667)]
+    assert E.notice_positions("12-75N 010-00E") == []                           # minutes must be < 60
+    assert E.notice_radius_km("WITHIN 25 NM OF 35-53N 014-27E") == 46.3
+    assert E.notice_radius_km("A 10 MILE RADIUS OF") == 18.5
+    assert E.notice_radius_km("WITHIN 40 KM OF") == 40.0 and E.notice_radius_km("AREA BOUND BY") is None
+    sq = [(54.0, 19.0), (54.0, 21.0), (56.0, 21.0), (56.0, 19.0)]
+    assert E.in_polygon(55.0, 20.0, sq) and not E.in_polygon(57.0, 20.0, sq)
+
+
+def notice(text, nid="NOTICE 1/26", valid_from="2026-03-01T00:00Z", valid_to=None, **kw):
+    return {"id": nid, "source": nid, "url": "https://example.invalid/n", "issued_utc": valid_from,
+            "valid_from_utc": valid_from, "valid_to_utc": valid_to, "text": text, **kw}
+
+
+def notice_obs(*items, day=DAY):
+    tmp = tempfile.mkdtemp()
+    try:
+        p = os.path.join(tmp, "notices.json")
+        with open(p, "w", encoding="utf-8") as f:
+            import json
+            json.dump({"notices": list(items)}, f)
+        return E.notice_observations(day, E.load_notices(p))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_notice_rules():
+    lat, lon = ll(C0)
+    pos = f"{int(lat):02d}-{round((lat % 1) * 60):02d}N {int(lon):03d}-{round((lon % 1) * 60):02d}E"
+    jam = notice_obs(notice(f"BALTIC SEA. GPS JAMMING REPORTED WITHIN 50 NM OF {pos}."))
+    assert len(jam) == 1 and jam[0]["detail"]["class"] == "jamming" and jam[0]["detail"]["radius_km"] == 92.6
+    assert (jam[0]["t0"], jam[0]["t1"]) == (0, 1439)                       # in force all day
+    ev = run(from_file(bursts=[burst(C0, "10:30Z", "10:40Z")]) + jam)
+    e = effects(ev)[0]
+    assert field(e, "verdict") == "deliberate_suspected" and rule(e, "verdict") == "D1", e["grades"]["verdict"]
+    assert field(e, "support") == "Partially corroborated" and rule(e, "support") == "S2"
+    assert field(e, "attribution_status") == "none"                           # D1 names no source
+    assert e["exclusions"]["notice"][:2] == ("jamming_reported", "D1") and jam[0]["id"] in e["members"]
+    assert not [x for x in ev if field(x, "signal_type") == "WARNING"]
+    # an interference notice corroborates but doesn't make the verdict
+    intf = notice_obs(notice(f"GPS UNRELIABLE IN VICINITY ({pos})."))
+    assert intf[0]["detail"]["radius_km"] == E.NOTICE_POINT_KM and not intf[0]["detail"]["radius_stated"]
+    e = effects(run(from_file(bursts=[burst(C0, "10:30Z", "10:40Z")]) + intf))[0]
+    assert field(e, "verdict") == "open" and e["open_hint"] == "notice_interference" and rule(e, "support") == "S2"
+    assert e["exclusions"]["notice"][:2] == ("interference_reported", "D-")
+    # test notices, unplaced notices and notices out of force make no observation
+    assert notice_obs(notice(f"GPS JAMMING EXERCISE WITHIN 50 NM OF {pos}")) == []
+    assert notice_obs(notice("GPS JAMMING REPORTED IN THE EASTERN BALTIC")) == []
+    assert notice_obs(notice(f"GPS JAMMING WITHIN 50 NM OF {pos}", valid_to="2026-03-09T12:00Z")) == []
+    assert notice_obs(notice(f"GPS JAMMING WITHIN 50 NM OF {pos}", valid_from="2026-03-11T00:00Z")) == []
+    part = notice_obs(notice(f"GPS JAMMING WITHIN 50 NM OF {pos}", valid_from="2026-03-10T12:00Z"))
+    assert (part[0]["t0"], part[0]["t1"]) == (720, 1439)
+    assert field(effects(run(from_file(bursts=[burst(C0, "10:30Z", "10:40Z")]) + part))[0], "verdict") == "open"
+    # out of place: no attachment, and an unmatched notice makes no event of its own
+    away = h3.latlng_to_cell(55.0, 26.5, 2)
+    ev = run(from_file(bursts=[burst(away, "10:30Z", "10:40Z")]) + jam)
+    assert [field(e, "verdict") for e in effects(ev)] == ["open"] and not [x for x in ev if jam[0]["id"] in x["members"]]
+    # polygon: inside counts with no radius
+    poly = notice_obs(notice("GPS JAMMING IN AREA BOUND BY 54-00N 019-00E, 54-00N 021-30E, 56-30N 021-30E, 56-30N 019-00E."))
+    assert poly[0]["detail"]["polygon"] and poly[0]["detail"]["radius_km"] is None
+    assert field(effects(run(from_file(bursts=[burst(C0, "10:30Z", "10:40Z")]) + poly))[0], "verdict") == "deliberate_suspected"
+    # a matched announced test outranks D1; the notice check records it
+    tests = E.faa_observations(DAY, [faa(lat, lon)])
+    e = effects(run(from_file(bursts=[burst(C0, "10:30Z", "10:40Z")]) + tests + jam))[0]
+    assert field(e, "verdict") == "planned" and e["exclusions"]["notice"][2]["outranked_by"] == "P1"
+    # a CYGNSS-only event never reaches D1 (timed to the day only)
+    rows = [cyg_row(lat, lon, med=3.0)]
+    ev = E.build_day(DAY, E.cygnss_observations(DAY, rows) + jam, kp_series(), E.cygnss_field(rows))
+    assert all(field(x, "verdict") != "deliberate_suspected" for x in ev)
+
+
+def ism_dir(s4=0.6, sp=0.1, hour="2026031010", cells=((55.0, 20.0), (55.0, 22.5), (40.0, 0.0))):
+    """A tiny nowcast archive: a three-cell grid and one hour with the given S4 and sigma-phi in the first cell."""
+    import gzip
+    tmp = tempfile.mkdtemp()
+    os.makedirs(os.path.join(tmp, "ism", hour[:4], hour[4:6]))
+    with open(os.path.join(tmp, "ism", "grid.csv"), "w", encoding="utf-8") as f:
+        f.write("lon,lat\n" + "".join(f"{lo},{la}\n" for la, lo in cells))
+    rows = [f"{int(s4 * 1000)},5,{int(sp * 1000)},5,20,2"] + ["50,5,40,5,20,2"] * (len(cells) - 1)
+    with gzip.open(os.path.join(tmp, "ism", hour[:4], hour[4:6], f"ism_{hour[:8]}T{hour[8:]}Z.csv.gz"), "wt") as f:
+        f.write("s4,s4_err,sigma_phi,sigma_phi_err,tec,tec_err\n" + "\n".join(rows) + "\n")
+    return tmp
+
+
+def run_ism(observations, tmp):
+    k = kp_series()
+    return E.build_day(DAY, observations + E.kp_observations(DAY, k), k, None, E.load_ism(tmp))
+
+
+def test_scintillation_n3():
+    tmp = ism_dir()
+    try:
+        ism = E.load_ism(tmp)
+        assert len(ism.hours) == 1 and len(ism.cells) == 3
+        assert ism.near(DAY, 600, 659, [(55.0, 20.0)])["s4"] == 0.6           # 10:00-10:59Z overlaps the 10Z hour
+        assert ism.near(DAY, 840, 900, [(55.0, 20.0)]) is None                 # 14Z: more than 1 h away
+        assert ism.near(DAY, 600, 659, [(40.0, 40.0)]) is None                 # no cell within 300 km
+        e = effects(run_ism(from_file(anomalies=[anomaly(C0, 10, 10, "acc")]), tmp))[0]
+        assert field(e, "verdict") == "benign_natural" and rule(e, "verdict") == "N3", e["grades"]["verdict"]
+        assert e["exclusions"]["scintillation"][:2] == ("moderate", "N3")
+        # 93 m loss is never excused by scintillation: recorded, verdict stays open
+        e = effects(run_ism(from_file(anomalies=[anomaly(C0, 10, 10, "jam")]), tmp))[0]
+        assert field(e, "verdict") == "open" and e["exclusions"]["scintillation"][:2] == ("moderate", "N3-")
+        # no archived hour near the event: no record
+        e = effects(run_ism(from_file(anomalies=[anomaly(C0, 15, 15, "acc")]), tmp))[0]
+        assert field(e, "verdict") == "open" and "scintillation" not in e["exclusions"]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    tmp = ism_dir(s4=0.3, sp=0.45)                                             # sigma-phi alone reaches moderate
+    try:
+        e = effects(run_ism(from_file(anomalies=[anomaly(C0, 10, 10, "acc")]), tmp))[0]
+        assert rule(e, "verdict") == "N3"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    tmp = ism_dir(s4=0.3, sp=0.2)
+    try:
+        e = effects(run_ism(from_file(anomalies=[anomaly(C0, 10, 10, "acc")]), tmp))[0]
+        assert field(e, "verdict") == "open" and e["exclusions"]["scintillation"][0] == "below_moderate"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert E.load_ism(os.path.join(tempfile.gettempdir(), "no-such-ism-archive")) is None
+
+
+def test_publish_monthly():
+    import json
+    tmp = tempfile.mkdtemp()
+    old = E.REGISTER
+    try:
+        E.REGISTER = os.path.join(tmp, "register.sqlite")
+        db = E.connect()
+        for day in (DAY, "2026-04-02"):
+            obs = from_file(bursts=[burst(C0, "10:30Z", "10:40Z")], day=day)
+            E.write_day(db, day, obs, E.build_day(day, obs, kp_series(day=day)), {"events_src": "test"})
+        db.execute("INSERT OR REPLACE INTO meta VALUES ('version', ?)", (E.VERSION,))
+        db.commit()
+        db.close()
+        out = os.path.join(tmp, "monthly.json")
+        with contextlib.redirect_stdout(io.StringIO()):
+            E.cmd_publish(argparse.Namespace(out=out))
+        d = json.load(open(out, encoding="utf-8"))
+        assert d["version"] == E.VERSION and [m["month"] for m in d["months"]] == ["2026-03", "2026-04"]
+        m = d["months"][0]
+        assert m["days"] == 1 and m["events"] == 1 and m["effect_verdict"]["open"] == 1 and m["signal_type"]["EFFECT"] == 1
+        text = json.dumps(d)
+        assert '"lat"' not in text and C0 not in text and "OB-" not in text and "EV-" not in text   # aggregates only
+        assert any("European Space Agency" in x for x in d["sources"])
+    finally:
+        E.REGISTER = old
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
