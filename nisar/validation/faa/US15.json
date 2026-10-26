@@ -1,0 +1,64 @@
+{
+  "_about": "Pre-registered NISAR test against announced US GPS tests (docs/validation/nisar.md section 6): site US15, Schofield Barracks, HI, tests SCHFHI GPS 26-71 (FAA SPANS). Run from nisar/: python -m nisar_rfi run --config validation/faa/US15.json --start 2026-06-17 --end 2026-10-26 --seed",
+  "aoi": {
+    "name": "FAA test site US15 (Schofield Barracks, HI)",
+    "bbox": [
+      -158.63,
+      20.879,
+      -157.43,
+      22.079
+    ]
+  },
+  "collections": [
+    "NISAR_L2_GCOV_PROVISIONAL_V1"
+  ],
+  "max_granules_per_run": 200,
+  "keep_days": 400,
+  "cell_m": 500,
+  "frequencies": [
+    "A",
+    "B"
+  ],
+  "alert_min_confidence": "MEDIUM",
+  "detect": {
+    "seed_z": 5.0,
+    "grow_z": 2.0,
+    "min_cells": 4,
+    "min_excess_db": 1.5,
+    "line_km": 4.5
+  },
+  "sites": {
+    "site_prefix": "US15",
+    "match_km": 25,
+    "quiet_after": 2,
+    "fix_min_cross_deg": 20
+  },
+  "ignore": [],
+  "state_dir": "private/nisar/validation-faa/US15/state",
+  "out_dir": "private/nisar/validation-faa/US15/out",
+  "method": "tables",
+  "screen": {
+    "min_score": 0.0,
+    "every": 1
+  },
+  "tables": {
+    "height_m": 1500.0
+  },
+  "cache_tables": true,
+  "faa_site": {
+    "centre": [
+      21.4794,
+      -158.0297
+    ],
+    "centres": [
+      [
+        21.4794,
+        -158.0297
+      ]
+    ],
+    "tests": [
+      "SCHFHI GPS 26-71"
+    ],
+    "place": "Schofield Barracks, HI"
+  }
+}
