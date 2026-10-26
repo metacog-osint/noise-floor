@@ -4,6 +4,9 @@
 Runs as the git pre-commit hook (checks the staged version of each added/changed file) or with --all (every tracked
 file, for CI). Terms are case-insensitive substrings, one per line, from the FORBIDDEN_TERMS environment variable
 (newline-separated; a CI secret) or private/forbidden_terms.txt (gitignored). With no term list it fails closed.
+A term made only of digits matches only where it isn't part of a longer number (no digit or decimal point directly
+before or after it): the Sea map's tracks hold millions of digits, and a five-digit term turned up inside a coordinate
+on 26 Oct 2026. Every other term is a plain substring, as before.
 
 Usage
   python tools/check_public.py          # staged files (pre-commit)
@@ -11,7 +14,7 @@ Usage
   python tools/check_public.py --message .git/COMMIT_EDITMSG   # a commit message (commit-msg hook)
   python tools/check_public.py --log    # every commit message in the history (CI)
 """
-import gzip, os, subprocess, sys
+import gzip, os, re, subprocess, sys
 
 ROOT = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip() or "."
 TERMS_FILE = os.path.join(ROOT, "private", "forbidden_terms.txt")
@@ -22,6 +25,15 @@ def terms():
     if raw is None and os.path.exists(TERMS_FILE):
         raw = open(TERMS_FILE, encoding="utf-8").read()
     return [t.strip().lower() for t in (raw or "").splitlines() if t.strip() and not t.lstrip().startswith("#")]
+
+
+def found(term, low):
+    """Is the term in the (lower-cased) text? Digits-only terms must stand apart from other digits and decimal points."""
+    if term not in low:
+        return False
+    if not term.isdigit():
+        return True
+    return re.search(r"(?<![\d.])" + re.escape(term) + r"(?![\d]|\.\d)", low) is not None
 
 
 def git(*args):
@@ -36,7 +48,7 @@ def main():
     if "--message" in sys.argv:              # commit-msg hook: the message being committed
         path = sys.argv[sys.argv.index("--message") + 1]
         text = open(path, encoding="utf-8", errors="replace").read().lower()
-        n = sum(1 for t in ts if t in text)
+        n = sum(1 for t in ts if found(t, text))
         if n:
             print(f"check_public: the commit message contains {n} private term(s); edit it and commit again.", file=sys.stderr)
             return 1
@@ -45,7 +57,7 @@ def main():
         bad = []
         for rec in git("log", "--format=%H%x00%B%x1e").decode("utf-8", "replace").split("\x1e"):
             sha, _, body = rec.strip().partition("\x00")
-            if sha and any(t in body.lower() for t in ts):
+            if sha and any(found(t, body.lower()) for t in ts):
                 bad.append(sha[:10])
         if bad:
             print(f"check_public: {len(bad)} commit message(s) contain private terms: {' '.join(bad)}", file=sys.stderr)
@@ -71,7 +83,7 @@ def main():
         for i, line in enumerate(data.decode("utf-8", "replace").splitlines(), 1):
             low = line.lower()
             for t in ts:
-                if t in low:
+                if found(t, low):
                     hits.append(f"{n}:{i}: private term #{ts.index(t) + 1}")
     if hits:
         print("check_public: private terms found (see private/forbidden_terms.txt for the numbered list):", file=sys.stderr)
