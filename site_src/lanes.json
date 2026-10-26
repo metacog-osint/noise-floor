@@ -106,15 +106,15 @@
       "id": "post-exposure",
       "group": "pnt",
       "name": "Downstream effects by aircraft type",
-      "status": "prototype",
-      "phase": "Phase 1 (v1.4)",
+      "status": "validated",
+      "phase": "Validated (Oct 2026)",
       "summary": "Which aircraft types stay degraded after leaving interference, and how far they carry it.",
       "what": "Some avionics keep reporting degraded accuracy for hours after an aircraft leaves a jammed or spoofed area. Over 17 days, A350-900s made up 24.9% of post-exposure aircraft-days against 1.3% of traffic (19.4×), A380s 19.2× and 777-300ERs 4.7×; most narrowbodies were near 1×.",
       "how": "An aircraft's exposure point is its first degraded hex-hour where its peers were degraded too. Later degraded reports 300 km or more away, among healthy peers, are tagged post-exposure.",
       "data": [
         "adsb.lol daily archive"
       ],
-      "notes": "Tested 23 Oct 2026 (verdict 43). Inside jamming, A350s stay visible while degraded where other types go dark, and A350/A380 degraded episodes last 4–8 times longer. Australia reported to ICAO in June 2025 that on these types the ADS-B accuracy value is set to zero when one satellite is flagged degraded. The type pattern is therefore most likely a reporting artefact. Next: count A350/A380 accuracy-only drops apart and rerun the validated days.",
+      "notes": "Explained 23–26 Oct 2026 (verdicts 43 and 48). Inside jamming, A350s stay visible while degraded where other types go dark, and A350/A380 degraded episodes last 4–8 times longer. Australia reported to ICAO in June 2025 that on these types the ADS-B accuracy value is set to zero when one satellite is flagged degraded, so the type pattern is most likely a reporting artefact. It can't be removed by type without losing real detections (A350s and A380s also carry most real burst detections in hotspots), so the method stays v1.4: the type chart shows them apart and every daily table counts them, so each event says how much it rests on those types.",
       "links": [
         [
           "Post-exposure results",
