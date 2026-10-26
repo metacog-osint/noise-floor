@@ -50,6 +50,22 @@ are rare enough that each one is worth a person's look, rather than clutter that
 - **Fixed sites:** a detection within 100 m of a site that `ship_detect.py persist` finds in at least 60% of the
   development and held-out passes (buoys, beacons, turbines) is a fixed structure, not a ship.
 
+**Amendment 1 (26 Oct 2026, about 18:20 UTC, before any held-out data was read and before the matcher was run on
+anything).** Four gaps in the text above, closed here:
+
+- **Scored area:** also restricted to the AIS detector's named regions "Gulf of Finland 22.5-27E", "Gulf of Finland east
+  of 27E" and "Archipelago Sea and Aland" (`ais_detect.REGIONS`, first match, so Narva Bay is excluded), where Finnish
+  shore stations hear vessels across the water. Detections and vessels elsewhere are reported, not scored.
+- **Processing:** each region is read in tiles of 1° longitude by 0.7° latitude with 0.04° of padding, and points are
+  scored only in a tile's core. Tiling only splits the work: the CFAR ring is 620 m, well inside the padding.
+- **Fixed sites:** decided in the matcher (`tools/dark_match.py`), not by `ship_detect.py persist`, which reads another
+  output folder: a detection is a fixed structure if at least two passes cover its point and at least 60% of those have
+  a detection within 100 m of it.
+- **Spoofing flags and unknown positions:** a vessel is "position unknown" at acquisition if it has reports within
+  ±30 min but no position by the interpolation rule; if `ais_detect.py` lists it among spoofing victims (any reading)
+  with a flagged span (first to last flagged report, ±10 min) covering the acquisition; or if the interpolation segment
+  implies more than 60 kn.
+
 ## Checks
 
 | # | Check | Pass if |
