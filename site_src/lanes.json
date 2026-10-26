@@ -1,5 +1,5 @@
 {
-  "updated": "22 Oct 2026",
+  "updated": "26 Oct 2026",
   "groups": [
     {
       "id": "pnt",
@@ -126,15 +126,15 @@
       "id": "horizon",
       "group": "pnt",
       "name": "Radio-horizon jammer localizer",
-      "status": "prototype",
-      "phase": "Prototype",
+      "status": "parked",
+      "phase": "Parked (Oct 2026)",
       "summary": "Narrow down where a jammer sits from where aircraft lose and regain GNSS.",
       "what": "A jammer on the ground can only reach aircraft above its radio horizon. Each aircraft's first jammed position and altitude define a horizon circle, and where many circles' edges meet points to the source area.",
       "how": "tools/horizon_fix.py fits the jammer's reach from the data and scores candidate cells by how tightly aircraft onsets agree. Scored against a 2025 TDOA network's fixes in Kaliningrad over two held-out sets: the best version is within 25 km of a known site on 3 of 5 days, but a single fixed point between the two sites does as well.",
       "data": [
         "adsb.lol daily archive"
       ],
-      "notes": "Gives an area, not a site: two sites 21 km apart can't be told apart, and the test can't yet separate it from a constant guess. Next: days with a single known active site. Positions stay off the public map.",
+      "notes": "Parked 26 Oct 2026. Held-out tests (verdicts 41, 42 and 44) show it gives an area, not a site: two sites 21 km apart can't be told apart, and its likelihood version did no better than a constant guess. The code stays; revisit if a day with one known active site and time turns up. Positions stay off the public map.",
       "links": [
         [
           "Research note",
@@ -268,15 +268,15 @@
       "id": "sentinel1",
       "group": "emitters",
       "name": "Sentinel-1 RFI board",
-      "status": "prototype",
-      "phase": "Phase 5 (prototype, Oct 2026)",
+      "status": "parked",
+      "phase": "Parked (Oct 2026)",
       "summary": "C-band emitters from the interference reports in Sentinel-1 radar products.",
       "what": "Sentinel-1 Level-1 products carry per-burst radio-frequency-interference annotations. Mapped over time, they show persistent and new C-band emitters.",
       "how": "Reads only the RFI reports in each Sentinel-1 product (a few hundred kB per pass, never the imagery). Each burst report is placed on the ground from the product's geolocation grid, and passes from different orbits are combined on one grid. A site is where most viewing directions agree, persistently across passes.",
       "data": [
         "Copernicus Sentinel-1 L1 GRD annotations via Microsoft Planetary Computer (free, including commercial use; attribution)"
       ],
-      "notes": "Run privately on three published cases and a quiet control (Oct 2026). The control stayed silent, and region-scale C-band interference shows clearly. Its sites didn't line up with the published radar locations, because the reports place an emitter only to tens of kilometres. Outputs stay private until a known emitter validates positions. No account needed.",
+      "notes": "Parked 26 Oct 2026. Run privately on three published cases and a quiet control: the control stayed silent and region-scale C-band interference shows clearly, but its sites didn't line up with the published radar locations, because the reports place an emitter only to tens of kilometres. Revisit when a known C-band emitter's position is published. Outputs stay private. No account needed.",
       "links": [
         [
           "Validation",
@@ -288,8 +288,8 @@
       "id": "weather-radar",
       "group": "emitters",
       "name": "Weather-radar spokes",
-      "status": "prototype",
-      "phase": "Phase 5 (prototype, Oct 2026)",
+      "status": "parked",
+      "phase": "Parked (Oct 2026)",
       "summary": "Interference spokes in open weather-radar data, as evidence of nearby emitters.",
       "what": "A strong emitter in a weather radar's band paints a thin radial spoke on its scans. National services publish the scans.",
       "how": "tools/radar_spokes.py reads the unfiltered lowest sweep from German (DWD) and Finnish (FMI) radars, finds rays whose range-corrected power stays level along range (the signature of a transmitter, not weather), separates the sun and rain, groups spokes into persistent sources and crosses bearings between radars. First day (23 Oct 2026, 29 radars): 101 sources, the sun found to within 0.23°, and bearing crossings no better than chance, so no emitter located yet. A second day (24 Oct) found all 10 persistent sources again within 1°.",
@@ -297,7 +297,7 @@
         "FMI radar (CC BY 4.0)",
         "DWD radar (CC BY 4.0)"
       ],
-      "notes": "Most sources are steady, narrow, weak and seen by one radar only, which matches published descriptions of outdoor Wi-Fi links in the band. That is a pattern, not an identification; nothing here points to military activity. C-band, so it complements the L-band NISAR lane.",
+      "notes": "Parked 26 Oct 2026. Most sources are steady, narrow, weak and seen by one radar only, which matches published descriptions of outdoor Wi-Fi links in the band: a pattern, not an identification, and nothing points to military activity. With no validation target it waits for a specific case. C-band, so it complements the L-band NISAR lane.",
       "links": [
         [
           "First results",
@@ -336,8 +336,8 @@
       "id": "lf-vlf",
       "group": "pnt",
       "name": "Low-frequency navigation and VLF",
-      "status": "planned",
-      "phase": "Later",
+      "status": "parked",
+      "phase": "Parked (Oct 2026)",
       "summary": "Chayka (Loran-type) and RSDN-20 Alpha VLF signals, the backups to GNSS.",
       "what": "Long-range terrestrial navigation systems matter more when GNSS is denied. Public receivers and direction-finding work make their activity observable.",
       "how": "Follow published receiver captures and VLF direction-finding methods; add public KiwiSDR receivers.",
@@ -345,7 +345,7 @@
         "Public Loran/Chayka receiver captures (reuse terms UNVERIFIED; private watch only)",
         "KiwiSDR public receivers"
       ],
-      "notes": "Kept in the private watch until reuse terms are confirmed.",
+      "notes": "Parked 26 Oct 2026: kept in the private watch until reuse terms are confirmed.",
       "links": []
     },
     {
@@ -360,30 +360,15 @@
       "data": [
         "CelesTrak orbital elements (terms UNVERIFIED)"
       ],
-      "notes": "Shows proximity and behaviour, never intent.",
-      "links": []
-    },
-    {
-      "id": "rrb-register",
-      "group": "satcom",
-      "name": "Interference register",
-      "status": "planned",
-      "phase": "Phase 3",
-      "summary": "Curated, geolocated cases of harmful interference from the official record.",
-      "what": "Cases from ITU Radio Regulations Board decisions and operator disclosures, each geolocated where possible and cited to its source.",
-      "how": "Hand-curated with a fixed record format; new RRB meetings are checked as they publish.",
-      "data": [
-        "ITU RRB documents (cited, not republished; reuse terms UNVERIFIED)"
-      ],
-      "notes": "Doubles as a validation set for the observed lanes.",
+      "notes": "Next after the current lane wrap-up; the first step is reading CelesTrak's terms. Shows proximity and behaviour, never intent.",
       "links": []
     },
     {
       "id": "satisp",
       "group": "satcom",
       "name": "Satellite-internet health",
-      "status": "planned",
-      "phase": "Phase 3",
+      "status": "parked",
+      "phase": "Parked (Oct 2026)",
       "summary": "Telling a constellation-wide outage from a local one.",
       "what": "Internet-measurement data shows when satellite-ISP users in one area lose service while others don't.",
       "how": "Speed-test and outage-detection data, compared across areas and with the observed GNSS lanes.",
@@ -392,23 +377,7 @@
         "IODA (permission needed)",
         "RIPE Atlas (permission needed for commercial use)"
       ],
-      "notes": "Permission requests to IODA and RIPE NCC go out before those sources are used.",
-      "links": []
-    },
-    {
-      "id": "lband-overlay",
-      "group": "satcom",
-      "name": "L-band risk overlay",
-      "status": "planned",
-      "phase": "Phase 3",
-      "summary": "Where observed GNSS jamming lies near L-band mobile-satellite services.",
-      "what": "GNSS jammers and nearby L-band satcom (Inmarsat, Iridium, Thuraya) share spectrum neighbourhoods. This layer marks where observed jamming could plausibly affect them.",
-      "how": "An inference layer built from the observed GNSS lanes and service frequencies.",
-      "data": [
-        "Noise Floor GNSS lanes",
-        "Published service frequency plans"
-      ],
-      "notes": "Labelled as inference on the map, never as observed satcom interference.",
+      "notes": "Parked 26 Oct 2026 until the permission requests to IODA and RIPE NCC go out; M-Lab (CC0) needs no permission.",
       "links": []
     },
     {
@@ -425,7 +394,7 @@
         "NOAA SWPC solar radio flux, radio bursts and alerts (US public domain)",
         "Curated public outage reports (cited)"
       ],
-      "notes": "The browser code matches the project's Python tool on six pairs in both hemispheres, and the Python tool matched an independently written calculator for Tehran. Alert thresholds are provisional. Our own aircraft data joins the alerts once a check against archived radio bursts passes.",
+      "notes": "The browser code matches the project's Python tool on six pairs in both hemispheres, and the Python tool matched an independently written calculator for Tehran. Alert thresholds are provisional. Our own aircraft data joins the alerts once a check against archived radio bursts passes. The planned interference register now lives here, as the curated outage-reports file (public sources, each cited).",
       "links": [
         [
           "Sun page",
@@ -453,29 +422,13 @@
       "data": [
         "All lanes"
       ],
-      "notes": "1 Oct 2025 – 22 Oct 2026: about 160,000 events. Every announced-test tag on the map comes out 'planned', 10 m-only effects at storm time come out 'benign_natural' where the rules allow, and the persistent hotspots are EFFECT, single-source, open. Since v0.2, CYGNSS is a second, independent sensor. With a full year of CYGNSS, 8,632 events have an aircraft 93 m signal and a raised CYGNSS noise field agreeing within 300 km, so they reach 'Multiple sources', in every month. Nothing can be 'deliberate_suspected' until an interference-warning feed exists. The register is private. Grades describe evidence strength. They don't name perpetrators.",
+      "notes": "1 Oct 2025 – 22 Oct 2026: about 160,000 events. Every announced-test tag on the map comes out 'planned', 10 m-only effects at storm time come out 'benign_natural' where the rules allow, and the persistent hotspots are EFFECT, single-source, open. Since v0.2, CYGNSS is a second, independent sensor. With a full year of CYGNSS, 8,632 events have an aircraft 93 m signal and a raised CYGNSS noise field agreeing within 300 km, so they reach 'Multiple sources', in every month. Nothing can be 'deliberate_suspected' until an interference-warning feed exists. The register is private. Grades describe evidence strength. They don't name perpetrators. Known look-alikes, such as radar faults, are kept here as test cases (this absorbed the planned exclusion-layer lane).",
       "links": [
         [
           "Method and results",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/assessment/events.md"
         ]
       ]
-    },
-    {
-      "id": "exclusions",
-      "group": "assessment",
-      "name": "Attribution and exclusion layers",
-      "status": "planned",
-      "phase": "Phase 6",
-      "summary": "Benign explanations kept in view: licensed transmitters, radars, navaids, ducting.",
-      "what": "Before an observation is treated as interference, check it against licensed transmitters, weather radars, navigation aids, space weather and tropospheric ducting.",
-      "how": "Each layer is a lookup at the event's place and time. Ducting comes from reanalysis (ERA5).",
-      "data": [
-        "Licensing and navaid databases (terms vary; checked per source)",
-        "ERA5 reanalysis"
-      ],
-      "notes": "Known false look-alikes, such as radar faults, are kept as test cases.",
-      "links": []
     },
     {
       "id": "community",
@@ -495,21 +448,6 @@
       "links": []
     },
     {
-      "id": "assessment",
-      "group": "assessment",
-      "name": "Daily status and weekly assessment",
-      "status": "planned",
-      "phase": "Phase 6",
-      "summary": "A per-region daily status and a written weekly assessment.",
-      "what": "Each region gets a daily status that says what it rests on (observed, declared, natural), and a weekly written assessment pulls the lanes together.",
-      "how": "Built on the event model. Alerts go out through ntfy with generic text and no places.",
-      "data": [
-        "All lanes"
-      ],
-      "notes": "Products cite their sources and flag anything unverified.",
-      "links": []
-    },
-    {
       "id": "public-map",
       "group": "platform",
       "name": "Public map, charts and data",
@@ -521,7 +459,7 @@
       "data": [
         "adsb.lol daily archive (ODbL; derived data published under ODbL with attribution)"
       ],
-      "notes": "Live: every day from 1 Oct 2025, with a time slider and a per-day strip, four views (jamming-scale, accuracy, change from usual, fewer aircraft than usual), each day's anomalies, bursts and SBAS flags listed and outlined, a daily trend chart of the known hotspots, the 20 validated days, and the full outputs of every processed day (per hex, hour and minute; SBAS flags, anomalies and bursts) in the data releases, all under ODbL. Daily runs are automatic and not reviewed by a person. Planned: ad-hoc queries in the browser (DuckDB-WASM), with no server. Static files on the free tier: no servers and no database bill.",
+      "notes": "Live: every day from 1 Oct 2025, with a time slider and a per-day strip, four views (jamming-scale, accuracy, change from usual, fewer aircraft than usual), each day's anomalies, bursts and SBAS flags listed and outlined, a daily trend chart of the known hotspots, the 20 validated days, and the full outputs of every processed day (per hex, hour and minute; SBAS flags, anomalies and bursts) in the data releases, all under ODbL. Daily runs are automatic and not reviewed by a person. Planned: ad-hoc queries in the browser (DuckDB-WASM), with no server. Static files on the free tier: no servers and no database bill. The home page is a live status board (alerts, sun outages, solar radio, GNSS today, sea), which replaced the planned daily-status product; a weekly assessment will come from the same data.",
       "links": [
         [
           "Map",
