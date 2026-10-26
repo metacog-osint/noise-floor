@@ -31,6 +31,7 @@ STATUS = {  # key: (label, css class, one-line meaning)
     "built": ("Built", "st-built", "a working tool"),
     "prototype": ("Prototype", "st-prototype", "a first result, not yet a product"),
     "planned": ("Planned", "st-planned", "designed, not built"),
+    "parked": ("Parked", "st-parked", "set aside with its final state written down; revisited on a named trigger"),
 }
 NAV = [("home", "Home", ""), ("map", "Map", "map"), ("sea", "Sea", "sea"), ("sun", "Sun", "sun"), ("charts", "Charts", "charts"),
        ("lanes", "Lanes", "lanes"), ("methods", "Methods", "methods"), ("validation", "Validation", "validation"), ("data", "Data", "data"), ("sources", "Sources", "sources")]
@@ -171,11 +172,11 @@ def lanes_page(data):
 <p>Each phase is finished, validated and committed before the next starts.</p>
 <div class="tw"><table><thead><tr><th>Phase</th><th>Scope</th><th>Status</th></tr></thead><tbody>
 <tr><td>1. Foundation</td><td>Licence registry, GNSS processor, method card, validation against known events</td><td>""" + chip("validated") + """</td></tr>
-<tr><td>2. Daily and public</td><td>Daily pipeline and backfill, public map, declared-interference lane, light pollers with alerts</td><td>""" + chip("planned") + """ next</td></tr>
-<tr><td>3. SATCOM v1</td><td>GEO threat board, interference register, satellite-internet health, L-band risk overlay</td><td>""" + chip("planned") + """</td></tr>
-<tr><td>4. Spoofing and maritime</td><td>ADS-B spoofing detectors, AIS layers, declared-warning layers</td><td>""" + chip("planned") + """</td></tr>
-<tr><td>5. Emitters</td><td>Sentinel-1 RFI board, weather-radar spokes</td><td>""" + chip("planned") + """</td></tr>
-<tr><td>6. Assessment</td><td>Event model and grading, exclusion layers, community lane, daily status and weekly assessment</td><td>""" + chip("planned") + """ (events and grading v0.1 running privately; community collection running)</td></tr>
+<tr><td>2. Daily and public</td><td>Daily pipeline and backfill, public map, declared-interference lane, home status board</td><td>""" + chip("running") + """</td></tr>
+<tr><td>3. SATCOM v1</td><td>Sun outages with alerts (running; the interference register folded in), GEO threat board (next), satellite-internet health (parked until permissions); the L-band risk overlay was dropped</td><td>""" + chip("running") + """ sun outages</td></tr>
+<tr><td>4. Spoofing and maritime</td><td>ADS-B spoofing (validated), AIS spoofing at sea and dark ships (prototypes, held-out tests next), declared-warning layers</td><td>""" + chip("validated") + """ ADS-B spoofing</td></tr>
+<tr><td>5. Emitters</td><td>Sentinel-1 RFI board, weather-radar spokes</td><td>""" + chip("parked") + """</td></tr>
+<tr><td>6. Assessment</td><td>Event model and grading (v0.2; exclusions folded in), community lane, the home status board as the daily status; weekly assessment later</td><td>""" + chip("prototype") + """ events; community collection running</td></tr>
 <tr><td>7. Extensions</td><td>Spaceborne and network GNSS; NISAR L-band emitters (pulled forward)</td><td>""" + chip("partial") + """ NISAR</td></tr>
 </tbody></table></div>""")
     return "\n".join(parts)
