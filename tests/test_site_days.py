@@ -30,7 +30,8 @@ def test_feed(tmp):
         {"m": "jam", "tier": "minor", "peak": 9, "lat": 1, "lon": 1, "h0": 0, "h1": 1, "excess": 5}],
         "bursts": [{}, {}], "tests": [{"id": "X <1>"}]})
     p = os.path.join(tmp, "feed.xml")
-    assert S.write_feed(idx, evd, p, os.path.join(tmp, "feed_places.json"), n=30) == 30
+    none = os.path.join(tmp, "no_alerts.json")
+    assert S.write_feed(idx, evd, p, os.path.join(tmp, "feed_places.json"), n=30, alerts_path=none) == 30
     ns = {"a": "http://www.w3.org/2005/Atom"}
     root = ET.parse(p).getroot()                                       # well-formed despite <, & in notes and test ids
     es = root.findall("a:entry", ns)
@@ -43,6 +44,14 @@ def test_feed(tmp):
     assert es[-1].find("a:id", ns).text.endswith("gnss-day-2026-09-02")
     assert "No event file for this day." in es[1].find("a:content", ns).text
     assert "not reviewed by a person" in html and "validated days" in es[1].find("a:content", ns).text
+    # sun-outage alerts join the feed in time order, with their own ids
+    al = os.path.join(tmp, "alerts.json")
+    write(al, {"alerts": [{"id": "sun-l-burst-2026-10-01T09:00:00Z", "kind": "l-burst", "level": "obs", "t": "2026-10-01T09:00:00Z", "text": "Burst <1>"},
+                          {"id": "sun-report-2026-10-02T09:00:00Z", "kind": "report", "level": "obs", "t": "2026-10-02T09:00:00Z", "text": "R", "link": "https://x.test/a?b=1&c=2"}]})
+    assert S.write_feed(idx, evd, p, os.path.join(tmp, "feed_places.json"), n=30, alerts_path=al) == 32
+    es = ET.parse(p).getroot().findall("a:entry", ns)
+    assert [e.find("a:updated", ns).text for e in es[:3]] == ["2026-10-02T09:00:00Z", "2026-10-01T23:59:59Z", "2026-10-01T09:00:00Z"]
+    assert es[0].find("a:link", ns).get("href") == "https://x.test/a?b=1&c=2" and "Burst &lt;1&gt;" in es[2].find("a:content", ns).text
 
 
 def main():

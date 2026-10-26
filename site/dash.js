@@ -166,7 +166,8 @@
         " UTC. GNSS receivers on the sunlit side can lose signal-to-noise; the next daily aircraft run checks for it." });
     });
     // 4. from the deploy-time file: aircraft GNSS checks and curated outage reports matched to predicted windows
-    ((state.deploy && state.deploy.alerts) || []).forEach(function (a) { out.push({ level: a.level || "obs", text: a.text, link: a.link }); });
+    ((state.deploy && state.deploy.alerts) || []).filter(function (a) { return a.kind === "aircraft" || a.kind === "report"; })   // the rest is computed live above
+      .forEach(function (a) { out.push({ level: a.level || "obs", text: a.text, link: a.link }); });
     return out;
   }
   function renderAlerts() {

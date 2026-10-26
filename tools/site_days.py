@@ -30,6 +30,7 @@ HOT_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.hotspots\.json$")
 MEASURE = {"gross": "jam", "capable_10m": "acc"}
 FEED = os.path.join(ROOT, "site", "feed.xml")
 PLACES = os.path.join(ROOT, "site", "data", "places.json")
+SUN_ALERTS = os.path.join(ROOT, "site", "data", "sun", "alerts.json")   # written at deploy by tools/sun_alerts.py
 SITE_URL = "https://noisefloor.theintelligence.company"
 TIER = {"major": "Major", "notable": "Notable", "minor": "Minor"}
 
@@ -232,10 +233,11 @@ def day_summary(d, prior, ev, places):
     return title, "".join(parts)
 
 
-def write_feed(index, events_dir, path=None, places_path=None, n=30):
-    """Atom feed of the latest n days. Each entry's updated time is the end of its UTC day, so a redeploy doesn't
-    re-announce old days. Returns the number of entries."""
-    path, places_path = path or FEED, places_path or PLACES
+def write_feed(index, events_dir, path=None, places_path=None, n=30, alerts_path=None):
+    """Atom feed of the latest n days, plus the sun-outage and radio-burst alerts in alerts_path (tools/sun_alerts.py).
+    Each day entry's updated time is the end of its UTC day and each alert's is its own time, so a redeploy doesn't
+    re-announce old entries. Returns the number of entries."""
+    path, places_path, alerts_path = path or FEED, places_path or PLACES, alerts_path or SUN_ALERTS
     places = []
     if os.path.exists(places_path):
         with open(places_path, encoding="utf-8") as f:
@@ -252,19 +254,36 @@ def write_feed(index, events_dir, path=None, places_path=None, n=30):
                 ev = json.load(f)
         title, html = day_summary(d, prior, ev, places)
         updated = f"{d['day']}T23:59:59Z"
-        entries.append(f"<entry><id>tag:noisefloor.theintelligence.company,2026:gnss-day-{d['day']}</id>"
+        entries.append((updated, f"<entry><id>tag:noisefloor.theintelligence.company,2026:gnss-day-{d['day']}</id>"
                        f"<title>{escape(title)}</title><updated>{updated}</updated>"
                        f'<link rel="alternate" type="text/html" href="{escape(SITE_URL + "/map#day=" + d["day"] + "&m=jam")}"/>'
-                       f'<content type="html">{escape(html)}</content></entry>')
-    feed_updated = f"{days[-1]['day']}T23:59:59Z" if days else "2026-01-01T00:00:00Z"
+                       f'<content type="html">{escape(html)}</content></entry>'))
+    if os.path.exists(alerts_path):
+        with open(alerts_path, encoding="utf-8") as f:
+            alerts = json.load(f).get("alerts", [])
+        titles = {"burst-in-window": "Sun-outage alert: radio burst during predicted outages",
+                  "bright-sun": "Sun-outage alert: bright sun during predicted outages",
+                  "l-burst": "Radio burst at GNSS frequencies", "report": "Reported satellite outage, checked against sun outages",
+                  "aircraft": "Radio burst seen in aircraft GNSS"}
+        for a in alerts:
+            html = (f"<p>{escape(a.get('text', ''))}</p><p>Predicted from geometry for the public watch list; observed by NOAA SWPC "
+                    f'(US public domain). Thresholds are provisional. <a href="{SITE_URL}/sun">How sun outages work</a></p>')
+            link = a.get("link") or SITE_URL + "/"
+            entries.append((a["t"], f"<entry><id>tag:noisefloor.theintelligence.company,2026:{escape(a['id'])}</id>"
+                                    f"<title>{escape(titles.get(a.get('kind'), 'Alert'))}</title><updated>{escape(a['t'])}</updated>"
+                                    f'<link rel="alternate" type="text/html" href="{escape(link)}"/>'
+                                    f'<content type="html">{escape(html)}</content></entry>'))
+    entries.sort(key=lambda e: e[0], reverse=True)
+    feed_updated = entries[0][0] if entries else "2026-01-01T00:00:00Z"
     xml = ('<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">'
            "<id>tag:noisefloor.theintelligence.company,2026:gnss-daily</id>"
-           "<title>Noise Floor: daily GNSS interference summary</title>"
-           "<subtitle>GNSS degradation seen by aircraft worldwide, one entry per UTC day, from the automatic daily run.</subtitle>"
+           "<title>Noise Floor: daily GNSS summary and alerts</title>"
+           "<subtitle>GNSS degradation seen by aircraft worldwide, one entry per UTC day from the automatic daily run, plus "
+           "sun-outage and radio-burst alerts.</subtitle>"
            f'<link rel="self" type="application/atom+xml" href="{SITE_URL}/feed.xml"/>'
            f'<link rel="alternate" type="text/html" href="{SITE_URL}/map"/>'
            f"<updated>{feed_updated}</updated><author><name>Noise Floor</name><uri>{SITE_URL}</uri></author>"
-           "<rights>Derived from adsb.lol data, ODbL 1.0</rights>" + "".join(entries) + "</feed>\n")
+           "<rights>Daily entries derived from adsb.lol data, ODbL 1.0</rights>" + "".join(e[1] for e in entries) + "</feed>\n")
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(xml)
     return len(entries)
