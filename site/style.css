@@ -210,6 +210,20 @@ button.linkish { font: inherit; font-size: .88rem; color: var(--acc); background
 .chart-card h3 { margin: 0 0 .15rem; }
 .chart-card .sub { color: var(--mut); font-size: .88rem; margin: 0 0 .6rem; max-width: none; }
 .chart { position: relative; width: 100%; }
+/* ---- sun-outage calculator ---- */
+.sun-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .6rem 1rem; margin: .6rem 0 .4rem; }
+.sun-form fieldset { border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: .45rem .8rem .7rem; margin: 0; display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.sun-form legend { color: var(--mut); font-size: .85rem; padding: 0 .3rem; }
+.sun-form label { display: flex; flex-direction: column; gap: .15rem; font-size: .9rem; }
+.sun-form input, .sun-form select { font: inherit; font-size: .95rem; padding: .3rem .45rem; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); min-width: 0; }
+.sun-form .sun-pair { display: flex; gap: .6rem; }
+.sun-form .sun-pair label { flex: 1; min-width: 0; }
+.sun-form > p { grid-column: 1 / -1; margin: .2rem 0; }
+.btn { font: inherit; font-weight: 600; background: var(--acc); color: var(--acc-ink); border: 0; border-radius: 8px; padding: .45rem 1.1rem; cursor: pointer; }
+.btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.chart .hgrid { stroke: var(--grid); stroke-width: 1; }
+.season-band { fill: var(--acc); opacity: .8; }
+.season-today { stroke: var(--fg); stroke-width: 1.5; stroke-dasharray: 3 3; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart text { fill: var(--ink-3); font-size: 11px; font-family: inherit; }
 .chart .lbl { fill: var(--ink-2); font-size: 11.5px; }
