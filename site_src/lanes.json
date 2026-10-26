@@ -158,7 +158,7 @@
       "data": [
         "adsb.lol daily archive"
       ],
-      "notes": "A held-out test on 12 days fixed in advance passed all five pre-registered checks (24 Oct 2026). Version 0.4 adds a 'replay' class for feeds re-sending old positions (found over northern Florida, 6 Mar 2024), with the held-out results unchanged. Spoofing and jamming are mostly separate signals. Maps show where receivers were told they were, not where a transmitter is. Offset tracks with no jump are missed; no coverage over Iraq and almost none over Iran. Not on the public map yet.",
+      "notes": "A held-out test on 12 days fixed in advance passed all five pre-registered checks (24 Oct 2026). Version 0.4 adds a 'replay' class for feeds re-sending old positions (found over northern Florida, 6 Mar 2024), with the held-out results unchanged. Version 0.5 (the default from late Oct 2026) also lets indicated airspeed, from air data rather than GNSS, qualify an aircraft for the tests, so aircraft spoofed for their whole visible flight are tested: 13% more episodes over 41 days, controls unchanged at 0.002%, and the held-out checks still pass. Spoofing and jamming are mostly separate signals. Maps show where receivers were told they were, not where a transmitter is. Offset tracks with no jump are missed; no coverage over Iraq and almost none over Iran. Not on the public map yet.",
       "links": [
         [
           "Validation",

@@ -297,7 +297,7 @@ count.
 - Caveat: the rule was designed after seeing the Florida case, and its thresholds weren't tuned on other days. The
   held-out days show it doesn't disturb the checks.
 
-## v0.5 (option): air data can qualify an aircraft for the tests (25 Oct 2026)
+## v0.5 (the default from late Oct 2026): air data can qualify an aircraft for the tests (25 Oct 2026)
 
 **The gap.** v0.4 runs its slow, loiter and excursion tests only on "fast" aircraft, and judges fast by GNSS ground speed
 (10 or more reports at 250 kt or more above 10,000 ft). A spoofer controls GNSS ground speed, so an aircraft spoofed for
@@ -313,7 +313,7 @@ such aircraft held at fixed points with no v0.4 episode. Two examples from the r
 
 The same 54 kt circle at both places suggests the same kind of spoofing source; that's an observation, not a finding.
 
-**The option.** `tools/spoof_day.py --airspeed-fast` (v0.5, off by default) lets indicated airspeed, from Mode S
+**The change.** v0.5 (`tools/spoof_day.py`, the default from late Oct 2026; `--no-airspeed-fast` gives v0.4) lets indicated airspeed, from Mode S
 enhanced surveillance (air data, not GNSS), qualify an aircraft too: category A2–A5 with 10 or more reports at IAS 220 kt
 or more above 10,000 ft, or no category with 10 or more at IAS 250 kt or more above 20,000 ft. Nothing else changes.
 IAS is only present where ground radars interrogate for it (much of Europe; less elsewhere), so the gain is regional.
@@ -348,8 +348,9 @@ H4 falls a little because the new top cells sit at Russian points the published 
 were among the 14 days of the roll-turn exploration that found the gap, so the held-out test is only partly independent
 for v0.5. The control check (H1), the one that matters most for a looser rule, is unchanged.
 
-**Recommendation for Tom:** make `--airspeed-fast` the default (v0.5), since the controls don't move and it closes a
-documented gap that hides whole-flight spoofing, mostly over Russia. Until then v0.4 stays the default.
+**Decision:** Tom made v0.5 the default (late Oct 2026), since the controls don't move and it closes a documented gap
+that hides whole-flight spoofing, mostly over Russia. Results in the sections above this one were made with v0.4; each
+day's summary records the version that made it (`version`).
 
 
 ## The Gulf after the March 2026 surge (24 Oct 2026)
