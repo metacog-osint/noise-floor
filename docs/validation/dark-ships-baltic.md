@@ -156,15 +156,17 @@ after amendment 3 was committed at 22:19 UTC on 26 Oct; `dark_match.py score --s
 
 | | A, as pre-registered | B (amendment 2) | B with amendment 3 | A with amendment 3 |
 |---|---|---|---|---|
-| Detections in the scored area | 857 | 86 | 86 | pending |
-| AIS vessels scored (known position) | 94 | 83 | 83 | |
-| H1: ships of 100 m or more matched (≥ 85%) | 75 of 75 (100%): **pass** | 75 of 75: **pass** | 75 of 75: **pass** | |
-| H2: median position gap, matched ships of 100 m or more (≤ 500 m) | 105 m: **pass** | 105 m: **pass** | 105 m: **pass** | |
-| H3: large detections with no AIS match (≤ 10%) | 591 of 678 (87%): **fail** | 3 of 86 (3.5%): **pass** | 1 of 84 (1.2%): **pass** | |
-| Verdict (rule above) | **partly validated** | **validated (regional)** | **validated (regional)** | |
+| Detections in the scored area | 857 | 86 | 86 | 857 |
+| AIS vessels scored (known position) | 94 | 83 | 83 | 94 |
+| H1: ships of 100 m or more matched (≥ 85%) | 75 of 75 (100%): **pass** | 75 of 75: **pass** | 75 of 75: **pass** | 75 of 75: **pass** |
+| H2: median position gap, matched ships of 100 m or more (≤ 500 m) | 105 m: **pass** | 105 m: **pass** | 105 m: **pass** | 105 m: **pass** |
+| H3: large detections with no AIS match (≤ 10%) | 591 of 678 (87%): **fail** | 3 of 86 (3.5%): **pass** | 1 of 84 (1.2%): **pass** | 312 of 400 (78%): **fail** |
+| Verdict (rule above) | **partly validated** | **validated (regional)** | **validated (regional)** | **partly validated** |
 
-A with amendment 3 waits for its own fixed-object map (`dark_match.py clutter --variant A`, running); it will be added
-here, and it can't change the verdicts above.
+A with amendment 3 was scored on 27 Oct 2026 once its own fixed-object map (`dark_match.py clutter --variant A`, the
+same 39 development-period passes) was built: the map removed 298 detections and the ghost rule 7, and 312 of the
+remaining 400 large detections still had no AIS match (12 east of 27°E). The map catches islets that show on most
+passes but not the rest of what Natural Earth's coastline leaves at sea.
 
 **Reported, not scored.**
 
@@ -177,15 +179,16 @@ here, and it can't change the verdicts above.
   beacon fits; one also lies about 3.7 km along track from an AIS ship, so a ghost was the first guess by eye). Variant A's
   591 are mostly islets and skerries outside the Natural Earth coastline, as on the development passes; not reviewed one
   by one.
-- Amendment 3 flagged 2 fixed-object detections and 1 ghost in variant B.
+- Amendment 3 flagged 2 fixed-object detections and 1 ghost in variant B, and 298 fixed-object detections and 7 ghosts
+  in variant A.
 
 **What this shows.**
 
 - **The detector finds the large ships AIS reports.** All 75 ships of 100 m or more, and all 6 of 50–100 m, were
   matched within 1 km, with a 105 m median gap (smaller than on the development passes, about 400 m; fewer of these ships
   were moving fast across track). D2's base holds on this pass.
-- **With a proper coastline, large unmatched targets are rare.** The pre-registered variant fails H3 only because Natural
-  Earth's coastline misses the skerries; with OpenStreetMap land (amendment 2, decided on development data) 3 of 86 large
+- **With a proper coastline, large unmatched targets are rare.** The pre-registered variant fails H3 because Natural
+  Earth's coastline misses the skerries, with or without amendment 3 (87%, 78%); with OpenStreetMap land (amendment 2, decided on development data) 3 of 86 large
   detections are unmatched, and 1 after amendment 3. A list that short can be reviewed by a person each time, which is
   what H3 asks.
 - **Limits.** One pass, 75 large ships, Finnish waters, October (no ice). The pre-registered primary is "partly
