@@ -140,9 +140,20 @@ main.home { padding-top: 0; }
   .wrap, main { padding-left: 1rem; padding-right: 1rem; }
   .brand small { display: none; }
   .clock { display: none; }
+  .tl-row { flex-wrap: wrap; }
+  .tl-day { min-width: 0; flex-basis: 100%; }
   nav.tabs, .tabs-scroll { gap: 0; }
   .tabs-scroll a, .menu > summary { padding: 0 .4rem; }
 }
+
+/* ---- tool pages: a short head, the tool, then one "How to read this" section at the end ---- */
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .5rem 1.5rem; margin: 0 0 1.25rem; }
+.page-head h1 { margin: 0 0 .25rem; }
+.page-sub { margin: 0; color: var(--ink-2); max-width: 50rem; }
+.howto-link { font-size: var(--fs-sm); white-space: nowrap; padding-bottom: .2rem; }
+.howto { margin-top: 3rem; padding-top: 1.75rem; border-top: 1px solid var(--line); scroll-margin-top: 1rem; }
+.howto > h2 { margin-top: 0; }
+.howto > p, .howto > ul { max-width: 50rem; }
 
 /* ---- common components ---- */
 .callout { border: 1px solid var(--line); background: var(--card); border-radius: var(--r); padding: 1rem 1.25rem; margin: 1.25rem 0; max-width: 46rem; }
@@ -278,7 +289,9 @@ details.ev-how { margin: .4rem 0 1.6rem; font-size: var(--fs-sm); }
 details.ev-how summary { cursor: pointer; color: var(--acc); }
 button.linkish { font: inherit; font-size: var(--fs-sm); color: var(--acc); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .chart-card { background: var(--surface-chart); border: 1px solid var(--line); border-radius: var(--r); padding: 1rem 1.125rem .875rem; margin: 1.25rem 0; }
-.chart-card h3 { margin: 0 0 .15rem; }
+.chart-card h3, .chart-card h4 { margin: 0 0 .15rem; font-size: var(--fs-md); font-weight: 600; }
+.cases-h { margin-top: 3rem; }
+.case-h { margin: 2.25rem 0 .5rem; }
 .chart-card .sub { color: var(--mut); font-size: var(--fs-sm); margin: 0 0 .6rem; max-width: none; }
 .chart { position: relative; width: 100%; }
 .chart .hgrid { stroke: var(--grid); stroke-width: 1; }

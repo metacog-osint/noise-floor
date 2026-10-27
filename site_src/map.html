@@ -1,6 +1,11 @@
 <!--{"title": "Map · Noisefloor", "description": "Interactive world map of GNSS degradation from aircraft ADS-B reports, per H3 hex, updated daily.", "nav": "map", "layout": "wide", "head": "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css\"><script defer src=\"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js\"></script><script defer src=\"https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js\"></script><script defer src=\"/imagery.js\"></script><script defer src=\"/map.js\"></script>"}-->
-<h1>GNSS degradation from aircraft</h1>
-<p class="lede">The share of aircraft in each hex whose own GPS accuracy degraded that day, from their ADS-B position-quality reports. It shows effects, not who caused them. A new day appears each morning: adsb.lol publishes each UTC day at about 03:30 UTC the next day, and the map updates by about 06:00 UTC (1 am CDT, midnight CST). The map covers every day since 1 October 2025: drag the slider or click the strip to move through it. Daily runs are automatic and not reviewed by a person; the 20 validated test days are marked.</p>
+<div class="page-head">
+  <div>
+    <h1>Where aircraft lost GPS</h1>
+    <p class="page-sub">Every day since 1 October 2025, from aircraft position reports. A new day appears each morning by about <span data-utc-daily="06:00">06:00 UTC</span>.</p>
+  </div>
+  <a class="howto-link" href="#howto">How to read this map ↓</a>
+</div>
 
 <div class="controls" role="group" aria-label="Map controls">
   <label class="ctl"><span>Day</span><select id="map-day" aria-label="Day"></select></label>
@@ -8,18 +13,7 @@
   <datalist id="map-search-list"></datalist>
   <label class="ctl check" id="map-raw-wrap"><input type="checkbox" id="map-raw"> Include post-exposure aircraft</label>
 </div>
-<div class="timeline" id="timeline">
-  <div class="tl-head small"><span id="tl-title"></span><span id="tl-range" class="mut"></span></div>
-  <div class="tl-strip" id="tl-strip"></div>
-  <div class="tl-row">
-    <button type="button" class="tl-btn" id="tl-prev" aria-label="Previous day">‹</button>
-    <input type="range" id="tl-slider" min="0" max="0" step="1" value="0" aria-label="Day">
-    <button type="button" class="tl-btn" id="tl-next" aria-label="Next day">›</button>
-    <button type="button" class="tl-btn tl-play" id="tl-play" aria-label="Play through the days" aria-pressed="false">▶</button>
-    <span class="tl-day" id="tl-day" aria-live="polite"></span>
-  </div>
-</div>
-<p class="small map-line"><span id="map-day-note" class="tagnote"></span> <span id="map-stats"></span></p>
+
 
 <div class="map-frame">
   <div id="map" role="img" aria-label="World map of hexes coloured by the share of aircraft with degraded GNSS on the selected day. A table of the worst hexes follows the map."></div>
@@ -72,6 +66,18 @@
 </section>
 <div class="legend-row"><div id="map-legend" class="map-legend" aria-label="Legend"></div></div>
 <p class="small" id="map-measure-note"></p>
+<p class="small map-line"><span id="map-day-note" class="tagnote"></span> <span id="map-stats"></span></p>
+<div class="timeline" id="timeline">
+  <div class="tl-head small"><span id="tl-title"></span><span id="tl-range" class="mut"></span></div>
+  <div class="tl-strip" id="tl-strip"></div>
+  <div class="tl-row">
+    <button type="button" class="tl-btn" id="tl-prev" aria-label="Previous day">‹</button>
+    <input type="range" id="tl-slider" min="0" max="0" step="1" value="0" aria-label="Day">
+    <button type="button" class="tl-btn" id="tl-next" aria-label="Next day">›</button>
+    <button type="button" class="tl-btn tl-play" id="tl-play" aria-label="Play through the days" aria-pressed="false">▶</button>
+    <span class="tl-day" id="tl-day" aria-live="polite"></span>
+  </div>
+</div>
 
 <section id="events" aria-labelledby="ev-h">
 <h2 id="ev-h">What stood out on <span id="ev-day"></span></h2>
@@ -117,7 +123,9 @@
 <div class="tw"><table id="map-table"><thead><tr><th>Hex centre (lat, lon)</th><th>Aircraft</th><th>Degraded</th><th>Share</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small" id="map-table-note"></p>
 
-<h2>Reading the map</h2>
+<section id="howto" class="howto" aria-labelledby="howto-h">
+<h2 id="howto-h">How to read this map</h2>
+<p>The share of aircraft in each hex whose own GPS accuracy degraded that day, from their ADS-B position-quality reports. It shows effects, not who caused them. A new day appears each morning: adsb.lol publishes each UTC day at about 03:30 UTC the next day, and the map updates by about 06:00 UTC (1 am CDT, midnight CST). The map covers every day since 1 October 2025: drag the slider or click the strip to move through it. Daily runs are automatic and not reviewed by a person; the 20 validated test days are marked.</p>
 <ul>
   <li><strong>Click a hex</strong> to see the history of the area around it (an H3 resolution-3 cell, about 12,000 km²): its share for every day since 1 October 2025, with the days an anomaly event covered it. Click a point on that chart to open the day.</li>
   <li><strong>Satellite imagery</strong> (Map options → Layers → Satellite imagery) puts Esri World Imagery under the hexes: quiet hexes turn faint, the coloured ones stay strong, and the map zooms closer (to zoom 10) to show what lies under a hotspot. It is offered only where Esri's terms allow (see the <a href="/terms#imagery">terms of use</a>) and stops if the site's free monthly allowance runs out.</li>
@@ -131,3 +139,4 @@
   <li><strong>Days to try:</strong> 2025-10-14 (EGNOS outage; accuracy measure over Europe), 2025-11-12 (G4 storm; accuracy measure over North America), 2026-09-22 (California GPS loss).</li>
 </ul>
 <p class="small">Method: <a href="/methods#adsb">how it works</a> · <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">method card</a>. Data: <a href="https://www.adsb.lol/">adsb.lol</a> daily archive, ODbL 1.0; the hex data here is published under ODbL with attribution. Full daily outputs (per hex, per hour, per minute, and the anomaly and burst lists): <a href="https://github.com/metacog-osint/noise-floor/releases">monthly data releases</a>. Land: Natural Earth (public domain).</p>
+</section>

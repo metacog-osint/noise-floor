@@ -57,6 +57,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   `SECTIONS` in `tools/build_site.py`), with a section bar on Space and About pages; every page shares the header's 75rem grid.
   The home page is a daily briefing: `board.py` writes the bottom-line sentence (`brief`, fixed rules, tested), `board.js` and
   `dash.js` fill the page, and `tools/map_thumb.py` draws the map thumbnail at deploy (`site/data/today-map*.svg`).
+  Tool pages (Map, Sea, Trends) open with a `.page-head` (title, one-line subtitle, "How to read" link) and the tool; their
+  explanations live in one `<section id="howto" class="howto">` at the end (site.js scrolls there without touching the hash,
+  which holds map and filter state).
 - **Daily pipeline (Phase 2, from 22 Oct 2026):** `.github/workflows/daily.yml` runs `pipeline/daily_job.py` at 05:40 UTC (again at 12:40 for late releases).
   It processes each new adsb.lol day, uploads the outputs to the release `pnt-data-YYYY-MM` (ODbL; `<day>.map.json` last,
   as the done marker) and calls `deploy-site.yml`, which adds every release's map files to `site/data/gnss/`
