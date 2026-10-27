@@ -19,6 +19,10 @@ Method (coarse, stated on the page):
   manoeuvre   between consecutive snapshots: drift rate changed by more than MAN_DRIFT deg/day, inclination by more
               than MAN_INC deg, or the longitude is more than MAN_LON deg from where the earlier elements put it at the later
               epoch (two-body propagation, so inclined and eccentric orbits' daily swing isn't mistaken for a manoeuvre)
+  kind        routine station-keeping when the object isn't drifting (drift under DRIFT_KEPT) before or after, except
+              an inclination change on an inclined orbit (INC_KEPT or more): inclined satellites still trim drift to hold
+              longitude, but aren't held north-south, so that is "inclined orbit changed". Drifting before or after:
+              started drifting, stopped drifting, or drift rate changed
   owners      SATCAT owner codes are often a country (US, PRC), so "same owner" pairs are counted, not listed, unless one
               of the two has a listed role (site_src/geo_roles.json)
 """
@@ -135,6 +139,22 @@ def classify(o):
     return "station-kept" if o["i"] < INC_KEPT else "inclined"
 
 
+ROUTINE = "station-keeping"
+
+
+def man_kind(q, o, changed=()):
+    """Routine station-keeping, or the rarer kind: a relocation, a drift change, or a change to an inclined orbit."""
+    kept_q, kept_o = abs(q["drift"]) < DRIFT_KEPT, abs(o["drift"]) < DRIFT_KEPT
+    if kept_q and kept_o:
+        inclined = q["i"] >= INC_KEPT or o["i"] >= INC_KEPT
+        return "inclined orbit changed" if inclined and "inclination" in changed else ROUTINE
+    if kept_q:
+        return "started drifting"
+    if kept_o:
+        return "stopped drifting"
+    return "drift rate changed"
+
+
 def manoeuvres(prev, cur):
     """Objects whose elements changed between two snapshots more than drift alone explains."""
     p = {o["id"]: o for o in prev["objects"]}
@@ -147,16 +167,20 @@ def manoeuvres(prev, cur):
         # would miss the daily figure-of-eight of inclined orbits and the swing of eccentric ones (up to 1-2 degrees)
         _, pred = state(q, epoch_of(o["epoch"]))
         dlon = (o["lon"] - pred + 540) % 360 - 180
-        why = []
+        why, changed = [], []
         if abs(o["drift"] - q["drift"]) > MAN_DRIFT:
             why.append(f"drift {q['drift']:+.3f} -> {o['drift']:+.3f} deg/day")
+            changed.append("drift")
         if abs(o["i"] - q["i"]) > MAN_INC:
             why.append(f"inclination {q['i']:.3f} -> {o['i']:.3f} deg")
+            changed.append("inclination")
         if abs(dlon) > MAN_LON:
             why.append(f"longitude {dlon:+.2f} deg off the earlier drift")
+            changed.append("longitude")
         if why:
             out.append({"id": o["id"], "name": o["name"], "owner": o["owner"], "lon": o["lon"], "between": [q["epoch"][:16], o["epoch"][:16]],
-                        "what": "; ".join(why)})
+                        "kind": man_kind(q, o, changed), "changed": changed, "drift": [q["drift"], o["drift"]],
+                        "inc": [round(q["i"], 3), round(o["i"], 3)], "dlon": round(dlon, 2), "what": "; ".join(why)})
     return out
 
 
@@ -203,13 +227,17 @@ def build(release, site, now=None):
         for m in manoeuvres(prev, nxt):
             m["day"] = nxt["day"]
             mans.append(m)
+    rare = [m for m in mans if m["kind"] != ROUTINE]
+    routine = [m for m in mans if m["kind"] == ROUTINE][-300:]
+    mans = sorted(rare + routine, key=lambda m: (m["day"], m["id"]))
     drifting = sorted((o for o in objs if o.get("class") == "drifting"), key=lambda o: -abs(o["drift"]))
     out = {"built_utc": now.strftime("%Y-%m-%dT%H:%MZ"), "at_utc": t.strftime("%Y-%m-%dT%H:%MZ"), "snapshot_day": cur["day"],
            "snapshots": len(snaps), "source": CITE, "method": {"close_km": CLOSE_KM, "drift_kept": DRIFT_KEPT,
            "inc_kept": INC_KEPT, "manoeuvre": [MAN_DRIFT, MAN_INC, MAN_LON]},
            "counts": {"objects": len(objs), "station-kept": sum(1 for o in objs if o.get("class") == "station-kept"),
                       "inclined": sum(1 for o in objs if o.get("class") == "inclined"), "drifting": len(drifting)},
-           "close_other_owner": close[:40], "close_same_owner_count": len(same), "manoeuvres": mans[-40:],
+           "close_other_owner": close[:40], "close_same_owner_count": len(same), "manoeuvres": mans,
+           "manoeuvre_counts": {"other": len(rare), "station-keeping": sum(1 for m in mans if m["kind"] == ROUTINE)},
            "drifting": [{"id": o["id"], "name": o["name"], "owner": o["owner"], "lon": round(o["lon_now"], 2),
                          "drift": o["drift"], "role": o.get("role")} for o in drifting[:40]],
            "roles": {str(k): {"role": v["role"], "basis": v["basis"], "sources": v["sources"]} for k, v in roles.items()},

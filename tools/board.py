@@ -290,7 +290,8 @@ def geo_card(site):
         raise ValueError("no geo.json (tools/geo.py build runs first)")
     return {"at_utc": g["at_utc"], "snapshot_day": g["snapshot_day"], "snapshots": g["snapshots"], "counts": g["counts"],
             "close": g["close_other_owner"][:5], "close_count": len(g["close_other_owner"]),
-            "manoeuvres": g["manoeuvres"][-4:], "manoeuvre_count": len(g["manoeuvres"]), "source": g["source"]}
+            "manoeuvres": [m for m in g["manoeuvres"] if m.get("kind") != "station-keeping"][-4:],
+            "manoeuvre_count": len(g["manoeuvres"]), "manoeuvre_counts": g.get("manoeuvre_counts"), "source": g["source"]}
 
 
 SHORT = {   # watched-area names as they read inside a sentence

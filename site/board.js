@@ -117,7 +117,10 @@
     set("scint-text", sc ? "Scintillation " + esc(sc.level) + "." : "");
     var g = b.geo;
     set("r-geo", g ? n(g.counts.objects) + " objects; " + n(g.close_count) + " close pairs; " +
-      (g.snapshots > 1 ? (g.manoeuvre_count ? n(g.manoeuvre_count) + " manoeuvres flagged this week" : "no manoeuvres flagged") : "manoeuvre flags start with the second snapshot")
+      (g.snapshots < 2 ? "orbit-change flags start with the second snapshot" : g.manoeuvre_counts ?
+        (g.manoeuvre_counts.other ? n(g.manoeuvre_counts.other) + " relocation" + (g.manoeuvre_counts.other === 1 ? "" : "s") + " or other orbit change" +
+          (g.manoeuvre_counts.other === 1 ? "" : "s") : "no relocations") + " and " + n(g.manoeuvre_counts["station-keeping"]) + " routine station-keeping this week"
+        : g.manoeuvre_count ? n(g.manoeuvre_count) + " orbit changes flagged this week" : "no orbit changes flagged")
       : "Not available in the last build.");
     var d = b.declared || {}, bits = [];
     if (d.faa_tests) bits.push(n(d.faa_tests.today) + " US GPS tests today, " + n(d.faa_tests.next7) + " in the next 7 days");

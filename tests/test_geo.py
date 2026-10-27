@@ -103,6 +103,41 @@ def test_build_manoeuvres_from_two_snapshots():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_kinds():
+    """Station-kept before and after is routine; everything else is the rarer kind, listed first."""
+    later = T0 + timedelta(days=1)
+    kept = obj(1, 62.0)
+    trim = dict(obj(1, 62.0, n=N_GEO + 0.03 / 360, t=later))                  # drift trimmed by 0.03 deg a day
+    m = G.manoeuvres({"objects": [kept]}, {"objects": [trim]})
+    assert [x["kind"] for x in m] == ["station-keeping"] and m[0]["changed"] == ["drift"] and m[0]["drift"][1] > 0.02
+    tilt = dict(trim, i=0.05, drift=kept["drift"], n=kept["n"])              # an inclination reset only
+    m = G.manoeuvres({"objects": [kept]}, {"objects": [tilt]})
+    assert m[0]["kind"] == "station-keeping" and m[0]["changed"] == ["inclination"] and m[0]["inc"] == [0.0, 0.05]
+    go = obj(1, 62.0, n=N_GEO + 0.4 / 360, t=later)                            # leaves its slot at 0.4 deg a day
+    assert G.manoeuvres({"objects": [kept]}, {"objects": [go]})[0]["kind"] == "started drifting"
+    moving = obj(2, 10.0, n=N_GEO - 4.2 / 360)
+    stop = obj(2, 10.0 - 4.2, t=later)
+    assert G.man_kind(moving, stop) == "stopped drifting"
+    assert G.man_kind(moving, obj(2, 6.0, n=N_GEO - 3.8 / 360, t=later)) == "drift rate changed"
+    assert G.man_kind(obj(3, 0.0, i=9.9), obj(3, 0.0, i=9.95, t=later), ["inclination"]) == "inclined orbit changed"
+    assert G.man_kind(obj(3, 0.0, i=3.4), obj(3, 0.0, i=3.4, t=later), ["drift"]) == "station-keeping"   # east-west keeping
+
+
+def test_build_counts_by_kind():
+    tmp = tempfile.mkdtemp()
+    try:
+        os.makedirs(os.path.join(tmp, "site", "data"))
+        later = T0 + timedelta(days=1)
+        json.dump({"day": "2026-10-26", "objects": [obj(1, 62.0), obj(2, 100.0)]}, open(os.path.join(tmp, "2026-10-26.geo.json"), "w"))
+        json.dump({"day": "2026-10-27", "objects": [obj(1, 62.0, n=N_GEO + 0.03 / 360, t=later), obj(2, 100.0, n=N_GEO + 0.4 / 360, t=later)]},
+                  open(os.path.join(tmp, "2026-10-27.geo.json"), "w"))
+        out = G.build(tmp, os.path.join(tmp, "site"), later)
+        assert out["manoeuvre_counts"] == {"other": 1, "station-keeping": 1}
+        assert {m["id"]: m["kind"] for m in out["manoeuvres"]} == {1: "station-keeping", 2: "started drifting"}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_roles_and_pair_kind():
     assert G.pair_kind("inspection", None) == "inspection-capable involved"
     assert G.pair_kind(None, "servicing") == "servicing involved"
