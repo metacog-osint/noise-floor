@@ -66,7 +66,7 @@ PAGE = """<!doctype html>
 {body}
 </main>
 <footer class="site"><div class="in">
-<p>A project of The Intelligence Company. Updated {updated}. <a href="{repo}">Source code</a> (MIT). <a href="/terms">Terms of use</a>.</p>
+<p>A project of The Intelligence Company. Updated {updated}. <a href="{repo}">Source code</a> (AGPL-3.0). <a href="/terms">Terms of use</a>.</p>
 <p>ADS-B data: <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources">Sources</a>.</p>
 </div></footer>
 </body>

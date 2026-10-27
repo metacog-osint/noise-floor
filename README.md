@@ -68,4 +68,10 @@ Watch configuration (areas of interest, keywords, followed accounts, alert histo
 
 ## Licence
 
-**Code:** MIT (see [`LICENSE`](LICENSE)). **Data outputs:** ODbL 1.0, as derived from adsb.lol. Validation figures carry their own attribution.
+**Code:** Copyright (C) 2026 The Intelligence Company. Licensed under the GNU Affero General Public License, version 3
+only (AGPL-3.0-only; full text in [`LICENSE`](LICENSE)). You may use, change and share the code; if you share a changed
+version, or run one as a service that others use over a network, you must offer its source under the same licence.
+Versions published from 15 to 27 Oct 2026, before the switch, were released under the MIT licence and stay available
+under it. Libraries the code uses (Python packages, Leaflet, h3-js) keep their own licences.
+
+**Data outputs:** ODbL 1.0, as derived from adsb.lol. Validation figures carry their own attribution.
