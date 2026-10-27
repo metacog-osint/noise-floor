@@ -32,8 +32,8 @@
       c.inclined + " inclined, " + c.drifting + " drifting. Elements from the snapshot of " + esc(g.snapshot_day) + " (" + g.snapshots + " snapshot" + (g.snapshots === 1 ? "" : "s") + " so far).";
     $("geo-close").innerHTML = g.close_other_owner.length ? table(["Separation", "Object", "Owner", "Near", "Owner", "Longitude", "What the roles say"], g.close_other_owner.map(function (p) {
       return '<tr><td class="num">' + p.km + " km</td><td>" + esc(p.a[1]) + role(p.a[3]) + "</td><td>" + esc(p.a[2]) + "</td><td>" + esc(p.b[1]) + role(p.b[3]) + "</td><td>" + esc(p.b[2]) +
-        '</td><td class="num">' + lon(p.lon) + "</td><td>" + esc(p.kind || "") + "</td></tr>";
-    })) + '<p class="small">' + g.close_same_owner_count + " more pairs within 100 km belong to one owner (co-located on purpose) and aren't listed.</p>" : "<p>None within 100 km.</p>";
+        '</td><td class="num">' + lon(p.lon) + "</td><td>" + esc(p.kind || "") + (p.age_days > 3 ? " (elements " + Math.round(p.age_days) + " days old)" : "") + "</td></tr>";
+    })) + '<p class="small">' + g.close_same_owner_count + " more pairs within 100 km share an owner code (often a country, and often co-located on purpose) and aren't listed; a pair with a listed role is always listed.</p>" : "<p>None within 100 km.</p>";
     $("geo-man").innerHTML = g.manoeuvres.length ? table(["Day", "Object", "Owner", "Longitude", "What changed"], g.manoeuvres.slice().reverse().map(function (m) {
       return "<tr><td>" + esc(m.day) + "</td><td>" + esc(m.name) + "</td><td>" + esc(m.owner) + '</td><td class="num">' + lon(m.lon) + "</td><td>" + esc(m.what) + "</td></tr>";
     })) : '<p class="small">None yet: manoeuvres need two snapshots, and snapshots began on 26 Oct 2026.</p>';

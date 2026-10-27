@@ -17,6 +17,7 @@ def test_found():
     assert not f("12345", "[1793012345, 59.1, 24.2]")                           # inside a longer number
     assert not f("12345", "112345") and not f("12345", "123456")
     assert not f("12345", "3.12345") and not f("12345", "12345.6")             # decimal digits either side
+    assert f("7015551234", "+17015551234") and f("7015551234", "tel 7015551234")  # long digit terms: plain substrings
 
 
 def main():

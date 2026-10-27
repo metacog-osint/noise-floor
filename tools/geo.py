@@ -17,7 +17,10 @@ Method (coarse, stated on the page):
   close       pairs of different owners within CLOSE_KM of each other at the common time; pairs of one owner are
               listed apart (operators co-locate their own satellites on purpose)
   manoeuvre   between consecutive snapshots: drift rate changed by more than MAN_DRIFT deg/day, inclination by more
-              than MAN_INC deg, or the longitude moved more than MAN_LON deg from where the earlier drift put it
+              than MAN_INC deg, or the longitude is more than MAN_LON deg from where the earlier elements put it at the later
+              epoch (two-body propagation, so inclined and eccentric orbits' daily swing isn't mistaken for a manoeuvre)
+  owners      SATCAT owner codes are often a country (US, PRC), so "same owner" pairs are counted, not listed, unless one
+              of the two has a listed role (site_src/geo_roles.json)
 """
 import argparse
 import glob
@@ -140,8 +143,9 @@ def manoeuvres(prev, cur):
         q = p.get(o["id"])
         if not q or q["epoch"] == o["epoch"]:
             continue
-        days = (epoch_of(o["epoch"]) - epoch_of(q["epoch"])).total_seconds() / 86400
-        pred = (q["lon"] + q["drift"] * days + 540) % 360 - 180
+        # where the earlier elements put the object at the later epoch, by the same two-body motion: a straight drift line
+        # would miss the daily figure-of-eight of inclined orbits and the swing of eccentric ones (up to 1-2 degrees)
+        _, pred = state(q, epoch_of(o["epoch"]))
         dlon = (o["lon"] - pred + 540) % 360 - 180
         why = []
         if abs(o["drift"] - q["drift"]) > MAN_DRIFT:
@@ -169,9 +173,10 @@ def build(release, site, now=None):
     cur = snaps[-1]
     objs = cur["objects"]
     roles = load_roles()
+    t = now.replace(second=0, microsecond=0)
     for o in objs:
         o["role"] = (roles.get(o["id"]) or {}).get("role")
-    t = now.replace(second=0, microsecond=0)
+        o["age_days"] = round((t - epoch_of(o["epoch"])).total_seconds() / 86400, 1)
     pos = {}
     for o in objs:
         try:
@@ -188,8 +193,10 @@ def build(release, site, now=None):
             d = math.dist(pos[a["id"]], pos[b["id"]])
             if d <= CLOSE_KM:
                 row = {"a": [a["id"], a["name"], a["owner"], a.get("role")], "b": [b["id"], b["name"], b["owner"], b.get("role")],
-                       "km": round(d), "lon": round(a["lon_now"], 2), "kind": pair_kind(a.get("role"), b.get("role"))}
-                (same if a["owner"] and a["owner"] == b["owner"] else close).append(row)
+                       "km": round(d), "lon": round(a["lon_now"], 2), "kind": pair_kind(a.get("role"), b.get("role")),
+                       "age_days": max(a["age_days"], b["age_days"])}
+                hidden = a["owner"] and a["owner"] == b["owner"] and not (a.get("role") or b.get("role"))
+                (same if hidden else close).append(row)
     close.sort(key=lambda r: (r["kind"].startswith("no listed"), r["km"]))
     mans = []
     for prev, nxt in zip(snaps[-8:-1], snaps[-7:]):
@@ -234,8 +241,13 @@ def main():
             json.dump(snap, f, separators=(",", ":"), ensure_ascii=False)
         print(f"{path}: {snap['count']} objects")
         if a.upload:
-            r = subprocess.run(["gh", "release", "upload", f"pnt-data-{a.day[:7]}", "-R", os.environ.get("GITHUB_REPOSITORY", REPO),
-                                "--clobber", path], capture_output=True, text=True)
+            repo = os.environ.get("GITHUB_REPOSITORY", REPO)
+            first = datetime.strptime(a.day[:7] + "-01", "%Y-%m-%d")
+            for month in (a.day[:7], (first - timedelta(days=1)).strftime("%Y-%m")):   # a new month's release exists from D+1
+                r = subprocess.run(["gh", "release", "upload", f"pnt-data-{month}", "-R", repo, "--clobber", path],
+                                   capture_output=True, text=True)
+                if not r.returncode:
+                    break
             if r.returncode:
                 sys.exit(f"upload failed: {r.stderr.strip()[:300]}")
             print("uploaded")

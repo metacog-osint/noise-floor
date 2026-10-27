@@ -53,8 +53,11 @@ def km(a, b):
 
 class Places:
     def __init__(self, site):
-        pl = (load(os.path.join(site, "data", "places.json"), {}) or {}).get("places", [])
-        self.pl = [p for p in pl if len(p) > 3 and p[3] <= 5]
+        try:                                  # place names are a nicety: a bad file leaves cards unnamed, not missing
+            pl = (load(os.path.join(site, "data", "places.json"), {}) or {}).get("places", [])
+            self.pl = [p for p in pl if len(p) > 3 and isinstance(p[3], (int, float)) and p[3] <= 5]
+        except Exception:
+            self.pl = []
 
     def near(self, lat, lon, limit=350):
         best, name = limit, None
@@ -297,15 +300,20 @@ def summary_line(b):
     rise = max((a for a in hs if a["change"] is not None), key=lambda a: a["change"], default=None)
     if rise and rise["change"] >= 5:
         parts.append(f"biggest rise: {rise['name']} (+{rise['change']:g} points)")
-    lo = (b.get("loss") or {}).get("areas") or []
+    lo = [a for a in ((b.get("loss") or {}).get("areas") or []) if not a.get("hexes") or a["hexes_with_mlat"] / a["hexes"] >= 0.5]
     if lo and lo[0]["share"] >= 20:
         parts.append(f"{lo[0]['name']}: {lo[0]['share']:g}% of aircraft heard sent no position")
     sp = b.get("spoofing")
     if sp and sp.get("active") is not None:
         parts.append(f"{sp['active']} active spoofing episodes ({sp['day']})")
     sc = b.get("scintillation")
-    if sc:
-        parts.append(f"scintillation {sc['level']}")
+    if sc and sc.get("valid_utc"):
+        try:
+            age_h = (datetime.strptime(b["built_utc"], "%Y-%m-%dT%H:%MZ") - datetime.strptime(sc["valid_utc"], "%Y-%m-%d %H:%MZ")).total_seconds() / 3600
+        except (KeyError, ValueError):
+            age_h = 99
+        if age_h <= 3:                    # ESA's nowcast sometimes stops updating; the card shows its time either way
+            parts.append(f"scintillation {sc['level']}")
     return "; ".join(parts) + "." if parts else ""
 
 
@@ -337,10 +345,13 @@ def build(release, site, now=None):
     section("cygnss", cygnss, release, places)
     section("geo", geo_card, site)
     em = load(os.path.join(site, "data", "events-monthly.json"))
-    if em and em.get("months"):
+
+    def events_card():
         m = em["months"][-1]
-        board["events"] = {"month": m["month"], "days": m["days"], "effect_support": m["effect_support"],
-                           "effect_verdict": m["effect_verdict"], "version": em.get("version"), "last_day": em.get("last_day")}
+        return {"month": m["month"], "days": m["days"], "effect_support": m["effect_support"],
+                "effect_verdict": m["effect_verdict"], "version": em.get("version"), "last_day": em.get("last_day")}
+    if em and em.get("months"):
+        section("events", events_card)
     sea = load(os.path.join(site, "data", "vessels", "gnss_at_sea.json"))
     board["freshness"] = {
         "aircraft_day": days[-1]["day"] if days else None,

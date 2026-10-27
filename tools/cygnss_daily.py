@@ -102,12 +102,21 @@ def main():
                     print(f"{day}: cygnss_rfi {cmd} failed: {(r.stderr or r.stdout).strip()[-400:]}")
                     return 1
         s = summarise(day)
-        with open(out, "w", encoding="utf-8") as f:
+        tmp = out + ".part"                       # kept as <day>.cygnss.json only once uploaded: a failed upload retries
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(s, f, separators=(",", ":"))
         print(f"{day}: {s['raised_cells']} of {s['cells']} judged cells raised {RAISED_DB:g} dB or more")
         if not a.no_upload:
-            upload(out)
+            final = os.path.join(os.path.dirname(tmp), f"{day}.cygnss.json")
+            os.replace(tmp, final)
+            try:
+                upload(final)
+            except Exception:
+                os.replace(final, tmp)
+                raise
             print(f"{day}: uploaded to release {TAG}")
+        else:
+            os.replace(tmp, out)
         return 0
     print("no complete day in the last", LOOKBACK, "days")
     return 0

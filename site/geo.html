@@ -10,7 +10,7 @@
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css?v=ba56b9b4b2">
 <link rel="alternate" type="application/atom+xml" title="Noise Floor: daily GNSS summary" href="/feed.xml">
-<script defer src="/geo.js?v=58a3abc89c"></script>
+<script defer src="/geo.js?v=a9cc0e46c3"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -50,8 +50,8 @@
   <li><strong>Data.</strong> CelesTrak's active geosynchronous group (GP elements in OMM format) and its catalogue records for owner and object type, taken once or twice a day by the daily run, within CelesTrak's usage policy. The elements are USSPACECOM basic SSA data, which Space-Track allows to be redistributed and used in published analysis with citation.</li>
   <li><strong>Longitude.</strong> The sub-satellite longitude from the mean elements, carried to a common time with two-body motion. Good to a few tenths of a degree, which is tens of kilometres at GEO.</li>
   <li><strong>Classes.</strong> Station-kept: drift under 0.1° a day and inclination under 1°. Inclined: drift under 0.1° a day, inclination 1° or more (often older satellites saving fuel). Drifting: 0.1° a day or more.</li>
-  <li><strong>Close.</strong> Objects of different owners within 100 km of each other at the common time. Pairs with the same owner are counted, not listed.</li>
-  <li><strong>Manoeuvres.</strong> Between consecutive snapshots: the drift rate changed by more than 0.02° a day, the inclination by more than 0.02°, or the longitude moved more than 0.15° from where the earlier drift put it. Snapshots began on 26 Oct 2026, so this list fills over the following days.</li>
+  <li><strong>Close.</strong> Objects within 100 km of each other at the common time. CelesTrak's owner codes are often a country, so pairs with the same code are counted, not listed, unless one has a listed role. Elements older than 3 days are flagged beside the pair.</li>
+  <li><strong>Manoeuvres.</strong> Between consecutive snapshots: the drift rate changed by more than 0.02° a day, the inclination by more than 0.02°, or the longitude is more than 0.15° from where the earlier elements put it at the later time (by the same orbit motion, so an inclined orbit's daily swing isn't counted). Snapshots began on 26 Oct 2026, so this list fills over the following days.</li>
   <li><strong>Owners</strong> are CelesTrak's codes: CIS is Russia and the former Soviet states, PRC China, ITSO Intelsat, EUTE Eutelsat, SES SES.</li>
 </ul>
 <p class="small">Orbital data: USSPACECOM (space-track.org) via <a href="https://celestrak.org/">CelesTrak</a>; basic SSA data, redistributed with citation. Code: <a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/geo.py">tools/geo.py</a>. Data file: <a href="/data/geo.json">geo.json</a>.</p>
