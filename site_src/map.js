@@ -402,10 +402,10 @@
   function central(day, mins) {
     var p = day.split("-"), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2], 0, mins)), x = {};
     CT.formatToParts(d).forEach(function (q) { x[q.type] = q.value; });
-    return { time: x.hour + ":" + x.minute + (x.dayPeriod ? " " + x.dayPeriod.toLowerCase() : ""), zone: x.timeZoneName,
+    return { time: x.hour + ":" + x.minute + (x.dayPeriod ? " " + x.dayPeriod : ""), zone: x.timeZoneName,
              date: x.month + " " + x.day, dateText: x.day + " " + x.month, utcDate: UT.format(new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]))) };
   }
-  // "03:00–05:59Z" and "10:00 pm (Oct 20)–12:59 am CDT"
+  // "03:00–05:59 UTC" and "03:00–05:59 UTC (10:00 PM 20 Oct–12:59 AM CDT)"
   function when(day, m0, m1) {
     var a = central(day, m0), b = central(day, m1);
     var z = pad(Math.floor(m0 / 60)) + ":" + pad(m0 % 60) + "–" + pad(Math.floor(m1 / 60)) + ":" + pad(m1 % 60) + " UTC";
