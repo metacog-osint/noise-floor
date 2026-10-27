@@ -1,9 +1,14 @@
 <!--{"title": "Sun outages · Noisefloor", "description": "When the sun sits behind a geostationary satellite and blinds the dishes pointed at it: a calculator for any receiver, satellite and dish, and the season for every latitude.", "nav": "sun", "head": "<script defer src=\"/sunoutage.js\"></script><script defer src=\"/sun.js\"></script>"}-->
-<h1>Sun-outage calculator</h1>
-<p class="lede">Twice a year the sun passes behind each geostationary satellite as seen from a given place, and the dishes pointed at it lose the signal for a few minutes a day. These losses are natural and predictable months ahead. A loss inside a window is expected; a loss outside one deserves a second look.</p>
+<div class="page-head">
+  <div>
+    <h1>Sun outages</h1>
+    <p class="page-sub">Twice a year the sun passes behind each geostationary satellite and blinds the dishes pointed at it for a few minutes a day. Find the windows for any place, satellite and dish.</p>
+  </div>
+  <a class="howto-link" href="#howto">How to read this calculator ↓</a>
+</div>
 
 <section aria-labelledby="calc-h">
-<h2 id="calc-h">When will the sun blind a dish?</h2>
+<h2 id="calc-h" class="visually-hidden">Calculator</h2>
 <form id="sun-form" class="sun-form" autocomplete="off">
   <fieldset>
     <legend>Receiver</legend>
@@ -66,8 +71,9 @@
 <p>A short loss at the predicted time does not rule out interference at the same moment. It only means the loss itself is not evidence of interference.</p>
 </section>
 
-<section aria-labelledby="sunmethod-h">
-<h2 id="sunmethod-h">Method and limits</h2>
+<section id="howto" class="howto" aria-labelledby="howto-h">
+<h2 id="howto-h">How to read this calculator</h2>
+<p>Twice a year the sun passes behind each geostationary satellite as seen from a given place, and the dishes pointed at it lose the signal for a few minutes a day. These losses are natural and predictable months ahead. A loss inside a window is expected; a loss outside one deserves a second look.</p>
 <ul>
   <li><strong>Geometry only.</strong> Sun position from a low-precision solar ephemeris (Meeus, accurate to about 0.01°). Each satellite is treated as exactly geostationary at its nominal longitude; the receiver sits on the WGS84 ellipsoid at sea level. An outage is the sun's centre within the threshold angle of the satellite.</li>
   <li><strong>Threshold.</strong> Half the dish's 3 dB beamwidth (about 70 × wavelength ÷ diameter, in degrees) plus the sun's radius (0.27°). A 0.9 m dish at 12 GHz gives about 1.2°. Larger dishes get shorter, deeper fades; C-band dishes have wider beams and longer outages.</li>

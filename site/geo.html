@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GEO board · Noisefloor</title>
+<title>GEO belt · Noisefloor</title>
 <meta name="description" content="Every active geosynchronous object from public orbital data: which are drifting, which manoeuvred, and which sit close to a satellite of another owner. Proximity and behaviour, never intent.">
-<meta property="og:title" content="GEO board · Noisefloor">
+<meta property="og:title" content="GEO belt · Noisefloor">
 <meta property="og:description" content="Every active geosynchronous object from public orbital data: which are drifting, which manoeuvred, and which sit close to a satellite of another owner. Proximity and behaviour, never intent.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=f2d5623f29">
+<link rel="stylesheet" href="/style.css?v=329ab85610">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=f511c41ac0"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
@@ -28,10 +28,13 @@
 <nav class="subnav" aria-label="Space"><div class="wrap"><a href="/geo" aria-current="page">GEO belt</a><a href="/sun">Sun outages</a></div></nav>
 </header>
 <main id="main">
-<h1>GEO board</h1>
-<p class="lede">Every active object in the geosynchronous belt, from public orbital elements: where it is, which are moving, which changed their orbit, and which sit close to a satellite of another owner. It shows proximity and behaviour. It never states intent.</p>
-
-<div class="callout"><p><strong>Read this first.</strong> Public elements place a satellite at GEO only to within tens of kilometres, so no separation under about 50 km is claimed, and a listed pair may be farther apart or closer than shown. Operators also place satellites close together on purpose, including across companies by agreement, and a servicing vehicle docked to its client shows as 0 km. Close approaches by inspection satellites are what this board is meant to show. A short list of satellites with a published inspection or servicing role is labelled, with sources; every other pair is shown as having no listed role.</p></div>
+<div class="page-head">
+  <div>
+    <h1>GEO belt</h1>
+    <p class="page-sub">Every active object in the geostationary belt, from public orbital data: which sit close to a satellite of another owner, which are drifting and which manoeuvred. Positions are good to tens of kilometres; it shows proximity and behaviour, never intent.</p>
+  </div>
+  <a class="howto-link" href="#howto">How to read this board ↓</a>
+</div>
 
 <p id="geo-status" class="small">Loading…</p>
 
@@ -53,7 +56,11 @@
 <p class="small">Only objects whose role published reporting supports are labelled, each with its source. An unlabelled object has no listed role, which says nothing about what it is.</p>
 <div id="geo-roles"></div>
 
-<h2 id="method">Method</h2>
+<section id="howto" class="howto" aria-labelledby="howto-h">
+<h2 id="howto-h">How to read this board</h2>
+<p><strong>Read this first.</strong> Public elements place a satellite at GEO only to within tens of kilometres, so no separation under about 50 km is claimed, and a listed pair may be farther apart or closer than shown. Operators also place satellites close together on purpose, including across companies by agreement, and a servicing vehicle docked to its client shows as 0 km. Close approaches by inspection satellites are what this board is meant to show. A short list of satellites with a published inspection or servicing role is labelled, with sources; every other pair is shown as having no listed role.</p>
+<p>Every active object in the geosynchronous belt, from public orbital elements: where it is, which are moving, which changed their orbit, and which sit close to a satellite of another owner. It shows proximity and behaviour. It never states intent.</p>
+<h3 id="method">Method</h3>
 <ul>
   <li><strong>Data.</strong> CelesTrak's active geosynchronous group (GP elements in OMM format) and its catalogue records for owner and object type, taken once or twice a day by the daily run, within CelesTrak's usage policy. The elements are USSPACECOM basic SSA data, which Space-Track allows to be redistributed and used in published analysis with citation.</li>
   <li><strong>Longitude.</strong> The sub-satellite longitude from the mean elements, carried to a common time with two-body motion. Good to a few tenths of a degree, which is tens of kilometres at GEO.</li>
@@ -63,6 +70,7 @@
   <li><strong>Owners</strong> are CelesTrak's codes: CIS is Russia and the former Soviet states, PRC China, ITSO Intelsat, EUTE Eutelsat, SES SES.</li>
 </ul>
 <p class="small">Orbital data: USSPACECOM (space-track.org) via <a href="https://celestrak.org/">CelesTrak</a>; basic SSA data, redistributed with citation. Code: <a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/geo.py">tools/geo.py</a>. Data file: <a href="/data/geo.json">geo.json</a>.</p>
+</section>
 
 </main>
 <footer class="site"><div class="wrap">
