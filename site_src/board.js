@@ -57,7 +57,7 @@
 
     // four numbers
     var st = [];
-    if (c) st.push([n(c.regions_today), "areas with GPS jamming", c.new_count + " started this week, " + c.ended_count + " stopped"]);
+    if (c) st.push([n(c.regions_today), "areas with GPS interference", c.new_count + " started this week, " + c.ended_count + " stopped"]);
     var s = b.spoofing;
     if (s && s.active != null) st.push([n(s.active), "active spoofing episodes", n(s.aircraft) + " aircraft" + (s.victims && s.victims[0] && s.victims[0].near ? "; most near " + s.victims[0].near : "")]);
     var lo = ((b.loss && b.loss.areas) || []).filter(function (a) { return !a.hexes || a.hexes_with_mlat / a.hexes >= 0.5; });

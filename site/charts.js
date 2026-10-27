@@ -211,8 +211,8 @@
     bay: function (box) {
       var b = DATA.bay, m0 = b[0].m;
       columnChart(box, {
-        aria: "Aircraft-hexes with a gross-bad GPS report per minute over the Bay Area and Central Valley, 22 September 2026, 17:30 to 20:45 UTC",
-        values: b.map(function (r) { return r.aircraft; }), color: cssVar("--series-1"), unitLabel: "aircraft-hexes with a 93 m-or-worse report",
+        aria: "Aircraft with a GPS report worse than 93 m, per minute, over the Bay Area and Central Valley, 22 September 2026, 17:30 to 20:45 UTC",
+        values: b.map(function (r) { return r.aircraft; }), color: cssVar("--series-1"), unitLabel: "aircraft with a 93 m-or-worse report",
         band: { from: 18 * 60 + 30 - m0, to: 20 * 60 + 29 - m0, label: "NOTAM window per a public post (UNVERIFIED)" },
         label: function (i) { var d = new Date(Date.UTC(2026, 8, 22, Math.floor(b[i].m / 60), b[i].m % 60)); return b[i].t + " · " + central(d); },
         xTicks: b.map(function (r, i) { return { i: i, m: r.m }; }).filter(function (r) { return r.m % 30 === 0; }).map(function (r) { return { i: r.i, label: b[r.i].t.replace("Z", "") }; })
@@ -227,7 +227,7 @@
           return { label: r.type, v: r.ratio, text: r.ratio + "×" + (hv ? " (A350/A380)" : ""), color: hv ? cssVar("--series-base") : null,
                    tip: [{ color: hv ? cssVar("--series-base") : cssVar("--series-1"), value: r.ratio + "×",
                            label: hv ? "over-representation, most likely how this type reports accuracy" : "over-representation" },
-                         { value: r.pe_share + "%", label: "of post-exposure aircraft-days" },
+                         { value: r.pe_share + "%", label: "of still-degraded aircraft-days" },
                          { value: r.all_share + "%", label: "of all aircraft-days" }] };
         }), color: cssVar("--series-1"), unit: "×", ref: 1, refLabel: "1× = share of traffic"
       });
@@ -255,10 +255,10 @@
       h.textContent = name; box.className = "chart"; cell.appendChild(h); cell.appendChild(box); container.appendChild(cell);
       var rows = DATA.hotspots[name], times = rows.map(function (r) { return r.day; });
       lineChart(box, {
-        aria: "Daily share of aircraft-hexes worse than 93 m, " + name, height: 150, x: times, unit: "%", yMax: ymax,
+        aria: "Daily share of aircraft with severe GPS error, " + name, height: 150, x: times, unit: "%", yMax: ymax,
         series: [{ name: name, values: rows.map(function (r) { return r.share; }), color: cssVar("--series-1") }],
         xTicks: [{ i: 0, label: "9 Oct", anchor: "start" }, { i: times.length - 1, label: "25 Oct", anchor: "end" }],
-        xTitle: function (i) { return times[i] + " · " + rows[i].aircraft_hexes.toLocaleString() + " aircraft-hexes"; }
+        xTitle: function (i) { return times[i] + " · " + rows[i].aircraft_hexes.toLocaleString() + " aircraft"; }
       });
     });
   }
@@ -338,11 +338,11 @@
       box.className = "chart"; cell.appendChild(h); cell.appendChild(box); grid.appendChild(cell);
       var low = lowCoverage(r.aircraft_hexes);
       lineChart(box, {
-        aria: "Daily share of aircraft-hexes worse than 93 m, " + name + (own ? ", own scale 0–" + scaleFor(r) + "%" : ""),
+        aria: "Daily share of aircraft with severe GPS error, " + name + (own ? ", own scale 0–" + scaleFor(r) + "%" : ""),
         height: 150, x: days, unit: "%", yMax: scaleFor(r),
         series: [{ name: name, values: r.share, color: cssVar("--series-1") }], xTicks: ticks, marks: low.idx,
         xTitle: function (i) {
-          return dayLabel(days[i], true) + " · " + (r.aircraft_hexes[i] || 0).toLocaleString() + " aircraft-hexes" +
+          return dayLabel(days[i], true) + " · " + (r.aircraft_hexes[i] || 0).toLocaleString() + " aircraft" +
             (low.pct[i] !== undefined ? " (" + low.pct[i] + "% of usual: low coverage)" : "");
         }
       });

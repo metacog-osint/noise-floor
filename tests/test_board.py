@@ -40,7 +40,7 @@ def test_hotspots_and_summary():
     line = B.summary_line({"changes": {"regions_today": 7, "day": "2026-10-25", "new_count": 2, "ended_count": 0},
                            "hotspots": h, "loss": {"areas": [{"name": "X", "share": 61.0}]}, "built_utc": "2026-10-26T18:30Z",
                            "scintillation": {"level": "below moderate", "valid_utc": "2026-10-26 17:00Z"}})
-    assert line.startswith("7 regions at jamming scale on 2026-10-25, 2 new this week;") and "biggest rise: A (+12 points)" in line
+    assert line.startswith("7 areas with GPS interference on 25 Oct 2026, 2 new this week;") and "biggest rise: A (+12 points)" in line
     assert "X: 61% of aircraft heard sent no position" in line and line.endswith("scintillation below moderate.")
     stale = B.summary_line({"built_utc": "2026-10-26T21:30Z", "scintillation": {"level": "moderate", "valid_utc": "2026-10-26 17:00Z"},
                             "loss": {"areas": [{"name": "Thin", "share": 90.0, "hexes": 10, "hexes_with_mlat": 2},
@@ -123,12 +123,12 @@ def test_brief():
     b = {"hotspots": {"areas": [area("Kaliningrad and approaches", 37.9, 41.7, -3.8), area("Southern Black Sea offshore Turkey", 37.6, 38.9, -1.2),
                                 area("Caucasus", 13.4, 13.9, -0.5), area("Cyprus–Levant", 1.6, 2.8, -1.2)]},
          "changes": {"new": near("Malmö", "Ryazan", "Las Vegas"), "new_count": 5, "ended": near("Tel Aviv", "Yerevan"), "ended_count": 4}}
-    assert B.brief(b) == ("GPS jamming held near its usual level over Kaliningrad and the southern Black Sea. "
+    assert B.brief(b) == ("GPS interference held near its usual level over Kaliningrad and the southern Black Sea. "
                           "Five areas started this week, among them Malmö and Ryazan; four stopped, including Tel Aviv.")
     b["hotspots"]["areas"][0]["change"] = 7.0                 # a rise of 5 points or more names the area
     b["hotspots"]["areas"][2]["change"] = -6.0
     b["changes"] = {"new": near("Malmö"), "new_count": 1, "ended": [], "ended_count": 0}
-    assert B.brief(b) == ("GPS jamming rose over Kaliningrad; the share of degraded aircraft fell over the Caucasus. "
+    assert B.brief(b) == ("GPS interference rose over Kaliningrad; the share of degraded aircraft fell over the Caucasus. "
                           "One area started this week, near Malmö; none stopped.")
     b["hotspots"]["areas"] = [area("Cyprus–Levant", 1.6, 2.8, -1.2)]      # small areas alone say nothing
     b["changes"] = {"new": [], "new_count": 0, "ended": [], "ended_count": 0}

@@ -194,6 +194,9 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .filters { display: flex; flex-wrap: wrap; gap: .625rem; margin: .625rem 0; align-items: center; }
 .filters input, .filters select { font: inherit; font-size: var(--fs-md); padding: .4rem .6rem; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--card); color: var(--fg); }
 .filters input { flex: 1 1 14rem; }
+dl.gloss { margin: .75rem 0 1.5rem; max-width: 46rem; }
+dl.gloss dt { font-weight: 600; margin-top: .875rem; }
+dl.gloss dd { margin: .125rem 0 0; }
 .flow { display: grid; gap: .625rem; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); margin: 1rem 0; }
 .flow div { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: .75rem .875rem; font-size: var(--fs-sm); }
 .flow b { display: block; font-size: var(--fs-md); margin-bottom: .2rem; }

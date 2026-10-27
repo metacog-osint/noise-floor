@@ -36,7 +36,8 @@ STATUS = {  # key: (label, css class, one-line meaning)
 TABS = [("home", "Today", ""), ("map", "Map", "map"), ("charts", "Trends", "charts"), ("sea", "Sea", "sea"), ("space", "Space", "geo")]
 SECTIONS = {   # tab -> sub-pages shown in the section bar: (page key, label, href, one line for the About menu)
     "space": [("geo", "GEO belt", "geo", ""), ("sun", "Sun outages", "sun", "")],
-    "about": [("methods", "Methods", "methods", "How each measure works and what it can't see"),
+    "about": [("guide", "Plain-language guide", "guide", "What the site shows, in everyday words"),
+              ("methods", "Methods", "methods", "How each measure works and what it can't see"),
               ("validation", "Validation", "validation", "What was tested, including what failed"),
               ("data", "Data and downloads", "data", "Daily files, their columns and licences"),
               ("sources", "Sources and licences", "sources", "Every source, and what it may be used for"),
@@ -90,7 +91,7 @@ PAGE = """<!doctype html>
 <p>A daily, open picture of interference with satellite navigation and communications, from licence-clean sources. It measures effects, not causes, and no grade names a perpetrator.</p>
 <p class="small">Aircraft data: <a href="https://www.adsb.lol/">adsb.lol</a> contributors (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources">Sources and licences</a>.</p>
 </div>
-<nav class="foot-links" aria-label="Footer"><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data and downloads</a><a href="/sources">Sources and licences</a><a href="/lanes">Roadmap</a><a href="/terms">Terms</a><a href="{repo}">Source code (AGPL-3.0)</a></nav>
+<nav class="foot-links" aria-label="Footer"><a href="/guide">Plain-language guide</a><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data and downloads</a><a href="/sources">Sources and licences</a><a href="/lanes">Roadmap</a><a href="/terms">Terms</a><a href="{repo}">Source code (AGPL-3.0)</a></nav>
 </div></footer>
 </body>
 </html>
@@ -192,8 +193,8 @@ def lanes_page(data):
     toc = " · ".join(f'<a href="#g-{e(g["id"])}">{e(g["name"])}</a>' for g in data["groups"])
     parts = [
         '<h1>Roadmap</h1>',
-        '<p class="lede">Every lane, built and planned. Each answers one question with its own data and method. Statuses say how far '
-        'each has got; planned lanes are designs, not results.</p>',
+        '<p class="lede">Every capability, built and planned. Each answers one question with its own data and method. Statuses say '
+        'how far each has got; planned items are designs, not results.</p>',
         f'<div class="legend">{legend}</div>', status_counts(data["lanes"]), f'<p class="small">Jump to: {toc} · <a href="#build-order">Build order</a></p>',
     ]
     for g in data["groups"]:
@@ -242,11 +243,11 @@ def sources_page(rows):
 <div class="counts"><div class="count"><b>{len(rows)}</b><span>sources assessed</span></div>{counts}</div>
 <div class="filters" role="search">
 <label class="small" for="q">Search</label><input id="q" type="search" placeholder="Name, licence, what it gives…">
-<select id="lane" aria-label="Lane"><option value="">All lanes</option>{lane_opts}</select>
+<select id="lane" aria-label="Topic"><option value="">All topics</option>{lane_opts}</select>
 <select id="use" aria-label="Use"><option value="">Any use</option>{use_opts}</select>
 </div>
 <p class="small" id="shown"></p>
-<div class="tw"><table id="reg"><thead><tr><th>Source</th><th>Lane</th><th>What it gives</th><th>Licence</th><th>Commercial use</th><th>How we use it</th><th>Phase</th></tr></thead>
+<div class="tw"><table id="reg"><thead><tr><th>Source</th><th>Topic</th><th>What it gives</th><th>Licence</th><th>Commercial use</th><th>How we use it</th><th>Roadmap phase</th></tr></thead>
 <tbody>{''.join(body_rows)}</tbody></table></div>
 <p class="small">The registry is <a href="{REPO}/blob/main/registry/sources.csv">registry/sources.csv</a> in the repository, checked on every commit.</p>
 <script>
@@ -343,14 +344,14 @@ def main():
     fills.update(chart_fills())
     fills.update(events_fills())
     written = []
-    for name in ("index.html", "map.html", "sea.html", "sun.html", "geo.html", "charts.html", "methods.html", "validation.html", "data.html", "terms.html", "404.html"):
+    for name in ("index.html", "map.html", "sea.html", "sun.html", "geo.html", "charts.html", "guide.html", "methods.html", "validation.html", "data.html", "terms.html", "404.html"):
         meta, body = read_page(name)
         for k, v in fills.items():
             body = body.replace(k, v)
         if "{{" in body:
             sys.exit(f"{name}: unfilled placeholder")
         open(os.path.join(OUT, name), "w", encoding="utf-8", newline="\n").write(
-            render(meta, body, updated, narrow=name in ("methods.html", "terms.html", "404.html")))
+            render(meta, body, updated, narrow=name in ("guide.html", "methods.html", "terms.html", "404.html")))
         written.append(name)
     open(os.path.join(OUT, "lanes.html"), "w", encoding="utf-8", newline="\n").write(render(
         {"title": "Roadmap · Noisefloor", "description": "Every Noisefloor lane, built and planned: what it measures, how, which sources, and its limits.",

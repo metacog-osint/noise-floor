@@ -36,7 +36,7 @@ def test_feed(tmp):
     root = ET.parse(p).getroot()                                       # well-formed despite <, & in notes and test ids
     es = root.findall("a:entry", ns)
     assert len(es) == 30 and es[0].find("a:updated", ns).text == "2026-10-01T23:59:59Z"
-    assert es[0].find("a:title", ns).text == "2026-10-01: 400 hexes at jamming scale (30-day median 116), 1 major event", es[0].find("a:title", ns).text
+    assert es[0].find("a:title", ns).text == "1 Oct 2026: 400 cells with severe GPS error (30-day median 116), 1 major event", es[0].find("a:title", ns).text
     html = es[0].find("a:content", ns).text
     assert "near Kaliningrad" in html and "70% of the degraded aircraft were A350s or A380s" in html and "fits announced test X &lt;1&gt;" in html, html
     assert "R&amp;D &lt;note&gt;" in html and "2 minute-level bursts." in html and "1 announced US GPS tests." in html, html

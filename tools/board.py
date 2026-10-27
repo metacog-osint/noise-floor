@@ -299,6 +299,14 @@ SHORT = {   # watched-area names as they read inside a sentence
     "Western Black Sea coast": "the western Black Sea", "Cyprus–Levant": "Cyprus and the Levant",
     "Strait of Hormuz / Gulf of Oman": "the Strait of Hormuz", "High latitude excl. Baltic/Russia": "high latitudes",
 }
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def _dayname(d):
+    """'2026-10-26' -> '26 Oct 2026' (the site's date style)."""
+    return f"{int(d[8:10])} {MONTHS[int(d[5:7]) - 1]} {d[:4]}"
+
+
 WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]
 
 
@@ -325,9 +333,9 @@ def brief(b):
     up = [name(a) for a in big if a["change"] >= 5]
     down = [name(a) for a in big if a["change"] <= -5]
     if big and not up and not down:
-        out.append(f"GPS jamming held near its usual level over {_and([name(a) for a in big[:2]])}.")
+        out.append(f"GPS interference held near its usual level over {_and([name(a) for a in big[:2]])}.")
     elif up or down:
-        bits = ([f"GPS jamming rose over {_and(up[:2])}"] if up else []) + \
+        bits = ([f"GPS interference rose over {_and(up[:2])}"] if up else []) + \
                ([("the share of degraded aircraft fell over " if up else "The share of degraded aircraft fell over ") + _and(down[:2])] if down else [])
         out.append("; ".join(bits) + ".")
     c = b.get("changes")
@@ -350,7 +358,7 @@ def summary_line(b):
     parts = []
     ch = b.get("changes")
     if ch:
-        parts.append(f"{ch['regions_today']} regions at jamming scale on {ch['day']}"
+        parts.append(f"{ch['regions_today']} areas with GPS interference on {_dayname(ch['day'])}"
                      + (f", {ch['new_count']} new this week" if ch["new_count"] else "")
                      + (f", {ch['ended_count']} ended" if ch["ended_count"] else ""))
     hs = (b.get("hotspots") or {}).get("areas") or []
@@ -362,7 +370,7 @@ def summary_line(b):
         parts.append(f"{lo[0]['name']}: {lo[0]['share']:g}% of aircraft heard sent no position")
     sp = b.get("spoofing")
     if sp and sp.get("active") is not None:
-        parts.append(f"{sp['active']} active spoofing episodes ({sp['day']})")
+        parts.append(f"{sp['active']} active spoofing episodes ({_dayname(sp['day'])})")
     sc = b.get("scintillation")
     if sc and sc.get("valid_utc"):
         try:
