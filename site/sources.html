@@ -3,27 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sources · Noisefloor</title>
+<title>Sources and licences · Noisefloor</title>
 <meta name="description" content="Noisefloor&#x27;s licence registry: every source, its licence and how it may be used.">
-<meta property="og:title" content="Sources · Noisefloor">
+<meta property="og:title" content="Sources and licences · Noisefloor">
 <meta property="og:description" content="Noisefloor&#x27;s licence registry: every source, its licence and how it may be used.">
 <meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="/style.css?v=93f8dc39d6">
+<link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css?v=df917650ac">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=f511c41ac0"></script>
+<script defer src="/site.js?v=22154eb33f"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 
 <script defer src="/tic-init.js?v=d888070c79"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="site"><div class="in">
-<a class="brand" href="/">Noisefloor</a>
-<nav aria-label="Main"><a href="/">Home</a><a href="/map">Map</a><a href="/sea">Sea</a><a href="/sun">Sun</a><a href="/geo">GEO</a><a href="/charts">Charts</a><a href="/lanes">Lanes</a><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data</a><a href="/sources" aria-current="page">Sources</a><span id="time-settings"></span></nav>
-</div></header>
+<header class="site">
+<div class="wrap site-top">
+<a class="brand" href="/"><svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect class="mark-bg" x=".5" y=".5" width="27" height="27" rx="6"/><path class="mark-line" d="M5 17H9L10.6 10L12.4 20L14.2 12.5L15.8 17H23" fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg><span><b>Noisefloor</b><small>The Intelligence Company</small></span></a>
+<div class="site-tools"><span class="clock" id="clock" aria-hidden="true"></span><span id="time-settings"></span></div>
+</div>
+<div class="wrap"><nav class="tabs" aria-label="Main"><div class="tabs-scroll"><a href="/">Today</a><a href="/map">Map</a><a href="/charts">Trends</a><a href="/sea">Sea</a><a href="/geo">Space</a></div><details class="menu current"><summary>About<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu-pop"><a href="/methods"><b>Methods</b><span>How each measure works and what it can&#x27;t see</span></a><a href="/validation"><b>Validation</b><span>What was tested, including what failed</span></a><a href="/data"><b>Data and downloads</b><span>Daily files, their columns and licences</span></a><a href="/sources" aria-current="page"><b>Sources and licences</b><span>Every source, and what it may be used for</span></a><a href="/lanes"><b>Roadmap</b><span>What is built, being tested or planned</span></a><a href="/terms"><b>Terms</b><span>Use, reuse and limits</span></a></div></details></nav></div>
+<nav class="subnav" aria-label="About"><div class="wrap"><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data and downloads</a><a href="/sources" aria-current="page">Sources and licences</a><a href="/lanes">Roadmap</a><a href="/terms">Terms</a></div></nav>
+</header>
 <main id="main">
-<p class="kicker">Sources</p>
-<h1>Licence registry</h1>
+<h1>Sources and licences</h1>
 <p class="lede">Every source Noisefloor uses, considered or rejected, with its licence and how it may be used. A source can't feed a public layer until its licence is recorded. "Unverified" means the terms haven't been confirmed yet.</p>
 <div class="counts"><div class="count"><b>134</b><span>sources assessed</span></div><div class="count"><b>38</b><span>Feeds a layer</span></div><div class="count"><b>28</b><span>Later phase</span></div><div class="count"><b>23</b><span>Cited, not ingested</span></div><div class="count"><b>20</b><span>Excluded</span></div><div class="count"><b>15</b><span>After permission</span></div><div class="count"><b>7</b><span>Visual comparison only</span></div><div class="count"><b>3</b><span>Private watch only</span></div></div>
 <div class="filters" role="search">
@@ -51,9 +56,13 @@
 })();
 </script>
 </main>
-<footer class="site"><div class="in">
-<p>A project of The Intelligence Company. Updated 26 Oct 2026. <a href="https://github.com/metacog-osint/noise-floor">Source code</a> (AGPL-3.0). <a href="/terms">Terms of use</a>.</p>
-<p>ADS-B data: <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources">Sources</a>.</p>
+<footer class="site"><div class="wrap">
+<div class="foot-about">
+<p><b>Noisefloor</b>, a project of The Intelligence Company</p>
+<p>A daily, open picture of interference with satellite navigation and communications, from licence-clean sources. It measures effects, not causes, and no grade names a perpetrator.</p>
+<p class="small">Aircraft data: <a href="https://www.adsb.lol/">adsb.lol</a> contributors (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources">Sources and licences</a>.</p>
+</div>
+<nav class="foot-links" aria-label="Footer"><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data and downloads</a><a href="/sources">Sources and licences</a><a href="/lanes">Roadmap</a><a href="/terms">Terms</a><a href="https://github.com/metacog-osint/noise-floor">Source code (AGPL-3.0)</a></nav>
 </div></footer>
 </body>
 </html>

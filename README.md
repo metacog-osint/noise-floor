@@ -75,3 +75,6 @@ Versions published from 15 to 27 Oct 2026, before the switch, were released unde
 under it. Libraries the code uses (Python packages, Leaflet, h3-js) keep their own licences.
 
 **Data outputs:** ODbL 1.0, as derived from adsb.lol. Validation figures carry their own attribution.
+
+**Fonts:** IBM Plex Sans and IBM Plex Mono, SIL Open Font License 1.1 ([`site_src/fonts/OFL.txt`](site_src/fonts/OFL.txt)),
+served from the site itself.

@@ -24,5 +24,7 @@ spikes/*.csv
 # built at deploy (tools/board.py, tools/geo.py, tools/site_layers.py); never commit a local run's copy
 site/data/board.json
 site/data/geo.json
+site/data/today-map.svg
+site/data/today-map-dark.svg
 site/data/spoof/
 site/data/cygnss/

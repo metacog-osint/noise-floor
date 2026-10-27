@@ -116,6 +116,25 @@ def test_spoofing_and_cygnss_cards():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_brief():
+    """The home page's bottom line, from fixed rules."""
+    area = lambda n, t, m, c: {"name": n, "today": t, "median30": m, "change": c}  # noqa: E731
+    near = lambda *xs: [{"near": x} for x in xs]  # noqa: E731
+    b = {"hotspots": {"areas": [area("Kaliningrad and approaches", 37.9, 41.7, -3.8), area("Southern Black Sea offshore Turkey", 37.6, 38.9, -1.2),
+                                area("Caucasus", 13.4, 13.9, -0.5), area("Cyprus–Levant", 1.6, 2.8, -1.2)]},
+         "changes": {"new": near("Malmö", "Ryazan", "Las Vegas"), "new_count": 5, "ended": near("Tel Aviv", "Yerevan"), "ended_count": 4}}
+    assert B.brief(b) == ("GPS jamming held near its usual level over Kaliningrad and the southern Black Sea. "
+                          "Five areas started this week, among them Malmö and Ryazan; four stopped, including Tel Aviv.")
+    b["hotspots"]["areas"][0]["change"] = 7.0                 # a rise of 5 points or more names the area
+    b["hotspots"]["areas"][2]["change"] = -6.0
+    b["changes"] = {"new": near("Malmö"), "new_count": 1, "ended": [], "ended_count": 0}
+    assert B.brief(b) == ("GPS jamming rose over Kaliningrad; the share of degraded aircraft fell over the Caucasus. "
+                          "One area started this week, near Malmö; none stopped.")
+    b["hotspots"]["areas"] = [area("Cyprus–Levant", 1.6, 2.8, -1.2)]      # small areas alone say nothing
+    b["changes"] = {"new": [], "new_count": 0, "ended": [], "ended_count": 0}
+    assert B.brief(b) == "No area started or stopped this week."
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

@@ -52,6 +52,11 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   **Deploys run from GitHub Actions** (`.github/workflows/deploy-site.yml`): after CI passes on `main`, `site/` is uploaded
   straight to Cloudflare Pages. Cloudflare's own Git-triggered builds stuck in "queued" from 15 Oct 2026; `tools/cf_pages_kick.py`
   is the manual fallback. Check the live page after site changes.
+  **Site design (27 Oct 2026, Tom approved the mockup):** one token system in `site_src/style.css` (7 type sizes, 5 radii,
+  light and dark; IBM Plex served from `site_src/fonts/`, SIL OFL). Navigation is five tabs plus an About menu (`TABS` and
+  `SECTIONS` in `tools/build_site.py`), with a section bar on Space and About pages; every page shares the header's 75rem grid.
+  The home page is a daily briefing: `board.py` writes the bottom-line sentence (`brief`, fixed rules, tested), `board.js` and
+  `dash.js` fill the page, and `tools/map_thumb.py` draws the map thumbnail at deploy (`site/data/today-map*.svg`).
 - **Daily pipeline (Phase 2, from 22 Oct 2026):** `.github/workflows/daily.yml` runs `pipeline/daily_job.py` at 05:40 UTC (again at 12:40 for late releases).
   It processes each new adsb.lol day, uploads the outputs to the release `pnt-data-YYYY-MM` (ODbL; `<day>.map.json` last,
   as the done marker) and calls `deploy-site.yml`, which adds every release's map files to `site/data/gnss/`

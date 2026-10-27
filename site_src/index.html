@@ -1,119 +1,90 @@
-<!--{"title": "Noisefloor", "description": "An open, licence-clean picture of contested radio spectrum: GNSS degradation, L-band emitters, satellite communications and the evidence behind each.", "nav": "home", "head": "<script defer src=\"/sunoutage.js\"></script><script defer src=\"/dash.js\"></script><script defer src=\"/home.js\"></script><script defer src=\"/board.js\"></script>"}-->
-<h1>Noisefloor</h1>
-<p class="lede">An open, licence-clean picture of where the radio spectrum is contested, and what that does to navigation and satellite communications. It measures effects and states its evidence. It doesn't assign blame.</p>
+<!--{"title": "Noisefloor", "description": "A daily, open picture of interference with satellite navigation and communications: where aircraft lost GPS, spoofing, ships at sea, the geostationary belt and the evidence behind each.", "nav": "home", "layout": "home", "head": "<script defer src=\"/sunoutage.js\"></script><script defer src=\"/dash.js\"></script><script defer src=\"/board.js\"></script>"}-->
+<section class="brief" aria-labelledby="brief-h">
+  <p class="dateline" id="brief-day">Daily briefing</p>
+  <h1 id="brief-h">Loading today's briefing…</h1>
+  <p class="meta"><span id="brief-meta"></span> <a href="/methods">How to read this briefing</a></p>
+</section>
 
-<div class="dash" id="dash" aria-label="Status board">
-  <section class="dash-card dash-wide dash-sum" aria-labelledby="bsum-h">
-    <h2 id="bsum-h">Today</h2>
-    <div id="bsum"><p class="small">Loading…</p></div>
-  </section>
-  <section class="dash-card dash-wide" aria-labelledby="bhot-h">
-    <h2 id="bhot-h">GNSS interference in known areas</h2>
-    <div id="bhot-body"><p class="small">Loading…</p></div>
-  </section>
-  <section id="today" class="today dash-card" aria-labelledby="today-h" hidden>
-    <h2 id="today-h">Biggest events: <span id="today-day"></span></h2>
-    <p id="today-sum"></p>
-    <ul id="today-list" class="today-list"></ul>
-    <p class="small"><a id="today-link" href="/map">Open the map</a> · <a href="/feed.xml">Daily feed (Atom)</a> · From the automatic daily run, not reviewed by a person. The A350/A380 share is how much of an event rests on those types, which report degraded accuracy more readily: context, not a verdict.</p>
-  </section>
-  <section class="dash-card" aria-labelledby="bchange-h">
-    <h2 id="bchange-h">What changed</h2>
-    <div id="bchange-body"><p class="small">Loading…</p></div>
-  </section>
-  <section class="dash-card" aria-labelledby="bloss-h">
-    <h2 id="bloss-h">Aircraft losing position</h2>
-    <div id="bloss-body"><p class="small">Loading…</p></div>
-  </section>
-  <section class="dash-card" aria-labelledby="bspoof-h">
-    <h2 id="bspoof-h">Spoofing</h2>
-    <div id="bspoof-body"><p class="small">Loading…</p></div>
-  </section>
-  <section class="dash-card" aria-labelledby="bdecl-h">
-    <h2 id="bdecl-h">Declared and official</h2>
-    <div id="bdecl-body"><p class="small">Loading…</p></div>
-  </section>
-  <section class="dash-card" aria-labelledby="bspace-h">
-    <h2 id="bspace-h">Space weather</h2>
-    <p id="bkp" class="small">Kp: loading…</p>
-    <p id="bscint" class="small">Scintillation: loading…</p>
-    <div id="dsolar-body"><p class="small">Loading…</p></div>
-    <p class="small">Solar radio from the US Air Force telescopes and bursts via <a href="https://www.swpc.noaa.gov/">NOAA SWPC</a> (US public domain). 1 sfu = 10<sup>−22</sup> W m<sup>−2</sup> Hz<sup>−1</sup>.</p>
-    <h3 class="dash-h3">Sun-outage alerts</h3>
-    <div id="dalerts-body"><p class="small">Loading…</p></div>
-    <p class="small">An alert means a predicted sun outage met observed evidence, or a strong radio burst was observed at GNSS frequencies. Thresholds are provisional. <a href="/feed.xml">Alerts in the feed (Atom)</a> · <span id="dash-updated"></span></p>
-  </section>
-  <section class="dash-card" aria-labelledby="dsun-h">
-    <h2 id="dsun-h">Sun outages</h2>
-    <div id="dsun-body"><p class="small">Calculating…</p></div>
-    <p class="small">Predicted in your browser for 32 orbital slots seen from 36 cities, for a 0.9 m Ku-band dish. <a href="/sun">Calculator for any place, satellite and dish</a></p>
-  </section>
-  <section class="dash-card" aria-labelledby="bgeo-h">
-    <h2 id="bgeo-h">GEO belt</h2>
-    <div id="bgeo-body"><p class="small">Loading…</p></div>
-  </section>
-  <section class="dash-card" aria-labelledby="bcyg-h">
-    <h2 id="bcyg-h">From orbit (CYGNSS)</h2>
-    <div id="bcyg-body"><p class="small">Loading…</p></div>
-  </section>
-  <section class="dash-card" aria-labelledby="dsea-h">
-    <h2 id="dsea-h">At sea</h2>
-    <div id="dsea-body"><p class="small">Loading…</p></div>
-  </section>
-  <section class="dash-card" aria-labelledby="bevents-h">
-    <h2 id="bevents-h">Graded events</h2>
-    <div id="bevents-body"><p class="small">Loading…</p></div>
-  </section>
-  <section class="dash-card" aria-labelledby="bfresh-h">
-    <h2 id="bfresh-h">Data freshness</h2>
-    <div id="bfresh-body"><p class="small">Loading…</p></div>
-  </section>
+<section class="stats" id="stats" aria-label="Key numbers"></section>
+
+<div class="home-cols" id="dash">
+  <div class="home-main">
+    <section class="panel" aria-labelledby="map-h">
+      <div class="panel-head">
+        <h2 id="map-h">Where aircraft lost GPS<span id="map-day"></span></h2>
+        <a class="more" id="map-link" href="/map">Open the full map →</a>
+      </div>
+      <a class="thumb" id="map-thumb" href="/map">
+        <picture>
+          <source srcset="/data/today-map-dark.svg" media="(prefers-color-scheme: dark)">
+          <img src="/data/today-map.svg" width="800" height="522" alt="Map of Europe, the Middle East and Pakistan for the latest day, with hexes coloured where aircraft lost GPS accuracy." loading="eager" decoding="async">
+        </picture>
+      </a>
+      <div class="key">
+        <span>Aircraft with GPS error worse than 93 m:</span>
+        <span><i style="background: var(--ramp-1)"></i>2–5%</span>
+        <span><i style="background: var(--ramp-2)"></i>5–10%</span>
+        <span><i style="background: var(--ramp-3)"></i>10–25%</span>
+        <span><i style="background: var(--ramp-4)"></i>25% or more</span>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="wa-h">
+      <div class="panel-head">
+        <h2 id="wa-h">Watched areas</h2>
+        <a class="more" href="/charts">Trends →</a>
+      </div>
+      <p class="sub" id="wa-sub">Share of aircraft with GPS error worse than 93 m, against the 30 days before.</p>
+      <div class="wa-wrap">
+        <table class="wa">
+          <thead><tr><th scope="col">Area</th><th scope="col" class="num" id="wa-day">Latest</th><th scope="col" class="num">30-day median</th><th scope="col" class="num">Change, points</th><th scope="col">Last 30 days</th></tr></thead>
+          <tbody id="wa-body"><tr><td colspan="5" class="loading">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="ev-h">
+      <div class="panel-head">
+        <h2 id="ev-h">Strongest events<span id="ev-day"></span></h2>
+        <a class="more" id="ev-link" href="/map">All events on the map →</a>
+      </div>
+      <p class="sub">Hours when an area's share of degraded aircraft rose well above its own recent level.</p>
+      <ul class="evl" id="ev-list"><li class="loading">Loading…</li></ul>
+      <p class="small" id="ev-more"></p>
+    </section>
+  </div>
+
+  <aside class="home-side" aria-label="More">
+    <section class="panel wk" aria-labelledby="wk-h">
+      <h2 id="wk-h">This week</h2>
+      <dl id="wk"><dt>Loading…</dt><dd></dd></dl>
+    </section>
+
+    <section class="panel" aria-labelledby="rows-h">
+      <h2 id="rows-h">Across the spectrum</h2>
+      <p class="alertline" id="alerts" hidden></p>
+      <div class="rows" id="rows">
+        <a class="row" href="/map#m=jam&amp;sp=1"><span><b>Spoofing</b><em id="r-spoof">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="row" href="/validation"><span><b>Aircraft without a GPS position</b><em id="r-loss">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="row" href="/sun"><span><b>Space weather</b><em><span id="kp-text">Geomagnetic Kp loading…</span> <span id="scint-text"></span> <span id="radio-text"></span></em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="row" href="/geo"><span><b>Geostationary belt</b><em id="r-geo">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="row" href="/sun"><span><b>Sun outages</b><em id="sun-text">Calculating…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="row" href="/sea"><span><b>At sea</b><em id="sea-text">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="row" href="/map"><span><b>Official notices</b><em id="r-notices">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="row" href="/validation#events"><span><b><span id="r-events-h">Graded events</span></b><em id="r-events">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      </div>
+      <details class="more-detail">
+        <summary>Solar radio and sun-outage alerts</summary>
+        <div id="dsolar-body"><p class="small">Loading…</p></div>
+        <div id="dalerts-body"></div>
+        <p class="small">Solar radio from the US Air Force telescopes and bursts via <a href="https://www.swpc.noaa.gov/">NOAA SWPC</a> (US public domain); 1 sfu = 10<sup>−22</sup> W m<sup>−2</sup> Hz<sup>−1</sup>. An alert means a predicted sun outage met observed evidence, or a strong radio burst was observed at GNSS frequencies; thresholds are provisional. Sun outages are predicted in your browser for 32 orbital slots seen from 36 cities, for a 0.9 m Ku-band dish. <span id="dash-updated"></span></p>
+      </details>
+    </section>
+
+    <section class="panel" aria-labelledby="fresh-h">
+      <h2 id="fresh-h">Latest data</h2>
+      <div class="fresh" id="fresh"><p class="loading">Loading…</p></div>
+      <p class="small">Dates and times in UTC. <a href="/feed.xml">Daily feed (Atom)</a></p>
+    </section>
+  </aside>
 </div>
-
-<div class="callout">
-  <p><strong>Status, {{UPDATED}}.</strong> The GNSS method is built and validated on 20 days of worldwide aircraft data, and those days are on the <a href="/map">map</a> and in the <a href="/charts">charts</a>. The <a href="/map">map</a> covers every day since 1 October 2025 and updates each morning. The <a href="/sea">Sea</a> page shows sanctioned, military and state-flag ships in Finland's open AIS, with GNSS interference at sea. The NISAR L-band emitter lane has passed its first positive control.</p>
-</div>
-
-<h2>Explore the data</h2>
-<div class="grid">
-  <div class="card"><h3><a href="/map">Map</a></h3><p>GNSS degradation per hex for every day since 1 Oct 2025, with a time slider, updated each morning: jamming-scale loss and accuracy loss, hover for counts, download each day.</p></div>
-  <div class="card"><h3><a href="/charts">Charts</a></h3><p>Known interference areas day by day, updated each morning. Plus the validation cases: an SBAS outage, a geomagnetic storm, a minute-by-minute GPS loss, and aircraft types that carry the effect downstream.</p></div>
-  <div class="card"><h3><a href="/sea">Sea</a></h3><p>Sanctioned, military, law-enforcement and state-flag ships in Finland's open AIS: what each ship broadcasts, its listings and owners, how it reported and which reports failed spoofing tests. Filters, downloads, and Sentinel-2 imagery and radar on the map.</p></div>
-  <div class="card"><h3><a href="/data">Data</a></h3><p>Every daily file and its licence, the columns explained, and examples for Python, ArcGIS and QGIS. Daily summaries as an <a href="/feed.xml">Atom feed</a>.</p></div>
-  <div class="card"><h3><a href="/validation">Validation</a></h3><p>How each method was tested against known events, including what failed.</p></div>
-</div>
-
-<h2>What it builds</h2>
-<div class="flow">
-  <div><b>Positioning and navigation</b>Where aircraft and ships lose GNSS accuracy or get false positions, separated from storms and service outages.</div>
-  <div><b>Emitters from space</b>Transmitters that show up as interference in satellite radar data, with frequency and position.</div>
-  <div><b>Satellite communications</b>Inspector satellites near comsats, the official interference record, outages and predictable sun outages.</div>
-  <div><b>Assessment</b>Lanes fused into events, each graded on its evidence, with benign explanations kept in view.</div>
-</div>
-
-<h2>Lanes at a glance</h2>
-<p>{{LANE_COUNT}} lanes, from validated methods to planned ones. Each has a page entry with what it measures, how, which sources and its limits.</p>
-{{STATUS_COUNTS}}
-{{LANE_GRID}}
-<p><a href="/lanes">All lanes in detail</a> · <a href="/lanes#build-order">Build order</a></p>
-
-<h2>Results so far</h2>
-<ul>
-  <li><strong>Hotspots reproduce.</strong> The known Baltic, Black Sea and Caucasus hotspots appear on every test day; quiet control regions stay near zero.</li>
-  <li><strong>An SBAS outage, from aircraft alone.</strong> The 13–17 Oct 2025 EGNOS outage was reconstructed to within an hour at both ends.</li>
-  <li><strong>Storms separate from jamming.</strong> On the 12 Nov 2025 G4 storm, 38.5% of capable aircraft lost 10 m accuracy against a 3.7% baseline, while jamming-scale loss stayed flat.</li>
-  <li><strong>Minute-level timing.</strong> Both bursts of the 22 Sep 2026 Bay Area GPS loss were recovered.</li>
-  <li><strong>Downstream effects by type.</strong> A350-900s are 19× over-represented among aircraft still degraded after leaving interference. Why is still a hypothesis.</li>
-  <li><strong>L-band emitters from radar.</strong> NISAR's own interference tables detected an area of documented L1/L2/L5 jamming on 12 of 13 passes. The published Shiraz jammer was not confirmed.</li>
-</ul>
-<p><a href="/validation">How each was tested, including what failed</a></p>
-
-<h2>How it works</h2>
-<ul>
-  <li><strong>Method first.</strong> Frozen test days, a published method card and validation before any user interface.</li>
-  <li><strong>Licence-clean.</strong> Every source is recorded with its licence before it feeds a layer; non-commercial sources are for visual comparison only. <a href="/sources">See the registry</a>.</li>
-  <li><strong>Static and free.</strong> Daily batch jobs write small files served from a CDN: no servers, no database bill.</li>
-  <li><strong>Effects, not attribution.</strong> Every output says what was observed and on what basis.</li>
-  <li><strong>Public and private kept apart.</strong> Watch areas and alerts never enter the public repo or this site.</li>
-</ul>
-<p><a href="/methods">Methods</a> · <a href="https://github.com/metacog-osint/noise-floor">Source code (AGPL-3.0)</a></p>
