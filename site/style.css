@@ -421,6 +421,9 @@ details.table-view .tw { max-height: 22rem; overflow: auto; }
 .geo-role { font-size: var(--fs-xs); padding: 0 .35rem; border-radius: var(--r-s); border: 1px solid var(--line); color: var(--mut); white-space: nowrap; }
 .geo-role-inspection { border-color: var(--st-failed); color: var(--st-failed); }
 .geo-role-servicing { border-color: var(--st-running); color: var(--st-running); }
+/* orbit-change tables: on a phone the box scrolls sideways rather than squeezing the description */
+.geo-man td:first-child { white-space: nowrap; }
+@media (max-width: 34rem) { .geo-man td:nth-child(2) { min-width: 6.5rem; } .geo-man td:last-child { min-width: 15rem; } }
 .lyr-key { display: inline-block; width: .8rem; height: .65rem; border-radius: 2px; vertical-align: -1px; margin-left: .2rem; }
 .lyr-key-spoof { border: 1.5px solid var(--map-spoof); background: color-mix(in srgb, var(--map-spoof) 30%, transparent); }
 .lyr-key-cyg { border: 1.5px solid var(--map-cyg); background: color-mix(in srgb, var(--map-cyg) 25%, transparent); }

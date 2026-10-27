@@ -38,9 +38,39 @@
       return '<tr><td class="num">' + p.km + " km</td><td>" + esc(p.a[1]) + role(p.a[3]) + "</td><td>" + esc(p.a[2]) + "</td><td>" + esc(p.b[1]) + role(p.b[3]) + "</td><td>" + esc(p.b[2]) +
         '</td><td class="num">' + lon(p.lon) + "</td><td>" + esc(p.kind || "") + (p.age_days > 3 ? " (elements " + Math.round(p.age_days) + " days old)" : "") + "</td></tr>";
     })) + '<p class="small">' + g.close_same_owner_count + " more pairs within 100 km share an owner code (often a country, and often co-located on purpose) and aren't listed; a pair with a listed role is always listed.</p>" : "<p>None within 100 km.</p>";
-    $("geo-man").innerHTML = g.manoeuvres.length ? table(["Day", "Object", "Owner", "Longitude", "What changed"], g.manoeuvres.slice().reverse().map(function (m) {
-      return "<tr><td>" + esc(m.day) + "</td><td>" + esc(m.name) + "</td><td>" + esc(m.owner) + '</td><td class="num">' + lon(m.lon) + "</td><td>" + esc(m.what) + "</td></tr>";
-    })) : '<p class="small">None yet: manoeuvres need two snapshots, and snapshots began on 26 Oct 2026.</p>';
+    // orbit changes: the rarer kind first, routine station-keeping folded below
+    var KIND = { "started drifting": "Started drifting", "stopped drifting": "Stopped drifting", "drift rate changed": "Drift rate changed",
+                 "inclined orbit changed": "Inclination changed on an inclined orbit" };
+    var ep = function (s) { return +s.slice(8, 10) + " " + MON[+s.slice(5, 7) - 1] + " " + s.slice(11, 16) + " UTC"; };
+    function between(m) {             // the change happened somewhere between the two element sets: give the dates
+      var a = m.between[0], b = m.between[1], da = +a.slice(8, 10), db = +b.slice(8, 10), ma = MON[+a.slice(5, 7) - 1], mb = MON[+b.slice(5, 7) - 1];
+      var txt = a.slice(0, 10) === b.slice(0, 10) ? day(b) : ma === mb ? da + "–" + db + " " + mb + " " + b.slice(0, 4) : da + " " + ma + " – " + db + " " + mb + " " + b.slice(0, 4);
+      return '<td title="Orbital elements of ' + esc(ep(a)) + " and " + esc(ep(b)) + '">' + esc(txt) + "</td>";
+    }
+    function rates(a, b) {            // "4.18° → 3.78° a day west", or "0.008° a day west → 0.015° a day east"
+      var f = function (x) { var v = Math.abs(x); return v.toFixed(v < 0.1 ? 3 : 2) + "°"; }, wa = a < 0 ? "west" : "east", wb = b < 0 ? "west" : "east";
+      return wa === wb ? f(a) + " → " + f(b) + " a day " + wa : f(a) + " a day " + wa + " → " + f(b) + " a day " + wb;
+    }
+    function changed(m) {
+      var c = m.changed || [], out = [];
+      if (c.indexOf("drift") >= 0) out.push("drift " + rates(m.drift[0], m.drift[1]));
+      if (c.indexOf("inclination") >= 0) out.push("inclination " + m.inc[0].toFixed(m.inc[0] < 1 ? 3 : 2) + "° → " + m.inc[1].toFixed(m.inc[1] < 1 ? 3 : 2) + "°");
+      if (c.indexOf("longitude") >= 0) out.push(Math.abs(m.dlon).toFixed(2) + "° " + (m.dlon > 0 ? "east" : "west") + " of where its earlier orbit put it");
+      var t = out.join("; ");
+      return t ? t.charAt(0).toUpperCase() + t.slice(1) + "." : m.what || "";
+    }
+    function manRows(list, withKind) {
+      return list.slice().sort(function (x, y) { return x.between[1] < y.between[1] ? 1 : x.between[1] > y.between[1] ? -1 : x.name < y.name ? -1 : 1; }).map(function (m) {
+        return "<tr>" + between(m) + "<td>" + esc(m.name) + "</td><td>" + esc(m.owner) + '</td><td class="num">' + lon(m.lon) + "</td><td>" +
+          (withKind ? "<strong>" + esc(KIND[m.kind] || m.kind) + ".</strong> " : "") + esc(changed(m)) + "</td></tr>";
+      });
+    }
+    var mans = g.manoeuvres || [], rare = mans.filter(function (m) { return m.kind && m.kind !== "station-keeping"; }),
+        keep = mans.filter(function (m) { return !m.kind || m.kind === "station-keeping"; }), head = ["Between", "Object", "Owner", "Longitude", "What changed"];
+    $("geo-man").innerHTML = g.snapshots < 2 ? '<p class="small">None yet: changes need two snapshots, and snapshots began on 26 Oct 2026.</p>' :
+      '<h3 id="relocations">Relocations and other changes</h3>' +
+      (rare.length ? table(head, manRows(rare, true), "geo-man") : "<p>None this week." + (keep.length ? " Every flagged change was routine station-keeping." : "") + "</p>") +
+      (keep.length ? '<details class="table-view"><summary>Routine station-keeping (' + keep.length + " this week)</summary>" + table(head, manRows(keep, false), "geo-man") + "</details>" : "");
     $("geo-drift").innerHTML = table(["Object", "Owner", "Longitude", "Drift"], g.drifting.map(function (d) {
       return "<tr><td>" + esc(d.name) + role(d.role) + "</td><td>" + esc(d.owner) + '</td><td class="num">' + lon(d.lon) + '</td><td class="num">' + (d.drift > 0 ? "+" : "") + d.drift.toFixed(3) + "°/day " + (d.drift > 0 ? "east" : "west") + "</td></tr>";
     }));
