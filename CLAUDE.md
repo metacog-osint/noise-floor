@@ -38,7 +38,10 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   use `--min-contrast 10 --ghosts drop --landmask` for better precision).
 - **GEO globe (planned 27 Oct 2026, Tom approved every idea):** read `docs/geo-globe-plan.md` first (Space-Track data
   and credentials, the region and membership events, the 3D viewer, callouts C1–C8 to validate on history, footprints
-  and their licence checks, build steps G1–G5).
+  and their licence checks, build steps G1–G5). **G1 done 27 Oct:** `tools/geo_region.py` (Space-Track gp daily in
+  `daily.yml`; gp_history held once in `data/geo/region/history/`, never re-fetched; `replay` rebuilds the day files
+  offline) writes `<day>.geo-region.json` and `geo-elements-YYYY-MM.parquet` to the pnt-data releases; the /geo page's
+  "Arrivals and departures" reads them through `geo.py build`.
 - **Lanes added 23–24 Oct 2026 (prototypes; each has a write-up in `docs/validation/` or `docs/assessment/`):**
   `tools/cygnss_rfi.py` (CYGNSS noise floor, needs `EARTHDATA_TOKEN`; held-out checks in `tools/cygnss_checks.py`), `tools/s1_rfi.py` (Sentinel-1 RFI annotations),
   `tools/events.py` (observations → graded events, private register in `data/events/`; from v1.1, 27 Oct 2026, EASA's FIR

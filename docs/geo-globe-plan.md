@@ -119,6 +119,20 @@ Three kinds, always labelled by kind:
 
   Where the licence doesn't allow redrawing, the detail panel links to the operator's page instead.
 
+## G1 done (27 Oct 2026)
+
+`tools/geo_region.py` (tests: `tests/test_geo_region.py`). Daily: one gp query per daily run (`daily.yml`, step "GEO region
+(Space-Track)"; skipped if the release's file for the day was fetched less than an hour before) writes
+`<day>.geo-region.json` and adds the new element sets to `geo-elements-YYYY-MM.parquet`. Backfill run once on 27 Oct:
+gp_history from 1 Jul 2026 for the 1,836 objects then near GEO, in 19 requests of 100 objects at under 5 a minute;
+535,638 element sets (about 2.5 per object per day, 5–7 MB of parquet a month); the downloaded chunks and a manifest
+of whose history is held stay in `data/geo/region/history/` on this PC (never fetched again). Region files replayed for
+29 Jul – 27 Oct. Two changes after the first replay: 25 km / 0.25° hysteresis at the zone's edges (zone flips fell
+from 68 to 30 in 90 days; the rest are real orbit changes), and "quiet" only for payloads on CelesTrak's active list
+(97 events fell to 17: SJ-20, TJS-15, TJS-16, TJS-19, Shiyan 12 01 and 02, USA 270, Luch (Olymp) 2, MEV-1 and
+others). Not yet done: rocket bodies and debris aren't drawn anywhere but the counts; G2 will need the element history
+thinned (for example one set per object per 6 hours) before it goes to the browser.
+
 ## 6. Build order
 
 | Step | What | Needs |

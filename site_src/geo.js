@@ -71,6 +71,52 @@
       '<h3 id="relocations">Relocations and other changes</h3>' +
       (rare.length ? table(head, manRows(rare, true), "geo-man") : "<p>None this week." + (keep.length ? " Every flagged change was routine station-keeping." : "") + "</p>") +
       (keep.length ? '<details class="table-view"><summary>Routine station-keeping (' + keep.length + " this week)</summary>" + table(head, manRows(keep, false), "geo-man") + "</details>" : "");
+    // arrivals and departures: the Space-Track region (tools/geo_region.py)
+    var rg = g.region;
+    if (!rg) {
+      $("geo-region-counts").textContent = "Not available in the last build.";
+    } else {
+      var TYPES = [["PAYLOAD", "payloads", "Payload"], ["ROCKET BODY", "rocket bodies", "Rocket body"], ["DEBRIS", "debris", "Debris"],
+                   ["UNKNOWN", "unknown", "Unknown"], ["TBA", "not yet identified", "Not yet identified"]];
+      var tname = {}; TYPES.forEach(function (t) { tname[t[0]] = t[2]; });
+      var tally = function (c) {
+        var parts = TYPES.filter(function (t) { return c && c[t[0]]; }).map(function (t) { return c[t[0]].toLocaleString("en-US") + " " + t[1]; });
+        return parts.join(", ") || "none";
+      };
+      var sum = function (c) { return Object.keys(c || {}).reduce(function (a, t) { return a + c[t]; }, 0); };
+      var total = Object.keys(rg.counts).reduce(function (a, r) { return a + sum(rg.counts[r]); }, 0);
+      var others = ["crossing", "inclined", "below"].reduce(function (a, r) { return a + sum(rg.counts[r]); }, 0);
+      $("geo-region-counts").innerHTML = "<strong>" + total.toLocaleString("en-US") + "</strong> objects near GEO on " + esc(day(rg.day)) +
+        ". Protected zone: " + esc(tally(rg.counts.zone)) + ". Graveyard: " + esc(tally(rg.counts.graveyard)) + ". " +
+        others.toLocaleString("en-US") + " more on orbits that cross the zone, are inclined or sit below it.";
+      var WHERE = { zone: "the protected zone", graveyard: "the graveyard", crossing: "an orbit crossing the zone",
+                    inclined: "an inclined geosynchronous orbit", below: "an orbit below the zone" };
+      var what = function (e) {
+        switch (e.kind) {
+          case "new": return "Newly catalogued near GEO, in " + WHERE[e.region] + ".";
+          case "returned": return "Back in the public catalogue near GEO, in " + WHERE[e.region] + ".";
+          case "arrived": return "Entered the protected zone" + (e.from ? " from " + WHERE[e.from] : "") + ".";
+          case "left up": return "Raised to the graveyard.";
+          case "left down": return "Lowered below the zone.";
+          case "left": return "Left the zone for " + WHERE[e.region] + ".";
+          case "quiet": return "No new public elements for over 7 days (latest " + ep(e.epoch) + ").";
+          case "gone": return "Dropped out of the near-GEO list.";
+        }
+        return e.kind;
+      };
+      var evRows = function (list) {
+        return list.map(function (e) {
+          return "<tr><td>" + esc(day(e.day)) + "</td><td>" + esc(e.name || e.norad) + "</td><td>" + esc(e.owner || "") + "</td><td>" +
+            esc(tname[e.type] || e.type || "") + "</td><td>" + esc(what(e)) + "</td></tr>";
+        });
+      };
+      var HOUSE = { returned: 1, gone: 1 };                  // catalogue housekeeping: folded below the movements
+      var moves = rg.events.filter(function (e) { return !HOUSE[e.kind]; }), house = rg.events.filter(function (e) { return HOUSE[e.kind]; });
+      var head = ["Day", "Object", "Owner", "Type", "What happened"], since = day(rg.first_day);
+      $("geo-region").innerHTML = (moves.length ? table(head, evRows(moves), "geo-man") : "<p>No objects entered or left the zone, and none went quiet, since " + esc(since) + ".</p>") +
+        (house.length ? '<details class="table-view"><summary>Catalogue changes (' + house.length + " since " + esc(since) + ")</summary>" + table(head, evRows(house), "geo-man") + "</details>" : "") +
+        '<p class="small">Events since ' + esc(since) + ". Elements fetched " + esc(rg.fetched_utc ? ep(rg.fetched_utc.replace("Z", "")) : day(rg.day)) + ".</p>";
+    }
     $("geo-drift").innerHTML = table(["Object", "Owner", "Longitude", "Drift"], g.drifting.map(function (d) {
       return "<tr><td>" + esc(d.name) + role(d.role) + "</td><td>" + esc(d.owner) + '</td><td class="num">' + lon(d.lon) + '</td><td class="num">' + (d.drift > 0 ? "+" : "") + d.drift.toFixed(3) + "°/day " + (d.drift > 0 ? "east" : "west") + "</td></tr>";
     }));
