@@ -97,7 +97,7 @@
     L.r.windows.forEach(function (w) {
       rows.push([isoDay(w.peak), w.start.toISOString(), w.peak.toISOString(), w.end.toISOString(), w.minutes.toFixed(1), w.sep.toFixed(3), L.lat, L.lon, L.sat, L.th.toFixed(3)]);
     });
-    var text = "# Noise Floor sun-outage calculator (https://noisefloor.theintelligence.company/sun), computed " + new Date().toISOString() +
+    var text = "# Noisefloor sun-outage calculator (https://noisefloor.theintelligence.company/sun), computed " + new Date().toISOString() +
                ". Geometry only: ideal geostationary satellite at its nominal longitude.\n" + rows.map(function (r) { return r.join(","); }).join("\n") + "\n";
     var a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([text], { type: "text/csv" }));

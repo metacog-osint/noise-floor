@@ -22,7 +22,7 @@
 
 ## 1. Why ground stations
 
-Nearly every Noise Floor detection comes from one sensor family, ADS-B aircraft reports. An event can only be graded "Multiple sources" when an independent sensor agrees in time and place. Permanent GNSS reference stations are independent of aircraft. They are fixed, surveyed antennas with geodetic receivers that log every satellite's carrier-to-noise density (C/N0) every 30 s, and they publish it openly.
+Nearly every Noisefloor detection comes from one sensor family, ADS-B aircraft reports. An event can only be graded "Multiple sources" when an independent sensor agrees in time and place. Permanent GNSS reference stations are independent of aircraft. They are fixed, surveyed antennas with geodetic receivers that log every satellite's carrier-to-noise density (C/N0) every 30 s, and they publish it openly.
 
 A jammer adds noise across the band it covers, so every satellite on that band loses about the same number of dB of C/N0 at the same moment. Multipath, obstructions, a satellite setting behind a building or ionospheric scintillation hit a few satellites at a time. The station-level signature is therefore a simultaneous drop on most satellites, measured against that station's normal behaviour.
 
@@ -50,7 +50,7 @@ A jammer adds noise across the band it covers, so every satellite on that band l
 | Aircraft | adsb.lol raw traces (ODbL 1.0), as extracted by `tools/trace_box.py`. |
 | Volume | 321 station-days (283 for the pre-stated test, the rest for the checks in section 5.3) plus daily broadcast navigation: 402 files, 1.4 GB (`data/stations/raw/`, gitignored). Parsed caches 0.5 GB. |
 
-**Credit line for any figure:** "Station data: EUREF Permanent Network and IGS, via the BKG GNSS Data Center (CC BY 4.0). C/N0 residuals computed by Noise Floor. Aircraft: adsb.lol (ODbL 1.0)."
+**Credit line for any figure:** "Station data: EUREF Permanent Network and IGS, via the BKG GNSS Data Center (CC BY 4.0). C/N0 residuals computed by Noisefloor. Aircraft: adsb.lol (ODbL 1.0)."
 
 ## 3. Method
 

@@ -827,7 +827,7 @@ def plot(res, per, path):
                  f"GPS L1 C/A flagged: {s.get('flagged_minutes', 'n/a')} min; baseline {len(res['baseline_days'])} quiet days",
                  fontsize=10)
     fig.text(0.01, 0.005, "Station data: EPN/IGS via BKG GNSS Data Center (CC BY 4.0). Aircraft: adsb.lol (ODbL 1.0). "
-             "Noise Floor, tools/station_cn0.py", fontsize=6, color="#666")
+             "Noisefloor, tools/station_cn0.py", fontsize=6, color="#666")
     fig.tight_layout(rect=(0, 0.02, 1, 0.97))
     fig.savefig(path, dpi=110)
     plt.close(fig)

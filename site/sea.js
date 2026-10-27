@@ -1,4 +1,4 @@
-/* Noise Floor Sea map: vessels of interest in Finland's open AIS (Digitraffic, CC BY 4.0) joined with official
+/* Noisefloor Sea map: vessels of interest in Finland's open AIS (Digitraffic, CC BY 4.0) joined with official
    sanctions lists (OFAC SDN, UK Sanctions List), sea zones (Marine Regions, CC BY 4.0) and ports (NGA World Port
    Index), plus anonymous GNSS-interference counts at sea.
    Data: /data/vessels/baltic.json, /data/vessels/gnss_at_sea.json, /data/vessels/land.json (tools/vessels_build.py).
@@ -487,7 +487,7 @@
   }
   function download(kind) {
     var rows = shown.map(flatRow), stamp = dataEnd ? new Date(dataEnd).toISOString().slice(0, 10) : "data", text, type;
-    var note = "Noise Floor Sea page (https://noisefloor.theintelligence.company/sea" + location.hash + "), downloaded " +
+    var note = "Noisefloor Sea page (https://noisefloor.theintelligence.company/sea" + location.hash + "), downloaded " +
                new Date().toISOString().slice(0, 16) + "Z. " + sources.join(" | ");
     if (kind === "csv") {
       var keys = rows.length ? Object.keys(rows[0]) : Object.keys(flatRow(vessels[0]));

@@ -53,13 +53,13 @@ PAGE = """<!doctype html>
 <meta property="og:description" content="{description}">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css">
-<link rel="alternate" type="application/atom+xml" title="Noise Floor: daily GNSS summary" href="/feed.xml">
+<link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 {head}
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site"><div class="in">
-<a class="brand" href="/">Noise Floor</a>
+<a class="brand" href="/">Noisefloor</a>
 <nav aria-label="Main">{nav}</nav>
 </div></header>
 <main id="main"{main_class}>
@@ -197,7 +197,7 @@ def sources_page(rows):
             f'<td class="num">{e(r["phase"] or "–")}</td></tr>')
     return f"""<p class="kicker">Sources</p>
 <h1>Licence registry</h1>
-<p class="lede">Every source Noise Floor uses, considered or rejected, with its licence and how it may be used. A source can't feed a public layer until its licence is recorded. "Unverified" means the terms haven't been confirmed yet.</p>
+<p class="lede">Every source Noisefloor uses, considered or rejected, with its licence and how it may be used. A source can't feed a public layer until its licence is recorded. "Unverified" means the terms haven't been confirmed yet.</p>
 <div class="counts"><div class="count"><b>{len(rows)}</b><span>sources assessed</span></div>{counts}</div>
 <div class="filters" role="search">
 <label class="small" for="q">Search</label><input id="q" type="search" placeholder="Name, licence, what it gives…">
@@ -312,10 +312,10 @@ def main():
             render(meta, body, updated, narrow=name in ("methods.html", "terms.html", "404.html")))
         written.append(name)
     open(os.path.join(OUT, "lanes.html"), "w", encoding="utf-8", newline="\n").write(render(
-        {"title": "Lanes · Noise Floor", "description": "Every Noise Floor lane, built and planned: what it measures, how, which sources, and its limits.",
+        {"title": "Lanes · Noisefloor", "description": "Every Noisefloor lane, built and planned: what it measures, how, which sources, and its limits.",
          "nav": "lanes"}, lanes_page(data), updated))
     open(os.path.join(OUT, "sources.html"), "w", encoding="utf-8", newline="\n").write(render(
-        {"title": "Sources · Noise Floor", "description": "Noise Floor's licence registry: every source, its licence and how it may be used.",
+        {"title": "Sources · Noisefloor", "description": "Noisefloor's licence registry: every source, its licence and how it may be used.",
          "nav": "sources"}, sources_page(rows), updated))
     written += ["lanes.html", "sources.html"]
     for f in ASSETS:

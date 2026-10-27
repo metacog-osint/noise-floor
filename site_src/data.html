@@ -1,4 +1,4 @@
-<!--{"title": "Data · Noise Floor", "description": "Download and reuse Noise Floor's data: daily GNSS degradation files per hex, hour and minute since October 2025, the daily feed, announced GPS tests and the Sea page's vessel data, with licences and column definitions.", "nav": "data", "head": "<script defer src=\"/data.js\"></script>"}-->
+<!--{"title": "Data · Noisefloor", "description": "Download and reuse Noisefloor's data: daily GNSS degradation files per hex, hour and minute since October 2025, the daily feed, announced GPS tests and the Sea page's vessel data, with licences and column definitions.", "nav": "data", "head": "<script defer src=\"/data.js\"></script>"}-->
 <p class="kicker">Data</p>
 <h1>Download and reuse</h1>
 <p class="lede">Everything behind the map, the charts and the Sea page can be downloaded and reused under its licence. Nothing here needs an account.</p>
@@ -7,10 +7,10 @@
 <div class="tw"><table>
   <thead><tr><th>Data</th><th>Where</th><th>Licence</th><th>Credit</th></tr></thead>
   <tbody>
-    <tr><td>GNSS degradation, every day since 1 Oct 2025 (per hex, hour and minute; anomalies, bursts, SBAS flags)</td><td><a href="#gnss">Monthly releases</a> on GitHub</td><td>ODbL 1.0</td><td rowspan="3">"Contains data derived from <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0), processed by Noise Floor (noisefloor.theintelligence.company)." Share derived databases under ODbL too.</td></tr>
+    <tr><td>GNSS degradation, every day since 1 Oct 2025 (per hex, hour and minute; anomalies, bursts, SBAS flags)</td><td><a href="#gnss">Monthly releases</a> on GitHub</td><td>ODbL 1.0</td><td rowspan="3">"Contains data derived from <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0), processed by Noisefloor (noisefloor.theintelligence.company)." Share derived databases under ODbL too.</td></tr>
     <tr><td>The site's own map, event, trend and chart files</td><td><a href="#site-files">Site files</a> below</td><td>ODbL 1.0</td></tr>
     <tr><td>Daily summary feed</td><td><a href="/feed.xml">/feed.xml</a> (Atom)</td><td>ODbL 1.0</td></tr>
-    <tr><td>Announced US GPS interference tests</td><td><a href="https://github.com/metacog-osint/noise-floor/releases/tag/declared-data">declared-data release</a>, <code>faa_gps_tests.json</code></td><td>Parsed from FAA flight advisories, a US government work (public domain in the US)</td><td>"FAA SPANS flight advisories, parsed by Noise Floor."</td></tr>
+    <tr><td>Announced US GPS interference tests</td><td><a href="https://github.com/metacog-osint/noise-floor/releases/tag/declared-data">declared-data release</a>, <code>faa_gps_tests.json</code></td><td>Parsed from FAA flight advisories, a US government work (public domain in the US)</td><td>"FAA SPANS flight advisories, parsed by Noisefloor."</td></tr>
     <tr><td>Sea page vessels (sanctioned, military, law-enforcement and state-flag ships in Finland's open AIS)</td><td><a href="/data/vessels/baltic.json">baltic.json</a>, <a href="/data/vessels/gnss_at_sea.json">gnss_at_sea.json</a>, or the CSV and GeoJSON buttons on the <a href="/sea">Sea page</a></td><td>Mixed: Digitraffic AIS CC BY 4.0; OFAC SDN List (US government work); UK Sanctions List (OGL v3.0); Marine Regions zones CC BY 4.0; NGA World Port Index</td><td>Each file carries its sources' attribution lines; keep them.</td></tr>
   </tbody>
 </table></div>
@@ -108,7 +108,7 @@ print(len(features), "hexes written to", f"{day}.geojson")</code></pre>
   <li><strong>ArcGIS Online</strong>: in Map Viewer, add a layer from a file. A whole day is about 24,000 hexes and 8 MB; to keep the file small, keep only hexes in your region, or only those with <code>bad_nacp_live</code> above 0.</li>
   <li>The Sea page's ship downloads are already GeoJSON and CSV (with <code>lat</code> and <code>lon</code> columns), so they open directly.</li>
 </ul>
-<p class="small">The ODbL applies to whatever you build from these files: credit adsb.lol contributors and Noise Floor, and share derived databases under the same licence.</p>
+<p class="small">The ODbL applies to whatever you build from these files: credit adsb.lol contributors and Noisefloor, and share derived databases under the same licence.</p>
 
 <h2 id="site-files">Site files</h2>
 <p>The pages read small JSON files that you can use directly. They're refreshed after each daily run.</p>
@@ -125,5 +125,5 @@ print(len(features), "hexes written to", f"{day}.geojson")</code></pre>
 </table></div>
 
 <h2 id="cite">How to cite</h2>
-<p>Noise Floor (2026). <em>GNSS degradation from ADS-B, daily, method v1.4.</em> The Intelligence Company. https://noisefloor.theintelligence.company. Data derived from adsb.lol, ODbL 1.0.</p>
+<p>Noisefloor (2026). <em>GNSS degradation from ADS-B, daily, method v1.4.</em> The Intelligence Company. https://noisefloor.theintelligence.company. Data derived from adsb.lol, ODbL 1.0.</p>
 <p class="small">Code: <a href="https://github.com/metacog-osint/noise-floor">github.com/metacog-osint/noise-floor</a>.</p>

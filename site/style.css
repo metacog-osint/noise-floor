@@ -1,4 +1,4 @@
-/* Noise Floor site. Built by tools/build_site.py from site_src/ into site/. */
+/* Noisefloor site. Built by tools/build_site.py from site_src/ into site/. */
 :root {
   --bg: #f7f6f2; --fg: #1d1f22; --mut: #5f6670; --line: #e2e0d8; --card: #ffffff; --acc: #b4462b; --acc-ink: #ffffff;
   --code: #efede6;

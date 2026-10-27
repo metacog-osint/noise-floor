@@ -137,7 +137,7 @@ the free plan); Apple Developer Program Licence Agreement, Attachment 6 §1.2 ("
 
 ## Export controls apply to any US provider's layer
 
-Esri states it outright, and MapTiler and Capella have similar clauses. Noise Floor has readers in the regions it
+Esri states it outright, and MapTiler and Capella have similar clauses. Noisefloor has readers in the regions it
 covers. Any imagery layer from a US provider should load only after a country check: on Cloudflare, a small Pages
 Function can read the visitor's country and tell the page whether to offer the layer (within the free tier). Whether
 that is sufficient for compliance (VPNs) is a legal question, not answered here. Link-outs avoid the issue: the visitor

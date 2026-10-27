@@ -200,7 +200,7 @@ def make_alerts(targets, flux, events, reports, now=None):
     return {"generated": now.isoformat().replace("+00:00", "Z"), "window_days": DAYS, "threshold_deg": round(TH, 3),
             "pairs": len(pairs), "predicted_windows": len(wins),
             "rules": "docs/design/sun-outage.md (provisional thresholds: flux >= 1.25x its 30-day median; L-band burst >= 1000 sfu)",
-            "source": "Predictions: Noise Floor (tools/sun_transit.py geometry). Observations: NOAA SWPC (US public domain).",
+            "source": "Predictions: Noisefloor (tools/sun_transit.py geometry). Observations: NOAA SWPC (US public domain).",
             "alerts": alerts}
 
 

@@ -1,4 +1,4 @@
-/* Noise Floor charts: small SVG renderer for /data/charts.json and /data/trend.json (ODbL, derived from adsb.lol).
+/* Noisefloor charts: small SVG renderer for /data/charts.json and /data/trend.json (ODbL, derived from adsb.lol).
    Lines get a crosshair tooltip; bars get per-mark tooltips. Values also appear in each chart's table view. */
 (function () {
   "use strict";

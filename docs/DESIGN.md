@@ -139,7 +139,7 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
 
 ### Decisions still open (supersedes items 2 and 3 above)
 
-1. ~~Product name~~ **Decided 14 Oct: Noise Floor.** Site live at https://noisefloor.theintelligence.company (Cloudflare Pages project `noise-floor`, output dir `site/`, CNAME at Squarespace; 14 Oct). Code licence: MIT (14 Oct).
+1. ~~Product name~~ **Decided 14 Oct: Noisefloor.** Site live at https://noisefloor.theintelligence.company (Cloudflare Pages project `noise-floor`, output dir `site/`, CNAME at Squarespace; 14 Oct). Code licence: MIT (14 Oct).
 2. ~~Repo visibility~~ **Decided 14 Oct: public; created and pushed 14 Oct** (github.com/metacog-osint/noise-floor). It gets free unlimited Actions minutes, and the repo and site are the showcase. Private config stays in D1, secrets and `private/`.
 3. ~~Enable R2~~ **Superseded 22 Oct 2026:** outputs are stored as GitHub Release assets (`pnt-data-YYYY-MM`, `declared-data`), free and public; R2 stays an option if the history outgrows releases.
 4. Permission requests (unchanged): RIPE NCC, Georgia Tech (IODA), adsb.lol, later 18 SDS.

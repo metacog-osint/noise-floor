@@ -113,7 +113,7 @@ def index_html(state, cfg, now, maps, files):
     dl = "".join(f'<li><a href="{e(f)}" download>{e(f)}</a></li>' for f in files)
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><title>Noise Floor private view</title>
+<meta name="robots" content="noindex,nofollow"><title>Noisefloor private view</title>
 <style>
 :root{{--bg:#f6f5f1;--fg:#1c1f23;--mut:#5d646d;--line:#dedbd2;--acc:#b4462b;--card:#fff;--warn:#a33}}
 @media (prefers-color-scheme:dark){{:root{{--bg:#111418;--fg:#e7e5e0;--mut:#9aa1a9;--line:#2a2f36;--acc:#e0805f;--card:#171b20;--warn:#f08080}}}}
@@ -126,7 +126,7 @@ main{{max-width:72rem;margin:0 auto;padding:2rem 1rem 3rem}}h1{{font-size:1.6rem
 th,td{{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}}th{{color:var(--mut);font-weight:600;white-space:nowrap}}
 .note{{color:var(--mut);font-size:.85rem;margin-top:2rem}}
 </style></head><body><main>
-<h1>Noise Floor · private view</h1>
+<h1>Noisefloor · private view</h1>
 <p class="sub">NISAR L-band emitter watch. Updated {e(_ct(now.strftime("%Y-%m-%dT%H:%M:%SZ")))}. Private: behind Cloudflare Access.</p>
 <div class="grid">
 <div class="card"><div class="k">Last run</div><div class="v">{e(_ct(state.get("last_run")))}</div></div>

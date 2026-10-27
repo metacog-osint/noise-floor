@@ -1,4 +1,4 @@
-/* Noise Floor home: "on the map today" from the latest daily day (days.json, its events file, places.json).
+/* Noisefloor home: "on the map today" from the latest daily day (days.json, its events file, places.json).
    Each listed event links to the map at that day and place. */
 (function () {
   "use strict";

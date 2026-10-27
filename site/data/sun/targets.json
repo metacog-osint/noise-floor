@@ -1,5 +1,5 @@
 {
-  "about": "Public sun-outage watch list for the Noise Floor dashboard and calculator: nominal geostationary orbital slots (longitude, degrees east) with the main satellites there, and large cities as receivers. Slots are nominal: satellites are kept within about 0.1 degree of them and fleets change, so check an operator's own figures before relying on one. No watch configuration: a broad list chosen for coverage.",
+  "about": "Public sun-outage watch list for the Noisefloor dashboard and calculator: nominal geostationary orbital slots (longitude, degrees east) with the main satellites there, and large cities as receivers. Slots are nominal: satellites are kept within about 0.1 degree of them and fleets change, so check an operator's own figures before relying on one. No watch configuration: a broad list chosen for coverage.",
   "updated": "2026-10-26",
   "slots": [
     {"lon": -137.0, "name": "GOES-West", "kind": "weather"},

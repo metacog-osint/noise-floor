@@ -1,4 +1,4 @@
-# Noise Floor
+# Noisefloor
 
 **Site:** https://noisefloor.theintelligence.company
 
