@@ -252,7 +252,7 @@
       "data": [
         "NISAR L1 RSLC and L2 GCOV via ASF DAAC (NASA data, CC0 unless marked)"
       ],
-      "notes": "The broadband detector passed its first positive control: an area with documented L1/L2/L5 jamming was detected on 12 of 13 passes that covered it. The published Shiraz jammer was not confirmed by either detector, and the earlier image-based method failed that test. Outputs stay private until validated. Credit to @auonsson, whose post prompted the idea.",
+      "notes": "The broadband detector passed its first positive control: an area with documented L1/L2/L5 jamming was detected on 12 of 13 passes that covered it. The published Shiraz jammer was not confirmed by either detector, and the earlier image-based method failed that test. A pre-registered check against announced US GPS tests failed too (27 Oct 2026): passes inside test windows had hits no more often than passes outside them (21% against 18%), and none of the hits was at GPS L2, so they fit other L-band emitters near the ranges. Outputs stay private until validated. Credit to @auonsson, whose post prompted the idea.",
       "links": [
         [
           "Lane README",
