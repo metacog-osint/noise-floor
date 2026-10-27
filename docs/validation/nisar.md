@@ -23,7 +23,11 @@ Detections outside the published case stay in the private outputs until the meth
   - Either the jammer was off or had moved after January, or the method misses it. These data can't separate the two.
   - So the table method is **plausible but not validated against ground truth**. Its outputs stay private.
 - **Broadband detector (section 5) passes its first positive control.** In an area with documented L1/L2/L5 jamming, where the tone method saw nothing at the L2 centre, it detects on 12 of 13 covering passes. It stays near zero in forested regions without reported jamming.
-- **Next:** a surveyed emitter or an announced GPS interference test (NOTAM with place, time and band) to measure position accuracy.
+- **Announced US GPS tests (section 6, pre-registered): not seen.** 5 hits in 24 in-window frames (20.8%) against 93
+  in 507 control frames (18.3%), so N1 fails. None of the five hits is at GPS L2; they fit other L-band emitters near
+  the ranges. Position accuracy is still unmeasured.
+- **Next:** an emitter known to transmit in band A at the time of a pass (a surveyed L-band source, or a published L2
+  jamming event with time and place).
 
 ## 1. Image method on BETA products: failed
 
@@ -179,6 +183,43 @@ of the announced centre.
 **Verdict rule.** N1 passing means NISAR shows announced US tests. N2 is the lane's first measure of position accuracy.
 The announced centre is the advisory's reference point; a test range may have several transmitter sites, so a few km
 of error may belong to the reference, not the method. Results go below, without changing anything above.
+
+### Results (scored 27 Oct 2026)
+
+All 16 site runs finished on 27 Oct 2026 (05:33 UTC; 1,282 GCOV granules searched across the sites, no errors). Scored
+with `python validation/faa_tests.py score`.
+
+**A counting error in the pre-registration, mine.** "62 of them PROVISIONAL products" counted each acquisition twice:
+every acquisition has an L1 RSLC and an L2 GCOV granule, and the CMR search listed both. The pipeline reads the GCOV
+granule (the RSLC's RFI tables are reached through it), so the real in-window set is 31 GCOV granules. All 31 were
+processed; 7 of their frames don't contain the announced centre (the CMR search matched the frame's bounding box), so
+**24 in-window frames, from 21 passes, at 15 of the 16 sites** count under the definition above. No data were missing.
+
+| # | Check | Result | Pass if | Verdict |
+|---|---|---|---|---|
+| N1 | Announced tests are seen | 5 in-window hits in 24 frames (20.8%), against 93 in 507 control frames (18.3%): 1.1× | ≥ 3 hits and ≥ 2× the control rate | **Fail** |
+| N2 | Position accuracy (descriptive) | the five in-window hits lie 19.6, 20.0, 23.8, 33.4 and 46.0 km from the announced centres; median 23.8 km | reported | (descriptive) |
+
+**Verdict: NISAR doesn't show the announced US tests** with this method and these gates. The in-window hit rate is no
+higher than on days without a test.
+
+**What the hits are (reported, not scored).** None of the five in-window hits is at GPS L2 (1227.6 MHz), the only GPS
+signal inside NISAR's band A. They are tones at 1253.2 MHz (China Lake), 1293.5 MHz (Dugway), 1238.9 MHz
+(Muscatatuck), a flag across the whole 1291–1296 MHz slice (Muscatatuck) and one with no frequency recorded (Fort Dix).
+The sites with in-window hits are also the sites with frequent control hits (Dugway 17 of 20 control frames, Fort Dix
+21 of 34, Muscatatuck 14 of 49, China Lake 5 of 28); the six sites with no control hits had no in-window hits either.
+Test ranges host other L-band emitters (long-range air-surveillance radars use 1215–1400 MHz), so these hits most likely
+come from those, not from the announced jammers. N2's distances therefore measure nothing about the method's accuracy:
+they are distances to other emitters near the reference point.
+
+**Why the tests may be invisible to NISAR (stated in advance, now the leading explanations).** The advisories don't say
+which bands are jammed, and a test confined to L1 (1575.42 MHz) is outside band A. Transmissions inside a window are
+intermittent. Test jammers are low power compared with radars, and NISAR passes 747 km up, looking sideways. The
+section 5 broadband gates were set on a strong, documented L1/L2/L5 jamming area; weaker emitters fall below them.
+
+**What this leaves.** The lane still has no measure of position accuracy. The next test needs an emitter known to
+transmit in band A at the time of a pass: a surveyed L-band source, or a published L2 jamming event with time and place.
+Outputs stay private.
 
 ## Reproduce
 
