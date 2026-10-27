@@ -28,6 +28,31 @@ REPO = "https://github.com/metacog-osint/noise-floor-data.git"   # private: ESA'
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)           # pythonw must not flash a console for each git call
 
 
+LOCK = os.path.join(CLONE, ".git", "nf-sync.lock")
+
+
+def take_lock(max_age_s=900):
+    """One writer at a time in the shared clone (ism_local.py every 30 min, notice_capture.py daily). A lock older than
+    max_age_s is stale (a crashed run) and is taken over. Returns True when held."""
+    import time
+    try:
+        if os.path.exists(LOCK) and time.time() - os.path.getmtime(LOCK) > max_age_s:
+            os.remove(LOCK)
+        fd = os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        return True
+    except OSError:
+        return False
+
+
+def drop_lock():
+    try:
+        os.remove(LOCK)
+    except OSError:
+        pass
+
+
 def run(cmd, timeout=300, cwd=None):
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=cwd, creationflags=NO_WINDOW)
 
@@ -53,15 +78,15 @@ def commit(message):
 
 
 def sync():
-    """Level with the remote, keeping local commits not yet pushed. If a rebase conflicts (both sides captured the same
-    hour), drop the local side: the remote already has that hour."""
+    """Level with the remote, keeping local commits not yet pushed. A conflicting hunk (both machines wrote the same file)
+    takes the remote's side (-X ours: during a rebase "ours" is the upstream) while every other local change is kept.
+    Only if that still fails is the rebase abandoned, leaving the local commits in place for the next run."""
     git("fetch", "--quiet", "origin")
     if dirty():
         commit("ism: files left by an interrupted run (local)")
-    if git("rebase", "--quiet", "@{u}", check=False).returncode:
+    if git("rebase", "--quiet", "-X", "ours", "@{u}", check=False).returncode:
         git("rebase", "--abort", check=False)
-        git("reset", "--quiet", "--hard", "@{u}")
-        print("  rebase conflicted: reset to the remote (it already had the hour)")
+        print("  rebase failed even preferring the remote: local commits kept for the next run")
 
 
 def last_valid():
@@ -78,6 +103,9 @@ def main():
         os.makedirs(os.path.dirname(os.path.abspath(a.log)), exist_ok=True)
         sys.stdout = sys.stderr = open(a.log, "a", encoding="utf-8", buffering=1)
     print(f"=== {datetime.now(timezone.utc):%Y-%m-%dT%H:%M:%SZ}")
+    if os.path.isdir(os.path.join(CLONE, ".git")) and not take_lock():
+        print("  another task holds the clone; skipped (the next run catches up)")
+        return 0
     try:
         if not os.path.isdir(os.path.join(CLONE, ".git")):
             r = run(["git", "clone", "--quiet", "--depth", "1", REPO, CLONE], timeout=600)
@@ -105,6 +133,8 @@ def main():
     except Exception as e:          # logged; the next run tries again
         print(f"  ERROR: {e}")
         return 1
+    finally:
+        drop_lock()
 
 
 if __name__ == "__main__":

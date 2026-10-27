@@ -20,3 +20,9 @@ spikes/*.csv
 *.tar
 *.parquet
 .wrangler/
+
+# built at deploy (tools/board.py, tools/geo.py, tools/site_layers.py); never commit a local run's copy
+site/data/board.json
+site/data/geo.json
+site/data/spoof/
+site/data/cygnss/

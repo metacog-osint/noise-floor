@@ -38,10 +38,14 @@ def test_hotspots_and_summary():
     assert a["name"] == "A" and a["median30"] == 10.0 and a["change"] == 12.0 and len(a["series"]) == 30
     assert h["areas"][1]["median30"] == 5.0 and h["areas"][1]["change"] == -1.0
     line = B.summary_line({"changes": {"regions_today": 7, "day": "2026-10-25", "new_count": 2, "ended_count": 0},
-                           "hotspots": h, "loss": {"areas": [{"name": "X", "share": 61.0}]},
-                           "scintillation": {"level": "below moderate"}})
+                           "hotspots": h, "loss": {"areas": [{"name": "X", "share": 61.0}]}, "built_utc": "2026-10-26T18:30Z",
+                           "scintillation": {"level": "below moderate", "valid_utc": "2026-10-26 17:00Z"}})
     assert line.startswith("7 regions at jamming scale on 2026-10-25, 2 new this week;") and "biggest rise: A (+12 points)" in line
     assert "X: 61% of aircraft heard sent no position" in line and line.endswith("scintillation below moderate.")
+    stale = B.summary_line({"built_utc": "2026-10-26T21:30Z", "scintillation": {"level": "moderate", "valid_utc": "2026-10-26 17:00Z"},
+                            "loss": {"areas": [{"name": "Thin", "share": 90.0, "hexes": 10, "hexes_with_mlat": 2},
+                                               {"name": "Y", "share": 40.0, "hexes": 10, "hexes_with_mlat": 9}]}})
+    assert "scintillation" not in stale and "Thin" not in stale and "Y: 40%" in stale
 
 
 def test_easa_parse():

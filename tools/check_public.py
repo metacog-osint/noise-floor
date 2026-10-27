@@ -4,9 +4,10 @@
 Runs as the git pre-commit hook (checks the staged version of each added/changed file) or with --all (every tracked
 file, for CI). Terms are case-insensitive substrings, one per line, from the FORBIDDEN_TERMS environment variable
 (newline-separated; a CI secret) or private/forbidden_terms.txt (gitignored). With no term list it fails closed.
-A term made only of digits matches only where it isn't part of a longer number (no digit or decimal point directly
+A term of fewer than 7 digits matches only where it isn't part of a longer number (no digit or decimal point directly
 before or after it): the Sea map's tracks hold millions of digits, and a five-digit term turned up inside a coordinate
-on 26 Oct 2026. Every other term is a plain substring, as before.
+on 26 Oct 2026. Longer digit terms (a phone number, which may appear with a country code in front) and every other term
+stay plain substrings.
 
 Usage
   python tools/check_public.py          # staged files (pre-commit)
@@ -28,10 +29,11 @@ def terms():
 
 
 def found(term, low):
-    """Is the term in the (lower-cased) text? Digits-only terms must stand apart from other digits and decimal points."""
+    """Is the term in the (lower-cased) text? Short digit terms (under 7 digits) must stand apart from other digits and
+    decimal points; everything else is a plain substring."""
     if term not in low:
         return False
-    if not term.isdigit():
+    if not term.isdigit() or len(term) >= 7:
         return True
     return re.search(r"(?<![\d.])" + re.escape(term) + r"(?![\d]|\.\d)", low) is not None
 

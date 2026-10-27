@@ -529,7 +529,8 @@ def notice_observations(day, notices):
 # ---------------------------------------------------------------- scintillation nowcast (rule N3)
 class ISM:
     """ESA SWE ISM nowcast archive: hourly S4 and sigma-phi on a 2.5 deg grid (rows follow ism/grid.csv). Each file
-    holds integers: S4 and sigma-phi x 1000 (then their errors x 100, TEC and its error)."""
+    holds integers per cell, in the column order s4, s4_err, sigma_phi, sigma_phi_err, tec, tec_err: S4 and sigma-phi
+    x 1000, their errors x 100, TEC and its error in whole TECU."""
 
     def __init__(self, root):
         base = os.path.join(root, "ism")
@@ -1497,6 +1498,7 @@ PUBLIC_SOURCES = [
     "GFZ Potsdam Kp index (CC BY 4.0)",
     "ESA SWE ISM scintillation nowcast: data provided by the European Space Agency (ESA) as part of its Space Safety "
     "Programme (S2P), (c) ESA 2026",
+    "Official navigational notices (Swedish Maritime Administration, Estonian Transport Administration, Traficom), cited",
 ]
 
 

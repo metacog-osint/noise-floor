@@ -77,6 +77,18 @@ def main():
     if not os.path.isdir(os.path.join(CLONE, ".git")):
         print(f"no private archive clone at {CLONE}: run tools/events.py fetch first")
         return 1
+    sys.path.insert(0, os.path.join(ROOT, "collectors"))
+    import ism_local
+    if not ism_local.take_lock():
+        print("another task holds the private clone; skipped")
+        return 1
+    try:
+        return capture(a, now, day)
+    finally:
+        ism_local.drop_lock()
+
+
+def capture(a, now, day):
     git("pull", "--ff-only", "--quiet", check=False)
     wrote = []
     try:
@@ -118,7 +130,8 @@ def main():
                 if not git("push", "--quiet", check=False).returncode:
                     print("pushed")
                     break
-                git("pull", "--rebase", "--quiet", check=False)
+                if git("pull", "--rebase", "-X", "ours", "--quiet", check=False).returncode:
+                    git("rebase", "--abort", check=False)
             else:
                 print("push failed; the commit stays local and goes with the next push")
     else:

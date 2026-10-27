@@ -47,6 +47,24 @@ def test_manoeuvres():
     assert len(m) == 1 and "drift" in m[0]["what"] and "longitude" in m[0]["what"]
 
 
+def test_no_false_manoeuvre_inclined_eccentric():
+    """An inclined, slightly eccentric orbit left alone swings in longitude through the day (a figure-of-eight plus the
+    eccentric swing, about a degree here). Two snapshots of the same, unmanoeuvred elements must not flag anything."""
+    q = obj(7, 75.0, i=5.0)
+    q.update(e=0.01, argp=40.0, raan=80.0)
+    q["lon"] = G.state(q, T0)[1]
+    for hours in (6, 14.4, 30, 54):
+        t1 = T0 + timedelta(hours=hours)
+        o = dict(q, epoch=t1.strftime("%Y-%m-%dT%H:%M:%S.%f"), M=(q["M"] + q["n"] * 360 * hours / 24) % 360)
+        o["lon"] = G.state(o, t1)[1]
+        assert G.manoeuvres({"objects": [q]}, {"objects": [o]}) == [], hours
+    t1 = T0 + timedelta(hours=14.4)                                            # the same object, nudged 0.3 deg east
+    o = dict(q, epoch=t1.strftime("%Y-%m-%dT%H:%M:%S.%f"), M=(q["M"] + q["n"] * 360 * 0.6 + 0.3) % 360)
+    o["lon"] = G.state(o, t1)[1]
+    m = G.manoeuvres({"objects": [q]}, {"objects": [o]})
+    assert len(m) == 1 and "longitude" in m[0]["what"]
+
+
 def test_build_close_pairs():
     tmp = tempfile.mkdtemp()
     try:
