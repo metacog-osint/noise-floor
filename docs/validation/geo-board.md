@@ -42,8 +42,10 @@ against.
 ## What this means for the board
 
 - Positions and drift are trustworthy at the level the page claims (tens of km, a few hundredths of a degree a day).
-- The close-pair list needs a label for what each object is. Next step: a curated, cited list of inspection-capable and
-  servicing satellites (Olymp-K, GSSAP, Shijian and Shiyan experimental satellites, MEV), shown beside each pair, so slot-sharing
-  communications satellites stop looking like inspections.
+- The close-pair list needs a label for what each object is. **Done the same evening:** `site_src/geo_roles.json` lists ten
+  objects whose role published reporting supports, each cited: inspection-capable (Luch-5X/Olymp-K 2; GSSAP USA 270, 271,
+  324, 325; Shijian-17; Shijian-21) and servicing (MEV-1, MEV-2; Shijian-25, from the reported 2025 refuelling of
+  Shijian-21). Shijian-23 and Shiyan-12 01/02 are left unlabelled: no source found that supports a role. Each close pair now
+  says what the roles say ("servicing involved", "inspection-capable involved", or "no listed role (often slot-sharing)").
 - Validation comes once there is history: score manoeuvre detection against announced relocations, and close approaches
   against published rendezvous, with the cases fixed in advance.

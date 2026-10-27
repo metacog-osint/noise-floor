@@ -65,6 +65,15 @@ def test_build_close_pairs():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_roles_and_pair_kind():
+    assert G.pair_kind("inspection", None) == "inspection-capable involved"
+    assert G.pair_kind(None, "servicing") == "servicing involved"
+    assert G.pair_kind(None, None).startswith("no listed role")
+    roles = G.load_roles()
+    assert roles and all(r.get("sources") and r["role"] in ("inspection", "servicing") for r in roles.values())
+    assert roles[55841]["role"] == "inspection" and roles[46113]["role"] == "servicing"
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

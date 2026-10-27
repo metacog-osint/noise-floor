@@ -368,3 +368,6 @@ details.table-view .tw { max-height: 22rem; overflow: auto; }
 .geo-inc { stroke: var(--st-prototype); background: var(--st-prototype); }
 .geo-drift { stroke: var(--st-failed); background: var(--st-failed); }
 .geo-key { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; vertical-align: -1px; }
+.geo-role { font-size: .75rem; padding: 0 .35rem; border-radius: 4px; border: 1px solid var(--line); color: var(--mut); white-space: nowrap; }
+.geo-role-inspection { border-color: var(--st-failed); color: var(--st-failed); }
+.geo-role-servicing { border-color: var(--st-running); color: var(--st-running); }
