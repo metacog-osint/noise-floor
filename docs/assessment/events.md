@@ -1,8 +1,16 @@
-# Events and grading (v1.0)
+# Events and grading (v1.1)
 
-**Date:** 26 Oct 2026 (v1.0; v0.2: 24 Oct; v0.1: 23 Oct) · **Status:** rules frozen as v1.0 on 26 Oct 2026 (Tom approved the five open choices with the recommended defaults); the rules are stated choices, not yet validated against held-out cases · **Public output:** monthly counts by grade only (`site/data/events-monthly.json`, Validation page); the register is never published · **Code:** `tools/events.py` · **Tests:** `tests/test_events.py` · **Register:** `data/events/register.sqlite` (gitignored)
+**Date:** 27 Oct 2026 (v1.1; v1.0: 26 Oct; v0.2: 24 Oct; v0.1: 23 Oct) · **Status:** rules frozen as v1.0 on 26 Oct 2026 (Tom approved the five open choices with the recommended defaults); v1.1 (27 Oct, Tom approved) adds EASA's FIR tables as a D1 source and changes nothing else; the rules are stated choices, not yet validated against held-out cases · **Public output:** monthly counts by grade only (`site/data/events-monthly.json`, Validation page); the register is never published · **Code:** `tools/events.py` · **Tests:** `tests/test_events.py` · **Register:** `data/events/register.sqlite` (gitignored)
 
 ## Bottom line
+
+> **v1.1, 27 Oct 2026: EASA's FIR tables drive D1.** Same 388 days and 160,147 events as v1.0; only notice-related
+> grades change. **1,322 effect events are now `deliberate_suspected`** (v1.0: 0): EASA's 7-day table listed spoofing
+> in the event's FIR that week (FIRs approximated by country outlines). 969 of them have worse-than-93 m loss
+> (291 both measures), 62 are 10 m-only. They fall in the 13 weeks that have an EASA table, so
+> monthly counts follow table availability (none in Jan, Jul, Aug or Sep 2026). In 389 of them no covering
+> listing had EASA's reported mark, so the listing may rest on ADS-B data alone. "Partially corroborated" rises from
+> 1,538 to 4,716, because an attached EASA listing counts as a notice under rule S2. Details: "Results, v1.1" below.
 
 > **v1.0, 26 Oct 2026: rules frozen.** Rebuilt register: 388 days (1 Oct 2025 – 25 Oct 2026), 964,600 observations,
 > **160,147 events** (159,317 EFFECT, 756 WARNING, 74 NATURAL). 8,632 events reach "Multiple sources", 1,538
@@ -30,11 +38,61 @@ The run covers 385 days (1 Oct 2025 – 22 Oct 2026, UTC): 94,651 observations f
 
 **What this version can't do yet:**
 
-- `deliberate_suspected` is wired (rule D1, v1.0) but no notice reporting jamming or spoofing is on file. NGA's
-  broadcast-warning feed has been frozen since 10 May 2024, and the official Baltic notices say "interference", which
-  corroborates but doesn't set D1.
+- `deliberate_suspected` rests on EASA's FIR tables only (v1.1): a FIR and a week, for 13 weeks of the year. No curated
+  notice reporting jamming or spoofing is on file. NGA's broadcast-warning feed has been frozen since 10 May 2024, and the
+  official Baltic notices say "interference", which corroborates but doesn't set D1.
 - No localization method feeds the lane, so `localization_error_km` is null everywhere.
 - CYGNSS exists for six days only, and it agrees with ADS-B in time only to the day.
+
+## v1.1: EASA's FIR tables drive D1 (27 Oct 2026)
+
+Tom approved the change on 26 Oct 2026 ("EASA spoofing marks setting deliberate_suspected"). Every other rule is as frozen
+in v1.0.
+
+**The source.** EASA's page "GNSS outages and alterations" lists the FIRs "mainly affected" by GNSS jamming and spoofing in
+two tables, the last 7 days and the last 30 days, each dated, with a spoofing mark and a reported mark per FIR and the
+line "src: ads-b data and reports". EASA allows reproduction with the source acknowledged (copyright notice, read
+27 Oct 2026). It doesn't define the two marks further, so what each mark rests on is **unverified**. One pattern fits
+"reported" meaning reports from operators: Russian and Belarusian FIRs, closed to EU operators, carry the spoofing mark
+but never the reported mark.
+
+**History.** EASA shows only its current tables, and updates them irregularly (on 26 Oct 2026 the tables were still
+dated 14 Oct). Copies are kept daily from 26 Oct 2026 (`tools/notice_capture.py`). For the time before that,
+`tools/easa_history.py` read the Internet Archive's copies of the page: 16 copies with tables between Sep 2025 and Oct
+2026, giving 7-day tables dated 3, 17 and 24 Sep, 5 and 12 Nov, 10 Dec 2025, 11 and 27 Feb, 4 and 25 Mar, 1, 15 and
+22 Apr, 3 Jun, 7 and 14 Oct 2026. Thirteen of them fall inside the register (from 1 Oct 2025), covering 89 of its 388
+days (the windows to 27 Feb and 4 Mar overlap by two days). The other weeks have no EASA table and D1 can't fire from EASA there.
+
+**Place.** ICAO's FIR boundaries aren't free to reuse, so each FIR stands in as the land outline of the country it covers
+(Natural Earth 1:50m, public domain, simplified to about 3 km; `tools/fir_approx.py`). An outline applies only when
+EASA marks **every** FIR listed for it: Turkey needs both Ankara and Istanbul, Pakistan both Lahore and Karachi.
+Countries with many FIRs (Russia, India, Ukraine) are left out, except Kaliningrad, whose FIR is the exclave's own
+outline. 27 areas are defined; Cyprus is the whole island (Nicosia FIR), Israel includes the Palestinian territories
+(Tel Aviv FIR).
+
+**Rule.** Each 7-day table dated D becomes, for each area whose FIRs all carry the spoofing mark, one notice of class
+*jamming* (jamming or spoofing reported), in force from D−6 00:00 UTC to D 23:59 UTC, placed with the area's outline.
+It then works like any official notice: rule `covers` attaches it to events with an effect observation whose centroid
+or one of its res-2 cell centres lies inside the outline that week, and D1 needs a time-resolved effect it covers.
+Planned and natural verdicts still outrank it. The 30-day tables aren't used (a month is too coarse). The notice
+records whether every FIR also had the reported mark, and the verdict's reason names EASA and its scale.
+
+**Why spoofing.** Spoofing is deliberate by nature (counterfeit signals), and EASA's page defines jamming as intentional
+too. A spoofing mark is therefore evidence that someone was interfering deliberately in that FIR that week. It isn't
+evidence that a particular event was deliberate. D1 reads it the way it reads a notice: the listing, not our data, is
+the evidence of intent, at the listing's scale.
+
+**What this gets wrong (stated, not corrected).**
+
+- **Coarse:** a FIR and a week, against events placed to a region and timed to the minute.
+- **Not fully independent:** EASA's table draws on ADS-B data, possibly from the same kind of feeds as ours. Where the
+  reported mark is absent, the listing may rest on ADS-B data alone.
+- **Land only:** FIRs reach over the sea (the Baltic FIRs, Nicosia, Cairo, Jeddah, Ankara's Black Sea part); the
+  outlines don't. Events over open sea are mostly missed; the res-2 cell centres reach some way offshore.
+- **Borders:** a FIR boundary isn't always the border, and a res-2 cell centre inside an outline can belong to an event
+  just across the border.
+- **The week:** "in the last 7 days on D" is read as D−6 to D. If EASA means the 7 days before D, every window is one
+  day late at both ends.
 
 ## v1.0: what was frozen (26 Oct 2026)
 
@@ -172,7 +230,7 @@ Each grade is stored as (value, rule, reason, basis observations). `python tools
 | | N1 | SBAS-only event with every flagged hour within 3 h of Kp ≥ 5; **or** a 10 m-only located event inside an SBAS area flagged at storm time in the same or an adjacent hour | benign_natural |
 | | N2 | A 10 m-only located event during Kp ≥ 5 (within 3 h), poleward of a geomagnetic-latitude gate: \|mlat\| ≥ 50° for Kp 5–6.x, ≥ 40° for Kp 7–7.x, any latitude for Kp ≥ 8 | benign_natural |
 | | N3 | A 10 m-only located event with ICAO-moderate scintillation or worse (S4 ≥ 0.5 or sigma-phi ≥ 0.4 rad) in ESA's nowcast within 300 km and 1 h, at any Kp | benign_natural |
-| | D1 | An official notice reporting GNSS jamming or spoofing covers a time-resolved EFFECT observation in place and time (rule `covers`), and the planned and natural checks fail. **No such notice is on file yet** | deliberate_suspected |
+| | D1 | An official notice reporting GNSS jamming or spoofing, or (v1.1) an EASA 7-day FIR listing with spoofing, covers a time-resolved EFFECT observation in place and time (rule `covers`), and the planned and natural checks fail | deliberate_suspected |
 | | V0 | Otherwise | open |
 
 **S3 for ADS-B with CYGNSS.** All three conditions must hold:
@@ -209,7 +267,42 @@ Conditions 1 and 3 come from the chance rates below:
 | `scintillation` | moderate · below_moderate, with the highest S4 and sigma-phi and the hours used. Recorded only when an archived nowcast hour covers the event (rule N3 when it sets the verdict) |
 | `notice` | jamming_reported (D1 when it sets the verdict) · interference_reported, with each notice, what it covers and `outranked_by` when a planned or natural rule won |
 
-An `open` event also carries a hint when a benign explanation is plausible but no verdict value fits it: `sbas_service`, `sbas_equipage`, `storm_partial` or `test_partial`; or, from v1.0, `notice_interference` when an official notice reports interference there without jamming or spoofing wording.
+An `open` event also carries a hint when a benign explanation is plausible but no verdict value fits it: `sbas_service`, `sbas_equipage`, `storm_partial` or `test_partial`; or, from v1.0, `notice_interference` when an official notice reports interference there without jamming or spoofing wording; or, from v1.1, `notice_untimed` when a notice of jamming or spoofing (in practice an EASA listing) covers only CYGNSS cells, which are timed to the day.
+
+## Results, v1.1 (1 Oct 2025 – 25 Oct 2026, built 27 Oct 2026)
+
+Same inputs as v1.0 plus EASA: 210 FIR-week listings from 16 tables (13 inside the register), 1,550
+notice observations in all. Events, signal types, P, N and S3 grades are unchanged; only the notice check, support,
+verdict and hints move.
+
+| Field | v1.0 | v1.1 |
+|---|---|---|
+| verdict `deliberate_suspected` (rule D1) | 0 | 1,322 |
+| verdict `open` (V0) | 157,721 | 156,399 |
+| support: Partially corroborated | 1,538 | 4,716 |
+| support: Single-source | 149,977 | 146,799 |
+| support: Multiple sources | 8,632 | 8,632 |
+
+**The 1,322 D1 events.**
+
+- By measure: gross (93 m) 969 · both 291 · capable (10 m only) 62. By support:
+  Multiple sources 586 · Partially corroborated 736.
+- By stand-in area (an event on a border can count in two): Bulgaria 205 · Poland 202 · Romania 191 · Turkey 187 · Saudi Arabia 180 · Sweden 127 · Thailand 127 · Iran 121 · Egypt 87 · Lithuania 68 · Oman 67 · Myanmar 64 · Estonia 45 · UAE 43 · Israel and Palestinian territories 41 · Syria 30 · Belarus 20 · Jordan 19 · Finland 16 · Latvia 15 · Pakistan 11 · Cyprus 10 · Kaliningrad 2 · Georgia 2.
+- By month: 2025-10 36 · 2025-11 189 · 2025-12 103 · 2026-02 228 · 2026-03 339 · 2026-04 143 · 2026-05 80 · 2026-06 68 · 2026-10 136. No EASA table survives for Jan, Jul, Aug or Sep 2026, so those months have none.
+- EASA's reported mark: at least one covering listing had it for 933 events; none did for 389.
+- Kaliningrad is low (2) although EASA marked its FIR with spoofing in 9 of the 16 tables: the exclave's outline
+  is small and the persistent Kaliningrad region's centre (55.6°N 20.1°E) lies over the sea, which the outlines don't
+  cover. Georgia's FIR was marked in only 2 tables. Turkey counts only where EASA marked both Ankara and Istanbul
+  (7 of the 16 tables; Ankara alone 15).
+
+**Where an EASA listing attaches without setting D1.** 2,690 open events carry the new hint `notice_untimed`:
+the listing covers only CYGNSS cells, which are timed to the day, and D1 needs a time-resolved effect. 79
+stay open with `storm_partial`, and 3 are `benign_natural` (natural rules outrank D1). Open events
+with a hint: `storm_partial` 4,645 · `notice_untimed` 2,690 · `sbas_equipage` 649 · `test_partial` 359 · `notice_interference` 352 · `sbas_service` 102.
+
+**Support.** Of the 4,716 "Partially corroborated" events, 3,178 rest on EASA listings alone. An attached
+listing counts as a notice under rule S2, unchanged from v1.0. That is weaker than for a curated notice: EASA's table
+may draw on ADS-B data, so for aircraft-only events it isn't fully independent. For CYGNSS-only events it is.
 
 ## Results, v1.0 (1 Oct 2025 – 25 Oct 2026, built 26 Oct 2026)
 
@@ -447,8 +540,9 @@ A full build takes about 4 minutes on this PC.
   - **Place:** to the beam. The noise enters through a beam a few hundred km wide plus sidelobes, so one strong emitter raises a region. "Multiple sources" here means both sensors were exposed in the same area on the same day, not that the same transmitter was measured twice.
   - **Chance:** the field condition fires for about 22% of random land points in the band (an upper bound that includes the real interference regions).
   - **Validation:** the CYGNSS validation rests on four regions and six days. Nothing here is a region-held-out test.
-- **Official notices are curated by hand, and none that reports jamming is on file.**
-  - NGA's feed is frozen (10 May 2024); the two Baltic notices on file say "interference" and have no coordinates, so their positions are approximate circles along the named sea areas. `deliberate_suspected` stays at zero until a notice with jamming or spoofing wording is added, EASA's FIR marks are adopted, or a NOTAM source is wired in.
+- **D1 rests on EASA alone, at FIR-and-week scale, for 13 weeks** (v1.1; see that section's list of what it gets wrong).
+  Curated notices are added by hand, and none that reports jamming is on file.
+  - NGA's feed is frozen (10 May 2024); the two Baltic notices on file say "interference" and have no coordinates, so their positions are approximate circles along the named sea areas. Until a notice with jamming or spoofing wording is added or a NOTAM source is wired in, `deliberate_suspected` comes only from EASA's FIR tables.
   - That is deliberate. "Multiple sources" raises support, not the verdict, and our own data never sets D1: the notice is the evidence of intent.
 - **The 10 m measure dominates the count.** Most events are 10 m-only departures from baseline. Those are weak signals: SBAS use, equipage and the ionosphere all move them. Filter on `effect_measure` (gross, both, capable, rf, dropout) when reading the register.
 - **Announced-test radius.** From v1.0, P1 uses the FL250 ring the map draws. Aircraft at cruise above FL250 can be affected farther out, so some effects of a real test now stay `open` (hint `test_partial` when part of the event matches). The site's event-panel tags still use the widest ring.
@@ -489,4 +583,6 @@ ADS-B observations on CYGNSS days carry the local CYGNSS field median and cell c
 - GFZ Potsdam Kp index (CC BY 4.0), `kp.gfz.de`.
 - ESA SWE ISM scintillation nowcast (ESA S2P Space Weather Data Terms; registry id `esa-swe-scint`), archived privately because the raw grids may be passed on only to people who accept the same terms. Published aggregates carry the credit: "Data provided by the European Space Agency (ESA) as part of its Space Safety Programme (S2P)", © ESA 2026.
 - Official notices in `data/declared/notices.json`, each with its issuer's link; each issuer has a registry row first.
+- EASA, "GNSS outages and alterations": impacted-FIR tables (reproduction authorised with the source acknowledged; registry id `easa-gnss-firs`); earlier tables from Internet Archive copies of that page. Kept in the private archive with the other notice copies.
+- Natural Earth admin-0 countries (public domain), as stand-ins for FIRs (`tools/fir_approx.py`).
 - Natural Earth populated places (public domain), used only to label `show` output.

@@ -1,18 +1,21 @@
 {
- "version": "events v1.0",
- "register_built_utc": "2026-10-26T18:52Z",
+ "version": "events v1.1",
+ "register_built_utc": "2026-10-27T01:59Z",
  "first_day": "2025-10-01",
  "last_day": "2026-10-25",
  "unit": "events per UTC month",
  "licence": "ODbL 1.0 (derived from the adsb.lol archive); attribution below",
  "method": "https://github.com/metacog-osint/noise-floor/blob/main/docs/assessment/events.md",
- "note": "Aggregate counts only. Grades describe the strength of evidence; they never name a perpetrator. deliberate_suspected needs an official notice reporting jamming or spoofing (rule D1). The rules are frozen but not yet validated.",
+ "note": "Aggregate counts only. Grades describe the strength of evidence; they never name a perpetrator. deliberate_suspected needs an official notice reporting jamming or spoofing, or (from v1.1) EASA's weekly table listing spoofing in the FIR, covering a time-resolved effect (rule D1). EASA tables exist for only some weeks, so monthly deliberate_suspected counts follow which weeks have a table, not how much spoofing there was. The rules are frozen but not yet validated.",
  "sources": [
   "adsb.lol daily archive through the PNT processor (ODbL 1.0)",
   "NASA CYGNSS L1 SDR V3.2 (NASA open data)",
   "FAA SPANS flight advisories (US public domain)",
   "GFZ Potsdam Kp index (CC BY 4.0)",
-  "ESA SWE ISM scintillation nowcast: data provided by the European Space Agency (ESA) as part of its Space Safety Programme (S2P), (c) ESA 2026"
+  "ESA SWE ISM scintillation nowcast: data provided by the European Space Agency (ESA) as part of its Space Safety Programme (S2P), (c) ESA 2026",
+  "Official navigational notices (Swedish Maritime Administration, Estonian Transport Administration, Traficom), cited",
+  "EASA (European Union Aviation Safety Agency), GNSS outages and alterations: impacted FIRs; earlier tables from Internet Archive copies of that page",
+  "Natural Earth admin-0 countries (public domain), as stand-ins for FIRs"
  ],
  "months": [
   {
@@ -25,15 +28,15 @@
     "NATURAL": 11
    },
    "effect_support": {
-    "Single-source, unverified": 11251,
-    "Partially corroborated": 98,
+    "Single-source, unverified": 11126,
+    "Partially corroborated": 223,
     "Multiple sources": 512
    },
    "effect_verdict": {
-    "open": 11765,
+    "open": 11729,
     "benign_natural": 57,
     "planned": 39,
-    "deliberate_suspected": 0
+    "deliberate_suspected": 36
    },
    "effect_attribution": {
     "none": 11822,
@@ -51,15 +54,15 @@
     "NATURAL": 7
    },
    "effect_support": {
-    "Single-source, unverified": 12229,
-    "Partially corroborated": 100,
+    "Single-source, unverified": 11695,
+    "Partially corroborated": 634,
     "Multiple sources": 596
    },
    "effect_verdict": {
-    "open": 12779,
+    "open": 12590,
     "benign_natural": 102,
     "planned": 44,
-    "deliberate_suspected": 0
+    "deliberate_suspected": 189
    },
    "effect_attribution": {
     "none": 12881,
@@ -77,15 +80,15 @@
     "NATURAL": 5
    },
    "effect_support": {
-    "Single-source, unverified": 11895,
-    "Partially corroborated": 49,
+    "Single-source, unverified": 11706,
+    "Partially corroborated": 238,
     "Multiple sources": 655
    },
    "effect_verdict": {
-    "open": 12530,
+    "open": 12427,
     "benign_natural": 62,
     "planned": 7,
-    "deliberate_suspected": 0
+    "deliberate_suspected": 103
    },
    "effect_attribution": {
     "none": 12592,
@@ -129,15 +132,15 @@
     "NATURAL": 5
    },
    "effect_support": {
-    "Single-source, unverified": 10678,
-    "Partially corroborated": 99,
+    "Single-source, unverified": 10177,
+    "Partially corroborated": 600,
     "Multiple sources": 499
    },
    "effect_verdict": {
-    "open": 11170,
+    "open": 10942,
     "benign_natural": 52,
     "planned": 54,
-    "deliberate_suspected": 0
+    "deliberate_suspected": 228
    },
    "effect_attribution": {
     "none": 11222,
@@ -155,15 +158,15 @@
     "NATURAL": 10
    },
    "effect_support": {
-    "Single-source, unverified": 12878,
-    "Partially corroborated": 197,
+    "Single-source, unverified": 12050,
+    "Partially corroborated": 1025,
     "Multiple sources": 844
    },
    "effect_verdict": {
-    "open": 13703,
+    "open": 13364,
     "benign_natural": 136,
     "planned": 80,
-    "deliberate_suspected": 0
+    "deliberate_suspected": 339
    },
    "effect_attribution": {
     "none": 13839,
@@ -181,15 +184,15 @@
     "NATURAL": 7
    },
    "effect_support": {
-    "Single-source, unverified": 11529,
-    "Partially corroborated": 192,
+    "Single-source, unverified": 11170,
+    "Partially corroborated": 551,
     "Multiple sources": 592
    },
    "effect_verdict": {
-    "open": 12126,
+    "open": 11983,
     "benign_natural": 85,
     "planned": 102,
-    "deliberate_suspected": 0
+    "deliberate_suspected": 143
    },
    "effect_attribution": {
     "none": 12211,
@@ -207,15 +210,15 @@
     "NATURAL": 4
    },
    "effect_support": {
-    "Single-source, unverified": 11577,
-    "Partially corroborated": 123,
+    "Single-source, unverified": 11399,
+    "Partially corroborated": 301,
     "Multiple sources": 711
    },
    "effect_verdict": {
-    "open": 12317,
+    "open": 12237,
     "benign_natural": 41,
     "planned": 53,
-    "deliberate_suspected": 0
+    "deliberate_suspected": 80
    },
    "effect_attribution": {
     "none": 12358,
@@ -233,15 +236,15 @@
     "NATURAL": 3
    },
    "effect_support": {
-    "Single-source, unverified": 11358,
-    "Partially corroborated": 98,
+    "Single-source, unverified": 11230,
+    "Partially corroborated": 226,
     "Multiple sources": 656
    },
    "effect_verdict": {
-    "open": 12040,
+    "open": 11972,
     "benign_natural": 19,
     "planned": 53,
-    "deliberate_suspected": 0
+    "deliberate_suspected": 68
    },
    "effect_attribution": {
     "none": 12059,
@@ -337,15 +340,15 @@
     "NATURAL": 4
    },
    "effect_support": {
-    "Single-source, unverified": 8810,
-    "Partially corroborated": 96,
+    "Single-source, unverified": 8474,
+    "Partially corroborated": 432,
     "Multiple sources": 508
    },
    "effect_verdict": {
-    "open": 9314,
+    "open": 9178,
     "benign_natural": 58,
     "planned": 42,
-    "deliberate_suspected": 0
+    "deliberate_suspected": 136
    },
    "effect_attribution": {
     "none": 9372,
