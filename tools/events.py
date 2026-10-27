@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""events.py: the Events and grading lane (v1.0, rules frozen 26 Oct 2026). Observations fuse into events; each event
+"""events.py: the Events and grading lane (v1.1; v1.0 rules frozen 26 Oct 2026, v1.1 adds EASA's FIR tables to D1). Observations fuse into events; each event
 gets five grade fields.
 
 Every input item becomes an observation. Observations on the same UTC day fuse into events (space-time clustering),
@@ -25,6 +25,9 @@ Inputs per UTC day (first found wins):
   announced GPS tests                   data/declared/faa_gps_tests.json (FAA SPANS flight advisories)
   Kp                                    data/events/kp.json (GFZ Potsdam, fetched)
   official notices (rule D1)            data/declared/notices.json (curated by hand, each notice cited; see load_notices)
+  EASA FIR tables (rule D1, v1.1)       data/ism-archive/notices/easa/ (daily copies from tools/notice_capture.py and
+                                        Internet Archive copies from tools/easa_history.py) placed with
+                                        data/declared/fir_approx.json (tools/fir_approx.py); see load_easa_notices
   scintillation nowcast (rule N3)       data/ism-archive/ism/ (ESA SWE ISM hourly grids; private archive, ESA S2P terms)
 
 Output: data/events/register.sqlite (gitignored, like all of data/). Times are UTC.
@@ -52,7 +55,7 @@ sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 from pnt_analysis import SBAS_AREAS  # noqa: E402  (one source of truth for the SBAS boxes)
 
-VERSION = "events v1.0"
+VERSION = "events v1.1"
 EVENTS_DIR = os.path.join(ROOT, "data", "events")
 REGISTER = os.path.join(EVENTS_DIR, "register.sqlite")
 INPUTS = os.path.join(EVENTS_DIR, "inputs")
@@ -62,6 +65,7 @@ ANALYSIS = os.path.join(ROOT, "data", "pnt", "analysis")
 DAILY_DIRS = [os.path.join(ROOT, "data", "pnt", "daily"), os.path.join(ROOT, "data", "pnt", "year")]
 FAA_FILE = os.path.join(ROOT, "data", "declared", "faa_gps_tests.json")
 NOTICES_FILE = os.path.join(ROOT, "data", "declared", "notices.json")
+FIR_FILE = os.path.join(ROOT, "data", "declared", "fir_approx.json")
 ISM_DIR = os.environ.get("NF_ISM_DIR") or os.path.join(ROOT, "data", "ism-archive")
 ISM_REPO = "https://github.com/metacog-osint/noise-floor-data.git"   # private: ESA's terms bar passing the raw grids on
 MONTHLY_OUT = os.path.join(ROOT, "site", "data", "events-monthly.json")
@@ -113,7 +117,8 @@ SOURCES = {   # family -> (source text, sensor?)  Sensors in one family are not 
     "cygnss": ("NASA CYGNSS L1 SDR V3.2 DDM noise floor through tools/cygnss_rfi.py (NASA open data)", True),
     "faa": ("FAA SPANS flight advisory, announced GPS test (US public domain)", False),
     "gfz_kp": ("GFZ Potsdam Kp index (CC BY 4.0)", False),
-    "notice": ("Official navigational or aeronautical notice, curated in data/declared/notices.json (each cited)", False),
+    "notice": ("Official navigational or aeronautical notice, curated in data/declared/notices.json (each cited), or an "
+               "EASA FIR-table listing of spoofing (v1.1)", False),
 }
 
 
@@ -502,6 +507,49 @@ def load_notices(path=NOTICES_FILE):
     return out
 
 
+def load_easa_notices(easa_dir=None, fir_file=FIR_FILE):
+    """EASA's 7-day FIR tables -> notices for rule D1 (v1.1). EASA lists the FIRs "mainly affected" by GNSS jamming and
+    spoofing ("src: ads-b data and reports") with a spoofing mark and a reported mark; it doesn't define the marks
+    further. Each table "in the last 7 days on D" becomes, for each stand-in area whose FIRs all carry the spoofing mark,
+    one notice of class 'jamming' (jamming or spoofing reported) in force from D-6 00:00Z to D 23:59Z, placed with the
+    area's land outline (tools/fir_approx.py). Spoofing is deliberate by nature, so the mark is evidence of deliberate
+    activity in that FIR that week; it is coarse (FIR and week, not place and hour) and may rest on ADS-B data like
+    ours, which the notice records (`reported` says whether every FIR also had the reported mark). The 30-day tables
+    are not used. A table seen in several copies counts once. Returns [] without the copies or the outlines."""
+    import glob
+    easa_dir = easa_dir or os.path.join(ISM_DIR, "notices", "easa")
+    if not os.path.isdir(easa_dir) or not os.path.exists(fir_file):
+        return []
+    with open(fir_file, encoding="utf-8") as f:
+        areas = json.load(f)["areas"]
+    tables = {}
+    for p in sorted(glob.glob(os.path.join(easa_dir, "*.json"))):
+        with open(p, encoding="utf-8") as f:
+            d = json.load(f)
+        for t in d.get("tables", []):
+            if t.get("days") == 7 and t.get("date"):
+                tables.setdefault(t["date"], (t, d.get("url") or ""))
+    out = []
+    for day, (t, url) in sorted(tables.items()):
+        spoof = {r["icao"]: r for r in t["firs"] if r.get("spoofing")}
+        start = (date.fromisoformat(day) - timedelta(days=6)).isoformat()
+        for key, ar in sorted(areas.items()):
+            if not ar["rings"] or not all(c in spoof for c in ar["firs"]):
+                continue
+            rows = [spoof[c] for c in ar["firs"]]
+            firs = ", ".join(f"{r['name']} ({r['icao']})" for r in rows)
+            ring = max(ar["rings"], key=len)
+            out.append({"id": f"EASA-{day}-{key}", "source": f"EASA FIR table, 7 days to {day}: {firs}", "url": url,
+                        "issued_utc": f"{day}T23:59Z", "valid_from_utc": f"{start}T00:00Z", "valid_to_utc": f"{day}T23:59Z",
+                        "class": "jamming", "points": [tuple(p) for p in ring], "rings": ar["rings"], "radius_km": None,
+                        "text": f"EASA lists {firs} among the FIRs mainly affected by GNSS interference in the 7 days to "
+                                f"{day}, with spoofing (src: ADS-B data and reports). Placed with the land outline of "
+                                f"{ar['name']} (stand-in for the FIR).",
+                        "easa": {"area": key, "area_name": ar["name"], "firs": ar["firs"], "table_date": day,
+                                 "reported": all(r.get("reported") for r in rows)}})
+    return out
+
+
 def notice_observations(day, notices):
     """One WARNING observation per notice in force on the UTC day that reports GNSS jamming or interference and can be
     placed. Test notices and notices without positions stay in the file but make no observation. A notice's time is its
@@ -521,6 +569,9 @@ def notice_observations(day, notices):
                "radius_km": n["radius_km"] or (None if poly else NOTICE_POINT_KM), "radius_stated": bool(n["radius_km"]),
                "url": n.get("url", ""), "issued_utc": n.get("issued_utc"), "valid_to_utc": n.get("valid_to_utc"),
                "text": " ".join(n.get("text", "").split())[:400]}
+        if n.get("rings"):                     # an EASA stand-in area: every part of the outline, not just the largest
+            det["rings"] = n["rings"]
+            det["easa"] = n.get("easa")
         out.append(obs(day, "notice", "WARNING", "notice", int(max(0, m0)), int(min(1439, m1)), "minute", lat, lon,
                        detail=det, ref="notices.json", key=n["id"]))
     return out
@@ -609,6 +660,8 @@ def covers(o, f):
     if not o["cells"] or o["signal_type"] != "EFFECT" or o["lat"] is None or o["kind"] in APART_KINDS or gap(o, f) > 0:
         return None
     det, pts, anc = f["detail"], [tuple(p) for p in f["detail"]["points"]], anchors(o)
+    if det.get("rings"):
+        return 0 if any(in_polygon(a, b, [tuple(p) for p in r]) for r in det["rings"] for a, b in anc) else None
     if det["polygon"] and any(in_polygon(a, b, pts) for a, b in anc):
         return 0
     if det["radius_km"]:
@@ -901,7 +954,8 @@ def grade(members, day_obs, kp, ism=None):
         excl["notice"] = ("jamming_reported" if any(f["detail"]["class"] == "jamming" for f in notices)
                           else "interference_reported", "D1" if jam else "D-", {"notices": [
                               {"id": f["detail"]["notice_id"], "source": f["detail"]["source"], "class": f["detail"]["class"],
-                               "covers": cover[f["id"]], "url": f["detail"]["url"]} for f in notices]})
+                               "covers": cover[f["id"]], "url": f["detail"]["url"],
+                               **({"easa": f["detail"]["easa"]} if f["detail"].get("easa") else {})} for f in notices]})
 
     # exclusion: receiver fault and SBAS service
     if any(o["family"] == "adsb" for o in effects):
@@ -930,11 +984,19 @@ def grade(members, day_obs, kp, ism=None):
                              ids(naturals) + context + ids(effects))
     elif jam:
         src = "; ".join(sorted({f["detail"]["source"] for f in jam}))
-        grades["verdict"] = ("deliberate_suspected", "D1", "an official notice reports GNSS jamming or spoofing covering "
-                             f"this place and time ({src}); the notice, not our data, is the evidence of deliberate "
-                             "activity", ids(jam) + sorted({c["obs"] for f in jam for c in cover[f["id"]]}))
+        easa_only = all(f["detail"].get("easa") for f in jam)
+        grades["verdict"] = ("deliberate_suspected", "D1", (
+            f"EASA's FIR table lists spoofing in this FIR in the week of this event ({src}); the listing, not our data, "
+            "is the evidence of deliberate activity, at FIR-and-week scale, and EASA's table may draw on ADS-B data"
+            if easa_only else "an official notice reports GNSS jamming or spoofing covering this place and time "
+            f"({src}); the notice, not our data, is the evidence of deliberate activity"),
+            ids(jam) + sorted({c["obs"] for f in jam for c in cover[f["id"]]}))
     else:
-        why = ("no exclusion check explains the event; an official notice reports GNSS interference here, but not "
+        listed = sorted({f["detail"]["source"] for f in notices if f["detail"]["class"] == "jamming"})
+        why = ("no exclusion check explains the event; a notice reports GNSS jamming or spoofing here "
+               f"({'; '.join(listed)}), but it covers only observations timed to the day (CYGNSS cells), and rule D1 "
+               "needs a time-resolved effect it covers" if listed else
+               "no exclusion check explains the event; an official notice reports GNSS interference here, but not "
                "jamming or spoofing (rule D1 needs that wording, and a time-resolved effect it covers)" if notices else
                "no exclusion check explains the event, and no official notice of jamming or spoofing covers it (rule D1)")
         grades["verdict"] = ("open", "V0", why, ids(effects))
@@ -942,7 +1004,7 @@ def grade(members, day_obs, kp, ism=None):
             sw = excl.get("space_weather", ("",))[0]
             pt = excl.get("planned_test", ("",))[0]
             hint = ("storm_partial" if sw == "storm_partial" else "test_partial" if pt == "partial"
-                    else "notice_interference" if notices else None)
+                    else "notice_untimed" if listed else "notice_interference" if notices else None)
     if jam and grades["verdict"][1] != "D1":
         excl["notice"][2]["outranked_by"] = grades["verdict"][1]       # planned and natural rules outrank D1
 
@@ -1214,6 +1276,8 @@ def cmd_build(a):
     kp = load_kp()
     tests = faa_tests()
     notices = load_notices()
+    easa = load_easa_notices()
+    notices = notices + easa
     ism = load_ism()
     db = connect()
     tot = Counter()
@@ -1256,7 +1320,9 @@ def cmd_build(a):
     db.commit()
     print(f"built {tot['days']} day(s): {tot['observations']} observations, {tot['events']} events -> "
           f"{os.path.relpath(REGISTER, ROOT)}" + ("" if kp else "  (no Kp file: run `fetch` first)"))
-    print(f"inputs: {len(notices)} curated notice(s) ({sum(1 for n in notices if n['class'] == 'jamming')} jamming); "
+    print(f"inputs: {len(notices) - len(easa)} curated notice(s) "
+          f"({sum(1 for n in notices if n['class'] == 'jamming' and not n.get('easa'))} jamming); "
+          f"{len(easa)} EASA FIR-week listing(s) from {len({n['easa']['table_date'] for n in easa})} table(s); "
           f"ESA scintillation nowcast: {len(ism.hours) if ism else 0} archived hours"
           + ("" if ism else " (no archive: run `fetch` on a machine that can read the private data repo)"))
 
@@ -1499,6 +1565,9 @@ PUBLIC_SOURCES = [
     "ESA SWE ISM scintillation nowcast: data provided by the European Space Agency (ESA) as part of its Space Safety "
     "Programme (S2P), (c) ESA 2026",
     "Official navigational notices (Swedish Maritime Administration, Estonian Transport Administration, Traficom), cited",
+    "EASA (European Union Aviation Safety Agency), GNSS outages and alterations: impacted FIRs; earlier tables from "
+    "Internet Archive copies of that page",
+    "Natural Earth admin-0 countries (public domain), as stand-ins for FIRs",
 ]
 
 
@@ -1529,8 +1598,10 @@ def cmd_publish(a):
            "unit": "events per UTC month", "licence": "ODbL 1.0 (derived from the adsb.lol archive); attribution below",
            "method": "https://github.com/metacog-osint/noise-floor/blob/main/docs/assessment/events.md",
            "note": "Aggregate counts only. Grades describe the strength of evidence; they never name a perpetrator. "
-                   "deliberate_suspected needs an official notice reporting jamming or spoofing (rule D1). The rules are "
-                   "frozen but not yet validated.",
+                   "deliberate_suspected needs an official notice reporting jamming or spoofing, or (from v1.1) EASA's "
+                   "weekly table listing spoofing in the FIR, covering a time-resolved effect (rule D1). EASA tables exist "
+                   "for only some weeks, so monthly deliberate_suspected counts follow which weeks have a table, not how "
+                   "much spoofing there was. The rules are frozen but not yet validated.",
            "sources": PUBLIC_SOURCES, "months": monthly(db)}
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     with open(a.out, "w", encoding="utf-8", newline="\n") as f:

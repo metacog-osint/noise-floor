@@ -505,6 +505,47 @@ def test_notice_rules():
     assert all(field(x, "verdict") != "deliberate_suspected" for x in ev)
 
 
+def test_easa_d1():
+    """v1.1: an EASA 7-day table with spoofing in every FIR of a stand-in area makes a week-long notice; an effect inside
+    the outline that week is deliberate_suspected (D1), one outside or another week is not."""
+    import json
+    lat, lon = ll(C0)
+    tmp = tempfile.mkdtemp()
+    try:
+        easa, fir = os.path.join(tmp, "easa"), os.path.join(tmp, "fir.json")
+        os.makedirs(easa)
+        box = [[lat - 1.5, lon - 2.5], [lat - 1.5, lon + 2.5], [lat + 1.5, lon + 2.5], [lat + 1.5, lon - 2.5]]
+        json.dump({"areas": {"AAA": {"name": "Test land", "firs": ["XXXX"], "rings": [box]},
+                             "TWO": {"name": "Split land", "firs": ["YYYY", "ZZZZ"], "rings": [box]}}}, open(fir, "w"))
+        table = {"days": 7, "date": "2026-03-12", "firs": [
+            {"icao": "XXXX", "name": "Test", "spoofing": True, "reported": False},
+            {"icao": "YYYY", "name": "Half", "spoofing": True, "reported": True},
+            {"icao": "ZZZZ", "name": "Other half", "spoofing": False, "reported": True}]}
+        for name in ("a.json", "b.json"):                                        # the same table in two copies counts once
+            json.dump({"url": "https://example.invalid/easa", "tables": [table, dict(table, days=30)]},
+                      open(os.path.join(easa, name), "w"))
+        ns = E.load_easa_notices(easa, fir)
+        assert [n["id"] for n in ns] == ["EASA-2026-03-12-AAA"]                  # TWO needs both of its FIRs marked
+        n = ns[0]
+        assert (n["valid_from_utc"], n["valid_to_utc"]) == ("2026-03-06T00:00Z", "2026-03-12T23:59Z")
+        assert n["class"] == "jamming" and n["easa"]["reported"] is False
+        obs = E.notice_observations(DAY, ns)
+        assert len(obs) == 1 and obs[0]["detail"]["rings"] == [box] and (obs[0]["t0"], obs[0]["t1"]) == (0, 1439)
+        e = effects(run(from_file(bursts=[burst(C0, "10:30Z", "10:40Z")]) + obs))[0]
+        assert field(e, "verdict") == "deliberate_suspected" and rule(e, "verdict") == "D1"
+        assert "EASA" in e["grades"]["verdict"][1 + 1] and e["exclusions"]["notice"][2]["notices"][0]["easa"]["area"] == "AAA"
+        away = h3.latlng_to_cell(lat, lon + 8.0, 2)
+        assert field(effects(run(from_file(bursts=[burst(away, "10:30Z", "10:40Z")]) + obs))[0], "verdict") == "open"
+        assert E.notice_observations("2026-03-13", ns) == [] and E.notice_observations("2026-03-05", ns) == []
+        rows = [cyg_row(lat, lon, med=3.0)]                                       # CYGNSS only: timed to the day
+        ev = E.build_day(DAY, E.cygnss_observations(DAY, rows) + obs, kp_series(), E.cygnss_field(rows))
+        e = effects(ev)[0]
+        assert field(e, "verdict") == "open" and e["open_hint"] == "notice_untimed" and "EASA" in e["grades"]["verdict"][2]
+        assert E.load_easa_notices(os.path.join(tmp, "none"), fir) == []
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def ism_dir(s4=0.6, sp=0.1, hour="2026031010", cells=((55.0, 20.0), (55.0, 22.5), (40.0, 0.0))):
     """A tiny nowcast archive: a three-cell grid and one hour with the given S4 and sigma-phi in the first cell."""
     import gzip
