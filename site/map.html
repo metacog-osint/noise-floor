@@ -8,9 +8,9 @@
 <meta property="og:title" content="Map · Noise Floor">
 <meta property="og:description" content="Interactive world map of GNSS degradation from aircraft ADS-B reports, per H3 hex, updated daily.">
 <meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="/style.css?v=ba56b9b4b2">
+<link rel="stylesheet" href="/style.css?v=322c4a1047">
 <link rel="alternate" type="application/atom+xml" title="Noise Floor: daily GNSS summary" href="/feed.xml">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=fc9742d9de"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=c515e6ead8"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -65,6 +65,9 @@
         <label><input type="checkbox" id="lyr-areas"> Monitored areas</label>
         <label><input type="checkbox" id="lyr-events" checked> Events and announced tests</label>
         <label id="lyr-imagery-opt" hidden><input type="checkbox" id="lyr-imagery"> Satellite imagery (Esri)</label>
+        <label><input type="checkbox" id="lyr-spoof"> Spoofing (aircraft) <span class="lyr-key lyr-key-spoof" aria-hidden="true"></span></label>
+        <label><input type="checkbox" id="lyr-cyg"> CYGNSS noise floor (from orbit) <span class="lyr-key lyr-key-cyg" aria-hidden="true"></span></label>
+        <p id="lyr-note" class="small"></p>
         <p id="map-img-note" class="img-note" aria-live="polite" hidden></p>
       </fieldset>
       <label class="mp-group"><span>Jump to</span><select id="map-jump" aria-label="Jump to a region">

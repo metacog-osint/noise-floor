@@ -199,9 +199,10 @@ def upload_local(day, a):
 
 
 def spoof_summary(day, raw, workers):
-    """Spoofing indicators for the day (tools/spoof_day.py, its default version) -> SITE/<day>.spoof.json: counts by
-    class, the H3 res-2 regions where aircraft really were during active episodes, and the places receivers were
-    spoofed to. Aggregates only (ODbL 1.0). Returns the file, or None if the run failed (the day publishes anyway)."""
+    """Spoofing indicators for the day (tools/spoof_day.py, its default version) -> SITE/<day>.spoof.json, made by
+    tools/spoof_summary.py: counts by class, the H3 res-4 hexes (the map layer) and res-2 regions where aircraft really
+    were during active episodes, and the places receivers were spoofed to. Aggregates only (ODbL 1.0). Returns the file,
+    or None if the run failed (the day publishes anyway)."""
     try:
         r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "spoof_day.py"), "run", day, "--raw", raw,
                             "--out", SPOOF, "--workers", str(workers)], capture_output=True, text=True, encoding="utf-8",
@@ -209,26 +210,9 @@ def spoof_summary(day, raw, workers):
         if r.returncode:
             print(f"spoofing {day}: spoof_day failed: {r.stderr.strip()[-400:]}", file=sys.stderr)
             return None
-        import gzip
-        from collections import Counter
-        import h3
-        with open(os.path.join(SPOOF, f"{day}.summary.json"), encoding="utf-8") as f:
-            s = json.load(f)
-        with gzip.open(os.path.join(SPOOF, f"{day}.events.json.gz"), "rt", encoding="utf-8") as f:
-            ev = json.load(f)
-        ev = ev.get("events", ev) if isinstance(ev, dict) else ev
-        active = [e for e in ev if e.get("class") == "active"]
-        regions = Counter(h3.cell_to_parent(c, 2) for e in active for c in set(e.get("victim_cells") or []))
-        out = {"day": day, "version": s.get("version"), "licence": "ODbL 1.0; derived from adsb.lol",
-               "active": len(active), "episodes": s.get("episodes"), "classes": s.get("episodes_by_class"),
-               "aircraft_with_episodes": len({e.get("hex") or e.get("icao") for e in active}) or s.get("aircraft_with_episodes"),
-               "victim_res2_top": [{"region": c, "lat": round(h3.cell_to_latlng(c)[0], 2), "lon": round(h3.cell_to_latlng(c)[1], 2),
-                                    "episodes": n} for c, n in regions.most_common(10)],
-               "spoofed_to_top": [{"lat": la, "lon": lo, "episodes": n} for _, la, lo, n in (s.get("spoofed_to_res6_top") or [])[:10]],
-               "method": "tools/spoof_day.py; docs/validation/spoofing.md. Victim regions count active episodes."}
-        p = os.path.join(SITE, f"{day}.spoof.json")
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(out, f, separators=(",", ":"))
+        sys.path.insert(0, os.path.join(ROOT, "tools"))
+        import spoof_summary
+        p, _ = spoof_summary.write(SPOOF, day, SITE)
         return p
     except Exception as e:                # never fatal
         print(f"spoofing {day}: skipped ({type(e).__name__}: {e})", file=sys.stderr)

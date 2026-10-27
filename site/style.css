@@ -102,7 +102,7 @@ footer.site p { margin: .25rem 0; max-width: none; }
   --ramp-1: #e3824c; --ramp-2: #c85f2a; --ramp-3: #a2441a; --ramp-4: #6e2c0f;
   --surface-chart: #fcfcfb; --grid: #e1e0d9; --axis: #c3c2b7; --ink-2: #52514e; --ink-3: #898781;
   --series-1: #2a78d6; --series-2: #eb6834; --series-base: #898781; --wash: rgba(42, 120, 214, 0.10); --band: rgba(235, 104, 52, 0.10);
-  --map-event: #2a78d6;
+  --map-event: #2a78d6; --map-spoof: #7e3fbf; --map-cyg: #0f766e;
   --map-border: rgba(80, 76, 66, 0.55); --map-label: #3b3a36; --map-halo: rgba(244, 243, 238, 0.9); --map-area: #6b5a8e;
 }
 @media (prefers-color-scheme: dark) {
@@ -112,7 +112,7 @@ footer.site p { margin: .25rem 0; max-width: none; }
     --ramp-1: #b04c1f; --ramp-2: #d8652b; --ramp-3: #f28a4a; --ramp-4: #ffbd8a;
     --surface-chart: #1a1a19; --grid: #2c2c2a; --axis: #383835; --ink-2: #c3c2b7; --ink-3: #898781;
     --series-1: #3987e5; --series-2: #d95926; --series-base: #898781; --wash: rgba(57, 135, 229, 0.12); --band: rgba(217, 89, 38, 0.09);
-    --map-event: #3987e5;
+    --map-event: #3987e5; --map-spoof: #b98ae6; --map-cyg: #4fd1c5;
     --map-border: rgba(190, 196, 204, 0.42); --map-label: #d6d9de; --map-halo: rgba(18, 20, 23, 0.9); --map-area: #b39ddb;
   }
 }
@@ -371,3 +371,7 @@ details.table-view .tw { max-height: 22rem; overflow: auto; }
 .geo-role { font-size: .75rem; padding: 0 .35rem; border-radius: 4px; border: 1px solid var(--line); color: var(--mut); white-space: nowrap; }
 .geo-role-inspection { border-color: var(--st-failed); color: var(--st-failed); }
 .geo-role-servicing { border-color: var(--st-running); color: var(--st-running); }
+.lyr-key { display: inline-block; width: .8rem; height: .65rem; border-radius: 2px; vertical-align: -1px; margin-left: .2rem; }
+.lyr-key-spoof { border: 1.5px solid var(--map-spoof); background: color-mix(in srgb, var(--map-spoof) 30%, transparent); }
+.lyr-key-cyg { border: 1.5px solid var(--map-cyg); background: color-mix(in srgb, var(--map-cyg) 25%, transparent); }
+#lyr-note { margin: .2rem 0 0; max-width: 18rem; }
