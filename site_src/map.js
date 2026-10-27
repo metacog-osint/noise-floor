@@ -43,7 +43,8 @@
     colors = { ocean: css("--map-ocean"), land: css("--map-land"), coast: css("--map-coast"), quiet: css("--map-quiet"),
                low: css("--map-low"), ramp: [css("--ramp-1"), css("--ramp-2"), css("--ramp-3"), css("--ramp-4")],
                focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean"), test: css("--ink-2"),
-               border: css("--map-border"), label: css("--map-label"), halo: css("--map-halo"), area: css("--map-area") };
+               border: css("--map-border"), label: css("--map-label"), halo: css("--map-halo"), area: css("--map-area"),
+               spoof: css("--map-spoof"), cyg: css("--map-cyg") };
     mapEl.style.background = colors.ocean;
   }
 
@@ -201,6 +202,31 @@
           labels.push({ text: p[0], x: q.x + 5, y: q.y + 4, dot: q, cap: !!p[4], kind: "place" });
         });
       }
+      if (state.cygShow && state.cyg && state.cyg.cells) {          // CYGNSS: raised noise-floor cells (H3 res 3)
+        g.save(); g.strokeStyle = colors.cyg; g.fillStyle = colors.cyg;
+        state.cyg.cells.forEach(function (c) {
+          var sh = shapeOf(c[0]);
+          if (sh.wrap || !onScreen(sh.mb)) return;
+          g.globalAlpha = c[1] >= 2 ? 0.35 : 0.18; g.beginPath(); trace(g, sh.m, true); g.fill();
+          g.globalAlpha = 0.9; g.lineWidth = c[1] >= 2 ? 1.6 : 0.8; g.stroke();
+        });
+        g.restore();
+      }
+      if (state.spoofShow && state.spoof) {                           // spoofing: where spoofed aircraft really were
+        g.save(); g.strokeStyle = colors.spoof; g.fillStyle = colors.spoof;
+        (state.spoof.cells || []).forEach(function (c) {
+          var sh = shapeOf(c[0]);
+          if (sh.wrap || !onScreen(sh.mb)) return;
+          g.globalAlpha = Math.min(0.55, 0.15 + 0.08 * c[1]); g.beginPath(); trace(g, sh.m, true); g.fill();
+          g.globalAlpha = 1; g.lineWidth = 1.2; g.stroke();
+        });
+        g.globalAlpha = 1; g.lineWidth = 2;                         // where their receivers were told they were
+        (state.spoof.spoofed_to_top || []).forEach(function (p) {
+          var q = cp(p.lat, p.lon), r = 6;
+          g.beginPath(); g.moveTo(q.x - r, q.y - r); g.lineTo(q.x + r, q.y + r); g.moveTo(q.x + r, q.y - r); g.lineTo(q.x - r, q.y + r); g.stroke();
+        });
+        g.restore();
+      }
       if (state.evShow && state.ev && state.ev.tests) {
         g.save(); g.setLineDash([6, 5]); g.strokeStyle = colors.test; g.lineWidth = 1.5;
         state.ev.tests.forEach(function (t) {
@@ -282,6 +308,14 @@
     } else {
       lines.push(["Share", e && e.share !== null ? e.share.toFixed(1) + "%" :
         (e && e.nobase ? "no usual level yet (fewer than 5 earlier days)" : e ? "low coverage (3–4 aircraft)" : "too few aircraft")]);
+    }
+    if (state.spoofShow && state.spoof && state.spoof.cells) {
+      var sc = state.spoof.cells.filter(function (c) { return c[0] === h; })[0];
+      if (sc) lines.push(["Spoofing", sc[1] + " active episode" + (sc[1] === 1 ? "" : "s") + " (aircraft really here)"]);
+    }
+    if (state.cygShow && state.cyg && state.cyg.cells) {
+      var p3 = h3.cellToParent(h, 3), cc = state.cyg.cells.filter(function (c) { return c[0] === p3; })[0];
+      if (cc) lines.push(["CYGNSS", "+" + cc[1].toFixed(1) + " dB noise floor" + (state.cyg.day !== state.day ? " (" + state.cyg.day + ")" : "")]);
     }
     lines.push(["", "Click for this area's history"]);
     if (state.evShow && state.ev) {
@@ -596,6 +630,7 @@
   function hashFor() {
     var c = map.getCenter();
     return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") + (imagery.on ? "&img=esri" : "") +
+           (state.spoofShow ? "&sp=1" : "") + (state.cygShow ? "&cy=1" : "") +
            "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
   }
   function writeHash() { if (state.day) history.replaceState(null, "", hashFor()); }
@@ -625,8 +660,44 @@
     [i - 1, i + 1].forEach(function (k) { if (days[k]) fetchDay(days[k].day).catch(function () {}); });
   }
 
+  var layerIndex = {};                                 // days with spoofing / CYGNSS files (data/<kind>/index.json)
+  function layerFor(kind, day) {                       // the day's file, or for CYGNSS the newest day up to 3 days before
+    var idx = layerIndex[kind] || [];
+    var pick = idx.indexOf(day) >= 0 ? day : null;
+    if (!pick && kind === "cygnss") {
+      for (var k = 1; k <= 3 && !pick; k++) {
+        var d = new Date(Date.parse(day + "T00:00:00Z") - k * 86400000).toISOString().slice(0, 10);
+        if (idx.indexOf(d) >= 0) pick = d;
+      }
+    }
+    if (!pick) return Promise.resolve(null);
+    return fetch("/data/" + kind + "/" + pick + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  }
+  function nearest(kind, day) {                        // the closest day that has a layer file, for the "none" note
+    var t = Date.parse(day + "T00:00:00Z"), best = null;
+    (layerIndex[kind] || []).forEach(function (d) {
+      if (best === null || Math.abs(Date.parse(d + "T00:00:00Z") - t) < Math.abs(Date.parse(best + "T00:00:00Z") - t)) best = d;
+    });
+    return best ? " Nearest day with one: " + best + "." : "";
+  }
+  function layerNote() {
+    var note = document.getElementById("lyr-note"), parts = [];
+    if (!note) return;
+    if (state.spoofShow) parts.push(state.spoof ? "Spoofing " + state.spoof.day + ": " + state.spoof.active + " active episodes; outlines show where spoofed aircraft really were, crosses where their receivers were told they were."
+      : "No spoofing layer for this day (daily from 27 Oct 2026, plus 17 earlier days)." + nearest("spoof", state.day));
+    if (state.cygShow) parts.push(state.cyg ? "CYGNSS " + state.cyg.day + ": " + state.cyg.raised_cells + " cells raised 1 dB or more (exposure within a beam a few hundred km wide, not a transmitter site; about 38°N to 38°S). Source: NASA CYGNSS L1 V3.2 (PO.DAAC), NASA open data."
+      : "No CYGNSS file within 3 days of this day (CYGNSS runs about six days behind)." + nearest("cygnss", state.day));
+    note.textContent = parts.join(" ");
+  }
+  function loadLayers(day) {
+    if (state.spoofShow) layerFor("spoof", day).then(function (j) { if (state.day !== day) return; state.spoof = j; layerNote(); layer.redraw(); });
+    if (state.cygShow) layerFor("cygnss", day).then(function (j) { if (state.day !== day) return; state.cyg = j; layerNote(); layer.redraw(); });
+    layerNote();
+  }
+
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true;
+    state.spoof = null; state.cyg = null; loadLayers(day);
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
     syncTimeline();
     fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
@@ -775,6 +846,10 @@
     });
   }).catch(function () { /* the map works without labels */ });
 
+  ["spoof", "cygnss"].forEach(function (k) {
+    fetch("/data/" + k + "/index.json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (j) { layerIndex[k] = (j && j.days) || []; if (state.day) loadLayers(state.day); });
+  });
   Promise.all([fetch("/data/gnss/days.json").then(function (r) { return r.json(); }),
                fetch("/data/land.json").then(function (r) { return r.json(); })]).then(function (res) {
     days = res[0];
@@ -819,6 +894,7 @@
       var v = (hp.v || "").split(",").map(Number);
       state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
       imagery.want = hp.img === "esri";
+      state.spoofShow = hp.sp === "1"; state.cygShow = hp.cy === "1";
       return d;
     }
     var day = fromHash();
@@ -903,6 +979,16 @@
     document.getElementById("tl-play").addEventListener("click", function () { setPlaying(!state.playing); });
     ["tl-prev", "tl-next", "tl-slider", "map-day"].forEach(function (id) {
       document.getElementById(id).addEventListener("pointerdown", function () { setPlaying(false); });
+    });
+    [["spoof", "spoof"], ["cyg", "cyg"]].forEach(function (k) {
+      var box = document.getElementById("lyr-" + k[0]);
+      if (!box) return;
+      box.checked = !!state[k[0] + "Show"];
+      box.addEventListener("change", function () {
+        state[k[0] + "Show"] = box.checked;
+        if (!box.checked) state[k[1]] = null;
+        loadLayers(state.day); layer.redraw(); writeHash();
+      });
     });
     var evBox = document.getElementById("lyr-events"), evBox2 = document.getElementById("ev-show");
     function setEvents(on) { state.evShow = on; evBox.checked = evBox2.checked = on; layer.redraw(); }

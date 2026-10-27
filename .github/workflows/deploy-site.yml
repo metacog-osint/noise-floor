@@ -72,6 +72,7 @@ jobs:
           python3 tools/site_history.py site
           python3 tools/geo.py build "$RUNNER_TEMP/release-files" site || echo "::warning::GEO board skipped"
           python3 tools/board.py "$RUNNER_TEMP/release-files" site || echo "::warning::status board skipped; the home page shows its loading text"
+          python3 tools/site_layers.py "$RUNNER_TEMP/release-files" site || echo "::warning::map layers skipped"
       - name: Save the release-file cache
         if: steps.files.outputs.changed == 'true'
         uses: actions/cache/save@v6

@@ -8,8 +8,11 @@ LATE_DAYS old. For the newest complete day not yet summarised (looking back up t
 `cygnss_rfi.py fetch` and `grid` (the validated method, unchanged), writes data/cygnss/daily/<day>.cygnss.json and
 uploads it to this repo's release `cygnss-data`, which the site deploy reads (tools/board.py).
 
-Summary: judged cells (H3 res 3, 20+ DDMs), cells with a median noise-floor excess of 1 dB or more, and the strongest
-raised areas (one per H3 res-2 region, by median excess). Aggregates only; NASA CYGNSS L1 V3.2 is NASA open data.
+Summary: judged cells (H3 res 3, 20+ DDMs), cells with a median noise-floor excess of 1 dB or more, the strongest
+raised areas (one per H3 res-2 region, by median excess), and for the map layer every raised cell as
+[h3, median dB, DDMs] (`cells`). Aggregates only; NASA CYGNSS L1 V3.2 is NASA open data.
+
+  python tools/cygnss_daily.py --resummarise [--no-upload]      # rewrite (and upload) every day already gridded
 
   python tools/cygnss_daily.py [--day 2026-10-20] [--no-upload]
 """
@@ -56,6 +59,7 @@ def summarise(day):
             "raised_cells": len(raised), "raised_db": RAISED_DB,
             "top": [{"lat": round(r["lat"], 2), "lon": round(r["lon"], 2), "med_db": round(r["med_db"], 2), "n": r["n"]}
                     for r in top],
+            "cells": [[r["h3"], round(r["med_db"], 1), r["n"]] for r in sorted(raised, key=lambda r: -r["med_db"])],
             "method": "tools/cygnss_rfi.py grid (H3 res 3, 20+ DDMs per judged cell); docs/validation/cygnss.md"}
 
 
@@ -72,11 +76,35 @@ def upload(path):
     gh("release", "upload", TAG, "-R", REPO, "--clobber", path)
 
 
+def resummarise(no_upload):
+    """Every day with a grid -> a fresh summary; uploaded together (one gh call per 50 files) unless no_upload."""
+    import glob
+    os.makedirs(OUT, exist_ok=True)
+    paths = []
+    for g in sorted(glob.glob(os.path.join(GRID, "*.r3.parquet"))):
+        day = os.path.basename(g)[:10]
+        p = os.path.join(OUT, f"{day}.cygnss.json")
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(summarise(day), f, separators=(",", ":"))
+        paths.append(p)
+    print(f"{len(paths)} days summarised")
+    if not no_upload and paths:
+        if gh("release", "view", TAG, "-R", REPO, check=False).returncode:
+            gh("release", "create", TAG, "-R", REPO, "--title", "CYGNSS daily summaries", "--notes", NOTES, "--latest=false")
+        for k in range(0, len(paths), 50):
+            gh("release", "upload", TAG, "-R", REPO, "--clobber", *paths[k:k + 50])
+            print(f"uploaded {min(k + 50, len(paths))} of {len(paths)}")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--day", help="summarise this day (default: the newest complete day not yet done)")
     ap.add_argument("--no-upload", action="store_true")
+    ap.add_argument("--resummarise", action="store_true", help="rewrite the summary of every gridded day (adds map cells)")
     a = ap.parse_args()
+    if a.resummarise:
+        return resummarise(a.no_upload)
     print(f"=== cygnss_daily {datetime.now(timezone.utc):%Y-%m-%dT%H:%MZ}")
     if not os.environ.get("EARTHDATA_TOKEN") and not a.day:
         print("EARTHDATA_TOKEN is not set: skipped")
