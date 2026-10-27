@@ -53,14 +53,17 @@ PAGE = """<!doctype html>
 <meta property="og:description" content="{description}">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/tic-time.css">
+<script defer src="/tic-time.js"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 {head}
+<script defer src="/tic-init.js"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site"><div class="in">
 <a class="brand" href="/">Noisefloor</a>
-<nav aria-label="Main">{nav}</nav>
+<nav aria-label="Main">{nav}<span id="time-settings"></span></nav>
 </div></header>
 <main id="main"{main_class}>
 {body}
@@ -92,7 +95,7 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
-ASSETS = ("style.css", "map.js", "sea.js", "charts.js", "home.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js", "geo.js")
+ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-init.js", "map.js", "sea.js", "charts.js", "home.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js", "geo.js")
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
 

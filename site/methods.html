@@ -9,14 +9,17 @@
 <meta property="og:description" content="How Noisefloor measures GNSS degradation from ADS-B, finds L-band emitters in NISAR radar data, and predicts sun outages.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css?v=93f8dc39d6">
+<link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
+<script defer src="/tic-time.js?v=f511c41ac0"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 
+<script defer src="/tic-init.js?v=d888070c79"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site"><div class="in">
 <a class="brand" href="/">Noisefloor</a>
-<nav aria-label="Main"><a href="/">Home</a><a href="/map">Map</a><a href="/sea">Sea</a><a href="/sun">Sun</a><a href="/geo">GEO</a><a href="/charts">Charts</a><a href="/lanes">Lanes</a><a href="/methods" aria-current="page">Methods</a><a href="/validation">Validation</a><a href="/data">Data</a><a href="/sources">Sources</a></nav>
+<nav aria-label="Main"><a href="/">Home</a><a href="/map">Map</a><a href="/sea">Sea</a><a href="/sun">Sun</a><a href="/geo">GEO</a><a href="/charts">Charts</a><a href="/lanes">Lanes</a><a href="/methods" aria-current="page">Methods</a><a href="/validation">Validation</a><a href="/data">Data</a><a href="/sources">Sources</a><span id="time-settings"></span></nav>
 </div></header>
 <main id="main" class="narrow">
 <p class="kicker">Methods</p>
@@ -78,7 +81,7 @@
 <ul>
   <li><strong>Licence registry:</strong> 134 sources, each with its licence, whether commercial use is allowed, and how it may be used. A source can't feed a public layer without a recorded licence. <a href="/sources">Browse it</a>.</li>
   <li><strong>Raw data stays where it is:</strong> adsb.lol keeps the aircraft archive, and NASA keeps NISAR. Noisefloor keeps megabytes of derived output, not terabytes.</li>
-  <li><strong>Times:</strong> stored in UTC; shown to people in US Central time with the zone named.</li>
+  <li><strong>Times:</strong> stored in UTC; shown in UTC with each visitor's own time zone alongside, always named. The Time button changes the zone (Zulu, major zones or any other) and the 12- or 24-hour clock.</li>
   <li><strong>Public and private:</strong> a check on every commit blocks private terms from the public repository.</li>
 </ul>
 

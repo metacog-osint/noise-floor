@@ -9,14 +9,17 @@
 <meta property="og:description" content="Sanctioned, military, law-enforcement and state-flag vessels in Finland&#x27;s open AIS, with what each ship broadcasts about itself, its reporting pattern and GNSS interference at sea.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/style.css?v=93f8dc39d6">
+<link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
+<script defer src="/tic-time.js?v=f511c41ac0"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/sea.js?v=254ae72c96"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/sea.js?v=8b09678076"></script>
+<script defer src="/tic-init.js?v=d888070c79"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site"><div class="in">
 <a class="brand" href="/">Noisefloor</a>
-<nav aria-label="Main"><a href="/">Home</a><a href="/map">Map</a><a href="/sea" aria-current="page">Sea</a><a href="/sun">Sun</a><a href="/geo">GEO</a><a href="/charts">Charts</a><a href="/lanes">Lanes</a><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data</a><a href="/sources">Sources</a></nav>
+<nav aria-label="Main"><a href="/">Home</a><a href="/map">Map</a><a href="/sea" aria-current="page">Sea</a><a href="/sun">Sun</a><a href="/geo">GEO</a><a href="/charts">Charts</a><a href="/lanes">Lanes</a><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data</a><a href="/sources">Sources</a><span id="time-settings"></span></nav>
 </div></header>
 <main id="main" class="wide">
 <p class="kicker">Sea</p>
@@ -135,7 +138,7 @@
   <li><strong>Port calls</strong> are stops of an hour or more under 1 knot within 10 km of a World Port Index port, from the trusted positions in this data. Anchorages far from a listed port don't count. <strong>Home port</strong> (port of registry) is not in any open source we can use, so it is never shown.</li>
   <li><strong>Signals</strong> are what the ship broadcasts about itself: class (Class A is inferred when the ship sends voyage data that only Class A transponders send), destination and ETA as typed by the crew, draught, size from the antenna offsets, and the position source the transponder declares (GPS, GLONASS, Galileo, combined and so on), which is a setting, not a check of what the receiver uses. "IMO check digit" says whether the broadcast IMO number is internally valid.</li>
   <li><strong>Satellite imagery</strong> on this map is Copernicus data served by Microsoft Planetary Computer, from zoom 10: <strong>Sentinel-2</strong> at 10 m, one mosaic per month with the clearest scenes drawn first (it shows places such as ports and terminals, and a cloudy month shows cloud), and <strong>Sentinel-1 radar</strong>, the latest pass in the period drawn first, which sees through cloud and shows ships as bright points at the time of that pass, whether or not they broadcast AIS. The panel gives the date of the image at the map centre. The links in a ship's panel open other providers' own viewers at its last trusted position: Google Maps and Esri Wayback for sharper imagery (Wayback keeps versions back to 2014), and Copernicus Browser and NASA Worldview for imagery near that date. Where it is offered, <strong>Esri World Imagery</strong> adds sharp current imagery (about 15 cm to 1.2 m); it is not offered in places Esri's terms exclude (see the <a href="/terms#imagery">terms of use</a>), and it stops if the site's free monthly allowance runs out.</li>
-  <li><strong>Times</strong> are UTC, with US Central time alongside.</li>
+  <li><strong>Times</strong> are UTC, with your own time zone alongside (change it with the Time button).</li>
 </ul>
 
 <p class="small" id="sea-note">Data: <a href="https://www.digitraffic.fi/en/marine-traffic/">Digitraffic</a> AIS from Fintraffic. Source: Fintraffic / digitraffic.fi, license CC 4.0 BY. Sanctions: <a href="https://ofac.treasury.gov/sanctions-list-service">US Treasury OFAC SDN List</a> (US government work) and the <a href="https://www.gov.uk/government/publications/the-uk-sanctions-list">UK Sanctions List</a>; contains public sector information licensed under the Open Government Licence v3.0. Sea zones: Flanders Marine Institute (2023), Maritime Boundaries Geodatabase, World EEZ v12 and Internal Waters v4, <a href="https://www.marineregions.org/">marineregions.org</a>, CC BY 4.0 (only the zone of each ship's position is published, not the boundaries). Ports: <a href="https://msi.nga.mil/Publications/WPI">NGA World Port Index</a> (US government). Land and borders: Natural Earth (public domain). <span id="sea-dates"></span> The data is refreshed by hand, not daily: <code>python tools/sanctions.py</code> then <code>python tools/vessels_build.py</code> (<a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/vessels_build.py">code</a>).</p>

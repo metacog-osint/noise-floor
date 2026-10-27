@@ -4,6 +4,12 @@
   X-Frame-Options: DENY
 /style.css
   Cache-Control: public, max-age=31536000, immutable
+/tic-time.css
+  Cache-Control: public, max-age=31536000, immutable
+/tic-time.js
+  Cache-Control: public, max-age=31536000, immutable
+/tic-init.js
+  Cache-Control: public, max-age=31536000, immutable
 /map.js
   Cache-Control: public, max-age=31536000, immutable
 /sea.js

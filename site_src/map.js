@@ -383,13 +383,14 @@
   function ll2(lat, lon) {
     return Math.abs(lat).toFixed(1) + "°" + (lat >= 0 ? "N" : "S") + " " + Math.abs(lon).toFixed(1) + "°" + (lon >= 0 ? "E" : "W");
   }
-  var CT = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric",
-                                              hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+  var TZ = window.TicTime ? window.TicTime.zone() : "America/Chicago", HC = window.TicTime && !window.TicTime.hour12() ? "h23" : "h12";
+  var CT = new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "short", day: "numeric",
+                                              hour: "numeric", minute: "2-digit", hourCycle: HC, timeZoneName: "short" });
   var UT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
   function central(day, mins) {
     var p = day.split("-"), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2], 0, mins)), x = {};
     CT.formatToParts(d).forEach(function (q) { x[q.type] = q.value; });
-    return { time: x.hour + ":" + x.minute + " " + String(x.dayPeriod || "").toLowerCase(), zone: x.timeZoneName,
+    return { time: x.hour + ":" + x.minute + (x.dayPeriod ? " " + x.dayPeriod.toLowerCase() : ""), zone: x.timeZoneName,
              date: x.month + " " + x.day, utcDate: UT.format(new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]))) };
   }
   // "03:00–05:59Z" and "10:00 pm (Oct 20)–12:59 am CDT"

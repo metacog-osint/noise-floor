@@ -21,7 +21,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
 - Free tier only. Ask before anything billable. **Commits and pushes:** commit finished steps, and push any commit that passes
   the pre-commit checks (standing permission, Tom, 14 Oct 2026). Creating repos or services, changing deploy settings, and
   publishing anything outside this repo (posts, products, the subdomain) still need Tom's OK each time.
-- Store UTC; show people Central time with the zone named.
+- Store UTC. On the site, show UTC with the visitor's own time zone alongside, always named; the Time button
+  (`site_src/tic-time.js`, The Intelligence Company's shared module, v1.0) lets them pick any zone and a 12/24-hour
+  clock (Tom, 27 Oct 2026). Messages to Tom use Central time.
 - Tom is a domain expert (intel, SDA, weather): cite sources and flag anything unverified.
 
 ## Products and tools
