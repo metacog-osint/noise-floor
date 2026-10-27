@@ -150,4 +150,45 @@ amendment 3 before the held-out pass is read. Until then the held-out pass stays
 
 ## Results
 
-(Not yet scored.)
+**Scored 27 Oct 2026** (`dark_match.py run` on the held-out pass from 00:06 UTC, outputs written 00:14 and 00:19 UTC,
+after amendment 3 was committed at 22:19 UTC on 26 Oct; `dark_match.py score --set heldout`). One pass: Sentinel-1C,
+26 Oct 2026 04:41 UTC, descending, three IW frames, with the 25–26 Oct AIS capture.
+
+| | A, as pre-registered | B (amendment 2) | B with amendment 3 | A with amendment 3 |
+|---|---|---|---|---|
+| Detections in the scored area | 857 | 86 | 86 | pending |
+| AIS vessels scored (known position) | 94 | 83 | 83 | |
+| H1: ships of 100 m or more matched (≥ 85%) | 75 of 75 (100%): **pass** | 75 of 75: **pass** | 75 of 75: **pass** | |
+| H2: median position gap, matched ships of 100 m or more (≤ 500 m) | 105 m: **pass** | 105 m: **pass** | 105 m: **pass** | |
+| H3: large detections with no AIS match (≤ 10%) | 591 of 678 (87%): **fail** | 3 of 86 (3.5%): **pass** | 1 of 84 (1.2%): **pass** | |
+| Verdict (rule above) | **partly validated** | **validated (regional)** | **validated (regional)** | |
+
+A with amendment 3 waits for its own fixed-object map (`dark_match.py clutter --variant A`, running); it will be added
+here, and it can't change the verdicts above.
+
+**Reported, not scored.**
+
+- 50–100 m ships matched: 6 of 6 in every variant. Phantom candidates (AIS ships of 50 m or more with no detection): 0.
+- Large dark detections east of 27°E (counted apart: naval vessels near the Finnish–Russian border often don't
+  transmit): 15 in variant A, 0 in B.
+- Variant B's three large dark detections, reviewed by eye on 20 m image chips (private): one faint point in open water,
+  estimated 92 m at 11.0 dB contrast, just over the 10 dB floor (**unclear**); and two points that amendment 3's
+  fixed-object map, built from 39 earlier passes without AIS, marks as fixed objects (**structure**: an offshore light or
+  beacon fits; one also lies about 3.7 km along track from an AIS ship, so a ghost was the first guess by eye). Variant A's
+  591 are mostly islets and skerries outside the Natural Earth coastline, as on the development passes; not reviewed one
+  by one.
+- Amendment 3 flagged 2 fixed-object detections and 1 ghost in variant B.
+
+**What this shows.**
+
+- **The detector finds the large ships AIS reports.** All 75 ships of 100 m or more, and all 6 of 50–100 m, were
+  matched within 1 km, with a 105 m median gap (smaller than on the development passes, about 400 m; fewer of these ships
+  were moving fast across track). D2's base holds on this pass.
+- **With a proper coastline, large unmatched targets are rare.** The pre-registered variant fails H3 only because Natural
+  Earth's coastline misses the skerries; with OpenStreetMap land (amendment 2, decided on development data) 3 of 86 large
+  detections are unmatched, and 1 after amendment 3. A list that short can be reviewed by a person each time, which is
+  what H3 asks.
+- **Limits.** One pass, 75 large ships, Finnish waters, October (no ice). The pre-registered primary is "partly
+  validated"; the "validated" verdicts rest on amendments made before the held-out read, on development data. The
+  extension (Sentinel-1 passes in the first seven days of the 7-day AIS capture that began at 00:06 UTC on 27 Oct 2026,
+  up to 30 frames, same frozen rules) will be scored and reported separately.

@@ -358,7 +358,7 @@
       "what": "Daily positions of known GEO inspector satellites, such as the Olymp-K (Luch) and Shijian series, against the communications satellites near them.",
       "how": "Longitude-drift and manoeuvre flags from public orbital elements. Proximity thresholds are no tighter than public element accuracy (about 50 km).",
       "data": [
-        "CelesTrak orbital elements (terms UNVERIFIED)"
+        "CelesTrak orbital elements (USSPACECOM SSA data, redistribution allowed with citation)"
       ],
       "notes": "Built 26 Oct 2026 (the GEO page): every active geosynchronous object from CelesTrak's public elements (USSPACECOM basic SSA data, used with citation), with its longitude, drift and class, pairs of different owners within 100 km, and manoeuvres between daily snapshots (from 26 Oct 2026). Public elements at GEO are good to tens of km, so no separation under about 50 km is claimed. Operators co-locate on purpose and servicing vehicles dock, so it shows proximity and behaviour, never intent. Not validated: a check against announced manoeuvres and published rendezvous comes next.",
       "links": [
@@ -508,10 +508,10 @@
       "group": "maritime",
       "name": "Vessels, dark ships and signals at sea",
       "status": "prototype",
-      "phase": "Prototype (M1, Oct 2026)",
+      "phase": "Prototype (M2 scored, Oct 2026)",
       "summary": "Find vessels that hide, transfer cargo at sea or press others near contested features, and the emitters they carry, starting in the South China Sea and Indian Ocean.",
       "what": "Combines ships seen by radar satellites while silent on AIS (dark ships), AIS tracks with no ship under them (phantom tracks), ship-to-ship transfers, identity changes, spoofed tracks, behaviour over undersea cables, RF emitters at sea and HF signal metadata, with weather and declared activity as context.",
-      "how": "First one method, validated and written up: Sentinel-1 ship detections matched against AIS at one focus area. Ship detection is built and runs privately on the first area (19 radar passes in 60 days). Checked against Sentinel-2 optical images, about half of its detections are confirmed at the best setting, against 13–31% at the first one; AIS matching is next. Then behaviour detectors, context layers and a separate Sea map with licence-clean layers only.",
+      "how": "First one method, validated and written up: Sentinel-1 ship detections matched against AIS at one focus area. Ship detection is built and runs privately on the first area (19 radar passes in 60 days). Checked against Sentinel-2 optical images, about half of its detections are confirmed at the best setting, against 13–31% at the first one. Matched against Finland's open AIS at the radar's acquisition time on a held-out pass (26 Oct 2026, pre-registered): all 75 ships of 100 m or more were found, with a 105 m median gap. With OpenStreetMap coastlines, 3 of 86 large detections had no AIS match (1 after a map of fixed objects), so the amended setting is validated for Finnish waters on one pass; the pre-registered setting, with Natural Earth coastlines, only partly (islets swamp it). A seven-day extension is running. Then behaviour detectors, context layers and a separate Sea map with licence-clean layers only.",
       "data": [
         "Digitraffic AIS (CC BY 4.0)",
         "Official sanctions lists (OFAC SDN, UK Sanctions List)",
@@ -534,6 +534,10 @@
         [
           "Ship detection check",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/ships-s1.md"
+        ],
+        [
+          "Dark-ship test",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/dark-ships-baltic.md"
         ]
       ]
     }
