@@ -18,8 +18,9 @@
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   function hm(d) { return pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()); }
   function dayHm(d) { return d.toISOString().slice(5, 10) + " " + hm(d); }
-  var CT = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
-  function both(d) { return hm(d) + " UTC (" + CT.format(d) + ")"; }
+  var TZ = window.TicTime ? window.TicTime.zone() : "America/Chicago", HC = window.TicTime && !window.TicTime.hour12() ? "h23" : "h12";
+  var CT = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit", hourCycle: HC, timeZoneName: "short" });
+  function both(d) { return TZ === "UTC" ? hm(d) + " UTC" : hm(d) + " UTC (" + CT.format(d) + ")"; }
   function lonText(x) { return Math.abs(x).toFixed(1) + "°" + (x < 0 ? "W" : "E"); }
   function get(u) { return fetch(u, { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); }
   function utcMs(s) { return Date.parse(/Z$|[+-]\d\d:?\d\d$/.test(s) ? s : s.replace(" ", "T") + "Z"); }

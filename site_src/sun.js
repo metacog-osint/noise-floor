@@ -6,7 +6,7 @@
   var form = document.getElementById("sun-form");
   if (!form || !window.NFSun) return;
   var $ = function (id) { return document.getElementById(id); };
-  var CENTRAL = "America/Chicago", targets = { slots: [], cities: [] }, last = null;
+  var CENTRAL = window.TicTime ? window.TicTime.zone() : "America/Chicago", targets = { slots: [], cities: [] }, last = null;
 
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function pad(n) { return (n < 10 ? "0" : "") + n; }

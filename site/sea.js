@@ -54,10 +54,11 @@
     try { n = regionName ? regionName.of(iso) : null; } catch (e) { n = null; }
     return n && n !== iso ? n + " (" + iso + ")" : iso;
   }
-  var CT = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric",
-                                              hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+  var TZ = window.TicTime ? window.TicTime.zone() : "America/Chicago", HC = window.TicTime && !window.TicTime.hour12() ? "h23" : "h12";
+  var CT = new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "short", day: "numeric",
+                                              hour: "numeric", minute: "2-digit", hourCycle: HC, timeZoneName: "short" });
   function utc(iso) { return iso ? iso.slice(0, 10) + " " + iso.slice(11, 16) + " UTC" : "–"; }
-  function both(iso) { return iso ? utc(iso) + " (" + CT.format(new Date(iso)) + ")" : "–"; }
+  function both(iso) { return !iso ? "–" : TZ === "UTC" ? utc(iso) : utc(iso) + " (" + CT.format(new Date(iso)) + ")"; }
   function longDate(d) {
     if (!d) return "an unstated date";
     var p = d.split("-"), M = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
@@ -556,7 +557,7 @@
     document.querySelector("#gnss-to tbody").innerHTML = gnss.spoofed_to.map(function (s) {
       return "<tr><td>" + esc(ll(s.lat, s.lon)) + '</td><td class="num">' + s.vessels + "</td></tr>";
     }).join("") || '<tr><td colspan="2">None</td></tr>';
-    var CH = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", timeZoneName: "short" });
+    var CH = new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "short", day: "numeric", hour: "numeric", hourCycle: HC, timeZoneName: "short" });
     document.querySelector("#gnss-hours tbody").innerHTML = gnss.by_hour.map(function (h) {
       return "<tr><td>" + esc(utc(h.t)) + "</td><td>" + esc(CH.format(new Date(h.t))) + '</td><td class="num">' + h.vessels + "</td></tr>";
     }).join("");

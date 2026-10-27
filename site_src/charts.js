@@ -29,7 +29,8 @@
   var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function utcLabel(d) { return d.getUTCDate() + " " + MON[d.getUTCMonth()] + " " + String(d.getUTCHours()).padStart(2, "0") + ":00 UTC"; }
   function central(d) {
-    try { return d.toLocaleString("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit", timeZoneName: "short" }); }
+    var TZ = window.TicTime ? window.TicTime.zone() : "America/Chicago", HC = window.TicTime && !window.TicTime.hour12() ? "h23" : "h12";
+    try { return d.toLocaleString("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit", hourCycle: HC, timeZoneName: "short" }); }
     catch (e) { return ""; }
   }
 
