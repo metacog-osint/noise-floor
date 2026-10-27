@@ -28,8 +28,12 @@
   fetch("/data/geo.json", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (g) {
     if (!g) { $("geo-status").textContent = "The GEO data could not be loaded."; return; }
     var c = g.counts;
-    $("geo-status").innerHTML = "<strong>" + c.objects + "</strong> active objects at " + esc(g.at_utc.replace("T", " ").replace("Z", "")) + " UTC: " + c["station-kept"] + " station-kept, " +
-      c.inclined + " inclined, " + c.drifting + " drifting. Elements from the snapshot of " + esc(g.snapshot_day) + " (" + g.snapshots + " snapshot" + (g.snapshots === 1 ? "" : "s") + " so far).";
+    var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var day = function (s) { return +s.slice(8, 10) + " " + MON[+s.slice(5, 7) - 1] + " " + s.slice(0, 4); };
+    var at = new Date(g.at_utc.replace(/Z$/, "") + "Z"), atText = g.at_utc.slice(11, 16) + " UTC" +
+      (window.TicTime && window.TicTime.zone() !== "UTC" ? " (" + window.TicTime.format(at, { date: false }) + ")" : "") + " on " + day(g.at_utc);
+    $("geo-status").innerHTML = "<strong>" + c.objects + "</strong> active objects at " + esc(atText) + ": " + c["station-kept"] + " station-kept, " +
+      c.inclined + " inclined, " + c.drifting + " drifting. Elements from the snapshot of " + esc(day(g.snapshot_day)) + " (" + g.snapshots + " snapshot" + (g.snapshots === 1 ? "" : "s") + " so far).";
     $("geo-close").innerHTML = g.close_other_owner.length ? table(["Separation", "Object", "Owner", "Near", "Owner", "Longitude", "What the roles say"], g.close_other_owner.map(function (p) {
       return '<tr><td class="num">' + p.km + " km</td><td>" + esc(p.a[1]) + role(p.a[3]) + "</td><td>" + esc(p.a[2]) + "</td><td>" + esc(p.b[1]) + role(p.b[3]) + "</td><td>" + esc(p.b[2]) +
         '</td><td class="num">' + lon(p.lon) + "</td><td>" + esc(p.kind || "") + (p.age_days > 3 ? " (elements " + Math.round(p.age_days) + " days old)" : "") + "</td></tr>";

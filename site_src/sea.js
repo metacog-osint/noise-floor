@@ -55,10 +55,20 @@
     return n && n !== iso ? n + " (" + iso + ")" : iso;
   }
   var TZ = window.TicTime ? window.TicTime.zone() : "America/Chicago", HC = window.TicTime && !window.TicTime.hour12() ? "h23" : "h12";
-  var CT = new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "short", day: "numeric",
+  var LT = new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "numeric", day: "numeric",
                                               hour: "numeric", minute: "2-digit", hourCycle: HC, timeZoneName: "short" });
-  function utc(iso) { return iso ? iso.slice(0, 10) + " " + iso.slice(11, 16) + " UTC" : "–"; }
-  function both(iso) { return !iso ? "–" : TZ === "UTC" ? utc(iso) : utc(iso) + " (" + CT.format(new Date(iso)) + ")"; }
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function utcDay(iso) { return +iso.slice(8, 10) + " " + MON[+iso.slice(5, 7) - 1]; }
+  function utc(iso) { return iso ? utcDay(iso) + " " + iso.slice(11, 16) + " UTC" : "–"; }   // "26 Oct 20:03 UTC"
+  // the viewer's local time, "3:03 PM CDT", with "27 Oct, " in front when the local date is not the UTC date
+  function local(iso, noMinutes) {
+    var x = {};
+    LT.formatToParts(new Date(iso)).forEach(function (q) { x[q.type] = q.value; });
+    var day = +x.day + " " + MON[+x.month - 1];
+    var t = (noMinutes ? x.hour : x.hour + ":" + x.minute) + (x.dayPeriod ? " " + x.dayPeriod : "") + " " + x.timeZoneName;
+    return (day === utcDay(iso) ? "" : day + ", ") + t;
+  }
+  function both(iso) { return !iso ? "–" : TZ === "UTC" ? utc(iso) : utc(iso) + " (" + local(iso) + ")"; }
   function longDate(d) {
     if (!d) return "an unstated date";
     var p = d.split("-"), M = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
@@ -557,9 +567,8 @@
     document.querySelector("#gnss-to tbody").innerHTML = gnss.spoofed_to.map(function (s) {
       return "<tr><td>" + esc(ll(s.lat, s.lon)) + '</td><td class="num">' + s.vessels + "</td></tr>";
     }).join("") || '<tr><td colspan="2">None</td></tr>';
-    var CH = new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "short", day: "numeric", hour: "numeric", hourCycle: HC, timeZoneName: "short" });
     document.querySelector("#gnss-hours tbody").innerHTML = gnss.by_hour.map(function (h) {
-      return "<tr><td>" + esc(utc(h.t)) + "</td><td>" + esc(CH.format(new Date(h.t))) + '</td><td class="num">' + h.vessels + "</td></tr>";
+      return "<tr><td>" + esc(utc(h.t)) + "</td><td>" + esc(TZ === "UTC" ? utc(h.t) : local(h.t, true)) + '</td><td class="num">' + h.vessels + "</td></tr>";
     }).join("");
   }
 
@@ -586,7 +595,9 @@
     vessels.forEach(function (v) { var t = Date.parse(v.reporting.last_seen || ""); if (t > dataEnd) dataEnd = t; });
     var counts = { sanctioned: 0, state: 0, flag: 0 };
     vessels.forEach(function (v) { counts[group(v)]++; });
-    document.getElementById("sea-data").textContent = "Data built " + utc(d.generated);
+    var gen = d.generated;
+    document.getElementById("sea-data").textContent = "Data from " + (+gen.slice(8, 10)) + " " + MON[+gen.slice(5, 7) - 1] + " " + gen.slice(0, 4) + ", " +
+      gen.slice(11, 16) + " UTC" + (TZ === "UTC" ? "" : " (" + local(gen) + ")");
     document.getElementById("sea-stats").textContent = vessels.length + " vessels: " + counts.sanctioned + " sanctioned, " + counts.state +
       " military or law enforcement, " + counts.flag + " other state-flag ships. " + d.coverage;
     document.getElementById("sea-dates").textContent = "This data was built " + both(d.generated) + ". Sources: " + d.sources.slice(1).join("; ") + ".";

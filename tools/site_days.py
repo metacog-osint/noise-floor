@@ -193,16 +193,24 @@ def nearest(places, lat, lon, limit_km=350):
     return name
 
 
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def _dayname(day):
+    """'2026-10-26' -> '26 Oct 2026' (the site's date style)."""
+    return f"{int(day[8:10])} {MONTHS[int(day[5:7]) - 1]} {day[:4]}"
+
+
 def day_summary(d, prior, ev, places):
-    """(title, html) for one day: hexes at jamming scale against the 30 days before, the top jamming-scale events
+    """(title, html) for one day: cells with severe GPS error against the 30 days before, the top severe-error events
     with the nearest named place, burst and announced-test counts. Mirrors the home page's "on the map today"."""
     med = sorted(prior)[len(prior) // 2] if prior else None
     top = [e for e in (ev or {}).get("anomalies", []) if e.get("m") == "jam" and e.get("tier") != "minor"][:5]
     n_major = sum(1 for e in (ev or {}).get("anomalies", []) if e.get("m") == "jam" and e.get("tier") == "major")
-    title = (f"{d['day']}: {d['jam_hexes']:,} hexes at jamming scale" + (f" (30-day median {med:,})" if med is not None else "")
+    title = (f"{_dayname(d['day'])}: {d['jam_hexes']:,} cells with severe GPS error" + (f" (30-day median {med:,})" if med is not None else "")
              + (f", {n_major} major event{'s' if n_major != 1 else ''}" if n_major else ""))
     link = f"{SITE_URL}/map#day={d['day']}&m=jam"
-    parts = [f"<p>{d['jam_hexes']:,} hexes at jamming scale" + (f" (30-day median {med:,})" if med is not None else "")
+    parts = [f"<p>{d['jam_hexes']:,} cells with severe GPS error" + (f" (30-day median {med:,})" if med is not None else "")
              + f", out of {d['hexes']:,} with 5 or more aircraft." + (f" Note: {escape(d['note'])}." if d.get("note") else "") + "</p>"]
     if ev is None:
         parts.append("<p>No event file for this day.</p>")
@@ -212,15 +220,15 @@ def day_summary(d, prior, ev, places):
             near = nearest(places, e["lat"], e["lon"])
             url = f"{SITE_URL}/map#day={d['day']}&m=jam&v={e['lat']:.2f},{e['lon']:.2f},6"
             hs = e.get("hs")
-            items.append(f'<li><a href="{escape(url)}">{TIER.get(e["tier"], e["tier"])}: {e["peak"]:.0f}% of aircraft degraded around '
-                         f'{ll2(e["lat"], e["lon"])}' + (f" (near {escape(near)})" if near else "") + "</a>, "
+            items.append(f'<li><a href="{escape(url)}">{TIER.get(e["tier"], e["tier"])}: {e["peak"]:.0f}% of aircraft degraded '
+                         + (f"near {escape(near)}" if near else f"around {ll2(e['lat'], e['lon'])}") + "</a>, "
                          f'{e["h0"]:02d}:00–{e["h1"]:02d}:59 UTC, {e["excess"]:.0f} points above usual'
                          + (f"; {hs * 100:.0f}% of the degraded aircraft were A350s or A380s" if hs is not None and hs >= 0.5 else "")
                          + (f"; fits announced test {escape(e['test'])}" if e.get("test") else "") + ".</li>")
         if items:
             parts.append("<ul>" + "".join(items) + "</ul>")
         else:
-            parts.append("<p>No major or notable jamming-scale anomaly events.</p>")
+            parts.append("<p>No major or notable anomaly events on the severe-error measure.</p>")
         extra = []
         if ev.get("bursts"):
             extra.append(f"{len(ev['bursts'])} minute-level bursts.")
@@ -229,7 +237,7 @@ def day_summary(d, prior, ev, places):
         if extra:
             parts.append("<p>" + " ".join(extra) + "</p>")
     how = "From the automatic daily run, not reviewed by a person." if d.get("daily") else "One of the validated days, checked by hand."
-    parts.append(f'<p><a href="{escape(link)}">Open the map for {d["day"]}</a>. {how} Derived from adsb.lol data (ODbL 1.0).</p>')
+    parts.append(f'<p><a href="{escape(link)}">Open the map for {_dayname(d["day"])}</a>. {how} Derived from adsb.lol data (ODbL 1.0).</p>')
     return title, "".join(parts)
 
 

@@ -1,4 +1,4 @@
-<!--{"title": "Map · Noisefloor", "description": "Interactive world map of GNSS degradation from aircraft ADS-B reports, per H3 hex, updated daily.", "nav": "map", "layout": "wide", "head": "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css\"><script defer src=\"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js\"></script><script defer src=\"https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js\"></script><script defer src=\"/imagery.js\"></script><script defer src=\"/map.js\"></script>"}-->
+<!--{"title": "Map · Noisefloor", "description": "Interactive world map of GNSS degradation from aircraft ADS-B reports, per H3 cell, updated daily.", "nav": "map", "layout": "wide", "head": "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css\"><script defer src=\"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js\"></script><script defer src=\"https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js\"></script><script defer src=\"/imagery.js\"></script><script defer src=\"/map.js\"></script>"}-->
 <div class="page-head">
   <div>
     <h1>Where aircraft lost GPS</h1>
@@ -11,12 +11,12 @@
   <label class="ctl"><span>Day</span><select id="map-day" aria-label="Day"></select></label>
   <label class="ctl search"><span>Find a place</span><input type="search" id="map-search" list="map-search-list" placeholder="City or monitored area" autocomplete="off" aria-label="Find a place or monitored area"></label>
   <datalist id="map-search-list"></datalist>
-  <label class="ctl check" id="map-raw-wrap"><input type="checkbox" id="map-raw"> Include post-exposure aircraft</label>
+  <label class="ctl check" id="map-raw-wrap"><input type="checkbox" id="map-raw"> Include aircraft still degraded from earlier interference</label>
 </div>
 
 
 <div class="map-frame">
-  <div id="map" role="img" aria-label="World map of hexes coloured by the share of aircraft with degraded GNSS on the selected day. A table of the worst hexes follows the map."></div>
+  <div id="map" role="img" aria-label="World map of cells coloured by the share of aircraft with degraded GNSS on the selected day. A table of the worst cells follows the map."></div>
   <div id="map-tip" class="map-tip" hidden></div>
   <div id="map-panel" class="map-panel">
     <button type="button" class="mp-toggle" id="mp-toggle" aria-expanded="true" aria-controls="mp-body">Map options <span aria-hidden="true">▾</span></button>
@@ -27,7 +27,7 @@
         <button type="button" class="tl-btn" id="mp-next" aria-label="Next day">›</button>
       </div>
       <fieldset class="mp-group"><legend>Measure</legend>
-        <label><input type="radio" name="measure" value="jam" checked> Jamming-scale (93 m)</label>
+        <label><input type="radio" name="measure" value="jam" checked> Severe error (93 m)</label>
         <label><input type="radio" name="measure" value="acc"> Accuracy (10 m)</label>
         <label id="mp-chg-wrap"><input type="radio" name="measure" value="chg"> Change from usual (93 m)</label>
         <label id="mp-miss-wrap"><input type="radio" name="measure" value="miss"> Fewer aircraft than usual</label>
@@ -94,12 +94,12 @@
 </div>
 
 <h3 id="ev-anom-h">Anomalies</h3>
-<div class="tw"><table id="ev-anom"><thead><tr><th>Level</th><th>UTC</th><th>Central</th><th>Centre</th><th>Regions</th><th>Peak share</th><th>Above usual</th><th title="Share of the event's degraded aircraft that were A350s or A380s">A350/A380</th><th>Announced test</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="tw"><table id="ev-anom"><thead><tr><th>Level</th><th>Time</th><th>Where</th><th>Regions</th><th>Peak share</th><th>Above usual</th><th title="Share of the event's degraded aircraft that were A350s or A380s">A350/A380</th><th>Announced test</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small"><span id="ev-anom-note"></span> <button type="button" class="linkish" id="ev-anom-more" hidden></button></p>
 
 <div id="ev-burst-wrap">
 <h3>Bursts</h3>
-<div class="tw"><table id="ev-burst"><thead><tr><th>UTC</th><th>Central</th><th>Centre</th><th>Peak aircraft</th><th>Regions</th><th title="Share of the burst's degraded aircraft that were A350s or A380s">A350/A380</th><th>Announced test</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="tw"><table id="ev-burst"><thead><tr><th>Time</th><th>Where</th><th>Peak aircraft</th><th>Regions</th><th title="Share of the burst's degraded aircraft that were A350s or A380s">A350/A380</th><th>Announced test</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small"><span id="ev-burst-note"></span> <button type="button" class="linkish" id="ev-burst-more" hidden></button></p>
 </div>
 <p class="small" id="ev-heavy-note"><strong>A350/A380:</strong> the share of an event's degraded aircraft that were A350s or A380s. These types flag their accuracy as poor far more readily than others and stay degraded longer, so an event resting mostly on them (shown in bold, 50% or more) is weaker evidence of interference on its own. Inside real jamming they are also among the best witnesses, because they keep reporting while other types go dark. Recorded from 25 Oct 2026; earlier days show "–". <a href="/methods#adsb">Method</a></p>
@@ -108,9 +108,9 @@
 <details class="ev-how">
 <summary>How these are found</summary>
 <ul>
-  <li><strong>Anomaly:</strong> an H3 resolution-2 region (about 87,000 km²) in one UTC hour where the share of degraded aircraft is well above the same hour on up to 14 earlier days. It needs 50 or more aircraft-hex-hours, a binomial z of 4 or more against the usual rate, and an excess of at least 2 percentage points (93 m) or 10 points (10 m) and 4 times the usual spread. Neighbouring regions and hours join into one event.</li>
+  <li><strong>Anomaly:</strong> an H3 resolution-2 region (about 87,000 km²) in one UTC hour where the share of degraded aircraft is well above the same hour on up to 14 earlier days. It needs 50 or more aircraft-cell-hours, a binomial z of 4 or more against the usual rate, and an excess of at least 2 percentage points (93 m) or 10 points (10 m) and 4 times the usual spread. Neighbouring regions and hours join into one event.</li>
   <li><strong>Level</strong> is the largest excess in the event: major 25 points or more, notable 10–25, minor under 10. "Peak share" is the highest share in any of its region-hours.</li>
-  <li><strong>Burst:</strong> 3 or more minutes in which the number of aircraft with a jamming-scale report in a region rises above its usual level for that 15-minute slot on earlier days (at least 5 aircraft, and 5 times the usual spread). Short, sharp events show here: tests, short-lived jammers, the start of a spoofing episode.</li>
+  <li><strong>Burst:</strong> 3 or more minutes in which the number of aircraft with a severe-error report in a region rises above its usual level for that 15-minute slot on earlier days (at least 5 aircraft, and 5 times the usual spread). Short, sharp events show here: tests, short-lived jammers, the start of a spoofing episode.</li>
   <li>Aircraft still degraded after leaving interference elsewhere are left out of both. With fewer than 5 earlier days there are no anomalies, and bursts are judged against the day's own level.</li>
   <li><strong>Announced tests:</strong> US GPS interference tests announced in the FAA's public flight advisories. An event is tagged when it overlaps a test window and lies within the test's widest radius (the one for aircraft at FL400). The dashed circle shows the radius at FL250. A tag means the event fits an announced test, not that the test caused it.</li>
   <li>Automatic and not reviewed by a person. An event is an effect, not attribution: storms, SBAS problems and avionics faults can cause them too. Code: <a href="https://github.com/metacog-osint/noise-floor/blob/main/pipeline/pnt_analysis.py">pnt_analysis.py</a>.</li>
@@ -118,25 +118,25 @@
 </details>
 </section>
 
-<h2>Worst hexes on this day</h2>
-<p class="small">Top 25 by share, hexes with 5 or more aircraft. "Show" centres the map on the hex. <a id="map-download" href="#">Download</a></p>
-<div class="tw"><table id="map-table"><thead><tr><th>Hex centre (lat, lon)</th><th>Aircraft</th><th>Degraded</th><th>Share</th><th></th></tr></thead><tbody></tbody></table></div>
+<h2>Worst cells on this day</h2>
+<p class="small">Top 25 by share, cells with 5 or more aircraft. "Show" centres the map on the cell. <a id="map-download" href="#">Download</a></p>
+<div class="tw"><table id="map-table"><thead><tr><th>Where</th><th>Aircraft</th><th>Degraded</th><th>Share</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small" id="map-table-note"></p>
 
 <section id="howto" class="howto" aria-labelledby="howto-h">
 <h2 id="howto-h">How to read this map</h2>
-<p>The share of aircraft in each hex whose own GPS accuracy degraded that day, from their ADS-B position-quality reports. It shows effects, not who caused them. A new day appears each morning: adsb.lol publishes each UTC day at about 03:30 UTC the next day, and the map updates by about 06:00 UTC (1 am CDT, midnight CST). The map covers every day since 1 October 2025: drag the slider or click the strip to move through it. Daily runs are automatic and not reviewed by a person; the 20 validated test days are marked.</p>
+<p>The share of aircraft in each cell whose own GPS accuracy degraded that day, from their ADS-B position-quality reports. It shows effects, not who caused them. A new day appears each morning: adsb.lol publishes each UTC day at about 03:30 UTC the next day, and the map updates by about 06:00 UTC (1 am CDT, midnight CST). The map covers every day since 1 October 2025: drag the slider or click the strip to move through it. Daily runs are automatic and not reviewed by a person; the 20 validated test days are marked.</p>
 <ul>
-  <li><strong>Click a hex</strong> to see the history of the area around it (an H3 resolution-3 cell, about 12,000 km²): its share for every day since 1 October 2025, with the days an anomaly event covered it. Click a point on that chart to open the day.</li>
-  <li><strong>Satellite imagery</strong> (Map options → Layers → Satellite imagery) puts Esri World Imagery under the hexes: quiet hexes turn faint, the coloured ones stay strong, and the map zooms closer (to zoom 10) to show what lies under a hotspot. It is offered only where Esri's terms allow (see the <a href="/terms#imagery">terms of use</a>) and stops if the site's free monthly allowance runs out.</li>
-  <li><strong>Change from usual</strong> colours each hex by how far today's share sits above its own median over its previous 14 days with traffic. Persistent hotspots fade, so new or growing activity stands out. Hexes with fewer than 5 such days show as low coverage.</li>
-  <li><strong>Fewer aircraft than usual</strong> compares each hex's aircraft count with its median over the previous 14 days. Strong jamming can stop aircraft sending a position at all, and then they vanish from the map instead of showing as degraded: on 9 May 2026 three in four aircraft crossing the southern Baltic lost their ADS-B position (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">validation notes</a>, verdict 34). Weekends, holidays, airspace closures and receiver outages lower counts too, so read it alongside the other views. Try 2026-05-09.</li>
+  <li><strong>Click a cell</strong> to see the history of the area around it (an H3 resolution-3 cell, about 12,000 km²): its share for every day since 1 October 2025, with the days an anomaly event covered it. Click a point on that chart to open the day.</li>
+  <li><strong>Satellite imagery</strong> (Map options → Layers → Satellite imagery) puts Esri World Imagery under the cells: quiet cells turn faint, the coloured ones stay strong, and the map zooms closer (to zoom 10) to show what lies under a hotspot. It is offered only where Esri's terms allow (see the <a href="/terms#imagery">terms of use</a>) and stops if the site's free monthly allowance runs out.</li>
+  <li><strong>Change from usual</strong> colours each cell by how far today's share sits above its own median over its previous 14 days with traffic. Persistent hotspots fade, so new or growing activity stands out. Cells with fewer than 5 such days show as low coverage.</li>
+  <li><strong>Fewer aircraft than usual</strong> compares each cell's aircraft count with its median over the previous 14 days. Strong jamming can stop aircraft sending a position at all, and then they vanish from the map instead of showing as degraded: on 9 May 2026 three in four aircraft crossing the southern Baltic lost their ADS-B position (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">validation notes</a>, verdict 34). Weekends, holidays, airspace closures and receiver outages lower counts too, so read it alongside the other views. Try 2026-05-09.</li>
   <li><strong>Play</strong> (▶ under the strip) steps through the days one by one; any other control stops it.</li>
-  <li><strong>Hexes</strong> are H3 resolution 4, about 1,770 km² each. A hex is coloured only when 5 or more aircraft were in it that day; 3–4 show as low coverage, and 1–2 are left out.</li>
-  <li><strong>Share</strong> follows the formula GPSJam publishes: one bad aircraft is subtracted, so a single faulty receiver never colours a hex.</li>
-  <li><strong>Jamming-scale</strong> means a reported position uncertainty of 93 m or worse (NACp below 8). "Live" leaves out aircraft still degraded after leaving interference elsewhere; tick the box to include them.</li>
+  <li><strong>Cells</strong> are H3 resolution 4, about 1,770 km² each. A cell is coloured only when 5 or more aircraft were in it that day; 3–4 show as low coverage, and 1–2 are left out.</li>
+  <li><strong>Share</strong> follows the formula GPSJam publishes: one bad aircraft is subtracted, so a single faulty receiver never colours a cell.</li>
+  <li><strong>Severe GPS error</strong> means a reported position uncertainty of 93 m or worse (NACp below 8). "Live" leaves out aircraft still degraded after leaving interference elsewhere; tick the box to include them.</li>
   <li><strong>Accuracy</strong> counts only aircraft that showed 10 m accuracy at least once that day. Storms and SBAS outages show here, rarely on the 93 m measure.</li>
   <li><strong>Days to try:</strong> 2025-10-14 (EGNOS outage; accuracy measure over Europe), 2025-11-12 (G4 storm; accuracy measure over North America), 2026-09-22 (California GPS loss).</li>
 </ul>
-<p class="small">Method: <a href="/methods#adsb">how it works</a> · <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">method card</a>. Data: <a href="https://www.adsb.lol/">adsb.lol</a> daily archive, ODbL 1.0; the hex data here is published under ODbL with attribution. Full daily outputs (per hex, per hour, per minute, and the anomaly and burst lists): <a href="https://github.com/metacog-osint/noise-floor/releases">monthly data releases</a>. Land: Natural Earth (public domain).</p>
+<p class="small">Method: <a href="/methods#adsb">how it works</a> · <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">method card</a>. Data: <a href="https://www.adsb.lol/">adsb.lol</a> daily archive, ODbL 1.0; the cell data here is published under ODbL with attribution. Full daily outputs (per cell, per hour, per minute, and the anomaly and burst lists): <a href="https://github.com/metacog-osint/noise-floor/releases">monthly data releases</a>. Land: Natural Earth (public domain).</p>
 </section>

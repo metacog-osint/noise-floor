@@ -9,12 +9,12 @@
 <meta property="og:description" content="A daily, open picture of interference with satellite navigation and communications: where aircraft lost GPS, spoofing, ships at sea, the geostationary belt and the evidence behind each.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=329ab85610">
+<link rel="stylesheet" href="/style.css?v=a647eca7e0">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=f511c41ac0"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
-<script defer src="/sunoutage.js?v=e38fd7c286"></script><script defer src="/dash.js?v=c24252f2cc"></script><script defer src="/board.js?v=e8df757204"></script>
+<script defer src="/sunoutage.js?v=e38fd7c286"></script><script defer src="/dash.js?v=c24252f2cc"></script><script defer src="/board.js?v=1654577a87"></script>
 <script defer src="/tic-init.js?v=d888070c79"></script>
 </head>
 <body>
@@ -24,13 +24,13 @@
 <a class="brand" href="/"><svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect class="mark-bg" x=".5" y=".5" width="27" height="27" rx="6"/><path class="mark-line" d="M5 17H9L10.6 10L12.4 20L14.2 12.5L15.8 17H23" fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg><span><b>Noisefloor</b><small>The Intelligence Company</small></span></a>
 <div class="site-tools"><span class="clock" id="clock" aria-hidden="true"></span><span id="time-settings"></span></div>
 </div>
-<div class="wrap"><nav class="tabs" aria-label="Main"><div class="tabs-scroll"><a href="/" aria-current="page">Today</a><a href="/map">Map</a><a href="/charts">Trends</a><a href="/sea">Sea</a><a href="/geo">Space</a></div><details class="menu"><summary>About<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu-pop"><a href="/methods"><b>Methods</b><span>How each measure works and what it can&#x27;t see</span></a><a href="/validation"><b>Validation</b><span>What was tested, including what failed</span></a><a href="/data"><b>Data and downloads</b><span>Daily files, their columns and licences</span></a><a href="/sources"><b>Sources and licences</b><span>Every source, and what it may be used for</span></a><a href="/lanes"><b>Roadmap</b><span>What is built, being tested or planned</span></a><a href="/terms"><b>Terms</b><span>Use, reuse and limits</span></a></div></details></nav></div>
+<div class="wrap"><nav class="tabs" aria-label="Main"><div class="tabs-scroll"><a href="/" aria-current="page">Today</a><a href="/map">Map</a><a href="/charts">Trends</a><a href="/sea">Sea</a><a href="/geo">Space</a></div><details class="menu"><summary>About<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu-pop"><a href="/guide"><b>Plain-language guide</b><span>What the site shows, in everyday words</span></a><a href="/methods"><b>Methods</b><span>How each measure works and what it can&#x27;t see</span></a><a href="/validation"><b>Validation</b><span>What was tested, including what failed</span></a><a href="/data"><b>Data and downloads</b><span>Daily files, their columns and licences</span></a><a href="/sources"><b>Sources and licences</b><span>Every source, and what it may be used for</span></a><a href="/lanes"><b>Roadmap</b><span>What is built, being tested or planned</span></a><a href="/terms"><b>Terms</b><span>Use, reuse and limits</span></a></div></details></nav></div>
 </header>
 <main id="main" class="home">
 <section class="brief" aria-labelledby="brief-h">
   <p class="dateline" id="brief-day">Daily briefing</p>
   <h1 id="brief-h">Loading today's briefing…</h1>
-  <p class="meta"><span id="brief-meta"></span> <a href="/methods">How to read this briefing</a></p>
+  <p class="meta"><span id="brief-meta"></span> <a href="/guide">How to read this briefing</a></p>
 </section>
 
 <section class="stats" id="stats" aria-label="Key numbers"></section>
@@ -45,7 +45,7 @@
       <a class="thumb" id="map-thumb" href="/map">
         <picture>
           <source srcset="/data/today-map-dark.svg" media="(prefers-color-scheme: dark)">
-          <img src="/data/today-map.svg" width="800" height="522" alt="Map of Europe, the Middle East and Pakistan for the latest day, with hexes coloured where aircraft lost GPS accuracy." loading="eager" decoding="async">
+          <img src="/data/today-map.svg" width="800" height="522" alt="Map of Europe, the Middle East and Pakistan for the latest day, with cells coloured where aircraft lost GPS accuracy." loading="eager" decoding="async">
         </picture>
       </a>
       <div class="key">
@@ -62,7 +62,7 @@
         <h2 id="wa-h">Watched areas</h2>
         <a class="more" href="/charts">Trends →</a>
       </div>
-      <p class="sub" id="wa-sub">Share of aircraft with GPS error worse than 93 m, against the 30 days before.</p>
+      <p class="sub" id="wa-sub">Share of aircraft with severe GPS error (worse than 93 m), against the 30 days before.</p>
       <div class="wa-wrap">
         <table class="wa">
           <thead><tr><th scope="col">Area</th><th scope="col" class="num" id="wa-day">Latest</th><th scope="col" class="num">30-day median</th><th scope="col" class="num">Change, points</th><th scope="col">Last 30 days</th></tr></thead>
@@ -124,7 +124,7 @@
 <p>A daily, open picture of interference with satellite navigation and communications, from licence-clean sources. It measures effects, not causes, and no grade names a perpetrator.</p>
 <p class="small">Aircraft data: <a href="https://www.adsb.lol/">adsb.lol</a> contributors (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources">Sources and licences</a>.</p>
 </div>
-<nav class="foot-links" aria-label="Footer"><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data and downloads</a><a href="/sources">Sources and licences</a><a href="/lanes">Roadmap</a><a href="/terms">Terms</a><a href="https://github.com/metacog-osint/noise-floor">Source code (AGPL-3.0)</a></nav>
+<nav class="foot-links" aria-label="Footer"><a href="/guide">Plain-language guide</a><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data and downloads</a><a href="/sources">Sources and licences</a><a href="/lanes">Roadmap</a><a href="/terms">Terms</a><a href="https://github.com/metacog-osint/noise-floor">Source code (AGPL-3.0)</a></nav>
 </div></footer>
 </body>
 </html>

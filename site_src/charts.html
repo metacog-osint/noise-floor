@@ -8,8 +8,8 @@
 </div>
 
 <div class="chart-card" id="trend">
-  <h3>Share of aircraft-hexes worse than 93 m, daily<span id="trend-range"></span></h3>
-  <p class="sub">Live counts, a new day each morning. <span id="trend-scale-note">All panels share one scale, so levels compare directly.</span></p>
+  <h3>Share of aircraft with severe GPS error (worse than 93 m), daily<span id="trend-range"></span></h3>
+  <p class="sub">A new day each morning. <span id="trend-scale-note">All panels share one scale, so levels compare directly.</span></p>
   <label class="ctl check trend-ctl"><input type="checkbox" id="trend-own"> Each panel on its own scale (shows changes in low-share areas)</label>
   <div class="multiples" id="trend-grid"></div>
   <p class="small">Hollow dots mark days with under half an area's usual aircraft, when strong jamming may have taken aircraft off the map (<a href="#howto">why</a>).</p>
@@ -28,7 +28,7 @@
   <details class="table-view"><summary>Table</summary>{{TABLE:egnos}}</details>
 </div>
 
-<h3 class="case-h" id="storm">A storm moves accuracy, not jamming-scale loss</h3>
+<h3 class="case-h" id="storm">A storm moves accuracy, not severe GPS error</h3>
 <div class="chart-card">
   <h4>Northern US and southern Canada (43–55°N): 10 m-capable aircraft below 10 m</h4>
   <p class="sub">Hourly, 11–12 Nov 2025, against the same hours on two quiet days. The G4 storm peaked around 00–06Z on 12 Nov (Kp 8.7).</p>
@@ -37,7 +37,7 @@
 </div>
 <div class="chart-card">
   <h4>Same area: aircraft worse than 93 m</h4>
-  <p class="sub">The jamming-scale measure on a 0–10% scale. It stays near zero through the storm: space weather degrades accuracy to tens of metres, rarely past 93 m.</p>
+  <p class="sub">The severe-error measure on a 0–10% scale. It stays near zero through the storm: space weather degrades accuracy to tens of metres, rarely past 93 m.</p>
   <div class="chart" data-chart="storm93"></div>
   <div class="chart-legend"><span><i style="background:var(--series-1)"></i>11–12 Nov 2025</span><span><i style="background:var(--series-base)"></i>Quiet days (16 and 22 Oct)</span></div>
   <details class="table-view"><summary>Table (both charts)</summary>{{TABLE:storm}}</details>
@@ -45,7 +45,7 @@
 
 <h3 class="case-h" id="bay">Minute-level timing</h3>
 <div class="chart-card">
-  <h4>Bay Area and Central Valley: aircraft-hexes with a 93 m-or-worse report, per minute</h4>
+  <h4>Bay Area and Central Valley: aircraft with a 93 m-or-worse report, per minute</h4>
   <p class="sub">22 Sep 2026, 17:30–20:45 UTC, 35.5–38.5°N 123.5–119.5°W. Two bursts: about 18:00Z and 19:52–20:12Z. An FAA flight advisory (<a href="https://www.faasafety.gov/files/notices/2026/Sep/PMSRCA_26-03_GPS_Flight_Advisory_(Revision_2).pdf">PMSRCA GPS 26-03</a>) scheduled a Point Mugu Sea Range GPS test that day, 18:30–20:29Z, reaching well past the Bay Area: the second burst falls inside it, the first starts 22 minutes before it. Kp stayed at or below 1.7 all day.</p>
   <div class="chart" data-chart="bay"></div>
   <details class="table-view"><summary>Table (minutes with any report)</summary>{{TABLE:bay}}</details>
@@ -53,22 +53,22 @@
 
 <h3 class="case-h" id="hotspots">Hotspots in the validation period</h3>
 <div class="chart-card">
-  <h4>Share of aircraft-hexes worse than 93 m, daily, 9–25 Oct 2025</h4>
-  <p class="sub">Live counts (aircraft degraded after leaving interference elsewhere are left out). Five known interference areas and one quiet high-latitude control; all panels share a 0–60% scale.</p>
+  <h4>Share of aircraft with severe GPS error (worse than 93 m), daily, 9–25 Oct 2025</h4>
+  <p class="sub">Aircraft still degraded after leaving interference elsewhere are left out. Five known interference areas and one quiet high-latitude control; all panels share a 0–60% scale.</p>
   <div class="multiples" id="hotspot-grid"></div>
   <details class="table-view"><summary>Table</summary>{{TABLE:hotspots}}</details>
 </div>
 
-<h3 class="case-h" id="types">Which aircraft types carry the effect downstream</h3>
+<h3 class="case-h" id="types">Which aircraft stay degraded after leaving interference</h3>
 <div class="chart-card">
   <h4>Over-representation among aircraft still degraded after leaving interference</h4>
-  <p class="sub">9–25 Oct 2025, {{TYPES_TOTAL}} post-exposure aircraft-days. Ratio = share of post-exposure aircraft-days ÷ share of all aircraft-days; 1× means in line with traffic. Types with at least 40 post-exposure aircraft-days. <strong>A350s and A380s are shown apart, in grey:</strong> their high ratios most likely reflect how they report accuracy (they flag it as poor when a single satellite is marked degraded, and stay degraded longer; <a href="/validation#adsb">Validation</a>), not lasting harm. Among the other types, long-haul widebodies stand out, which points to route exposure on the Gulf and Asia corridors.</p>
+  <p class="sub">9–25 Oct 2025, {{TYPES_TOTAL}} aircraft-days on which an aircraft was still degraded after leaving interference. Ratio = a type's share of those days ÷ its share of all aircraft-days; 1× means in line with traffic. Types with at least 40 such days. <strong>A350s and A380s are shown apart, in grey:</strong> their high ratios most likely reflect how they report accuracy (they flag it as poor when a single satellite is marked degraded, and stay degraded longer; <a href="/validation#adsb">Validation</a>), not lasting harm. Among the other types, long-haul widebodies stand out, which points to route exposure on the Gulf and Asia corridors.</p>
   <div class="chart" data-chart="types"></div>
   <details class="table-view"><summary>Table</summary>{{TABLE:types}}</details>
 </div>
 
 <h3 class="case-h" id="nisar">NISAR: reading the processor's tables instead of the images</h3>
-<p>Detection maps from the NISAR lane stay private until the method is validated. What can be shown is what the method costs, measured over a 30-day regional run.</p>
+<p>Detection maps from the NISAR work stay private until the method is validated. What can be shown is what the method costs, measured over a 30-day regional run.</p>
 <div class="tiles">
   <div class="tile"><div class="label">Radar image files</div><div class="value">~24 GB/day</div><div class="note">what an image-based watch would stream</div></div>
   <div class="tile"><div class="label">Processor RFI tables</div><div class="value">~0.85 GB/day</div><div class="note">what the table method reads (measured)</div></div>
@@ -79,7 +79,7 @@
 <section id="howto" class="howto" aria-labelledby="howto-h">
 <h2 id="howto-h">How to read these charts</h2>
 <p>The first chart updates every morning from the automatic daily run. The rest are tests from the validation report, drawn from the processed aircraft data. Hover or use the arrow keys for values; every chart also has a table.</p>
-<p><strong>The daily chart.</strong> From the daily pipeline, backfilled to 1 October 2025: automatic and not reviewed by a person, apart from the 20 validated days. A new day is added each morning. Live counts (aircraft degraded after leaving interference elsewhere are left out). The same measure and areas as the validation chart further down, plus Cyprus–Levant and the Strait of Hormuz / Gulf of Oman (added 22 Oct 2026; little ADS-B coverage over Iran, so it mostly measures the Omani and UAE side and the airways over water).</p>
-<p><strong>Hollow dots</strong> mark days when an area had under half its usual aircraft-hexes (median of its previous 14 days). Strong jamming can stop aircraft sending a position at all, so they drop out instead of counting as degraded, and the share on those days comes from the aircraft that kept a position. On 9 May 2026 three in four aircraft crossing the southern Baltic lost their ADS-B position (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">validation notes</a>, verdict 34). The map's "Fewer aircraft than usual" view shows where.</p>
+<p><strong>The daily chart.</strong> From the daily pipeline, backfilled to 1 October 2025: automatic and not reviewed by a person, apart from the 20 validated days. A new day is added each morning. Aircraft still degraded after leaving interference elsewhere are left out. The same measure and areas as the validation chart further down, plus Cyprus–Levant and the Strait of Hormuz / Gulf of Oman (added 22 Oct 2026; little ADS-B coverage over Iran, so it mostly measures the Omani and UAE side and the airways over water).</p>
+<p><strong>Hollow dots</strong> mark days when an area had under half its usual aircraft (median of its previous 14 days). Strong jamming can stop aircraft sending a position at all, so they drop out instead of counting as degraded, and the share on those days comes from the aircraft that kept a position. On 9 May 2026 three in four aircraft crossing the southern Baltic lost their ADS-B position (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">validation notes</a>, verdict 34). The map's "Fewer aircraft than usual" view shows where.</p>
 <p class="small">Data: aggregates from the <a href="https://www.adsb.lol/">adsb.lol</a> daily archive (ODbL 1.0), published under ODbL with attribution: <a href="/data/charts.json">charts.json</a>. Method: <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">method card</a>.</p>
 </section>

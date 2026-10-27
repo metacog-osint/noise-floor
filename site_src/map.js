@@ -5,13 +5,13 @@
 (function () {
   "use strict";
   var MEASURES = {
-    jam: { label: "Jamming-scale loss (worse than 93 m)", unit: "of aircraft degraded",
+    jam: { label: "Severe GPS error (worse than 93 m)", unit: "of aircraft degraded",
            breaks: [2, 5, 10, 25], classes: ["Under 2%", "2–5%", "5–10%", "10–25%", "25% or more"] },
     acc: { label: "Accuracy loss (worse than 10 m, capable aircraft)", unit: "of 10 m-capable aircraft degraded",
            breaks: [10, 25, 50, 75], classes: ["Under 10%", "10–25%", "25–50%", "50–75%", "75% or more"] },
-    chg: { label: "Change from usual (93 m)", unit: "points above the hex's usual share",
+    chg: { label: "Change from usual (93 m)", unit: "percentage points above the cell's usual share",
            breaks: [5, 10, 25, 50], classes: ["Under 5 points above usual", "5–10 points", "10–25 points", "25–50 points", "50 points or more"] },
-    miss: { label: "Fewer aircraft than usual", unit: "fewer aircraft than the hex's usual count",
+    miss: { label: "Fewer aircraft than usual", unit: "fewer aircraft than the cell's usual count",
             breaks: [30, 50, 70, 90], classes: ["Under 30% fewer, or more", "30–50% fewer", "50–70% fewer", "70–90% fewer", "90% or more fewer"] }
   };
   var MISS_MIN = 10;                                  // the "fewer aircraft" view needs a usual count of 10 or more
@@ -293,7 +293,7 @@
     if (state.measure !== "acc") {
       lines.push(["Aircraft", d[1]]);
       lines.push(["Worse than 93 m", (state.raw ? d[3] : d[2]) + (state.raw ? "" : " (live)")]);
-      if (!state.raw && d[3] !== d[2]) lines.push(["Incl. post-exposure", d[3]]);
+      if (!state.raw && d[3] !== d[2]) lines.push(["Incl. earlier exposure", d[3]]);
     } else {
       lines.push(["10 m-capable aircraft", d[4]]);
       lines.push(["Worse than 10 m", d[5]]);
@@ -367,21 +367,33 @@
       var ll = h3.cellToLatLng(x.c.h), tr = document.createElement("tr");
       var shareText = state.measure === "chg" ? "+" + x.e.share.toFixed(1) + " pts (" + x.e.today.toFixed(0) + "% vs " + x.e.usual.toFixed(0) + "%)"
         : state.measure === "miss" ? Math.round(x.e.share) + "% fewer (" + x.e.today + " vs " + x.e.usual + ")" : x.e.share.toFixed(1) + "%";
-      [ll[0].toFixed(1) + ", " + ll[1].toFixed(1), x.e.n, x.e.bad, shareText].forEach(function (v, i) {
-        var td = document.createElement("td"); td.textContent = v; if (i) td.className = "num"; tr.appendChild(td);
+      [where(ll[0], ll[1]), x.e.n, x.e.bad, shareText].forEach(function (v, i) {
+        var td = document.createElement("td"); td.textContent = v; if (i) td.className = "num"; else td.title = ll2(ll[0], ll[1]); tr.appendChild(td);
       });
       var td = document.createElement("td"), btn = document.createElement("button");
       btn.type = "button"; btn.className = "linkish"; btn.textContent = "Show";
       btn.addEventListener("click", function () { state.focus = x.c.h; state.pinned = false; map.setView(ll, 5); layer.redraw(); mapEl.scrollIntoView({ behavior: "smooth", block: "center" }); });
       td.appendChild(btn); tr.appendChild(td); body.appendChild(tr);
     });
-    document.getElementById("map-table-note").textContent = rows.length ? "" : "No hex reached the first class on this day for this measure.";
+    document.getElementById("map-table-note").textContent = rows.length ? "" : "No cell reached the first class on this day for this measure.";
   }
 
   // ---------- events panel: anomaly events, bursts, SBAS flags (pipeline/pnt_analysis.py)
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   function ll2(lat, lon) {
     return Math.abs(lat).toFixed(1) + "°" + (lat >= 0 ? "N" : "S") + " " + Math.abs(lon).toFixed(1) + "°" + (lon >= 0 ? "E" : "W");
+  }
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function fmtDay(d) { return d ? +d.slice(8, 10) + " " + MON[+d.slice(5, 7) - 1] + " " + d.slice(0, 4) : ""; }   // "26 Oct 2026"
+  function where(lat, lon, lower) {      // the nearest well-known place within 350 km, else coordinates
+    var best = 350, name = null, r = Math.PI / 180;
+    places.forEach(function (p) {
+      if (p.length > 3 && p[3] > 5) return;
+      var h = Math.pow(Math.sin((p[1] - lat) * r / 2), 2) + Math.cos(lat * r) * Math.cos(p[1] * r) * Math.pow(Math.sin((p[2] - lon) * r / 2), 2);
+      var d = 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
+      if (d < best) { best = d; name = p[0]; }
+    });
+    return name ? (lower ? "near " : "Near ") + name : ll2(lat, lon);
   }
   var TZ = window.TicTime ? window.TicTime.zone() : "America/Chicago", HC = window.TicTime && !window.TicTime.hour12() ? "h23" : "h12";
   var CT = new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "short", day: "numeric",
@@ -391,13 +403,13 @@
     var p = day.split("-"), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2], 0, mins)), x = {};
     CT.formatToParts(d).forEach(function (q) { x[q.type] = q.value; });
     return { time: x.hour + ":" + x.minute + (x.dayPeriod ? " " + x.dayPeriod.toLowerCase() : ""), zone: x.timeZoneName,
-             date: x.month + " " + x.day, utcDate: UT.format(new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]))) };
+             date: x.month + " " + x.day, dateText: x.day + " " + x.month, utcDate: UT.format(new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]))) };
   }
   // "03:00–05:59Z" and "10:00 pm (Oct 20)–12:59 am CDT"
   function when(day, m0, m1) {
     var a = central(day, m0), b = central(day, m1);
-    return [pad(Math.floor(m0 / 60)) + ":" + pad(m0 % 60) + "–" + pad(Math.floor(m1 / 60)) + ":" + pad(m1 % 60) + "Z",
-            a.time + (a.date !== a.utcDate ? " (" + a.date + ")" : "") + "–" + b.time + " " + b.zone];
+    var z = pad(Math.floor(m0 / 60)) + ":" + pad(m0 % 60) + "–" + pad(Math.floor(m1 / 60)) + ":" + pad(m1 % 60) + " UTC";
+    return [z, TZ === "UTC" ? z : z + " (" + a.time + (a.date !== a.utcDate ? " " + a.dateText : "") + "–" + b.time + " " + b.zone + ")"];
   }
   function mins(hhmm) { return +hhmm.slice(0, 2) * 60 + +hhmm.slice(3, 5); }
   function poly(e) {
@@ -450,8 +462,8 @@
     var ev = state.ev, rows = evRows(), jam = emeasure() === "jam";
     var sum = document.getElementById("ev-summary"), anomBody = document.querySelector("#ev-anom tbody"),
         burstBody = document.querySelector("#ev-burst tbody"), sbasEl = document.getElementById("ev-sbas");
-    document.getElementById("ev-day").textContent = state.day;
-    document.getElementById("ev-anom-h").textContent = jam ? "Anomalies, jamming-scale (93 m)" : "Anomalies, accuracy (10 m)";
+    document.getElementById("ev-day").textContent = fmtDay(state.day);
+    document.getElementById("ev-anom-h").textContent = jam ? "Anomalies, severe GPS error (93 m)" : "Anomalies, accuracy (10 m)";
     document.getElementById("ev-burst-wrap").hidden = !jam;
     document.getElementById("ev-sbas-wrap").hidden = jam;
     anomBody.textContent = ""; burstBody.textContent = ""; sbasEl.textContent = "";
@@ -475,14 +487,14 @@
         if (k) testsEl.appendChild(document.createTextNode("; "));
         testsEl.appendChild(a);
         var w0 = t.windows[0], w1 = t.windows[t.windows.length - 1];
-        testsEl.appendChild(document.createTextNode(", " + t.place + ", " + w0[0].slice(11, 16) + "–" + w1[1].slice(11, 16) + "Z"));
+        testsEl.appendChild(document.createTextNode(", " + t.place + ", " + w0[0].slice(11, 16) + "–" + w1[1].slice(11, 16) + " UTC"));
       });
       testsEl.appendChild(document.createTextNode("."));
     }
 
     rows.anom.forEach(function (e) {
       var tr = document.createElement("tr"), w = when(state.day, e.h0 * 60, e.h1 * 60 + 59);
-      cell(tr, TIER[e.tier]); cell(tr, w[0]); cell(tr, w[1], "mut"); cell(tr, ll2(e.lat, e.lon));
+      cell(tr, TIER[e.tier]); cell(tr, w[1]); cell(tr, where(e.lat, e.lon)).title = ll2(e.lat, e.lon);
       cell(tr, e.regions, "num"); cell(tr, e.peak.toFixed(0) + "%", "num"); cell(tr, "+" + e.excess.toFixed(0) + " pts", "num");
       heavyCell(tr, e.m === "jam" ? e.hs : null);
       cell(tr, e.test || "–", e.test ? "" : "mut");
@@ -496,7 +508,7 @@
 
     rows.burst.forEach(function (e) {
       var tr = document.createElement("tr"), w = when(state.day, mins(e.t0), mins(e.t1));
-      cell(tr, w[0]); cell(tr, w[1], "mut"); cell(tr, ll2(e.lat, e.lon)); cell(tr, e.peak, "num"); cell(tr, e.regions, "num");
+      cell(tr, w[1]); cell(tr, where(e.lat, e.lon)).title = ll2(e.lat, e.lon); cell(tr, e.peak, "num"); cell(tr, e.regions, "num");
       heavyCell(tr, e.hs);
       cell(tr, e.test || "–", e.test ? "" : "mut");
       showButton(tr, e, "burst at " + w[0]); burstBody.appendChild(tr);
@@ -541,9 +553,9 @@
     });
     var cap = document.getElementById("map-measure-note");
     cap.textContent = state.measure === "miss"
-      ? "Aircraft in the hex today against its median over its previous 14 days (days without traffic count as zero; shown where that median is 10 or more). Strong jamming can stop aircraft sending a position at all, so they vanish instead of showing as degraded. Weekends, holidays, airspace closures and receiver outages also lower counts."
+      ? "Aircraft in the cell today against its median over its previous 14 days (days without traffic count as zero; shown where that median is 10 or more). Strong jamming can stop aircraft sending a position at all, so they vanish instead of showing as degraded. Weekends, holidays, airspace closures and receiver outages also lower counts."
       : state.measure === "chg"
-      ? "Today's jamming-scale share minus the hex's own median over its previous 14 days with traffic (live counts). Persistent hotspots fade; new or growing activity stands out."
+      ? "Today's share with severe GPS error minus the cell's own median over its previous 14 days with traffic. Persistent hotspots fade; new or growing activity stands out."
       : state.measure === "jam"
       ? (state.raw ? "Raw: includes aircraft still degraded after leaving interference (comparable with GPSJam)."
                    : "Live: aircraft still degraded after leaving interference elsewhere are left out.")
@@ -551,8 +563,8 @@
   }
   // ---------- timeline: one bar per available day (selected measure), a slider and previous/next
   var TL = {
-    jam: { key: "jam_hexes", title: "Hexes at jamming scale (10% or more of aircraft degraded), per day" },
-    acc: { key: "acc_hexes", title: "Hexes where 50% or more of 10 m-capable aircraft fell below 10 m, per day" }
+    jam: { key: "jam_hexes", title: "Cells with severe GPS error (10% or more of aircraft), per day" },
+    acc: { key: "acc_hexes", title: "Cells where 50% or more of 10 m-capable aircraft fell below 10 m, per day" }
   };
   var tlTimer = null;
   function dayIndex(day) { for (var i = 0; i < days.length; i++) if (days[i].day === day) return i; return -1; }
@@ -586,7 +598,7 @@
     function at(ev) { var b = strip.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.floor((ev.clientX - b.left) / (b.width / n)))); }
     strip.onmousemove = function (ev) {
       var i = at(ev), d = days[i];
-      tipEl.textContent = d.day + " · " + (d[key] || 0).toLocaleString() + " hexes" + (d.note ? " · " + d.note : "") + (d.daily ? "" : " · validated");
+      tipEl.textContent = fmtDay(d.day) + " · " + (d[key] || 0).toLocaleString() + " cells" + (d.note ? " · " + d.note : "") + (d.daily ? "" : " · validated");
       tipEl.hidden = false;
       var b = strip.getBoundingClientRect(), p = strip.parentNode.getBoundingClientRect();
       tipEl.style.left = Math.max(0, Math.min(ev.clientX - p.left + 10, p.width - tipEl.offsetWidth)) + "px";
@@ -600,18 +612,18 @@
     var sl = document.getElementById("tl-slider"); if (!sl || !days.length) return;
     var i = dayIndex(state.day), d = days[i];
     sl.max = days.length - 1; if (i >= 0) sl.value = i;
-    sl.setAttribute("aria-valuetext", state.day);
-    document.getElementById("tl-day").textContent = state.day + (d && d.daily ? "" : " · validated");
+    sl.setAttribute("aria-valuetext", fmtDay(state.day));
+    document.getElementById("tl-day").textContent = fmtDay(state.day) + (d && d.daily ? "" : " · validated");
     document.getElementById("tl-prev").disabled = document.getElementById("mp-prev").disabled = i <= 0;
     document.getElementById("tl-next").disabled = document.getElementById("mp-next").disabled = i >= days.length - 1;
-    document.getElementById("mp-day").textContent = state.day || "";
+    document.getElementById("mp-day").textContent = state.day ? fmtDay(state.day) : "";
     var bars = document.querySelectorAll("#tl-strip .tl-bar");
     for (var k = 0; k < bars.length; k++) bars[k].setAttribute("class", k === i ? "tl-bar on" : "tl-bar");
   }
   function stepTo(i, now) {
     i = Math.max(0, Math.min(days.length - 1, i));
     var day = days[i].day;
-    document.getElementById("tl-day").textContent = day + (days[i].daily ? "" : " · validated");
+    document.getElementById("tl-day").textContent = fmtDay(day) + (days[i].daily ? "" : " · validated");
     clearTimeout(tlTimer);
     var go = function () { if (day !== state.day) { document.getElementById("map-day").value = day; loadDay(day); } };
     if (now) go(); else tlTimer = setTimeout(go, 250);   // dragging: load once the slider rests
@@ -622,11 +634,11 @@
     var el = document.getElementById("map-stats");
     var drawn = cellList.filter(function (c) { var e = evaluate(c.d); return e && e.share !== null; }).length;
     var hot = cellList.filter(function (c) { var e = evaluate(c.d); return e && typeof e.cls === "number" && e.cls >= 2; }).length;
-    el.textContent = drawn.toLocaleString() + (state.measure === "miss" ? " hexes with a usual count of " + MISS_MIN + " or more" : " hexes with 5 or more aircraft") +
+    el.textContent = drawn.toLocaleString() + (state.measure === "miss" ? " cells with a usual count of " + MISS_MIN + " or more" : " cells with 5 or more aircraft") +
       " · " + hot.toLocaleString() + " in the top two classes";
     var a = document.getElementById("map-download"); a.href = "/data/gnss/" + state.day + ".json"; a.textContent = "Download " + state.day + " (JSON, ODbL)";
     var note = document.getElementById("map-day-note");
-    note.textContent = d && d.daily ? "Daily run: automatic, not reviewed by a person" : d && d.note ? d.note : "";
+    note.textContent = d && d.daily ? "Automatic daily run, not reviewed by a person" : d && d.note ? d.note : "";
   }
   function hashFor() {
     var c = map.getCenter();
@@ -780,8 +792,8 @@
     var med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : null, mx = sorted.length ? sorted[sorted.length - 1] : null;
     var evs = (s.ev && s.ev[acc ? "acc" : "jam"]) || [];
     var ci = dd.indexOf(state.day), cv = ci >= 0 ? vals[ci] : null;
-    sub.textContent = "Around " + ll2(s.c[0], s.c[1]) + " (H3 area of about 12,000 km² containing the hex). " +
-      (acc ? "Share of 10 m-capable aircraft-hexes below 10 m" : "Share of aircraft-hexes worse than 93 m (live)") + ", per day; days with too little traffic are gaps.";
+    sub.textContent = "Around " + where(s.c[0], s.c[1], true) + " (an area of about 12,000 km² around the cell). " +
+      (acc ? "Share of 10 m-capable aircraft below 10 m" : "Share of aircraft with severe GPS error") + ", per day; days with too little traffic are gaps.";
     var peakDay = mx !== null ? dd[vals.indexOf(mx)] : null;
     note.textContent = (med !== null ? "Median " + med.toFixed(1) + "%; highest " + mx.toFixed(1) + "% on " + peakDay + ". " : "") +
       (cv !== null ? "On " + state.day + ": " + cv.toFixed(1) + "%. " : "") +
@@ -817,7 +829,7 @@
     hit.addEventListener("mousemove", function (ev) {
       var i = at(ev), v = vals[i], a = acc ? s.k[i] : s.a[i];
       var e = evs.filter(function (x) { return x[0] === i; })[0];
-      tipEl.textContent = dd[i] + " · " + (v === null ? "too little traffic" : v.toFixed(1) + "% of " + a + " aircraft-hexes") + (e ? " · anomaly event" : "");
+      tipEl.textContent = fmtDay(dd[i]) + " · " + (v === null ? "too little traffic" : v.toFixed(1) + "% of " + a + " aircraft") + (e ? " · anomaly event" : "");
       tipEl.hidden = false;
       var r = box.getBoundingClientRect(), p = box.parentNode.getBoundingClientRect();
       tipEl.style.left = Math.max(0, Math.min(ev.clientX - p.left + 10, p.width - tipEl.offsetWidth)) + "px";
@@ -840,6 +852,7 @@
   }).catch(function () { /* the map works without borders */ });
   fetch("/data/places.json").then(function (r) { return r.json(); }).then(function (j) {
     places = j.places; areas = j.areas; layer.redraw();
+    renderTable(); if (state.ev) renderEvents();         // tables name places once the list is in
     var dl = document.getElementById("map-search-list"), seen = {};
     areas.concat(places).forEach(function (p) {
       if (seen[p[0]]) return; seen[p[0]] = 1;
@@ -878,7 +891,7 @@
       var og = document.createElement("optgroup"); og.label = g[0];
       g[1].forEach(function (d) {
         var o = document.createElement("option"); o.value = d.day;
-        o.textContent = d.day + (d.note ? " · " + d.note : ""); og.appendChild(o);
+        o.textContent = fmtDay(d.day) + (d.note ? " · " + d.note : ""); og.appendChild(o);
       });
       sel.appendChild(og);
     });

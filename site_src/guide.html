@@ -1,0 +1,78 @@
+<!--{"title": "Plain-language guide · Noisefloor", "description": "What Noisefloor shows, in everyday words: satellite navigation, interference, how aircraft and ships reveal it, what each measure means and what the site can't tell you.", "nav": "guide"}-->
+<h1>A plain-language guide</h1>
+<p class="lede">What this site shows and how to read it, without the jargon. The <a href="/methods">Methods</a> page has the exact definitions.</p>
+
+<h2 id="what">What Noisefloor shows</h2>
+<p>Every day, Noisefloor maps where satellite navigation stopped working properly: where aircraft lost their GPS accuracy, where their receivers were fed false positions, where ships reported impossible tracks, and what satellites saw from orbit. It shows the effects and the evidence behind them. It does not say who caused them.</p>
+
+<h2 id="gnss">Satellite navigation in one paragraph</h2>
+<p>GPS, and the European, Russian and Chinese systems like it (Galileo, GLONASS, BeiDou; together called GNSS), work by timing signals from satellites about 20,000 km up. By the time those signals reach the ground they are weaker than the background radio noise: a receiver has to dig them out of that noise. That is where the name comes from. Anything that raises the noise floor, even a small transmitter nearby, can drown the signals.</p>
+
+<h2 id="wrong">What goes wrong</h2>
+<ul>
+  <li><strong>Jamming.</strong> A transmitter drowns the satellite signals. Receivers lose their position or fall back to a poor estimate.</li>
+  <li><strong>Spoofing.</strong> A transmitter sends fake satellite signals. Receivers work out a wrong position, sometimes hundreds of kilometres away, and may not notice.</li>
+  <li><strong>Natural causes.</strong> Solar storms and disturbances in the upper atmosphere (scintillation) can degrade accuracy too, as can equipment faults or an outage of the correction services aircraft use.</li>
+</ul>
+<p>This site says <strong>GPS interference</strong> for all of these together, because it measures what happened to receivers, not what caused it.</p>
+
+<h2 id="aircraft">How aircraft reveal it</h2>
+<p>Most airliners broadcast their position about twice a second (a system called ADS-B), together with a number saying how sure their navigation system is about that position. Volunteers around the world pick up these broadcasts with small receivers, and <a href="https://www.adsb.lol/">adsb.lol</a> shares them openly. When many aircraft in one place say they are unsure where they are, something is degrading satellite navigation there.</p>
+<dl class="gloss">
+  <dt>Severe GPS error</dt>
+  <dd>The aircraft reports that its position could be off by 93 metres or more. Normally it is under 10 metres. The 93 m line is the one other public maps use too, so they can be compared.</dd>
+  <dt>10 m accuracy</dt>
+  <dd>A finer measure: aircraft that normally manage 10 metres and lost it. Storms and outages of correction services show up here more than jamming does.</dd>
+  <dt>Cell</dt>
+  <dd>The map divides the world into hexagonal cells of about 1,770 km², roughly 40 km across, and counts the aircraft in each one per day.</dd>
+  <dt>Share</dt>
+  <dd>Of the aircraft in a cell that day, the percentage reporting severe error. One aircraft is subtracted first, so a single faulty receiver never colours a cell. A cell needs at least 5 aircraft to be coloured.</dd>
+  <dt>Change from usual</dt>
+  <dd>How far today's share sits above that cell's own normal level over the previous two weeks. Places that are always jammed fade, and new activity stands out.</dd>
+  <dt>Aircraft without a GPS position</dt>
+  <dd>Strong jamming can stop aircraft reporting a position at all, so they disappear from the map instead of showing as degraded. Some of them can still be located by timing their broadcasts at several ground receivers (multilateration). The share of those with no satellite position is a sign of strong jamming.</dd>
+  <dt>Still degraded after leaving interference</dt>
+  <dd>Some aircraft stay degraded for a while after flying out of a jammed area. They are left out of the counts, so they don't paint areas far from the cause.</dd>
+</dl>
+
+<h2 id="spoofing">How spoofing shows</h2>
+<p>A spoofed aircraft reports positions that can't be flown: it jumps tens of kilometres in a second, circles where it isn't, or sits still at cruising height. The map's spoofing layer shows where those aircraft really were, worked out from their real track, and marks the places their receivers were told they were.</p>
+
+<h2 id="ships">Ships</h2>
+<p>Ships broadcast their position too (AIS). Finland's shore stations share what they hear openly. The Sea page shows vessels of interest in those waters: ships on official sanctions lists, military and law-enforcement ships, and ships under some state flags. It flags reports that fail simple spoofing tests, such as a ship placed far inland. A listing is a government designation, quoted as published; it is not a finding by this site.</p>
+
+<h2 id="space">From space</h2>
+<ul>
+  <li><strong>CYGNSS</strong> is a NASA constellation of small satellites that listen to GPS signals reflected off the Earth. Where a jammer is on, the background noise they hear rises. It sees whole regions, including places without aircraft, but only between about 38° north and south.</li>
+  <li><strong>NISAR</strong> is a NASA and Indian radar satellite that logs radio interference it hears. That work is still being tested, and its maps stay private until it passes.</li>
+  <li><strong>The GEO belt</strong> is the ring of satellites 35,786 km above the equator. The Space page shows which ones are drifting, which moved and which sit close to another operator's satellite.</li>
+  <li><strong>Sun outages</strong> happen twice a year, when the sun passes behind a satellite as seen from a dish and blinds it for a few minutes a day. They are natural and predictable, which is why the calculator exists: a loss inside a predicted window isn't evidence of interference.</li>
+</ul>
+
+<h2 id="events">Events and grades</h2>
+<p>When different sources see trouble in the same place and time, the site joins them into an <strong>event</strong> and grades the evidence, never the culprit:</p>
+<ul>
+  <li><strong>Support:</strong> one source only; partly backed by an official notice; or seen by two independent kinds of sensor (aircraft and satellites).</li>
+  <li><strong>Verdict:</strong> <em>open</em> (nothing explains it yet); <em>natural</em> (a solar storm fits); <em>planned</em> (an announced military GPS test fits); or <em>deliberate suspected</em>, only when an official source, such as Europe's aviation safety agency, reported spoofing in that region that week.</li>
+</ul>
+
+<h2 id="limits">What it can't tell you</h2>
+<ul>
+  <li><strong>Who did it.</strong> The site measures effects. Some causes are natural, some are tests, and attribution needs evidence it doesn't have.</li>
+  <li><strong>Exactly where a transmitter is.</strong> It shows where receivers were affected, which can be far from the source.</li>
+  <li><strong>Places nobody listens.</strong> Where there are few volunteer receivers or few flights, the map is blank or thin, and blank doesn't mean quiet.</li>
+  <li><strong>Anything checked by hand each day.</strong> The daily runs are automatic. The methods were tested against known events first; the <a href="/validation">Validation</a> page has every test, including what failed.</li>
+</ul>
+
+<h2 id="glossary">Short glossary</h2>
+<dl class="gloss">
+  <dt>ADS-B</dt><dd>The position broadcast aircraft send about twice a second.</dd>
+  <dt>AIS</dt><dd>The equivalent broadcast for ships.</dd>
+  <dt>GNSS</dt><dd>Satellite navigation in general: GPS, Galileo, GLONASS and BeiDou.</dd>
+  <dt>SBAS</dt><dd>Correction services (WAAS in North America, EGNOS in Europe) that make GPS accurate enough for aircraft approaches.</dd>
+  <dt>Multilateration (MLAT)</dt><dd>Locating an aircraft by timing its broadcast at several ground receivers, without its own GPS.</dd>
+  <dt>FIR</dt><dd>A flight information region: the block of airspace one air traffic authority manages.</dd>
+  <dt>Kp</dt><dd>A 0–9 index of geomagnetic storm strength; 5 or more is a storm.</dd>
+  <dt>Scintillation</dt><dd>Rapid flicker of satellite signals caused by the upper atmosphere, strongest near the equator after sunset.</dd>
+  <dt>UTC</dt><dd>Universal time, the clock the data is kept in. The Time button shows your own time zone alongside.</dd>
+</dl>
