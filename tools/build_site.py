@@ -33,8 +33,19 @@ STATUS = {  # key: (label, css class, one-line meaning)
     "planned": ("Planned", "st-planned", "designed, not built"),
     "parked": ("Parked", "st-parked", "set aside with its final state written down; revisited on a named trigger"),
 }
-NAV = [("home", "Home", ""), ("map", "Map", "map"), ("sea", "Sea", "sea"), ("sun", "Sun", "sun"), ("geo", "GEO", "geo"), ("charts", "Charts", "charts"),
-       ("lanes", "Lanes", "lanes"), ("methods", "Methods", "methods"), ("validation", "Validation", "validation"), ("data", "Data", "data"), ("sources", "Sources", "sources")]
+TABS = [("home", "Today", ""), ("map", "Map", "map"), ("charts", "Trends", "charts"), ("sea", "Sea", "sea"), ("space", "Space", "geo")]
+SECTIONS = {   # tab -> sub-pages shown in the section bar: (page key, label, href, one line for the About menu)
+    "space": [("geo", "GEO belt", "geo", ""), ("sun", "Sun outages", "sun", "")],
+    "about": [("methods", "Methods", "methods", "How each measure works and what it can't see"),
+              ("validation", "Validation", "validation", "What was tested, including what failed"),
+              ("data", "Data and downloads", "data", "Daily files, their columns and licences"),
+              ("sources", "Sources and licences", "sources", "Every source, and what it may be used for"),
+              ("lanes", "Roadmap", "lanes", "What is built, being tested or planned"),
+              ("terms", "Terms", "terms", "Use, reuse and limits")],
+}
+SECTION_OF = {k: tab for tab, pages in SECTIONS.items() for k, _, _, _ in pages}
+CHEVRON = ('<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" '
+           'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>')
 USE = {  # registry `use` values in plain words
     "ingest": "Feeds a layer", "ingest-after-ok": "After permission", "visual-only": "Visual comparison only",
     "cite-only": "Cited, not ingested", "later": "Later phase", "exclude": "Excluded", "private-watch": "Private watch only",
@@ -52,25 +63,34 @@ PAGE = """<!doctype html>
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{description}">
 <meta name="color-scheme" content="light dark">
+<link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/tic-time.css">
 <script defer src="/tic-time.js"></script>
+<script defer src="/site.js"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 {head}
 <script defer src="/tic-init.js"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="site"><div class="in">
-<a class="brand" href="/">Noisefloor</a>
-<nav aria-label="Main">{nav}<span id="time-settings"></span></nav>
-</div></header>
+<header class="site">
+<div class="wrap site-top">
+<a class="brand" href="/"><svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect class="mark-bg" x=".5" y=".5" width="27" height="27" rx="6"/><path class="mark-line" d="M5 17H9L10.6 10L12.4 20L14.2 12.5L15.8 17H23" fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg><span><b>Noisefloor</b><small>The Intelligence Company</small></span></a>
+<div class="site-tools"><span class="clock" id="clock" aria-hidden="true"></span><span id="time-settings"></span></div>
+</div>
+<div class="wrap">{nav}</div>
+{subnav}</header>
 <main id="main"{main_class}>
 {body}
 </main>
-<footer class="site"><div class="in">
-<p>A project of The Intelligence Company. Updated {updated}. <a href="{repo}">Source code</a> (AGPL-3.0). <a href="/terms">Terms of use</a>.</p>
-<p>ADS-B data: <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources">Sources</a>.</p>
+<footer class="site"><div class="wrap">
+<div class="foot-about">
+<p><b>Noisefloor</b>, a project of The Intelligence Company</p>
+<p>A daily, open picture of interference with satellite navigation and communications, from licence-clean sources. It measures effects, not causes, and no grade names a perpetrator.</p>
+<p class="small">Aircraft data: <a href="https://www.adsb.lol/">adsb.lol</a> contributors (ODbL 1.0); derived data is published under ODbL. NISAR data: NASA/JPL-ISRO via ASF DAAC. Every source and its licence: <a href="/sources">Sources and licences</a>.</p>
+</div>
+<nav class="foot-links" aria-label="Footer"><a href="/methods">Methods</a><a href="/validation">Validation</a><a href="/data">Data and downloads</a><a href="/sources">Sources and licences</a><a href="/lanes">Roadmap</a><a href="/terms">Terms</a><a href="{repo}">Source code (AGPL-3.0)</a></nav>
 </div></footer>
 </body>
 </html>
@@ -83,8 +103,26 @@ def chip(status):
 
 
 def nav_html(active):
-    return "".join(f'<a href="/{href}"' + (' aria-current="page"' if key == active else "") + f">{e(label)}</a>"
-                   for key, label, href in NAV)
+    """The six main items: five tabs and the About menu. A page inside a section lights up its tab."""
+    tab = SECTION_OF.get(active, active)
+    tabs = "".join(f'<a href="/{href}"' + (' aria-current="page"' if key == tab else "") + f">{e(label)}</a>"
+                   for key, label, href in TABS)
+    items = "".join(f'<a href="/{href}"' + (' aria-current="page"' if key == active else "") + f"><b>{e(label)}</b><span>{e(desc)}</span></a>"
+                    for key, label, href, desc in SECTIONS["about"])
+    cur = " current" if tab == "about" else ""
+    return (f'<nav class="tabs" aria-label="Main"><div class="tabs-scroll">{tabs}</div>'
+            f'<details class="menu{cur}"><summary>About{CHEVRON}</summary><div class="menu-pop">{items}</div></details></nav>')
+
+
+def subnav_html(active):
+    """The section bar under the tabs on Space and About pages."""
+    tab = SECTION_OF.get(active)
+    if not tab:
+        return ""
+    links = "".join(f'<a href="/{href}"' + (' aria-current="page"' if key == active else "") + f">{e(label)}</a>"
+                    for key, label, href, _ in SECTIONS[tab])
+    name = "Space" if tab == "space" else "About"
+    return f'<nav class="subnav" aria-label="{name}"><div class="wrap">{links}</div></nav>\n'
 
 
 def read_page(name):
@@ -95,7 +133,8 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
-ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-init.js", "map.js", "sea.js", "charts.js", "home.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js", "geo.js")
+ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js", "geo.js")
+FONTS = os.path.join(SRC, "fonts")     # IBM Plex (SIL OFL 1.1, fonts/OFL.txt), served from this site so no visit contacts a font service
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
 
@@ -120,9 +159,9 @@ def data_version(folder):
 
 def render(meta, body, updated, narrow=False):
     layout = meta.get("layout")
-    cls = ' class="wide"' if layout == "wide" else (' class="narrow"' if narrow else "")
+    cls = f' class="{layout}"' if layout in ("wide", "home") else (' class="narrow"' if narrow else "")
     html = PAGE.format(title=e(meta["title"]), description=e(meta["description"]), nav=nav_html(meta.get("nav", "")),
-                       body=body, updated=e(updated), repo=REPO, main_class=cls, head=meta.get("head", ""))
+                       subnav=subnav_html(meta.get("nav", "")), body=body, repo=REPO, main_class=cls, head=meta.get("head", ""))
     for f, v in ASSET_V.items():
         html = html.replace(f'"/{f}"', f'"/{f}?v={v}"')
     return html
@@ -152,9 +191,9 @@ def lanes_page(data):
                      for k in STATUS)
     toc = " · ".join(f'<a href="#g-{e(g["id"])}">{e(g["name"])}</a>' for g in data["groups"])
     parts = [
-        '<p class="kicker">Lanes</p><h1>Every lane, built and planned</h1>',
-        '<p class="lede">Each lane answers one question with its own data and method. Statuses say how far each has got; '
-        'planned lanes are designs, not results.</p>',
+        '<h1>Roadmap</h1>',
+        '<p class="lede">Every lane, built and planned. Each answers one question with its own data and method. Statuses say how far '
+        'each has got; planned lanes are designs, not results.</p>',
         f'<div class="legend">{legend}</div>', status_counts(data["lanes"]), f'<p class="small">Jump to: {toc} · <a href="#build-order">Build order</a></p>',
     ]
     for g in data["groups"]:
@@ -198,8 +237,7 @@ def sources_page(rows):
             f'<tr data-lane="{e(r["lane"])}" data-use="{e(r["use"])}"><td>{e(r["name"])}</td><td>{e(LANE.get(r["lane"], r["lane"]))}</td>'
             f'<td>{e(r["gives"])}</td><td>{e(r["licence"])}</td><td>{e(comm)}</td><td>{e(USE.get(r["use"], r["use"]))}</td>'
             f'<td class="num">{e(r["phase"] or "–")}</td></tr>')
-    return f"""<p class="kicker">Sources</p>
-<h1>Licence registry</h1>
+    return f"""<h1>Sources and licences</h1>
 <p class="lede">Every source Noisefloor uses, considered or rejected, with its licence and how it may be used. A source can't feed a public layer until its licence is recorded. "Unverified" means the terms haven't been confirmed yet.</p>
 <div class="counts"><div class="count"><b>{len(rows)}</b><span>sources assessed</span></div>{counts}</div>
 <div class="filters" role="search">
@@ -315,24 +353,29 @@ def main():
             render(meta, body, updated, narrow=name in ("methods.html", "terms.html", "404.html")))
         written.append(name)
     open(os.path.join(OUT, "lanes.html"), "w", encoding="utf-8", newline="\n").write(render(
-        {"title": "Lanes · Noisefloor", "description": "Every Noisefloor lane, built and planned: what it measures, how, which sources, and its limits.",
+        {"title": "Roadmap · Noisefloor", "description": "Every Noisefloor lane, built and planned: what it measures, how, which sources, and its limits.",
          "nav": "lanes"}, lanes_page(data), updated))
     open(os.path.join(OUT, "sources.html"), "w", encoding="utf-8", newline="\n").write(render(
-        {"title": "Sources · Noisefloor", "description": "Noisefloor's licence registry: every source, its licence and how it may be used.",
+        {"title": "Sources and licences · Noisefloor", "description": "Noisefloor's licence registry: every source, its licence and how it may be used.",
          "nav": "sources"}, sources_page(rows), updated))
     written += ["lanes.html", "sources.html"]
     for f in ASSETS:
         open(os.path.join(OUT, f), "wb").write(asset_bytes(f))
+    os.makedirs(os.path.join(OUT, "fonts"), exist_ok=True)
+    for f in sorted(os.listdir(FONTS)):
+        open(os.path.join(OUT, "fonts", f), "wb").write(open(os.path.join(FONTS, f), "rb").read())
     open(os.path.join(OUT, "robots.txt"), "w", newline="\n").write("User-agent: *\nAllow: /\n")
     year, day, hour, short = ("public, max-age=31536000, immutable", "public, max-age=86400, stale-while-revalidate=604800",
                               "public, max-age=3600, stale-while-revalidate=86400", "public, max-age=300, stale-while-revalidate=3600")
     rules = [("/*", "X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY")]
     rules += [(f"/{f}", f"Cache-Control: {year}") for f in ASSETS]              # always requested as /file?v=<content hash>
+    rules += [("/fonts/*", f"Cache-Control: {year}")]                         # font files never change in place
     rules += [(f"/data/{f}", f"Cache-Control: {day}") for f in ("land.json", "borders.json", "places.json")]
     rules += [(p, f"Cache-Control: {hour}") for p in ("/data/gnss/2*", "/data/events/*", "/data/history/*")]   # day files
     rules += [("/data/vessels/*", f"Cache-Control: {hour}")]                  # Sea map data, refreshed by hand
     rules += [(f"/data/{f}", f"Cache-Control: {short}") for f in ("gnss/days.json", "trend.json", "charts.json",
-                                                                  "events-monthly.json", "board.json", "geo.json")]
+                                                                  "events-monthly.json", "board.json", "geo.json",
+                                                                  "today-map.svg", "today-map-dark.svg")]
     rules += [("/feed.xml", f"Cache-Control: {short}")]
     open(os.path.join(OUT, "_headers"), "w", newline="\n").write("".join(f"{p}\n  {h}\n" for p, h in rules))
     for name in written:                      # a duplicate id once broke the charts page (two elements, one anchor)
@@ -340,7 +383,7 @@ def main():
         dup = sorted({i for i in ids if ids.count(i) > 1})
         if dup:
             sys.exit(f"{name}: duplicate ids {dup}")
-    expected = set(written) | set(ASSETS) | {"robots.txt", "_headers", "data", "feed.xml"}   # feed.xml: written at deploy (site_days.py)
+    expected = set(written) | set(ASSETS) | {"robots.txt", "_headers", "data", "fonts", "feed.xml"}   # feed.xml: written at deploy (site_days.py)
     stray = sorted(set(os.listdir(OUT)) - expected)
     if stray:
         sys.exit(f"unexpected files in site/: {stray} (remove them, or add them to the build)")

@@ -1,4 +1,4 @@
-/* dash.js: the home-page status board. Sun outages are predicted live in the browser (NFSun, sunoutage.js) for the
+/* dash.js: the home-page briefing's live rows (sun outages, solar radio, alerts, at sea). Sun outages are predicted live in the browser (NFSun, sunoutage.js) for the
    public watch list (/data/sun/targets.json); NOAA SWPC's live solar radio data (US public domain, read directly from
    services.swpc.noaa.gov) is the observed side. Alerts fire when a predicted outage meets observed evidence, or when a
    strong radio burst is observed. Thresholds are provisional and stated on the page (docs/design/sun-outage.md).
@@ -44,40 +44,20 @@
     }
     return null;
   }
-  function bandToday() {
-    var sd = NFSun.sunDec(Date.now()), north = [], south = [];
-    for (var lat = -75; lat <= 75; lat += 0.5) {
-      if (Math.abs(NFSun.apparentDec(lat) - sd) < TH) (lat >= 0 ? north : south).push(lat);
-    }
-    var t = [];
-    if (north.length) t.push(north[0].toFixed(1) + "–" + north[north.length - 1].toFixed(1) + "°N");
-    if (south.length) t.push(Math.abs(south[south.length - 1]).toFixed(1) + "–" + Math.abs(south[0]).toFixed(1) + "°S");
-    return t.join(" and ");
-  }
-  function renderSun() {
-    var w = state.windows, now = Date.now(), box = $("dsun-body");
-    if (!w) return;
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function dayText(d) { return d.getUTCDate() + " " + MON[d.getUTCMonth()] + " " + d.getUTCFullYear(); }
+  function renderSun() {                  // one line: in outage now, the next 48 hours, or the next season
+    var w = state.windows, now = Date.now(), box = $("sun-text");
+    if (!w || !box) return;
     var active = w.filter(function (x) { return x.start.getTime() <= now && x.end.getTime() > now; });
-    var next = w.filter(function (x) { return x.start.getTime() > now; }).slice(0, 6);
-    var h = "";
-    var band = bandToday();
-    h += '<p class="small">Orbital arc today: ' + (band ? "receivers at <strong>" + esc(band) + "</strong> see outages near local noon on satellites near their own longitude."
-      : "no latitude band is in outage (the sun is too far from the equator).") + "</p>";
-    if (active.length) {
-      h += "<p><strong>" + active.length + " in outage now</strong> on the list:</p><ul class=\"dash-list\">" + active.slice(0, 6).map(function (x) {
-        return "<li>" + esc(x.slot) + " from " + esc(x.city) + ", until " + esc(both(x.end)) + "</li>";
-      }).join("") + (active.length > 6 ? "<li class=\"mut\">and " + (active.length - 6) + " more</li>" : "") + "</ul>";
-    } else h += "<p>None in outage now.</p>";
-    if (next.length) {
-      h += "<p class=\"small\">Next 48 hours:</p><ul class=\"dash-list\">" + next.map(function (x) {
-        return "<li>" + esc(dayHm(x.start)) + "–" + esc(hm(x.end)) + " UTC: " + esc(x.slot) + " from " + esc(x.city) + "</li>";
-      }).join("") + "</ul>";
-    } else {
+    var next = w.filter(function (x) { return x.start.getTime() > now; });
+    var t = active.length ? active.length + " on the watch list in outage now (e.g. " + active[0].slot + " from " + active[0].city + ")" : "None in outage now";
+    if (next.length) t += "; " + next.length + " more in the next 48 hours.";
+    else {
       var ns = nextSeason(state.targets);
-      h += "<p class=\"small\">No outages on the list in the next 48 hours." + (ns ? " Next season on the list starts about <strong>" +
-        esc(ns.day.toISOString().slice(0, 10)) + "</strong> (" + esc(ns.city) + ")." : "") + "</p>";
+      t += ". " + (ns ? "Next season from " + dayText(ns.day) + " (" + ns.city + ")." : "None in the next 48 hours.");
     }
-    box.innerHTML = h;
+    box.textContent = t;
   }
 
   // ---------- observed: NOAA SWPC solar radio flux, radio bursts and radio alerts
@@ -114,23 +94,27 @@
     }).filter(function (a) { return a.what && a.t >= since; }).sort(function (a, b) { return b.t - a.t; });
   }
   function renderSolar() {
-    var f = state.flux, box = $("dsolar-body");
+    var f = state.flux, box = $("dsolar-body"), line = $("radio-text");
+    if (!box) return;
     if (!f) { box.innerHTML = '<p class="small">NOAA data not loaded yet, or NOAA is not answering.</p>'; return; }
-    var h = '<table class="dash-table"><thead><tr><th>Frequency</th><th class="num">Latest, sfu</th><th class="num">vs 30-day median</th></tr></thead><tbody>';
+    var h = '<table><thead><tr><th>Frequency</th><th class="num">Latest, sfu</th><th class="num">Against 30-day median</th></tr></thead><tbody>';
+    var worst = null;
     BANDS.forEach(function (b) {
       var x = f[b[0]]; if (!x) return;
-      var cls = x.ratio >= HIGH ? "chip-high" : x.ratio >= ELEVATED ? "chip-elev" : "chip-ok";
+      var cls = x.ratio >= HIGH ? "lvl lvl-high" : x.ratio >= ELEVATED ? "lvl lvl-elev" : "lvl";
       var word = x.ratio >= HIGH ? "high" : x.ratio >= ELEVATED ? "elevated" : "normal";
-      h += "<tr><td>" + esc(x.label) + '</td><td class="num">' + Math.round(x.latest.v) + '</td><td class="num"><span class="dchip ' + cls + '">' +
+      if (x.ratio && (!worst || x.ratio > worst.ratio)) worst = { ratio: x.ratio, word: word, label: x.label };
+      h += "<tr><td>" + esc(x.label) + '</td><td class="num">' + Math.round(x.latest.v) + '</td><td class="num"><span class="' + cls + '">' +
            (x.ratio ? x.ratio.toFixed(2) + "×, " + word : "–") + "</span></td></tr>";
     });
     h += "</tbody></table>";
+    if (line) line.textContent = worst && worst.word !== "normal" ? "Solar radio " + worst.word + " at " + worst.label + "." : "Solar radio normal.";
     var b = state.bursts;
     if (b === null) h += '<p class="small">Radio bursts: loading…</p>';
     else if (!b.length) h += '<p class="small">No fixed-frequency radio bursts reported in the last 24 hours.</p>';
     else {
       var strongest = b.slice().sort(function (x, y) { return y.peak - x.peak; }).slice(0, 4);
-      h += '<p class="small">' + b.length + " radio burst" + (b.length === 1 ? "" : "s") + " in the last 24 hours. Strongest:</p><ul class=\"dash-list\">" +
+      h += '<p class="small">' + b.length + " radio burst" + (b.length === 1 ? "" : "s") + " in the last 24 hours. Strongest:</p><ul>" +
         strongest.map(function (x) { return "<li>" + esc(dayHm(new Date(x.tmax))) + " UTC: " + x.f + " MHz, " + x.peak.toLocaleString("en-US") + " sfu</li>"; }).join("") + "</ul>";
     }
     var ra = state.alerts || [];
@@ -172,32 +156,37 @@
     return out;
   }
   function renderAlerts() {
-    var a = computeAlerts(), box = $("dalerts-body");
+    var a = computeAlerts(), box = $("dalerts-body"), top = $("alerts");
+    if (!box) return;
+    if (top) {
+      top.hidden = !a.length;
+      top.textContent = a.length ? "Sun-outage alert: " + a[0].text + (a.length > 1 ? " (" + (a.length - 1) + " more below)" : "") : "";
+    }
     if (!a.length) {
       var w = state.windows || [], soon = w.filter(function (x) { return x.start.getTime() > Date.now(); }).length;
       box.innerHTML = "<p><strong>No alerts.</strong> " + (soon ? soon + " predicted sun outages on the list in the next 48 hours, but none meets observed evidence"
         : "No predicted outage meets observed evidence") + ", and there was no strong L-band radio burst in the last 24 hours.</p>";
       return;
     }
-    box.innerHTML = '<ul class="dash-alerts">' + a.map(function (x) {
-      var tag = x.level === "both" ? '<span class="dchip chip-high">predicted and observed</span>' : '<span class="dchip chip-elev">observed</span>';
+    box.innerHTML = "<ul>" + a.map(function (x) {
+      var tag = x.level === "both" ? '<span class="lvl lvl-high">predicted and observed</span>' : '<span class="lvl lvl-elev">observed</span>';
       return "<li>" + tag + " " + esc(x.text) + (x.link ? ' <a href="' + esc(x.link) + '">Source</a>' : "") + "</li>";
     }).join("") + "</ul>";
   }
-  function renderAll() { renderSun(); renderSolar(); renderAlerts(); $("dash-updated").textContent = "Updated " + both(new Date()) + "."; }
+  function renderAll() { renderSun(); renderSolar(); renderAlerts(); var u = $("dash-updated"); if (u) u.textContent = "Updated " + both(new Date()) + "."; }
 
   // ---------- Sea card
   get("/data/vessels/gnss_at_sea.json").then(function (g) {
     if (!g) return;
     var top = (g.by_area || []).slice().sort(function (a, b) { return b.vessels - a.vessels; })[0];
-    $("dsea-body").innerHTML = "<p><strong>" + esc(g.affected_vessels) + " ships</strong> showed GNSS interference in the last collection" +
-      (top ? ", most in " + esc(top.area) + " (" + esc(top.vessels) + ")" : "") + '.</p><p class="small">Data built ' + esc(g.generated.slice(0, 16).replace("T", " ")) +
-      ' UTC. <a href="/sea">Open the Sea map</a></p>';
+    var box = $("sea-text");
+    if (box) box.textContent = g.affected_vessels + " ships in Finnish waters showed GNSS interference in the last collection" +
+      (top ? ", most in " + top.area + " (" + top.vessels + ")" : "") + ".";
   });
 
   // ---------- load
   get("/data/sun/targets.json").then(function (t) {
-    if (!t) { $("dsun-body").textContent = "The watch list could not be loaded."; return; }
+    if (!t) { var sb = $("sun-text"); if (sb) sb.textContent = "The watch list could not be loaded."; return; }
     state.targets = t;
     setTimeout(function () { state.windows = predict(t); renderAll(); }, 0);
   });

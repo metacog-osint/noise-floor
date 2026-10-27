@@ -293,6 +293,59 @@ def geo_card(site):
             "manoeuvres": g["manoeuvres"][-4:], "manoeuvre_count": len(g["manoeuvres"]), "source": g["source"]}
 
 
+SHORT = {   # watched-area names as they read inside a sentence
+    "Kaliningrad and approaches": "Kaliningrad", "Southern Black Sea offshore Turkey": "the southern Black Sea",
+    "Caucasus": "the Caucasus", "Gulf of Finland / Estonia–Russia border": "the Gulf of Finland",
+    "Western Black Sea coast": "the western Black Sea", "Cyprus–Levant": "Cyprus and the Levant",
+    "Strait of Hormuz / Gulf of Oman": "the Strait of Hormuz", "High latitude excl. Baltic/Russia": "high latitudes",
+}
+WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]
+
+
+def _and(xs):
+    xs = [x for x in xs if x]
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1] if xs else ""
+
+
+def _count(n, word):
+    w = WORDS[n] if n < len(WORDS) else str(n)
+    return f"{w} {word}{'' if n == 1 else 's'}"
+
+
+def brief(b):
+    """The home page's bottom line, by fixed rules (not written by a person): how the watched areas compare with their
+    30-day median, then what started and stopped this week. Areas below 5% both today and usually are left out; a
+    change of 5 points or more counts as a rise or fall. A fall in the share can mean jammed aircraft stopped
+    reporting, which the page's position-loss row shows."""
+    out = []
+    areas = [a for a in ((b.get("hotspots") or {}).get("areas") or [])
+             if a.get("today") is not None and a.get("median30") is not None and a.get("change") is not None]
+    big = sorted((a for a in areas if max(a["today"], a["median30"]) >= 5), key=lambda a: -a["today"])
+    name = lambda a: SHORT.get(a["name"], a["name"])  # noqa: E731
+    up = [name(a) for a in big if a["change"] >= 5]
+    down = [name(a) for a in big if a["change"] <= -5]
+    if big and not up and not down:
+        out.append(f"GPS jamming held near its usual level over {_and([name(a) for a in big[:2]])}.")
+    elif up or down:
+        bits = ([f"GPS jamming rose over {_and(up[:2])}"] if up else []) + \
+               ([("the share of degraded aircraft fell over " if up else "The share of degraded aircraft fell over ") + _and(down[:2])] if down else [])
+        out.append("; ".join(bits) + ".")
+    c = b.get("changes")
+    if c:
+        new = [r.get("near") for r in c.get("new") or [] if r.get("near")]
+        gone = [r.get("near") for r in c.get("ended") or [] if r.get("near")]
+        n, m = c.get("new_count") or 0, c.get("ended_count") or 0
+        if n or m:
+            started = (_count(n, "area") + " started this week" +
+                       ((", among them " if n > 2 else ", near ") + _and(new[:2]) if new else "")) if n else "No area started this week"
+            stopped = (("one stopped" if m == 1 else f"{_count(m, 'area').split(' ')[0].lower()} stopped") +
+                       ((", including " if m > 1 else ", near ") + gone[0] if gone else "")) if m else "none stopped"
+            out.append(f"{started}; {stopped}.")
+        else:
+            out.append("No area started or stopped this week.")
+    return " ".join(out)
+
+
 def summary_line(b):
     parts = []
     ch = b.get("changes")
@@ -369,6 +422,7 @@ def build(release, site, now=None):
         "board_built": board["built_utc"],
     }
     board["summary"] = summary_line(board)
+    board["brief"] = brief(board)
     return board
 
 

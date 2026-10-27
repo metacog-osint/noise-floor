@@ -10,13 +10,13 @@
   Cache-Control: public, max-age=31536000, immutable
 /tic-init.js
   Cache-Control: public, max-age=31536000, immutable
+/site.js
+  Cache-Control: public, max-age=31536000, immutable
 /map.js
   Cache-Control: public, max-age=31536000, immutable
 /sea.js
   Cache-Control: public, max-age=31536000, immutable
 /charts.js
-  Cache-Control: public, max-age=31536000, immutable
-/home.js
   Cache-Control: public, max-age=31536000, immutable
 /data.js
   Cache-Control: public, max-age=31536000, immutable
@@ -31,6 +31,8 @@
 /board.js
   Cache-Control: public, max-age=31536000, immutable
 /geo.js
+  Cache-Control: public, max-age=31536000, immutable
+/fonts/*
   Cache-Control: public, max-age=31536000, immutable
 /data/land.json
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
@@ -57,6 +59,10 @@
 /data/board.json
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
 /data/geo.json
+  Cache-Control: public, max-age=300, stale-while-revalidate=3600
+/data/today-map.svg
+  Cache-Control: public, max-age=300, stale-while-revalidate=3600
+/data/today-map-dark.svg
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
 /feed.xml
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
