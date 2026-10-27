@@ -124,7 +124,7 @@ def push(alerts):
         word = {"NEW": "New", "RETURNED": "Returning", "QUIET": "Quiet"}.get(a.get("kind"), "")
         body = f'{word} L-band emitter site {a["site"]}, band {"+".join(a.get("bands") or [])}. Open the private map.'
         req = urllib.request.Request(f"{server}/{topic}", data=body.encode(),
-                                     headers={"Title": "Noise Floor: NISAR lane", "Tags": "satellite_antenna"})
+                                     headers={"Title": "Noisefloor: NISAR lane", "Tags": "satellite_antenna"})
         try:
             urllib.request.urlopen(req, timeout=15).read()
         except Exception as e:

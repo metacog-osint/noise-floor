@@ -1,4 +1,4 @@
-/* Noise Floor data page: list the monthly GNSS releases from the day index (days.json), newest first. */
+/* Noisefloor data page: list the monthly GNSS releases from the day index (days.json), newest first. */
 (function () {
   "use strict";
   var box = document.getElementById("data-months");

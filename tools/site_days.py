@@ -277,12 +277,12 @@ def write_feed(index, events_dir, path=None, places_path=None, n=30, alerts_path
     feed_updated = entries[0][0] if entries else "2026-01-01T00:00:00Z"
     xml = ('<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">'
            "<id>tag:noisefloor.theintelligence.company,2026:gnss-daily</id>"
-           "<title>Noise Floor: daily GNSS summary and alerts</title>"
+           "<title>Noisefloor: daily GNSS summary and alerts</title>"
            "<subtitle>GNSS degradation seen by aircraft worldwide, one entry per UTC day from the automatic daily run, plus "
            "sun-outage and radio-burst alerts.</subtitle>"
            f'<link rel="self" type="application/atom+xml" href="{SITE_URL}/feed.xml"/>'
            f'<link rel="alternate" type="text/html" href="{SITE_URL}/map"/>'
-           f"<updated>{feed_updated}</updated><author><name>Noise Floor</name><uri>{SITE_URL}</uri></author>"
+           f"<updated>{feed_updated}</updated><author><name>Noisefloor</name><uri>{SITE_URL}</uri></author>"
            "<rights>Daily entries derived from adsb.lol data, ODbL 1.0</rights>" + "".join(e[1] for e in entries) + "</feed>\n")
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(xml)

@@ -1,4 +1,4 @@
-/* Noise Floor home: the status board's cards from /data/board.json (built at deploy by tools/board.py), plus live Kp
+/* Noisefloor home: the status board's cards from /data/board.json (built at deploy by tools/board.py), plus live Kp
    from NOAA SWPC (US public domain, CORS open). Sun outages, solar radio and the Sea card are drawn by dash.js. */
 (function () {
   "use strict";

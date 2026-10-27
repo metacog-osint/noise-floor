@@ -4,7 +4,7 @@
 
 ## Why
 
-Every Noise Floor GNSS measure so far counts aircraft that broadcast an ADS-B position. Under strong jamming most
+Every Noisefloor GNSS measure so far counts aircraft that broadcast an ADS-B position. Under strong jamming most
 aircraft stop sending a position at all. They drop out of both the numerator and the denominator, and a hex where nearly
 everyone lost GNSS can show a modest degraded share from the few that kept a fix. Verdict 45 (`phase1.md`) found exactly
 that east of Kaliningrad: 1–3% of crossings had ADS-B positions on summer days in 2026, while the per-hex share read

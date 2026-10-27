@@ -1,4 +1,4 @@
-/* Noise Floor GEO board: /data/geo.json (built at deploy by tools/geo.py from the daily CelesTrak snapshots). */
+/* Noisefloor GEO board: /data/geo.json (built at deploy by tools/geo.py from the daily CelesTrak snapshots). */
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };

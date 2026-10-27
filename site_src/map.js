@@ -1,4 +1,4 @@
-/* Noise Floor public map: GNSS degradation per H3 hex from ADS-B (adsb.lol, ODbL).
+/* Noisefloor public map: GNSS degradation per H3 hex from ADS-B (adsb.lol, ODbL).
    Data: /data/gnss/<day>.json (cells: h3, aircraft, bad_live, bad_raw, capable, capable_bad10) and
    /data/events/<day>.json (anomaly events, bursts and SBAS flags from pipeline/pnt_analysis.py).
    One canvas layer draws land and hexes; hover/click looks up the hex under the pointer. */
