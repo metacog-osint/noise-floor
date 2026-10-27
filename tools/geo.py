@@ -199,7 +199,7 @@ def build(release, site, now=None):
                 (same if hidden else close).append(row)
     close.sort(key=lambda r: (r["kind"].startswith("no listed"), r["km"]))
     mans = []
-    for prev, nxt in zip(snaps[-8:-1], snaps[-7:]):
+    for prev, nxt in list(zip(snaps, snaps[1:]))[-7:]:          # the last seven consecutive pairs
         for m in manoeuvres(prev, nxt):
             m["day"] = nxt["day"]
             mans.append(m)

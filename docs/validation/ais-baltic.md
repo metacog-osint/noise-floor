@@ -362,5 +362,8 @@ fall inside the capture.
   used again, by 19 ships; one ship each near 59.6°N 33.0°E and 60.5°N 28.0°E.
 - **Other readings:** 8 vessels came out "shared MMSI, data error or interference: check", as on the development day;
   they aren't counted as flagged.
-- **To add when published:** H4 recomputed on the 26 Oct aircraft table (reported beside the scored result, not
-  replacing it).
+- **H4 on the 26 Oct aircraft table** (published 27 Oct at 11:04 UTC; reported beside the scored result, which stands
+  as scored): eastern Gulf 85.2% of aircraft at jamming scale (23 of 27 aircraft-hexes, 10 hexes) against 3.0% over
+  the control boxes (299 of 10,048, 323 hexes): 29×, also above 5×. The same code run on the 25 Oct table reproduces
+  the scored figures (85.7%, 3.9%, 22×). The eastern Gulf share rests on few aircraft-hexes on both days (21 and
+  27), so a handful of aircraft moves it.

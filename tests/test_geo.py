@@ -83,6 +83,26 @@ def test_build_close_pairs():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_build_manoeuvres_from_two_snapshots():
+    """With fewer than eight snapshots, each one must be compared with the one before it, not with itself."""
+    tmp = tempfile.mkdtemp()
+    try:
+        os.makedirs(os.path.join(tmp, "site", "data"))
+        later = T0 + timedelta(days=1)
+        json.dump({"day": "2026-10-26", "objects": [obj(1, 62.0), obj(2, 100.0)]}, open(os.path.join(tmp, "2026-10-26.geo.json"), "w"))
+        json.dump({"day": "2026-10-27", "objects": [obj(1, 62.5, n=N_GEO + 0.05 / 360, t=later), obj(2, 100.0, t=later)]},
+                  open(os.path.join(tmp, "2026-10-27.geo.json"), "w"))
+        out = G.build(tmp, os.path.join(tmp, "site"), later)
+        assert [m["id"] for m in out["manoeuvres"]] == [1] and out["manoeuvres"][0]["day"] == "2026-10-27"
+        for k in range(3):                                                     # three more quiet days: still one
+            t = later + timedelta(days=k + 1)
+            json.dump({"day": t.strftime("%Y-%m-%d"), "objects": [obj(1, 62.5, n=N_GEO + 0.05 / 360, t=later), obj(2, 100.0, t=t)]},
+                      open(os.path.join(tmp, t.strftime("%Y-%m-%d") + ".geo.json"), "w"))
+        assert [m["id"] for m in G.build(tmp, os.path.join(tmp, "site"), t)["manoeuvres"]] == [1]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_roles_and_pair_kind():
     assert G.pair_kind("inspection", None) == "inspection-capable involved"
     assert G.pair_kind(None, "servicing") == "servicing involved"
