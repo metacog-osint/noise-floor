@@ -9,10 +9,10 @@
 <meta property="og:description" content="Sanctioned, military, law-enforcement and state-flag vessels in Finland&#x27;s open AIS, with what each ship broadcasts about itself, its reporting pattern and GNSS interference at sea.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=df917650ac">
+<link rel="stylesheet" href="/style.css?v=f2d5623f29">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=f511c41ac0"></script>
-<script defer src="/site.js?v=22154eb33f"></script>
+<script defer src="/site.js?v=430c3e4cbc"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/sea.js?v=8b09678076"></script>
 <script defer src="/tic-init.js?v=d888070c79"></script>
@@ -27,14 +27,13 @@
 <div class="wrap"><nav class="tabs" aria-label="Main"><div class="tabs-scroll"><a href="/">Today</a><a href="/map">Map</a><a href="/charts">Trends</a><a href="/sea" aria-current="page">Sea</a><a href="/geo">Space</a></div><details class="menu"><summary>About<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu-pop"><a href="/methods"><b>Methods</b><span>How each measure works and what it can&#x27;t see</span></a><a href="/validation"><b>Validation</b><span>What was tested, including what failed</span></a><a href="/data"><b>Data and downloads</b><span>Daily files, their columns and licences</span></a><a href="/sources"><b>Sources and licences</b><span>Every source, and what it may be used for</span></a><a href="/lanes"><b>Roadmap</b><span>What is built, being tested or planned</span></a><a href="/terms"><b>Terms</b><span>Use, reuse and limits</span></a></div></details></nav></div>
 </header>
 <main id="main" class="wide">
-<h1>Vessels of interest in Finnish AIS</h1>
-<p class="lede">Ships on official sanctions lists, ships declaring military or law-enforcement work, and Russian, Chinese, Iranian and North Korean-flagged commercial and state ships, as heard by Finland's shore AIS stations. For each ship: the identifiers it broadcasts about itself, any official listing, where it last reported, how regularly it reported, and how many of its reports failed the spoofing tests. Metadata only: no communications content.</p>
-
-<div class="callout">
-<p><strong>Read with care.</strong> A listing is a government designation, quoted as published; it is not a finding by this project, and the map does not say what any ship is doing. AIS positions come from each ship's own GNSS receiver and can be jammed, spoofed or falsified, so a position here is what the ship reported, not where it was seen. Reports that failed the spoofing tests are left out of positions and tracks and counted instead.</p>
+<div class="page-head">
+  <div>
+    <h1>Vessels of interest in Finnish AIS</h1>
+    <p class="page-sub">Sanctioned, military, law-enforcement and selected state-flag ships heard by Finland's shore stations. A listing is a government designation, quoted as published; a position is what the ship reported.</p>
+  </div>
+  <a class="howto-link" href="#howto">How to read this page ↓</a>
 </div>
-
-<p class="small map-line"><span id="sea-data" class="tagnote"></span> <span id="sea-stats"></span></p>
 
 <section id="sea-filters" class="sea-filters" aria-label="Filters">
   <div class="sf-head">
@@ -102,6 +101,7 @@
     <p class="small">Click a marker, or choose "Show" in the table below. The panel lists what the ship broadcasts about itself, any official listing, its last trusted position and how it reported.</p>
   </aside>
 </div>
+<p class="small map-line"><span id="sea-data" class="tagnote"></span> <span id="sea-stats"></span></p>
 <div class="legend-row"><div id="sea-legend" class="map-legend" aria-label="Legend">
   <span><i class="sea-key k-sanctioned" aria-hidden="true"></i> Sanctioned (diamond)</span>
   <span><i class="sea-key k-state" aria-hidden="true"></i> Military or law enforcement (square)</span>
@@ -128,7 +128,10 @@
 <details class="table-view"><summary>Ships affected per hour</summary><div class="tw"><table id="gnss-hours"><thead><tr><th>Hour (UTC)</th><th>Hour (Central)</th><th>Ships</th></tr></thead><tbody></tbody></table></div></details>
 </section>
 
-<h2>Reading the page</h2>
+<section id="howto" class="howto" aria-labelledby="howto-h">
+<h2 id="howto-h">How to read this page</h2>
+<p><strong>Read with care.</strong> A listing is a government designation, quoted as published; it is not a finding by this project, and the map does not say what any ship is doing. AIS positions come from each ship's own GNSS receiver and can be jammed, spoofed or falsified, so a position here is what the ship reported, not where it was seen. Reports that failed the spoofing tests are left out of positions and tracks and counted instead.</p>
+<p>Ships on official sanctions lists, ships declaring military or law-enforcement work, and Russian, Chinese, Iranian and North Korean-flagged commercial and state ships, as heard by Finland's shore AIS stations. For each ship: the identifiers it broadcasts about itself, any official listing, where it last reported, how regularly it reported, and how many of its reports failed the spoofing tests. Metadata only: no communications content.</p>
 <ul>
   <li><strong>Sanctioned</strong> means the IMO number the ship broadcasts is on the US Treasury OFAC SDN List or the UK Sanctions List, worded as each list publishes it: "listed by OFAC on <em>date</em> under <em>programme</em>". OFAC's date is the day the entry was published on the SDN List. A listed MMSI counts as a match only when the ship broadcasts no valid IMO number, and is marked as unconfirmed. A matching name alone never puts a ship on the map.</li>
   <li><strong>Military and law enforcement</strong> are AIS ship types 35 and 55, as the ship declares them. Many state ships switch AIS off or declare another type, so their absence here means nothing.</li>
@@ -146,6 +149,7 @@
 </ul>
 
 <p class="small" id="sea-note">Data: <a href="https://www.digitraffic.fi/en/marine-traffic/">Digitraffic</a> AIS from Fintraffic. Source: Fintraffic / digitraffic.fi, license CC 4.0 BY. Sanctions: <a href="https://ofac.treasury.gov/sanctions-list-service">US Treasury OFAC SDN List</a> (US government work) and the <a href="https://www.gov.uk/government/publications/the-uk-sanctions-list">UK Sanctions List</a>; contains public sector information licensed under the Open Government Licence v3.0. Sea zones: Flanders Marine Institute (2023), Maritime Boundaries Geodatabase, World EEZ v12 and Internal Waters v4, <a href="https://www.marineregions.org/">marineregions.org</a>, CC BY 4.0 (only the zone of each ship's position is published, not the boundaries). Ports: <a href="https://msi.nga.mil/Publications/WPI">NGA World Port Index</a> (US government). Land and borders: Natural Earth (public domain). <span id="sea-dates"></span> The data is refreshed by hand, not daily: <code>python tools/sanctions.py</code> then <code>python tools/vessels_build.py</code> (<a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/vessels_build.py">code</a>).</p>
+</section>
 
 </main>
 <footer class="site"><div class="wrap">
