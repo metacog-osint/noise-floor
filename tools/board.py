@@ -177,8 +177,12 @@ def declared(release, site, now):
 
 def easa_firs():
     """EASA's 7-day and 30-day tables of FIRs with GNSS interference (spoofing column, reported column)."""
+    return easa_parse(fetch(EASA_URL).decode("utf-8", "replace"))
+
+
+def easa_parse(s, url=EASA_URL):
+    """The FIR tables in a copy of EASA's page (live, or an Internet Archive capture: tools/easa_history.py)."""
     import html as H
-    s = fetch(EASA_URL).decode("utf-8", "replace")
     tables = []
     for m in re.finditer(r"<h2[^>]*>\s*impacted FIRs in the last (\d+) days on ([0-9/]+)\s*</h2>(.*?)</table>", s, re.S | re.I):
         rows = []
@@ -193,7 +197,7 @@ def easa_firs():
         tables.append({"days": int(m.group(1)), "date": f"{y}-{mo}-{d}", "firs": rows})
     if not tables:
         raise ValueError("FIR tables not found on the EASA page")
-    return {"url": EASA_URL, "tables": tables, "credit": "Source: EASA (European Union Aviation Safety Agency), "
+    return {"url": url, "tables": tables, "credit": "Source: EASA (European Union Aviation Safety Agency), "
             "GNSS outages and alterations: impacted FIRs (ADS-B data and reports)"}
 
 
