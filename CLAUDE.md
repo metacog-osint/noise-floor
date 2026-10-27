@@ -36,7 +36,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   use `--min-contrast 10 --ghosts drop --landmask` for better precision).
 - **Lanes added 23–24 Oct 2026 (prototypes; each has a write-up in `docs/validation/` or `docs/assessment/`):**
   `tools/cygnss_rfi.py` (CYGNSS noise floor, needs `EARTHDATA_TOKEN`; held-out checks in `tools/cygnss_checks.py`), `tools/s1_rfi.py` (Sentinel-1 RFI annotations),
-  `tools/events.py` (observations → graded events, private register in `data/events/`), `collectors/digitraffic_ais.py` and
+  `tools/events.py` (observations → graded events, private register in `data/events/`; from v1.1, 27 Oct 2026, EASA's FIR
+  tables drive rule D1: `tools/easa_history.py` keeps Internet Archive copies in the private archive, `tools/fir_approx.py`
+  builds the country stand-ins in `data/declared/fir_approx.json`), `collectors/digitraffic_ais.py` and
   `tools/ais_detect.py` (Finland's open AIS), `tools/station_cn0.py` (EPN station C/N0), `tools/trace_box.py types` (by aircraft family),
   `tools/horizon_fix.py --balance`, `tools/spoof_day.py` (ADS-B spoofing; reads the raw archives; v0.5 by default, `--no-airspeed-fast` for v0.4), `tools/year_trends.py`
   (`docs/assessment/year-trends.md`), and position loss: aircraft heard by MLAT but sending no GNSS position
