@@ -55,7 +55,7 @@ def summarise(day):
         if p not in best or r["med_db"] > best[p]["med_db"]:
             best[p] = r
     top = sorted(best.values(), key=lambda r: -r["med_db"])[:TOP]
-    return {"day": day, "licence": "Derived from NASA CYGNSS L1 V3.2 (NASA open data)", "cells": len(judged),
+    return {"day": day, "licence": "Derived from NASA CYGNSS L1 V3.2 (NASA open data)", "judged_cells": len(judged),
             "raised_cells": len(raised), "raised_db": RAISED_DB,
             "top": [{"lat": round(r["lat"], 2), "lon": round(r["lon"], 2), "med_db": round(r["med_db"], 2), "n": r["n"]}
                     for r in top],
@@ -133,7 +133,7 @@ def main():
         tmp = out + ".part"                       # kept as <day>.cygnss.json only once uploaded: a failed upload retries
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(s, f, separators=(",", ":"))
-        print(f"{day}: {s['raised_cells']} of {s['cells']} judged cells raised {RAISED_DB:g} dB or more")
+        print(f"{day}: {s['raised_cells']} of {s['judged_cells']} judged cells raised {RAISED_DB:g} dB or more")
         if not a.no_upload:
             final = os.path.join(os.path.dirname(tmp), f"{day}.cygnss.json")
             os.replace(tmp, final)

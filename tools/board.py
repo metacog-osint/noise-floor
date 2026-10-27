@@ -278,7 +278,7 @@ def cygnss(release, places):
     top = []
     for r in (s.get("top") or [])[:6]:
         top.append({**r, "near": places.near(r["lat"], r["lon"], limit=500)})
-    return {"day": s["day"], "cells": s.get("cells"), "raised_cells": s.get("raised_cells"), "top": top,
+    return {"day": s["day"], "judged_cells": s.get("judged_cells"), "raised_cells": s.get("raised_cells"), "top": top,
             "note": "Noise floor of GPS reflections seen from orbit; the beam is a few hundred km wide, so this is "
                     "exposure, not a transmitter site. About 38°N to 38°S."}
 

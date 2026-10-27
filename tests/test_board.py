@@ -104,7 +104,7 @@ def test_spoofing_and_cygnss_cards():
             json.dump({"day": d, "version": "0.5", "active": act, "episodes": act + 3, "aircraft_with_episodes": act,
                        "victim_res2_top": [{"region": "822db7fffffffff", "lat": 32.33, "lon": 35.0, "episodes": act}],
                        "spoofed_to_top": [{"lat": 31.7, "lon": 35.97, "episodes": 4}]}, open(os.path.join(tmp, f"{d}.spoof.json"), "w"))
-        json.dump({"day": "2026-10-20", "cells": 900, "raised_cells": 40,
+        json.dump({"day": "2026-10-20", "judged_cells": 900, "raised_cells": 40, "cells": [["83abc", 1.5, 40]],
                    "top": [{"lat": 26.5, "lon": 56.2, "med_db": 3.1, "n": 60}]}, open(os.path.join(tmp, "2026-10-20.cygnss.json"), "w"))
         places = B.Places(tmp)
         s = B.spoofing(tmp, places)
@@ -112,6 +112,7 @@ def test_spoofing_and_cygnss_cards():
         assert s["victims"][0]["episodes"] == 9
         c = B.cygnss(tmp, places)
         assert c["day"] == "2026-10-20" and c["raised_cells"] == 40 and c["top"][0]["med_db"] == 3.1
+        assert c["judged_cells"] == 900 and "cells" not in c          # the map list stays out of board.json
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
