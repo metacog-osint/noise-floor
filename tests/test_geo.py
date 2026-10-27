@@ -138,6 +138,22 @@ def test_build_counts_by_kind():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_region_summary():
+    tmp = tempfile.mkdtemp()
+    try:
+        os.makedirs(os.path.join(tmp, "site", "data"))
+        json.dump({"day": "2026-10-26", "objects": [obj(1, 62.0)]}, open(os.path.join(tmp, "2026-10-26.geo.json"), "w"))
+        assert G.build(tmp, os.path.join(tmp, "site"), T0)["region"] is None            # no Space-Track files yet
+        for d, evs in (("2026-10-25", [{"day": "2026-10-25", "norad": 7, "kind": "left up"}]),
+                       ("2026-10-26", [{"day": "2026-10-26", "norad": 9, "kind": "new"}, {"day": "2026-10-26", "norad": 3, "kind": "arrived"}])):
+            json.dump({"day": d, "counts": {"zone": {"PAYLOAD": 2}}, "events": evs}, open(os.path.join(tmp, f"{d}.geo-region.json"), "w"))
+        r = G.build(tmp, os.path.join(tmp, "site"), T0)["region"]
+        assert r["day"] == "2026-10-26" and r["first_day"] == "2026-10-25" and r["counts"] == {"zone": {"PAYLOAD": 2}}
+        assert [(e["day"], e["norad"]) for e in r["events"]] == [("2026-10-26", 9), ("2026-10-26", 3), ("2026-10-25", 7)]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_roles_and_pair_kind():
     assert G.pair_kind("inspection", None) == "inspection-capable involved"
     assert G.pair_kind(None, "servicing") == "servicing involved"

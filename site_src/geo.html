@@ -16,6 +16,11 @@
 <p class="sub">Changes between daily snapshots that drift alone doesn't explain. Relocations and other changes come first. Routine station-keeping, the small corrections that hold a satellite in its slot, is folded below them.</p>
 <div id="geo-man"></div>
 
+<h2 id="region">Arrivals and departures</h2>
+<p class="sub">Everything Space-Track lists near GEO, including inactive satellites, rocket bodies and debris: who entered or left the protected zone, what was newly catalogued, and which satellites went quiet.</p>
+<p id="geo-region-counts" class="small">Loading…</p>
+<div id="geo-region"></div>
+
 <h2 id="drifting">Drifting</h2>
 <div id="geo-drift"></div>
 
@@ -39,7 +44,8 @@
   <li><strong>Classes.</strong> Station-kept: drift under 0.1° a day and inclination under 1°. Inclined: drift under 0.1° a day, inclination 1° or more (often older satellites saving fuel). Drifting: 0.1° a day or more.</li>
   <li><strong>Close.</strong> Objects within 100 km of each other at the common time. CelesTrak's owner codes are often a country, so pairs with the same code are counted, not listed, unless one has a listed role. Elements older than 3 days are flagged beside the pair.</li>
   <li><strong>Manoeuvres.</strong> Between consecutive snapshots: the drift rate changed by more than 0.02° a day, the inclination by more than 0.02°, or the longitude is more than 0.15° from where the earlier elements put it at the later time (by the same orbit motion, so an inclined orbit's daily swing isn't counted). A change is routine station-keeping when the satellite isn't drifting before or after. Inclined satellites still trim their drift to hold their longitude, so that is routine too. A change to their inclination isn't, because they aren't held north–south. Everything else is listed first: a satellite that started or stopped drifting, or a drifting one whose drift rate changed. The dates are those of the two element sets; the change happened somewhere between them. Snapshots began on 26 Oct 2026.</li>
+  <li><strong>Region.</strong> Everything Space-Track lists with a mean motion of 0.9 to 1.1 revolutions a day and an eccentricity under 0.3. The protected zone is the IADC geosynchronous protected region: perigee and apogee within 200 km of 35,786 km altitude, and inclination 15° or less. The graveyard is everything above it. Each day's list is compared with the day before: newly catalogued (launched within the last year), back in the public catalogue, entered the zone, raised to the graveyard, lowered below the zone, left the zone, dropped out of the list, and, for payloads in the zone, no new public elements for over 7 days. A satellite missing from public data hasn't necessarily stopped working: some are simply not published.</li>
   <li><strong>Owners</strong> are CelesTrak's codes: CIS is Russia and the former Soviet states, PRC China, ITSO Intelsat, EUTE Eutelsat, SES SES.</li>
 </ul>
-<p class="small">Orbital data: USSPACECOM (space-track.org) via <a href="https://celestrak.org/">CelesTrak</a>; basic SSA data, redistributed with citation. Code: <a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/geo.py">tools/geo.py</a>. Data file: <a href="/data/geo.json">geo.json</a>.</p>
+<p class="small">Orbital data: USSPACECOM (space-track.org) via <a href="https://celestrak.org/">CelesTrak</a>, and from <a href="https://www.space-track.org/">space-track.org</a> directly for the region and its arrivals and departures; basic SSA data, redistributed with citation. Region code: <a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/geo_region.py">tools/geo_region.py</a>. Code: <a href="https://github.com/metacog-osint/noise-floor/blob/main/tools/geo.py">tools/geo.py</a>. Data file: <a href="/data/geo.json">geo.json</a>.</p>
 </section>

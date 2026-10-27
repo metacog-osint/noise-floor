@@ -36,6 +36,7 @@ jobs:
       changed: ${{ steps.run.outputs.changed }}
       tests_changed: ${{ steps.tests.outputs.tests_changed }}
       geo_changed: ${{ steps.geo.outputs.geo_changed }}
+      region_changed: ${{ steps.region.outputs.geo_changed }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -71,8 +72,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python tools/geo.py snapshot --upload
+      # the GEO region from Space-Track: one gp query per run (its rules: at most hourly, never twice within the hour),
+      # tools/geo_region.py; basic SSA data, cited
+      - name: GEO region (Space-Track)
+        id: region
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPACETRACK_USER: ${{ secrets.SPACETRACK_USER }}
+          SPACETRACK_PASSWORD: ${{ secrets.SPACETRACK_PASSWORD }}
+        run: python tools/geo_region.py pull --upload
   deploy:
     needs: process
-    if: ${{ !cancelled() && (needs.process.outputs.changed == 'true' || needs.process.outputs.tests_changed == 'true' || needs.process.outputs.geo_changed == 'true') }}
+    if: ${{ !cancelled() && (needs.process.outputs.changed == 'true' || needs.process.outputs.tests_changed == 'true' || needs.process.outputs.geo_changed == 'true' || needs.process.outputs.region_changed == 'true') }}
     uses: ./.github/workflows/deploy-site.yml
     secrets: inherit

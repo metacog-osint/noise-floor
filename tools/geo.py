@@ -184,6 +184,22 @@ def manoeuvres(prev, cur):
     return out
 
 
+def region_summary(release, days=30):
+    """The Space-Track region files (tools/geo_region.py): the latest day's counts and the last `days` days' events."""
+    docs = []
+    for f in sorted(glob.glob(os.path.join(release, "*.geo-region.json")))[-days:]:
+        try:
+            docs.append(json.load(open(f, encoding="utf-8")))
+        except ValueError:
+            pass
+    if not docs:
+        return None
+    last = docs[-1]
+    evs = sorted((e for d in docs for e in d.get("events", [])), key=lambda e: (e["day"], e["norad"]), reverse=True)
+    return {"day": last["day"], "fetched_utc": last.get("fetched_utc"), "first_day": docs[0]["day"], "counts": last["counts"],
+            "definitions": last.get("definitions"), "source": last.get("source"), "events": evs}
+
+
 def build(release, site, now=None):
     now = now or datetime.now(timezone.utc)
     snaps = []
@@ -238,6 +254,7 @@ def build(release, site, now=None):
                       "inclined": sum(1 for o in objs if o.get("class") == "inclined"), "drifting": len(drifting)},
            "close_other_owner": close[:40], "close_same_owner_count": len(same), "manoeuvres": mans,
            "manoeuvre_counts": {"other": len(rare), "station-keeping": sum(1 for m in mans if m["kind"] == ROUTINE)},
+           "region": region_summary(release),
            "drifting": [{"id": o["id"], "name": o["name"], "owner": o["owner"], "lon": round(o["lon_now"], 2),
                          "drift": o["drift"], "role": o.get("role")} for o in drifting[:40]],
            "roles": {str(k): {"role": v["role"], "basis": v["basis"], "sources": v["sources"]} for k, v in roles.items()},
