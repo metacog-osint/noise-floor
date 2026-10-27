@@ -8,9 +8,9 @@
 <meta property="og:title" content="GEO board · Noise Floor">
 <meta property="og:description" content="Every active geosynchronous object from public orbital data: which are drifting, which manoeuvred, and which sit close to a satellite of another owner. Proximity and behaviour, never intent.">
 <meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="/style.css?v=e1c22abad5">
+<link rel="stylesheet" href="/style.css?v=ba56b9b4b2">
 <link rel="alternate" type="application/atom+xml" title="Noise Floor: daily GNSS summary" href="/feed.xml">
-<script defer src="/geo.js?v=4d6a1675f6"></script>
+<script defer src="/geo.js?v=58a3abc89c"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -23,7 +23,7 @@
 <h1>GEO board</h1>
 <p class="lede">Every active object in the geosynchronous belt, from public orbital elements: where it is, which are moving, which changed their orbit, and which sit close to a satellite of another owner. It shows proximity and behaviour. It never states intent.</p>
 
-<div class="callout"><p><strong>Read this first.</strong> Public elements place a satellite at GEO only to within tens of kilometres, so no separation under about 50 km is claimed, and a listed pair may be farther apart or closer than shown. Operators also place satellites close together on purpose, including across companies by agreement, and a servicing vehicle docked to its client shows as 0 km. Close approaches by inspection satellites are what this board is meant to show; it doesn't tell the two apart.</p></div>
+<div class="callout"><p><strong>Read this first.</strong> Public elements place a satellite at GEO only to within tens of kilometres, so no separation under about 50 km is claimed, and a listed pair may be farther apart or closer than shown. Operators also place satellites close together on purpose, including across companies by agreement, and a servicing vehicle docked to its client shows as 0 km. Close approaches by inspection satellites are what this board is meant to show. A short list of satellites with a published inspection or servicing role is labelled, with sources; every other pair is shown as having no listed role.</p></div>
 
 <p id="geo-status" class="small">Loading…</p>
 
@@ -40,6 +40,10 @@
 <div id="geo-strip"></div>
 <p><label for="geo-q">Filter</label> <input id="geo-q" type="search" placeholder="Name or owner, such as Luch or CIS" style="width:min(100%,24rem)"> <span id="geo-n" class="small"></span></p>
 <div id="geo-table"></div>
+
+<h2 id="roles">Listed roles</h2>
+<p class="small">Only objects whose role published reporting supports are labelled, each with its source. An unlabelled object has no listed role, which says nothing about what it is.</p>
+<div id="geo-roles"></div>
 
 <h2 id="method">Method</h2>
 <ul>

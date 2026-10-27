@@ -40,6 +40,25 @@ CLOSE_KM = 100.0
 MAN_DRIFT, MAN_INC, MAN_LON = 0.02, 0.02, 0.15
 CITE = "Orbital data: USSPACECOM (space-track.org) via CelesTrak; basic SSA data, redistributed with citation."
 REPO = "metacog-osint/noise-floor"
+ROLES = os.path.join(ROOT, "site_src", "geo_roles.json")   # cited roles (inspection-capable, servicing), curated by hand
+
+
+def load_roles(path=ROLES):
+    try:
+        d = json.load(open(path, encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {o["id"]: o for o in d.get("objects", [])}
+
+
+def pair_kind(ra, rb):
+    """What a close pair is, as far as the listed roles say."""
+    roles = {ra, rb} - {None}
+    if "servicing" in roles:
+        return "servicing involved"
+    if "inspection" in roles:
+        return "inspection-capable involved"
+    return "no listed role (often slot-sharing)"
 
 
 def gmst_deg(t):
@@ -149,6 +168,9 @@ def build(release, site, now=None):
         raise SystemExit("no GEO snapshots")
     cur = snaps[-1]
     objs = cur["objects"]
+    roles = load_roles()
+    for o in objs:
+        o["role"] = (roles.get(o["id"]) or {}).get("role")
     t = now.replace(second=0, microsecond=0)
     pos = {}
     for o in objs:
@@ -165,10 +187,10 @@ def build(release, site, now=None):
                 continue
             d = math.dist(pos[a["id"]], pos[b["id"]])
             if d <= CLOSE_KM:
-                row = {"a": [a["id"], a["name"], a["owner"]], "b": [b["id"], b["name"], b["owner"]], "km": round(d),
-                       "lon": round(a["lon_now"], 2)}
+                row = {"a": [a["id"], a["name"], a["owner"], a.get("role")], "b": [b["id"], b["name"], b["owner"], b.get("role")],
+                       "km": round(d), "lon": round(a["lon_now"], 2), "kind": pair_kind(a.get("role"), b.get("role"))}
                 (same if a["owner"] and a["owner"] == b["owner"] else close).append(row)
-    close.sort(key=lambda r: r["km"])
+    close.sort(key=lambda r: (r["kind"].startswith("no listed"), r["km"]))
     mans = []
     for prev, nxt in zip(snaps[-8:-1], snaps[-7:]):
         for m in manoeuvres(prev, nxt):
@@ -182,10 +204,11 @@ def build(release, site, now=None):
                       "inclined": sum(1 for o in objs if o.get("class") == "inclined"), "drifting": len(drifting)},
            "close_other_owner": close[:40], "close_same_owner_count": len(same), "manoeuvres": mans[-40:],
            "drifting": [{"id": o["id"], "name": o["name"], "owner": o["owner"], "lon": round(o["lon_now"], 2),
-                         "drift": o["drift"]} for o in drifting[:40]],
+                         "drift": o["drift"], "role": o.get("role")} for o in drifting[:40]],
+           "roles": {str(k): {"role": v["role"], "basis": v["basis"], "sources": v["sources"]} for k, v in roles.items()},
            "objects": [{"id": o["id"], "name": o["name"], "owner": o["owner"], "type": o.get("type"),
                         "lon": round(o.get("lon_now", o["lon"]), 2), "drift": o["drift"], "i": round(o["i"], 2),
-                        "class": o.get("class"), "epoch": o["epoch"][:16]} for o in sorted(objs, key=lambda o: o.get("lon_now", o["lon"]))]}
+                        "class": o.get("class"), "role": o.get("role"), "epoch": o["epoch"][:16]} for o in sorted(objs, key=lambda o: o.get("lon_now", o["lon"]))]}
     path = os.path.join(site, "data", "geo.json")
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(out, f, separators=(",", ":"), ensure_ascii=False)

@@ -113,7 +113,8 @@
     card("bgeo-body", g ? "<p><strong>" + n(g.counts.objects) + "</strong> active GEO objects; <strong>" + n(g.counts.drifting) + "</strong> drifting; <strong>" +
       n(g.close_count) + "</strong> within 100 km of a satellite of another owner" + (g.snapshots > 1 ? "; " + n(g.manoeuvre_count) + " manoeuvres in the last week" : "") + ".</p>" +
       (g.close.length ? '<ul class="dash-list">' + g.close.slice(0, 4).map(function (p) {
-        return "<li>" + esc(p.a[1]) + " (" + esc(p.a[2]) + ") and " + esc(p.b[1]) + " (" + esc(p.b[2]) + "): " + p.km + " km, " + Math.abs(p.lon).toFixed(1) + "°" + (p.lon < 0 ? "W" : "E") + "</li>";
+        return "<li>" + esc(p.a[1]) + " (" + esc(p.a[2]) + ") and " + esc(p.b[1]) + " (" + esc(p.b[2]) + "): " + p.km + " km, " + Math.abs(p.lon).toFixed(1) + "°" + (p.lon < 0 ? "W" : "E") +
+          (p.kind ? " · " + esc(p.kind) : "") + "</li>";
       }).join("") + "</ul>" : "") +
       '<p class="small">Proximity and behaviour, never intent; public elements are good to tens of km. ' + esc(g.source) + ' <a href="/geo">GEO board</a></p>'
       : '<p class="small">The GEO board is not available at the last build.</p>');

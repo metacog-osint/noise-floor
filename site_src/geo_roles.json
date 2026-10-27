@@ -1,0 +1,39 @@
+{
+  "about": "Roles shown on the GEO board, by NORAD catalogue number. An object is listed only where published reporting supports the role; each entry cites it. Unlisted objects have no listed role, which says nothing about what they are. Curated by hand; checked 26 Oct 2026 (docs/validation/geo-board.md).",
+  "roles": {
+    "inspection": "Inspection-capable: publicly reported rendezvous, proximity operations or inspection of other satellites",
+    "servicing": "Servicing: docks with client satellites (life extension or refuelling)"
+  },
+  "objects": [
+    {"id": 55841, "name": "LUCH-5X (OLYMP-K 2)", "role": "inspection",
+     "basis": "Moved along the belt after its March 2023 launch, stopping near commercial satellites; closest measured about 16 km (Slingshot Aerospace)",
+     "sources": [["Breaking Defense, Oct 2023", "https://breakingdefense.com/2023/10/second-russian-luch-olymp-satellite-now-trailing-western-systems-in-orbit/"]]},
+    {"id": 41744, "name": "USA 270 (GSSAP 3)", "role": "inspection",
+     "basis": "US Space Force GSSAP satellite: operates near GEO and manoeuvres to inspect objects in the belt",
+     "sources": [["Wikipedia: GSSAP", "https://en.wikipedia.org/wiki/Geosynchronous_Space_Situational_Awareness_Program"], ["Air & Space Forces Magazine: GSSAP", "https://www.airandspaceforces.com/weapons/gssap/"]]},
+    {"id": 41745, "name": "USA 271 (GSSAP 4)", "role": "inspection",
+     "basis": "US Space Force GSSAP satellite: operates near GEO and manoeuvres to inspect objects in the belt",
+     "sources": [["Wikipedia: GSSAP", "https://en.wikipedia.org/wiki/Geosynchronous_Space_Situational_Awareness_Program"], ["Air & Space Forces Magazine: GSSAP", "https://www.airandspaceforces.com/weapons/gssap/"]]},
+    {"id": 51280, "name": "USA 324 (GSSAP 5)", "role": "inspection",
+     "basis": "US Space Force GSSAP satellite (launched Jan 2022): operates near GEO and manoeuvres to inspect objects in the belt",
+     "sources": [["Wikipedia: GSSAP", "https://en.wikipedia.org/wiki/Geosynchronous_Space_Situational_Awareness_Program"], ["Air & Space Forces Magazine: GSSAP", "https://www.airandspaceforces.com/weapons/gssap/"]]},
+    {"id": 51281, "name": "USA 325 (GSSAP 6)", "role": "inspection",
+     "basis": "US Space Force GSSAP satellite (launched Jan 2022): operates near GEO and manoeuvres to inspect objects in the belt",
+     "sources": [["Wikipedia: GSSAP", "https://en.wikipedia.org/wiki/Geosynchronous_Space_Situational_Awareness_Program"], ["Air & Space Forces Magazine: GSSAP", "https://www.airandspaceforces.com/weapons/gssap/"]]},
+    {"id": 41838, "name": "SHIJIAN-17 (SJ-17)", "role": "inspection",
+     "basis": "Chinese experimental satellite; circumnavigated ChinaSat-5A and later approached ChinaSat-6B and Shijian-20",
+     "sources": [["SpacePolicyOnline, 2022", "https://spacepolicyonline.com/news/china-demonstrates-space-tug-in-geo-as-it-lays-out-five-year-plan/"]]},
+    {"id": 49330, "name": "SHIJIAN-21 (SJ-21)", "role": "inspection",
+     "basis": "Docked with the defunct BeiDou-2 G2 and towed it about 3,000 km above GEO in January 2022; reported docked with Shijian-25 in 2025",
+     "sources": [["SpacePolicyOnline, 2022", "https://spacepolicyonline.com/news/china-demonstrates-space-tug-in-geo-as-it-lays-out-five-year-plan/"], ["Breaking Defense, Jun 2025", "https://breakingdefense.com/2025/06/chinese-sats-appear-to-be-attempting-first-ever-on-orbit-refueling-sat-tracking-firms-say/"]]},
+    {"id": 62485, "name": "SHIJIAN-25 (SJ-25)", "role": "servicing",
+     "basis": "Built to test refuelling and life extension; tracking firms reported it docked with Shijian-21 in mid-2025 (not confirmed by China)",
+     "sources": [["Breaking Defense, Jun 2025", "https://breakingdefense.com/2025/06/chinese-sats-appear-to-be-attempting-first-ever-on-orbit-refueling-sat-tracking-firms-say/"], ["UPI, Jun 2025", "https://www.upi.com/Science_News/2025/06/10/satellites-refueling-test/7801749597595/"]]},
+    {"id": 44625, "name": "MEV-1", "role": "servicing",
+     "basis": "Northrop Grumman Mission Extension Vehicle: docks with client satellites to extend their life",
+     "sources": [["Wikipedia: Mission Extension Vehicle", "https://en.wikipedia.org/wiki/Mission_Extension_Vehicle"]]},
+    {"id": 46113, "name": "MEV-2", "role": "servicing",
+     "basis": "Northrop Grumman Mission Extension Vehicle; docked to Intelsat 10-02 on 12 Apr 2021, undocking planned for 2026",
+     "sources": [["Wikipedia: Intelsat 10-02", "https://en.wikipedia.org/wiki/Intelsat_10-02"], ["Wikipedia: Mission Extension Vehicle", "https://en.wikipedia.org/wiki/Mission_Extension_Vehicle"]]}
+  ]
+}
