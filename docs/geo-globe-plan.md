@@ -145,6 +145,22 @@ slider (recorded past, 48 h predicted), tracks for the selection or everything s
 line-of-sight circles at 0/5/10° elevation, and the flat belt strip (height or latitude against longitude). Not done
 yet: an inertial-frame toggle (left out: tracks are Earth-fixed), the sun's direction (G3).
 
+## G5 done (28 Oct 2026)
+
+- **Hypothetical beams** (detail panel, one selected satellite): band (UHF to Ka, up and down), dish diameter or beamwidth
+  (θ3dB ≈ 70λ/D), presets (Earth cover 17.4°, regional 3°, spot 0.6°), −3 dB plus optional −6 and −10 dB contours from
+  the main lobe G = Gm − 3(ψ/ψ½)² dB (the form ITU-R S.1528 gives after S.672), projected from the satellite's position,
+  so slant stretch is right and contours break at the Earth's edge. "Click the Earth to aim" refuses points beyond the
+  satellite's horizon. Beams travel in the link (`b:`). Checked: 0.6° at nadir lands 375 km across, 17.4° 10,956 km
+  (the Earth's edge from GEO), Ku 12 GHz with a 2 m dish 0.87°.
+- **Footprint files**: a KML or GeoJSON the analyst holds is drawn in their browser and never uploaded (fits SatBeams'
+  internal-use KML licence).
+- **Published footprints**: not drawn. Registry rows `satbeams` (exclude: proprietary; KML internal use only),
+  `operator-coverage` (exclude), `fcc-space-filings` (later: public records, applicants' work, no reuse terms stated:
+  Tom to decide after a format and access check) and `itu-space-filings` (later: GIMS beam data comes with the paid BR IFIC).
+- "Fly to it" now parks the camera on the line from the Earth's centre through the satellite, so the Earth sits behind
+  it and can be clicked to aim.
+
 ## 6. Build order
 
 | Step | What | Needs |

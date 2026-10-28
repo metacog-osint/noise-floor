@@ -1,6 +1,9 @@
 /* Noisefloor GEO globe (/geo): every object near GEO from /data/geo/globe.json (tools/geo_globe.py), placed with
    satellite.js (SGP4/SDP4, the same propagation the tracks use), observed tracks from /data/geo/tracks-<N>d.json and
-   coastlines from /data/land.json (Natural Earth). Earth-fixed frame. Positions are good to tens of kilometres at GEO. */
+   coastlines from /data/land.json (Natural Earth). Earth-fixed frame. Positions are good to tens of kilometres at GEO.
+   Beams are hypothetical: a circular main lobe G = Gm - 3(psi/psi_half)^2 dB (the form ITU-R S.1528 gives after S.672),
+   beamwidth about 70 lambda/D, projected from the satellite's position. Footprint files an analyst loads stay in their
+   browser: nothing is uploaded. */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import * as satellite from "satellite.js";
@@ -18,6 +21,10 @@ function main() {
   const TYPES = [["PAYLOAD", "Payload"], ["ROCKET BODY", "Rocket body"], ["DEBRIS", "Debris"], ["OTHER", "Other or unknown"]];
   const WHERE = { zone: "in the protected zone", graveyard: "in the graveyard above the zone", crossing: "on an orbit crossing the zone",
                   inclined: "on an inclined geosynchronous orbit", below: "below the zone" };
+  const BANDS = [["uhf", "UHF 0.3 GHz", 0.3], ["l", "L band 1.5 GHz", 1.5], ["s", "S band 2.2 GHz", 2.2], ["c-d", "C down 4 GHz", 4], ["c-u", "C up 6 GHz", 6],
+                 ["x-d", "X down 7.5 GHz", 7.5], ["x-u", "X up 8 GHz", 8], ["ku-d", "Ku down 12 GHz", 12], ["ku-u", "Ku up 14 GHz", 14],
+                 ["ka-d", "Ka down 20 GHz", 20], ["ka-u", "Ka up 30 GHz", 30]];
+  const beamwidth = (ghz, dia) => (70 * (0.299792458 / ghz)) / dia;      // degrees, -3 dB full width: about 70 lambda / D
   const typeKey = (t) => (t === "PAYLOAD" || t === "ROCKET BODY" || t === "DEBRIS" ? t : "OTHER");
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fmtN = (x) => Number(x).toLocaleString("en-US");
@@ -45,7 +52,7 @@ function main() {
   // ---------------------------------------------------------------- state
   const S = { objs: [], byId: new Map(), sel: [], q: "", regions: new Set(REGIONS.map((r) => r[0])), types: new Set(TYPES.map((t) => t[0])),
               activeOnly: false, color: "region", trails: "sel", win: 7, fp: "", t: null, track: null, tracks: {}, board: null, owners: {},
-              ownerColor: {}, strip: { x0: -180, x1: 180, y: "alt" } };
+              ownerColor: {}, strip: { x0: -180, x1: 180, y: "alt" }, beams: new Map(), aim: null, files: [] };
   function readHash() {
     if (!location.hash.startsWith("#g=")) return;
     const kv = {};
@@ -59,6 +66,12 @@ function main() {
     if (kv.r) S.regions = new Set(kv.r.split(",").filter((r) => REGIONS.some((x) => x[0] === r)));
     if (kv.ty) S.types = new Set(kv.ty.split(",").map((t) => t.replace("_", " ")).filter((t) => TYPES.some((x) => x[0] === t)));
     if (kv.a === "1") S.activeOnly = true;
+    if (kv.b) kv.b.split(",").forEach((x) => {                            // norad~lat~lon~beamwidth~band~dia~levels
+      const p = x.split("~");
+      if (p.length < 4 || !+p[0]) return;
+      S.beams.set(+p[0], { lat: +p[1], lon: +p[2], bw: Math.min(20, Math.max(0.05, +p[3])), band: p[4] || "ku-d", dia: +p[5] || 2,
+                           c6: (p[6] || "").includes("6"), c10: (p[6] || "").includes("10"), manual: true });
+    });
   }
   function writeHash() {
     const parts = [];
@@ -71,6 +84,8 @@ function main() {
     if (S.regions.size !== REGIONS.length) parts.push("r:" + [...S.regions].join(","));
     if (S.types.size !== TYPES.length) parts.push("ty:" + [...S.types].map((t) => t.replace(" ", "_")).join(","));
     if (S.activeOnly) parts.push("a:1");
+    if (S.beams.size) parts.push("b:" + [...S.beams].map(([id, b]) => [id, b.lat.toFixed(2), b.lon.toFixed(2), b.bw.toFixed(2), b.band, b.dia,
+      (b.c6 ? "6" : "") + (b.c10 ? "10" : "")].join("~")).join(","));
     const h = parts.length ? "#g=" + encodeURIComponent(parts.join(";")) : "";
     if (h !== location.hash && (h || location.hash.startsWith("#g="))) history.replaceState(null, "", h || location.pathname + location.search);
   }
@@ -93,7 +108,8 @@ function main() {
   const sc = (x, y, z) => new THREE.Vector3(x, z, -y);                     // Earth-fixed (x to 0°E, y to 90°E, z north) -> scene (y up)
   const fromLLR = (lon, lat, r) => { const c = Math.cos(lat * DEG); return sc(r * c * Math.cos(lon * DEG), r * c * Math.sin(lon * DEG), r * Math.sin(lat * DEG)); };
 
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(0.998, 96, 64), new THREE.MeshBasicMaterial({ color: OCEAN })));
+  const earth = new THREE.Mesh(new THREE.SphereGeometry(0.998, 96, 64), new THREE.MeshBasicMaterial({ color: OCEAN }));
+  scene.add(earth);
   function lineSet(pts, color, opacity) {
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
@@ -136,8 +152,8 @@ function main() {
   const selDots = new THREE.Points(selGeo, new THREE.PointsMaterial({ size: 15, sizeAttenuation: false, color: SEL, map: dotTexture(true), alphaTest: 0.3, transparent: true, depthTest: false }));
   selDots.renderOrder = 2;
   scene.add(dots, selDots);
-  const trailGroup = new THREE.Group(), predGroup = new THREE.Group(), fpGroup = new THREE.Group();
-  scene.add(trailGroup, predGroup, fpGroup);
+  const trailGroup = new THREE.Group(), predGroup = new THREE.Group(), fpGroup = new THREE.Group(), beamGroup = new THREE.Group(), fileGroup = new THREE.Group();
+  scene.add(trailGroup, predGroup, fpGroup, beamGroup, fileGroup);
 
   // ---------------------------------------------------------------- colours and filters
   const col = new THREE.Color(), bgCol = new THREE.Color(SPACE);
@@ -207,9 +223,10 @@ function main() {
     selGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
     selGeo.computeBoundingSphere();
     drawFootprints();
+    drawBeams();
     legend();
     drawStrip();
-    panel();
+    panelUpdate();
     dirty = true;
   }
 
@@ -272,6 +289,104 @@ function main() {
     });
   }
 
+  // ---------------------------------------------------------------- hypothetical beams
+  const v3 = { dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+               sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+               cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]] };
+  v3.unit = (a) => v3.mul(a, 1 / Math.hypot(a[0], a[1], a[2]));
+  const ecefLL = (lon, lat) => { const c = Math.cos(lat * DEG); return [c * Math.cos(lon * DEG), c * Math.sin(lon * DEG), Math.sin(lat * DEG)]; };
+  const visibleFrom = (Sv, lon, lat) => v3.dot(ecefLL(lon, lat), Sv) > 1;   // the point is above the satellite's horizon
+  function beamContour(Sv, B, psi) {                                      // where a cone of half-angle psi around the boresight meets the Earth
+    const b = v3.unit(v3.sub(B, Sv)), u = v3.unit(v3.cross(b, Math.abs(b[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0])), w = v3.cross(b, u), ss = v3.dot(Sv, Sv) - 1;
+    const runs = [];
+    let run = [];
+    for (let k = 0; k <= 240; k++) {
+      const ph = (k / 240) * 2 * Math.PI, d = v3.add(v3.mul(b, Math.cos(psi)), v3.mul(v3.add(v3.mul(u, Math.cos(ph)), v3.mul(w, Math.sin(ph))), Math.sin(psi)));
+      const sd = v3.dot(Sv, d), disc = sd * sd - ss;
+      if (disc < 0) { if (run.length > 1) runs.push(run); run = []; continue; }   // past the Earth's edge: the contour breaks there
+      run.push(v3.add(Sv, v3.mul(d, -sd - Math.sqrt(disc))));
+    }
+    if (run.length > 1) runs.push(run);
+    return runs;
+  }
+  function drawBeams() {
+    clearGroup(beamGroup);
+    S.beams.forEach((bm, id) => {
+      const o = S.byId.get(id);
+      if (!o || !o.p || !S.sel.includes(id) || !visibleFrom(o.p, bm.lon, bm.lat)) return;
+      const B = ecefLL(bm.lon, bm.lat), half = (bm.bw / 2) * DEG, c = colorOf(o);
+      [[3, 1], [6, 0.7], [10, 0.45]].forEach(([X, op]) => {
+        if ((X === 6 && !bm.c6) || (X === 10 && !bm.c10)) return;
+        const pts = [];
+        beamContour(o.p, B, half * Math.sqrt(X / 3)).forEach((run) => {
+          for (let k = 1; k < run.length; k++) {
+            const a = sc(...v3.mul(run[k - 1], 1.004)), b = sc(...v3.mul(run[k], 1.004));
+            pts.push(a.x, a.y, a.z, b.x, b.y, b.z);
+          }
+        });
+        if (pts.length) beamGroup.add(lineSet(pts, c, op));
+      });
+      const s = sc(...o.p), t = sc(...v3.mul(B, 1.004));                  // a faint line from the satellite to the aim point
+      beamGroup.add(lineSet([s.x, s.y, s.z, t.x, t.y, t.z], c, 0.35));
+    });
+    dirty = true;
+  }
+  function newBeam(o) {
+    const g = geodetic(o.p || [GEO_R, 0, 0]);
+    return { lat: 0, lon: g.lon, band: "ku-d", dia: 2, bw: beamwidth(12, 2), c6: true, c10: false, manual: false };
+  }
+  function beamSize(o, bm) {                                              // the -3 dB width across the line of sight, at the aim point
+    const B = ecefLL(bm.lon, bm.lat), range = Math.hypot(...v3.sub(B, o.p)) * RE;
+    return 2 * range * Math.tan((bm.bw / 2) * DEG);
+  }
+
+  // ---------------------------------------------------------------- footprint files the analyst loads (never uploaded)
+  function parseFootprint(name, text) {
+    const lines = [];
+    if (/^\s*</.test(text)) {                                             // KML: every <coordinates> block, as a line
+      const doc = new DOMParser().parseFromString(text, "application/xml");
+      [...doc.getElementsByTagName("coordinates")].forEach((c) => {
+        const pts = c.textContent.trim().split(/\s+/).map((t) => t.split(",").map(Number)).filter((p) => p.length >= 2 && isFinite(p[0]) && isFinite(p[1]));
+        if (pts.length > 1) lines.push(pts);
+      });
+    } else {                                                              // GeoJSON: lines and polygon rings
+      const j = JSON.parse(text), geoms = [];
+      const walk = (x) => { if (!x) return; if (x.type === "FeatureCollection") x.features.forEach(walk); else if (x.type === "Feature") walk(x.geometry); else if (x.type === "GeometryCollection") x.geometries.forEach(walk); else geoms.push(x); };
+      walk(j);
+      geoms.forEach((g) => {
+        if (g.type === "LineString") lines.push(g.coordinates);
+        else if (g.type === "MultiLineString" || g.type === "Polygon") g.coordinates.forEach((r) => lines.push(r));
+        else if (g.type === "MultiPolygon") g.coordinates.forEach((p) => p.forEach((r) => lines.push(r)));
+      });
+    }
+    return { name, lines };
+  }
+  function drawFiles() {
+    clearGroup(fileGroup);
+    S.files.forEach((f, k) => {
+      const pts = [];
+      f.lines.forEach((ln) => { for (let i = 1; i < ln.length; i++) { const a = fromLLR(ln[i - 1][0], ln[i - 1][1], 1.003), b = fromLLR(ln[i][0], ln[i][1], 1.003); pts.push(a.x, a.y, a.z, b.x, b.y, b.z); } });
+      if (pts.length) fileGroup.add(lineSet(pts, k % 2 ? "#f2c94c" : "#e7e9ed", 0.95));
+    });
+    $("g-files").innerHTML = S.files.map((f, k) => '<span class="globe-file-tag">' + esc(f.name) + ' <button type="button" class="linkish" data-file="' + k + '" aria-label="Remove ' + esc(f.name) + '">×</button></span>').join(" ");
+    dirty = true;
+  }
+  $("g-file").addEventListener("change", (e) => {
+    [...e.target.files].forEach((file) => {
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const f = parseFootprint(file.name, String(r.result));
+          if (!f.lines.length) throw new Error("no lines");
+          S.files.push(f); drawFiles(); $("g-filenote").textContent = "";
+        } catch (err) { $("g-filenote").textContent = file.name + ": no lines or polygons found (KML and GeoJSON are read)."; }
+      };
+      r.readAsText(file);
+    });
+    e.target.value = "";
+  });
+  $("g-files").addEventListener("click", (e) => { const b = e.target.closest("button[data-file]"); if (b) { S.files.splice(+b.dataset.file, 1); drawFiles(); } });
+
   // ---------------------------------------------------------------- picking
   const tip = $("g-tip"), box = $("g-box"), labels = $("g-labels");
   function occluded(v) {                                                  // the Earth between the camera and the point
@@ -299,7 +414,7 @@ function main() {
     else S.sel = ids;
     selectionChanged();
   }
-  function selectionChanged() { rebuildDots(); drawPredictions(); if (S.trails === "sel") drawTrails(); writeHash(); }
+  function selectionChanged() { S.aim = null; canvas.classList.remove("aiming"); rebuildDots(); drawPredictions(); if (S.trails === "sel") drawTrails(); writeHash(); }
   let down = null;
   canvas.addEventListener("pointerdown", (e) => {
     const r = canvas.getBoundingClientRect();
@@ -326,6 +441,17 @@ function main() {
     if (down.shift && down.moved) {
       const x0 = Math.min(x, down.x), x1 = Math.max(x, down.x), y0 = Math.min(y, down.y), y1 = Math.max(y, down.y);
       select(drawn.filter((o) => { const s = screenOf(o); return s && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1 && matches(o); }), true);
+    } else if (!down.moved && S.aim != null) {
+      const ray = new THREE.Raycaster(), hit = (ray.setFromCamera(new THREE.Vector2((x / r.width) * 2 - 1, 1 - (y / r.height) * 2), camera), ray.intersectObject(earth)[0]);
+      const o = S.byId.get(S.aim), bm = S.beams.get(S.aim);
+      if (hit && o && o.p && bm) {
+        const p = hit.point, lat = Math.asin(p.y / p.length()) / DEG, lon = Math.atan2(-p.z, p.x) / DEG;
+        if (visibleFrom(o.p, lon, lat)) { bm.lat = lat; bm.lon = lon; drawBeams(); writeHash(); panel(true); }
+        else $("g-aimnote").textContent = "That point is beyond the satellite's horizon. Click a point it can see.";
+      }
+      if (!hit || (o && o.p && hit && visibleFrom(o.p, Math.atan2(-hit.point.z, hit.point.x) / DEG, Math.asin(hit.point.y / hit.point.length()) / DEG))) {
+        S.aim = null; canvas.classList.remove("aiming");
+      }
     } else if (!down.moved) {
       const o = nearest(x, y, 12);
       if (o) select([o], e.shiftKey || e.ctrlKey || e.metaKey);
@@ -338,7 +464,7 @@ function main() {
   function focus(o) {
     if (!o || !o.p) return;
     const target = sc(o.p[0], o.p[1], o.p[2]), dir = target.clone().normalize();
-    fly = { t0: performance.now(), from: controls.target.clone(), to: target, cFrom: camera.position.clone(), cTo: target.clone().add(dir.multiplyScalar(0.12)).add(new THREE.Vector3(0, 0.04, 0)) };
+    fly = { t0: performance.now(), from: controls.target.clone(), to: target, cFrom: camera.position.clone(), cTo: target.clone().add(dir.multiplyScalar(0.15)).add(new THREE.Vector3(0, 0.01, 0)) };   // just outside it: the Earth sits behind, ready to aim at
   }
   function home() { fly = { t0: performance.now(), from: controls.target.clone(), to: new THREE.Vector3(), cFrom: camera.position.clone(), cTo: new THREE.Vector3(4, 9, 21) }; }
 
@@ -477,7 +603,40 @@ function main() {
     if (ev.length) out.push(["Arrivals and departures", ev.map((e) => esc(e.day) + " " + esc(e.kind)).join("; ")]);
     return out;
   }
-  function panel() {
+  let panelKey = "";
+  function panelUpdate() {
+    const key = S.sel.join(",") + "|" + [...S.beams.keys()].filter((id) => S.sel.includes(id)).join(",");
+    if (key !== panelKey) { panel(true); return; }
+    const sel = S.sel.map((id) => S.byId.get(id)).filter(Boolean);
+    if (sel.length === 1) {
+      const o = sel[0], g = o.p ? geodetic(o.p) : null, age = (nowMs() - epochMs(o.epoch)) / 86400000, pos = $("g-pos"), ag = $("g-age");
+      if (pos) pos.textContent = g ? lonTxt(g.lon) + ", " + latTxt(g.lat) + ", " + signed(g.dalt) + " from GEO" : "not computed at this time";
+      if (ag) ag.textContent = (age < 1 ? Math.round(age * 24) + " hours" : age.toFixed(1) + " days") + " before the time shown";
+      const bs = $("g-bsize"), bm = S.beams.get(o.norad);
+      if (bs && bm && o.p) bs.textContent = fmtN(Math.round(beamSize(o, bm)));
+    } else {
+      sel.forEach((o) => { const c = document.querySelector('#g-panel [data-lon="' + o.norad + '"]'); if (c) c.textContent = o.p ? lonTxt(geodetic(o.p).lon) : "–"; });
+      const sp = $("g-sep");
+      if (sp && sel.length === 2 && sel[0].p && sel[1].p) sp.textContent = fmtN(Math.round(Math.hypot(...v3.sub(sel[0].p, sel[1].p)) * RE)) + " km";
+    }
+  }
+  function beamForm(o) {
+    const bm = S.beams.get(o.norad);
+    if (!bm) return '<p class="globe-tools"><button type="button" data-act="beam-on">Project a beam (hypothetical)</button></p>';
+    const opt = BANDS.map((b) => '<option value="' + b[0] + '"' + (b[0] === bm.band ? " selected" : "") + ">" + esc(b[1]) + "</option>").join("");
+    return '<div class="globe-beam"><h4>Hypothetical beam</h4>' +
+      '<label>Band <select data-beam="band">' + opt + "</select></label>" +
+      '<label>Antenna <input data-beam="dia" type="number" min="0.2" max="25" step="0.1" value="' + bm.dia + '"> m</label>' +
+      '<label>Beamwidth <input data-beam="bw" type="number" min="0.05" max="20" step="0.05" value="' + bm.bw.toFixed(2) + '"> ° at −3 dB</label>' +
+      '<p class="globe-tools"><button type="button" data-preset="17.4">Earth cover 17.4°</button><button type="button" data-preset="3">Regional 3°</button><button type="button" data-preset="0.6">Spot 0.6°</button></p>' +
+      '<p class="globe-tools"><label><input type="checkbox" data-beam="c6"' + (bm.c6 ? " checked" : "") + '> −6 dB</label><label><input type="checkbox" data-beam="c10"' + (bm.c10 ? " checked" : "") + "> −10 dB</label></p>" +
+      '<p class="globe-tools"><button type="button" data-act="aim">Click the Earth to aim</button><button type="button" data-act="beam-off">Remove beam</button></p>' +
+      '<p class="small" id="g-aimnote">Aimed at ' + latTxt(bm.lat) + ", " + lonTxt(bm.lon) + '. About <span id="g-bsize">' + (o.p ? fmtN(Math.round(beamSize(o, bm))) : "–") +
+      "</span> km across at −3 dB where it lands, more where it meets the Earth at a slant. A model of a circular beam, not this satellite's real coverage.</p></div>";
+  }
+  function panel(force) {
+    if (!force) { panelUpdate(); return; }
+    panelKey = S.sel.join(",") + "|" + [...S.beams.keys()].filter((id) => S.sel.includes(id)).join(",");
     const el = $("g-panel"), sel = S.sel.map((id) => S.byId.get(id)).filter(Boolean);
     if (!sel.length) {
       el.innerHTML = '<p class="small">Click a dot to see what it is. Shift-click adds to the selection; Shift-drag a box selects every dot inside it. Search finds names, catalogue numbers, owners and countries.</p>';
@@ -491,30 +650,52 @@ function main() {
         ["Owner", esc(S.owners[o.owner] ? S.owners[o.owner] + " (" + o.owner + ")" : o.owner || "unknown")],
         ["Type", esc(TYPE_WORD[o.type] || o.type || "unknown") + (o.active ? ", listed as active" : "")],
         ["Where", esc(WHERE[o.region] || o.region)],
-        ["Position", g ? lonTxt(g.lon) + ", " + latTxt(g.lat) + ", " + signed(g.dalt) + " from GEO" : "not computed at this time"],
+        ["Position", '<span id="g-pos">' + (g ? lonTxt(g.lon) + ", " + latTxt(g.lat) + ", " + signed(g.dalt) + " from GEO" : "not computed at this time") + "</span>"],
         ["Drift", (Math.abs(o.drift) < 0.0005 ? "none" : Math.abs(o.drift).toFixed(3) + "° a day " + (o.drift < 0 ? "west" : "east"))],
         ["Inclination", o.i.toFixed(3) + "°"], ["Eccentricity", o.e.toFixed(5)],
         ["Perigee, apogee", signed(pe) + ", " + signed(ap) + " from GEO"],
-        ["Elements", esc(bothTxt(epochMs(o.epoch), true)) + ", " + (age < 1 ? Math.round(age * 24) + " hours" : age.toFixed(1) + " days") + " before the time shown"],
+        ["Elements", esc(bothTxt(epochMs(o.epoch), true)) + ', <span id="g-age">' + (age < 1 ? Math.round(age * 24) + " hours" : age.toFixed(1) + " days") + " before the time shown</span>"],
         ["Launched", esc(o.launch || "unknown")], ["Radar size", esc(o.rcs || "not given")],
       ].concat(boardFor(o));
       el.innerHTML = "<h3>" + esc(o.name) + '</h3><p class="small">Catalogue ' + o.norad + (o.cospar ? " · " + esc(o.cospar) : "") +
         ' · <a href="https://celestrak.org/satcat/table-satcat.php?CATNR=' + o.norad + '">CelesTrak record</a></p><dl class="globe-dl">' +
-        rows.map((r) => "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>").join("") + "</dl>" + tools;
+        rows.map((r) => "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>").join("") + "</dl>" + beamForm(o) + tools;
     } else {
       let sep = "";
       if (sel.length === 2 && sel[0].p && sel[1].p) {
         const d = Math.hypot(sel[0].p[0] - sel[1].p[0], sel[0].p[1] - sel[1].p[1], sel[0].p[2] - sel[1].p[2]) * RE;
-        sep = '<p class="small">Separation at the time shown: <strong>' + fmtN(Math.round(d)) + " km</strong> (public elements: good to tens of km).</p>";
+        sep = '<p class="small">Separation at the time shown: <strong id="g-sep">' + fmtN(Math.round(d)) + " km</strong> (public elements: good to tens of km).</p>";
       }
       el.innerHTML = "<h3>" + sel.length + " selected</h3>" + sep + '<div class="tw"><table class="globe-list"><thead><tr><th>Object</th><th>Owner</th><th class="num">Longitude</th><th class="num">Drift °/day</th></tr></thead><tbody>' +
         sel.map((o) => { const g = o.p ? geodetic(o.p) : null; return '<tr data-id="' + o.norad + '"><td><button type="button" class="linkish" data-act="focus" data-id="' + o.norad + '">' + esc(o.name) + '</button></td><td>' + esc(o.owner || "") +
-          '</td><td class="num">' + (g ? lonTxt(g.lon) : "–") + '</td><td class="num">' + (o.drift >= 0 ? "+" : "") + o.drift.toFixed(3) + "</td></tr>"; }).join("") + "</tbody></table></div>" + tools;
+          '</td><td class="num" data-lon="' + o.norad + '">' + (g ? lonTxt(g.lon) : "–") + '</td><td class="num">' + (o.drift >= 0 ? "+" : "") + o.drift.toFixed(3) + "</td></tr>"; }).join("") + "</tbody></table></div>" + tools;
     }
   }
+  function beamInput(e) {
+    const f = e.target.dataset.beam, bm = S.beams.get(S.sel[0]); if (!f || !bm) return;
+    if (f === "band" || f === "dia") {
+      if (f === "band") bm.band = e.target.value; else bm.dia = Math.min(25, Math.max(0.2, +e.target.value || bm.dia));
+      bm.bw = Math.min(20, Math.max(0.05, beamwidth(BANDS.find((b) => b[0] === bm.band)[2], bm.dia))); bm.manual = false;
+      const i = document.querySelector('#g-panel [data-beam="bw"]'); if (i) i.value = bm.bw.toFixed(2);
+    } else if (f === "bw") { const v = +e.target.value; if (v > 0) { bm.bw = Math.min(20, Math.max(0.05, v)); bm.manual = true; } }
+    else bm[f] = e.target.checked;
+    drawBeams(); panelUpdate(); writeHash();
+  }
+  $("g-panel").addEventListener("change", beamInput);
+  $("g-panel").addEventListener("input", (e) => { if (e.target.dataset.beam === "bw" || e.target.dataset.beam === "dia") beamInput(e); });
   $("g-panel").addEventListener("click", (e) => {
+    const pr = e.target.closest("button[data-preset]");
+    if (pr) {
+      const bm = S.beams.get(S.sel[0]); if (!bm) return;
+      bm.bw = +pr.dataset.preset; bm.manual = true;
+      const i = document.querySelector('#g-panel [data-beam="bw"]'); if (i) i.value = bm.bw.toFixed(2);
+      drawBeams(); panelUpdate(); writeHash(); return;
+    }
     const b = e.target.closest("button[data-act]"); if (!b) return;
     const act = b.dataset.act;
+    if (act === "beam-on") { const o = S.byId.get(S.sel[0]); if (o) { S.beams.set(o.norad, newBeam(o)); drawBeams(); writeHash(); panel(true); } return; }
+    if (act === "beam-off") { S.beams.delete(S.sel[0]); S.aim = null; canvas.classList.remove("aiming"); drawBeams(); writeHash(); panel(true); return; }
+    if (act === "aim") { S.aim = S.sel[0]; canvas.classList.add("aiming"); $("g-aimnote").textContent = "Click a point on the Earth the satellite can see."; return; }
     if (act === "clear") { S.sel = []; selectionChanged(); }
     else if (act === "home") home();
     else if (act === "focus") focus(S.byId.get(+b.dataset.id));

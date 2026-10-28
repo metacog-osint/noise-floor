@@ -42,7 +42,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   `daily.yml`; gp_history held once in `data/geo/region/history/`, never re-fetched; `replay` rebuilds the day files
   offline) writes `<day>.geo-region.json` and `geo-elements-YYYY-MM.parquet` to the pnt-data releases; the /geo page's
   "Arrivals and departures" reads them through `geo.py build`. **G2 done 28 Oct:** the globe at the top of /geo
-  (`site_src/globe.js`; data from `tools/geo_globe.py` at deploy into `site/data/geo/`, gitignored).
+  (`site_src/globe.js`; data from `tools/geo_globe.py` at deploy into `site/data/geo/`, gitignored). **G5 done 28 Oct:**
+  hypothetical beams and local footprint files in the globe; published footprints wait on licences (registry rows
+  `satbeams`, `operator-coverage`, `fcc-space-filings`, `itu-space-filings`).
 - **Lanes added 23–24 Oct 2026 (prototypes; each has a write-up in `docs/validation/` or `docs/assessment/`):**
   `tools/cygnss_rfi.py` (CYGNSS noise floor, needs `EARTHDATA_TOKEN`; held-out checks in `tools/cygnss_checks.py`), `tools/s1_rfi.py` (Sentinel-1 RFI annotations),
   `tools/events.py` (observations → graded events, private register in `data/events/`; from v1.1, 27 Oct 2026, EASA's FIR

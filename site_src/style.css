@@ -564,3 +564,11 @@ details.more-detail th, details.more-detail td { padding: .3rem .4rem; }
   .globe-panel { max-height: none; }
   .globe-view { height: clamp(320px, 58vh, 560px); }
 }
+
+.globe-file input[type=file] { font-size: var(--fs-xs); max-width: 13rem; }
+.globe-file-tag { display: inline-flex; gap: .25rem; align-items: center; border: 1px solid var(--line); border-radius: var(--r-s); padding: 0 .35rem; }
+.globe-beam { border-top: 1px solid var(--line-2); margin-top: .6rem; padding-top: .5rem; display: grid; gap: .35rem; }
+.globe-beam h4 { margin: 0; font-size: var(--fs-sm); }
+.globe-beam label { display: flex; gap: .4rem; align-items: center; }
+.globe-beam input[type=number] { width: 5.5rem; }
+.globe-view canvas.aiming { cursor: crosshair; }
