@@ -795,6 +795,19 @@
     lines.push(["Frequencies", freqSummary(v.dets)]);
     lines.push(["Signature", v.l2 ? "GPS L2 (at the L2 centre, or broadband across 1219–1239 MHz)" : "Other L-band, likely a radar"]);
     if (v.cov.length) lines.push(["Passes, oldest first", { strip: v.cov.map(function (c) { return c[1]; }) }]);
+    if (v.cov.length && v.cov[0].length > 2) {        // aircraft cross-check (ODbL, adsb.lol): daily totals within 150 km
+      var byDay = {};
+      v.cov.forEach(function (c) {
+        if (!c[2]) return;                             // no cell nearby with 5+ aircraft that day
+        var dd = c[0].slice(0, 10), b = byDay[dd] || (byDay[dd] = { seen: false, jam: c[2][1] > 0 });
+        if (c[1]) b.seen = true;
+      });
+      var on = 0, onJam = 0, off = 0, offJam = 0;
+      Object.keys(byDay).forEach(function (dd) { var b = byDay[dd]; if (b.seen) { on++; if (b.jam) onJam++; } else { off++; if (b.jam) offJam++; } });
+      lines.push(["Aircraft within 150 km", on + off === 0 ? "too few aircraft to say" :
+        "GPS errors at jamming scale on " + onJam + " of " + on + " day" + (on === 1 ? "" : "s") + " NISAR saw it" +
+        (off ? ", " + offJam + " of " + off + " day" + (off === 1 ? "" : "s") + " it didn't" : "")]);
+    }
     lines.push(["Seen", v.seen + " of " + v.covered + " passes that covered it in the " + NIS_WINDOW_DAYS + " days to " + fmtDay(state.day) +
                 (v.partial ? " (counted from " + fmtDay(s.coverage_from.slice(0, 10)) + ")" : "")]);
     lines.push(["Last seen", utcAndLocal(v.last)]);

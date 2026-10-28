@@ -18,7 +18,10 @@ import os
 from datetime import datetime, timezone
 
 LICENCE = "Derived from NASA-ISRO NISAR (ASF DAAC), NASA open data, CC0"
+LICENCE_ADSB = "ODbL 1.0; derived from adsb.lol (the coverage entries' aircraft counts only)"
 MIN_PASSES = 2
+ADSB_URL = "https://github.com/metacog-osint/noise-floor/releases/download/pnt-data-{month}/{day}.map.json"
+ADSB_KM, ADSB_MIN_AIRCRAFT, ADSB_JAM_SHARE = 150.0, 5, 10.0
 KEEP = ("MEDIUM", "HIGH")
 TAG = "nisar-data"
 REPO_SLUG = "metacog-osint/noise-floor"
@@ -43,6 +46,68 @@ def _km(lat1, lon1, lat2, lon2):
     return 2 * 6371.0 * math.asin(min(1.0, math.sqrt(a)))
 
 
+class Adsb:
+    """Aircraft GNSS degradation near a point on a UTC day, from the public map's day files (adsb.lol, ODbL).
+
+    Same rule as the public map and the private NISAR map's cross-check: cells within 150 km with 5 or more aircraft
+    are judged, and a cell is at jamming scale when 10% or more of its aircraft (after the first) report severe GPS
+    error (worse than 93 m). judge() returns [judged cells, jamming-scale cells], or None when no cell nearby had
+    enough aircraft or the day isn't published. Daily totals, not the pass time.
+    """
+
+    def __init__(self, cache_dir, fetch=True, log=print):
+        self.cache_dir, self.fetch, self.log = cache_dir, fetch, log
+        self.days, self.disks = {}, {}
+
+    def _load(self, day):
+        if day in self.days:
+            return self.days[day]
+        path = os.path.join(self.cache_dir, f"{day}.map.json")
+        if not os.path.exists(path) and self.fetch:
+            import urllib.request
+            try:
+                os.makedirs(self.cache_dir, exist_ok=True)
+                with urllib.request.urlopen(ADSB_URL.format(month=day[:7], day=day), timeout=60) as r:
+                    data = r.read()
+                with open(path + ".part", "wb") as f:
+                    f.write(data)
+                os.replace(path + ".part", path)
+            except Exception:
+                pass                                # not published (yet): no aircraft evidence that day
+        cells = None
+        if os.path.exists(path):
+            j = json.load(open(path, encoding="utf-8"))
+            c = j["cols"]
+            ih, ia, ib = c.index("h3"), c.index("aircraft"), c.index("bad_live")
+            cells = {x[ih]: (x[ia], x[ib]) for x in j["cells"]}
+        self.days[day] = cells
+        return cells
+
+    def _disk(self, lat, lon, res):
+        key = (round(lat, 3), round(lon, 3), res)
+        if key not in self.disks:
+            import h3
+            centre = h3.latlng_to_cell(lat, lon, res)
+            self.disks[key] = [h for h in h3.grid_disk(centre, 6) if _km(lat, lon, *h3.cell_to_latlng(h)) <= ADSB_KM]
+        return self.disks[key]
+
+    def judge(self, day, lat, lon):
+        cells = self._load(day)
+        if not cells:
+            return None
+        import h3
+        res = h3.get_resolution(next(iter(cells)))
+        judged = jam = 0
+        for h in self._disk(lat, lon, res):
+            v = cells.get(h)
+            if not v or v[0] < ADSB_MIN_AIRCRAFT:
+                continue
+            judged += 1
+            if 100.0 * max(v[1] - 1, 0) / v[0] >= ADSB_JAM_SHARE:
+                jam += 1
+        return [judged, jam] if judged else None
+
+
 def detection_record(d):
     return {
         "t": d["start"], "track": int(d["track"]), "dir": d["direction"], "band": d.get("band"),
@@ -52,8 +117,9 @@ def detection_record(d):
     }
 
 
-def site_record(s, dets):
-    """The public record for one site, or None if it doesn't pass the gate."""
+def site_record(s, dets, adsb=None):
+    """The public record for one site, or None if it doesn't pass the gate. With adsb (an Adsb), every coverage entry
+    also carries aircraft evidence near the site that UTC day: [judged cells, jamming-scale cells] or None."""
     if s.get("ignored"):
         return None
     q = sorted((d for d in dets if qualifying(d)), key=lambda d: d["start"])
@@ -70,10 +136,12 @@ def site_record(s, dets):
         "bands": sorted({b for d in q for b in (d.get("bands") or [d.get("band")]) if b}),
         "geometries": sorted({f'{int(d["track"])}{d["direction"]}' for d in q}),
         "passes_seen": len(passes),
-        # passes whose footprint covered the site: [start, 1 if a qualifying detection was made on it].
-        # sites.prune keeps each site's latest 60, so count "seen of covered" only from coverage_from on.
+        # passes whose footprint covered the site: [start, 1 if a qualifying detection was made on it] plus, with
+        # adsb, the aircraft evidence that day. sites.prune keeps each site's latest 60 coverage entries, so count
+        # "seen of covered" only from coverage_from on.
         "coverage_from": coverage[0]["start"] if coverage else None,
-        "coverage": [[cv["start"], 1 if cv["pass"] in passes else 0] for cv in coverage],
+        "coverage": [[cv["start"], 1 if cv["pass"] in passes else 0]
+                     + ([adsb.judge(cv["start"][:10], s["lat"], s["lon"])] if adsb else []) for cv in coverage],
         "detections": [detection_record(d) for d in q],
     }
 
@@ -90,8 +158,9 @@ def area_record(cfg, state):
             "passes": len(starts)}
 
 
-def build(cfgs, now=None):
-    """Public document from loaded configs (pipeline.load_config). Areas marked "public": false are skipped."""
+def build(cfgs, now=None, adsb=None):
+    """Public document from loaded configs (pipeline.load_config). Areas marked "public": false are skipped.
+    With adsb (an Adsb), coverage entries carry the aircraft cross-check."""
     now = now or datetime.now(timezone.utc)
     areas, sites = [], []
     for cfg in cfgs:
@@ -104,12 +173,15 @@ def build(cfgs, now=None):
         dets = {d["id"]: d for d in state.get("detections", [])}
         areas.append(area_record(cfg, state))
         for s in state.get("sites", {}).values():
-            r = site_record(s, [dets[i] for i in s.get("detections", []) if i in dets])
+            r = site_record(s, [dets[i] for i in s.get("detections", []) if i in dets], adsb)
             if r:
                 sites.append(r)
     sites.sort(key=lambda r: r["last_seen"], reverse=True)
+    extra = {"licence_adsb": LICENCE_ADSB,
+             "adsb_rule": f"cells within {ADSB_KM:.0f} km with {ADSB_MIN_AIRCRAFT}+ aircraft are judged; jamming scale = "
+                          f"{ADSB_JAM_SHARE:.0f}%+ of aircraft (after the first) worse than 93 m; daily totals"} if adsb else {}
     return {
-        "day": now.strftime("%Y-%m-%d"), "generated": now.strftime("%Y-%m-%dT%H:%MZ"), "licence": LICENCE,
+        "day": now.strftime("%Y-%m-%d"), "generated": now.strftime("%Y-%m-%dT%H:%MZ"), "licence": LICENCE, **extra,
         "gate": {"min_passes": MIN_PASSES, "confidence": list(KEEP), "excludes": ["widespread", "ignored", "LOW"]},
         "note": "Leads, not attribution: each site is a place where something transmitted inside NISAR's L-band "
                 "receive slices (1219-1239 MHz, which contains GPS L2, and 1291-1296 MHz) on repeated passes.",

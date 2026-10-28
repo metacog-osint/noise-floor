@@ -35,7 +35,8 @@ def cmd_export(a):
     from . import public
     cfgs = ([pipeline.load_config(p) for p in a.config] if a.config
             else public.default_configs(pipeline.load_config, pipeline.REPO))
-    doc = public.build(cfgs)
+    adsb = None if a.no_adsb else public.Adsb(os.path.join(pipeline.REPO, "data", "adsb"))
+    doc = public.build(cfgs, adsb=adsb)
     path = public.write(doc, a.out or os.path.join(pipeline.REPO, "private", "nisar", "public"))
     print(f"export: {len(doc['sites'])} site(s) in {len(doc['areas'])} area(s) -> {path}")
     if a.upload:
@@ -198,6 +199,8 @@ def main(argv=None):
                    help="area config (repeatable); default: the main config plus private/watch/nisar.d/*.json")
     e.add_argument("--out", help="output folder (default private/nisar/public)")
     e.add_argument("--upload", action="store_true", help="upload the file to the nisar-data release (gh)")
+    e.add_argument("--no-adsb", action="store_true",
+                   help="skip the aircraft cross-check (otherwise reads the public map's day files into data/adsb/)")
     e.set_defaults(fn=cmd_export)
     a = ap.parse_args(argv)
     a.fn(a)
