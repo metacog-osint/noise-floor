@@ -218,7 +218,7 @@ dl.gloss dd { margin: .125rem 0 0; }
 #map.loading { opacity: .6; transition: opacity .2s; }
 .leaflet-container { font: inherit; }
 .leaflet-control-attribution { font-size: var(--fs-xs); }
-.map-tip { position: absolute; z-index: 800; pointer-events: none; background: var(--card); color: var(--fg); border: 1px solid var(--line);
+.map-tip { position: absolute; z-index: 1001; pointer-events: none; background: var(--card); color: var(--fg); border: 1px solid var(--line);
   border-radius: var(--r); padding: .5rem .625rem; font-size: var(--fs-sm); box-shadow: 0 4px 16px var(--shadow); min-width: 11rem; }
 .map-tip .h b { font-weight: 600; }
 .map-tip .r { display: flex; justify-content: space-between; gap: .9rem; }

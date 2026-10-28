@@ -751,14 +751,34 @@
     var day = t.slice(0, 10), mins = +t.slice(11, 13) * 60 + +t.slice(14, 16), c = central(day, mins);
     return fmtDay(day) + ", " + t.slice(11, 16) + " UTC (" + c.time + (c.date !== c.utcDate ? " " + c.dateText : "") + " " + c.zone + ")";
   }
+  var SLICES = { A: "1219–1239 MHz", B: "1291–1296 MHz" }, L2 = 1227.6;
+  function freqSummary(dets) {                         // tone runs merged into ranges, plus any broadband slices
+    var runs = [], broad = [];
+    dets.forEach(function (d) {
+      if (d.runs_mhz && d.runs_mhz.length) d.runs_mhz.forEach(function (r) { runs.push([r[0], r[1]]); });
+      else (d.band || "").replace(/[^AB]/g, "").split("").forEach(function (b) { if (broad.indexOf(b) < 0) broad.push(b); });
+    });
+    runs.sort(function (a, b) { return a[0] - b[0]; });
+    var merged = [];
+    runs.forEach(function (r) {
+      var m = merged[merged.length - 1];
+      if (m && r[0] <= m[1] + 0.5) m[1] = Math.max(m[1], r[1]); else merged.push([r[0], r[1]]);
+    });
+    var parts = merged.slice(0, 3).map(function (m) {
+      var txt = m[1] - m[0] < 0.05 ? m[0].toFixed(1) + " MHz" : m[0].toFixed(1) + "–" + m[1].toFixed(1) + " MHz";
+      return txt + (m[0] <= L2 + 1 && m[1] >= L2 - 1 ? " (GPS L2)" : "");
+    });
+    if (merged.length > 3) parts.push((merged.length - 3) + " more");
+    broad.forEach(function (b) { parts.push("broadband in " + SLICES[b]); });
+    return parts.join("; ") || "not recorded";
+  }
   function describeSite(v) {
-    var s = v.s, freqs = [], area = (state.nis.areas || []).filter(function (a) {
+    var s = v.s, area = (state.nis.areas || []).filter(function (a) {
       return a.bbox && s.lon >= a.bbox[0] && s.lon <= a.bbox[2] && s.lat >= a.bbox[1] && s.lat <= a.bbox[3];
     })[0];
-    v.dets.forEach(function (d) { if (d.freq && freqs.indexOf(d.freq) < 0) freqs.push(d.freq); });
     var tracks = s.geometries || [], dirs = tracks.map(function (x) { return x.slice(-1); });
     var lines = [["", "L-band emitter site (NISAR) · " + (where(s.lat, s.lon).indexOf("Near") === 0 ? where(s.lat, s.lon) : area ? area.name : where(s.lat, s.lon))]];
-    lines.push(["Frequencies", freqs.slice(0, 2).join("; ") + (freqs.length > 2 ? " and " + (freqs.length - 2) + " more" : "")]);
+    lines.push(["Frequencies", freqSummary(v.dets)]);
     lines.push(["Seen", v.seen + " of " + v.covered + " passes that covered it in the " + NIS_WINDOW_DAYS + " days to " + fmtDay(state.day) +
                 (v.partial ? " (counted from " + fmtDay(s.coverage_from.slice(0, 10)) + ")" : "")]);
     lines.push(["Last seen", utcAndLocal(v.last)]);
