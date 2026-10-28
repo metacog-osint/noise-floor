@@ -1,11 +1,43 @@
-<!--{"title": "GEO belt · Noisefloor", "description": "Every active geosynchronous object from public orbital data: which are drifting, which manoeuvred, and which sit close to a satellite of another owner. Proximity and behaviour, never intent.", "nav": "geo", "head": "<script defer src=\"/geo.js\"></script>"}-->
+<!--{"title": "GEO belt · Noisefloor", "description": "Every active geosynchronous object from public orbital data: which are drifting, which manoeuvred, and which sit close to a satellite of another owner. Proximity and behaviour, never intent.", "nav": "geo", "head": "<script type=\"importmap\">{\"imports\":{\"three\":\"https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.min.js\",\"three/addons/\":\"https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/\",\"satellite.js\":\"https://cdn.jsdelivr.net/npm/satellite.js@7.1.0/dist/index.js\"}}</script><script defer src=\"/geo.js\"></script><script type=\"module\" src=\"/globe.js\"></script>"}-->
 <div class="page-head">
   <div>
     <h1>GEO belt</h1>
-    <p class="page-sub">Every active object in the geostationary belt, from public orbital data: which sit close to a satellite of another owner, which are drifting and which manoeuvred. Positions are good to tens of kilometres; it shows proximity and behaviour, never intent.</p>
+    <p class="page-sub">Every object in and near the geostationary belt, on a globe, from public orbital data: where each one is, where it has been, which sit close to a satellite of another owner and which moved. Positions are good to tens of kilometres; it shows proximity and behaviour, never intent.</p>
   </div>
   <a class="howto-link" href="#howto">How to read this board ↓</a>
 </div>
+
+<section id="globe" class="globe" aria-label="Globe of every object near GEO">
+  <div class="globe-bar">
+    <div class="globe-search"><input id="g-q" type="search" placeholder="Search: name, number, owner, country, role" aria-label="Search objects" autocomplete="off"><ul id="g-results" class="globe-results" hidden></ul></div>
+    <details class="globe-filters"><summary>Filters</summary><div id="g-filters"></div></details>
+    <label>Colour <select id="g-color"><option value="region">Where</option><option value="type">Type</option><option value="active">Active</option><option value="owner">Owner</option></select></label>
+    <label>Tracks <select id="g-trails"><option value="off">Off</option><option value="sel">Selected</option><option value="all">All shown</option></select></label>
+    <label>History <select id="g-win"><option value="1">1 day</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></label>
+    <label>Line of sight <select id="g-fp"><option value="">Off</option><option value="0">0° elevation</option><option value="5">5° elevation</option><option value="10">10° elevation</option></select></label>
+  </div>
+  <div class="globe-main">
+    <div class="globe-view" id="g-view">
+      <canvas id="g-canvas" role="img" aria-label="Globe with every object near GEO; the tables below hold the same data"></canvas>
+      <div id="g-labels" class="globe-labels" aria-hidden="true"></div>
+      <div id="g-tip" class="globe-tip" hidden></div>
+      <div id="g-box" class="globe-box" hidden></div>
+      <div id="g-legend" class="globe-legend"></div>
+    </div>
+    <aside class="globe-panel" id="g-panel" aria-live="polite"><p class="small">Loading…</p></aside>
+  </div>
+  <div class="globe-time">
+    <button id="g-play" type="button">Play</button>
+    <input id="g-t" type="range" min="-10080" max="2880" step="60" value="0" aria-label="Time: the past from recorded elements, the next 48 hours predicted">
+    <button id="g-now" type="button">Now</button>
+    <span id="g-tlabel" class="small"></span>
+  </div>
+  <div class="globe-strip-head small"><strong>The belt, flat</strong> · scroll to zoom, drag to pan, click to select
+    <label>Up the side <select id="g-sy"><option value="alt">Height above or below GEO</option><option value="lat">Latitude</option></select></label>
+    <button id="g-sreset" type="button" class="linkish">Reset zoom</button></div>
+  <canvas id="g-strip" class="globe-strip" role="img" aria-label="The belt unrolled by longitude"></canvas>
+  <p id="g-status" class="small">Loading the globe…</p>
+</section>
 
 <p id="geo-status" class="small">Loading…</p>
 
@@ -44,6 +76,7 @@
   <li><strong>Classes.</strong> Station-kept: drift under 0.1° a day and inclination under 1°. Inclined: drift under 0.1° a day, inclination 1° or more (often older satellites saving fuel). Drifting: 0.1° a day or more.</li>
   <li><strong>Close.</strong> Objects within 100 km of each other at the common time. CelesTrak's owner codes are often a country, so pairs with the same code are counted, not listed, unless one has a listed role. Elements older than 3 days are flagged beside the pair.</li>
   <li><strong>Manoeuvres.</strong> Between consecutive snapshots: the drift rate changed by more than 0.02° a day, the inclination by more than 0.02°, or the longitude is more than 0.15° from where the earlier elements put it at the later time (by the same orbit motion, so an inclined orbit's daily swing isn't counted). A change is routine station-keeping when the satellite isn't drifting before or after. Inclined satellites still trim their drift to hold their longitude, so that is routine too. A change to their inclination isn't, because they aren't held north–south. Everything else is listed first: a satellite that started or stopped drifting, or a drifting one whose drift rate changed. The dates are those of the two element sets; the change happened somewhere between them. Snapshots began on 26 Oct 2026.</li>
+  <li><strong>Globe.</strong> Every object near GEO from Space-Track, placed with satellite.js (SGP4, the standard model for public orbital elements) in the Earth-fixed frame, so a satellite holding its slot hangs still over its longitude. Tracks show what the published elements said at each time: each element set is propagated only until the next one, so manoeuvres show where they happened. The dashed line is the next 48 hours predicted from the latest elements, which a manoeuvre would break. The line-of-sight circle is where the satellite stands above the chosen elevation: geometry, not a beam footprint. Libraries: three.js and satellite.js (MIT); coastlines from Natural Earth (public domain).</li>
   <li><strong>Region.</strong> Everything Space-Track lists with a mean motion of 0.9 to 1.1 revolutions a day and an eccentricity under 0.3. The protected zone is the IADC geosynchronous protected region: perigee and apogee within 200 km of 35,786 km altitude, and inclination 15° or less. The graveyard is everything above it. Each day's list is compared with the day before: newly catalogued (launched within the last year), back in the public catalogue, entered the zone, raised to the graveyard, lowered below the zone, left the zone, dropped out of the list, and, for payloads in the zone, no new public elements for over 7 days. A satellite missing from public data hasn't necessarily stopped working: some are simply not published.</li>
   <li><strong>Owners</strong> are CelesTrak's codes: CIS is Russia and the former Soviet states, PRC China, ITSO Intelsat, EUTE Eutelsat, SES SES.</li>
 </ul>

@@ -517,3 +517,50 @@ details.more-detail th, details.more-detail td { padding: .3rem .4rem; }
   .evl .note { padding-left: 0; }
   .evl .when { text-align: left; min-width: 0; }
 }
+
+/* GEO globe (globe.js): a dark "space" canvas in both themes; the controls use the site's tokens */
+.globe { margin: .5rem 0 2rem; }
+.globe-bar { display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center; margin-bottom: .5rem; font-size: var(--fs-sm); }
+.globe-bar label { display: inline-flex; gap: .35rem; align-items: center; color: var(--ink-2); }
+.globe-search { position: relative; flex: 1 1 16rem; max-width: 26rem; }
+.globe-search input { width: 100%; box-sizing: border-box; }
+.globe-results { position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin: .25rem 0 0; padding: .35rem 0; list-style: none; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 6px 18px var(--shadow); max-height: 18rem; overflow: auto; }
+.globe-results li { padding: .2rem .7rem; font-size: var(--fs-sm); color: var(--mut); }
+.globe-results .globe-res-head { color: var(--ink-2); border-bottom: 1px solid var(--line-2); padding-bottom: .35rem; margin-bottom: .2rem; }
+.globe-filters { position: relative; }
+.globe-filters summary { cursor: pointer; color: var(--acc); }
+.globe-filters > div { position: absolute; z-index: 20; top: 1.8rem; left: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: 0 6px 18px var(--shadow); padding: .6rem .8rem; display: grid; gap: .5rem; min-width: 15rem; }
+.globe-filters fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: .15rem; }
+.globe-filters legend { font-weight: 600; color: var(--fg); padding: 0; margin-bottom: .15rem; }
+.globe-main { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: .75rem; align-items: start; }
+.globe-view { position: relative; height: clamp(360px, 64vh, 720px); border-radius: var(--r); overflow: hidden; background: #0b0e12; touch-action: none; }
+.globe-view canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.globe-view canvas:active { cursor: grabbing; }
+.globe-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.globe-label { position: absolute; font-size: var(--fs-xs); color: #e7e9ed; text-shadow: 0 0 3px #0b0e12, 0 0 3px #0b0e12; white-space: nowrap; }
+.globe-tip { position: absolute; pointer-events: none; background: rgba(11, 14, 18, .92); color: #e7e9ed; border: 1px solid #2c3644; border-radius: var(--r-s);
+  padding: .15rem .45rem; font-size: var(--fs-xs); white-space: nowrap; }
+.globe-box { position: absolute; border: 1px dashed #e7e9ed; background: rgba(231, 233, 237, .08); pointer-events: none; }
+.globe-legend { position: absolute; left: .6rem; bottom: .5rem; display: flex; flex-wrap: wrap; gap: .2rem .8rem; font-size: var(--fs-xs); color: #bac0ca;
+  max-width: calc(100% - 1.2rem); pointer-events: none; text-shadow: 0 0 3px #0b0e12; }
+.globe-legend i { display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; margin-right: .3rem; vertical-align: -1px; }
+.globe-panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: .75rem .9rem; max-height: clamp(360px, 64vh, 720px);
+  overflow: auto; box-sizing: border-box; font-size: var(--fs-sm); }
+.globe-panel h3 { margin: 0 0 .15rem; font-size: var(--fs-lg); }
+.globe-dl { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .3rem .6rem; margin: .6rem 0; }
+.globe-dl dt { color: var(--mut); }
+.globe-dl dd { margin: 0; overflow-wrap: anywhere; }
+.globe-tools { display: flex; flex-wrap: wrap; gap: .4rem; margin: .6rem 0 0; }
+.globe-list td, .globe-list th { font-size: var(--fs-xs); }
+.globe-time { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; margin: .6rem 0; }
+.globe-time input[type=range] { flex: 1 1 14rem; }
+.globe-tag { display: inline-block; font-size: var(--fs-xs); padding: 0 .4rem; border-radius: var(--r-s); border: 1px solid var(--line); color: var(--mut); margin-left: .3rem; }
+.globe-strip-head { display: flex; flex-wrap: wrap; gap: .3rem .9rem; align-items: center; margin: .8rem 0 .3rem; color: var(--ink-2); }
+.globe-strip { display: block; width: 100%; height: 190px; border-radius: var(--r); background: #0b0e12; touch-action: none; cursor: crosshair; }
+@media (max-width: 62rem) {
+  .globe-main { grid-template-columns: minmax(0, 1fr); }
+  .globe-panel { max-height: none; }
+  .globe-view { height: clamp(320px, 58vh, 560px); }
+}

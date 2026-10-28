@@ -134,7 +134,7 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
-ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js", "geo.js")
+ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js", "geo.js", "globe.js")
 FONTS = os.path.join(SRC, "fonts")     # IBM Plex (SIL OFL 1.1, fonts/OFL.txt), served from this site so no visit contacts a font service
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
