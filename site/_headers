@@ -32,6 +32,8 @@
   Cache-Control: public, max-age=31536000, immutable
 /geo.js
   Cache-Control: public, max-age=31536000, immutable
+/globe.js
+  Cache-Control: public, max-age=31536000, immutable
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 /data/land.json

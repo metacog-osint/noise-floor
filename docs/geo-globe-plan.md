@@ -133,6 +133,18 @@ from 68 to 30 in 90 days; the rest are real orbit changes), and "quiet" only for
 others). Not yet done: rocket bodies and debris aren't drawn anywhere but the counts; G2 will need the element history
 thinned (for example one set per object per 6 hours) before it goes to the browser.
 
+## G2 done (28 Oct 2026)
+
+`tools/geo_globe.py` (tests: `tests/test_geo_globe.py`) builds `site/data/geo/globe.json` (every object near GEO with its
+latest elements, the active flag and owner names from `site_src/satcat_owners.json`, fetched from CelesTrak's owner
+list on 27 Oct 2026) and `tracks-{1,7,30,90}d.json` at deploy (15 min, 1 h, 4 h and 12 h samples; 1.4–3.8 MB each).
+`site_src/globe.js` (three.js 0.185.0 and satellite.js 7.1.0 from jsDelivr, pinned) draws the globe at the top of
+/geo: search, filters, colour by where/type/active/owner, click, Shift-click and Shift-drag selection, the detail panel
+(with the board's role, close pairs, orbit changes and arrivals), CSV, links that keep the state (`#g=`), the time
+slider (recorded past, 48 h predicted), tracks for the selection or everything shown, the dashed 48 h prediction,
+line-of-sight circles at 0/5/10° elevation, and the flat belt strip (height or latitude against longitude). Not done
+yet: an inertial-frame toggle (left out: tracks are Earth-fixed), the sun's direction (G3).
+
 ## 6. Build order
 
 | Step | What | Needs |
