@@ -6,6 +6,7 @@
   python -m nisar_rfi map      [--config config.json]
   python -m nisar_rfi publish  [--config config.json] [--build-only]   (private web view)
   python -m nisar_rfi vessels  [--config config.json] [--out DIR] [--days N]   (private vessel page, built only)
+  python -m nisar_rfi export   [--config C ...] [--out DIR] [--upload]   (public repeat-site file for the site map)
 """
 import argparse
 import os
@@ -27,6 +28,18 @@ def cmd_run(a):
                              start=day(a.start), end=end, log=log)
     if a.quiet:
         print(f"nisar: run complete, {len(alerts)} alert(s)")
+
+
+def cmd_export(a):
+    """Public repeat-site file (nisar_rfi/public.py) from every public area; optionally upload it."""
+    from . import public
+    cfgs = ([pipeline.load_config(p) for p in a.config] if a.config
+            else public.default_configs(pipeline.load_config, pipeline.REPO))
+    doc = public.build(cfgs)
+    path = public.write(doc, a.out or os.path.join(pipeline.REPO, "private", "nisar", "public"))
+    print(f"export: {len(doc['sites'])} site(s) in {len(doc['areas'])} area(s) -> {path}")
+    if a.upload:
+        public.upload(path)
 
 
 def cmd_tables(a):
@@ -180,6 +193,12 @@ def main(argv=None):
     m = sub.add_parser("map")
     m.add_argument("--config", default=default_cfg)
     m.set_defaults(fn=cmd_map)
+    e = sub.add_parser("export")
+    e.add_argument("--config", action="append",
+                   help="area config (repeatable); default: the main config plus private/watch/nisar.d/*.json")
+    e.add_argument("--out", help="output folder (default private/nisar/public)")
+    e.add_argument("--upload", action="store_true", help="upload the file to the nisar-data release (gh)")
+    e.set_defaults(fn=cmd_export)
     a = ap.parse_args(argv)
     a.fn(a)
 
