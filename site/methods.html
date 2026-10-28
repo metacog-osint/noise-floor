@@ -9,7 +9,7 @@
 <meta property="og:description" content="How Noisefloor measures GNSS degradation from ADS-B, finds L-band emitters in NISAR radar data, and predicts sun outages.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=8e945c7e5a">
+<link rel="stylesheet" href="/style.css?v=5144c8d975">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=f511c41ac0"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
@@ -80,7 +80,7 @@
 <h3 id="nisar-map">On the map</h3>
 <p>The <a href="/map#ni=1">map</a>'s "L-band emitters (NISAR radar)" layer shows <strong>repeat sites</strong>: places with solid (medium or high confidence) detections on at least two different passes. Frame-wide detections, which have no usable position, never count. Each dot is a lead, not attribution: something transmitted there inside NISAR's receive slices. Many will be air-surveillance radars, which share the band.</p>
 <ul>
-  <li><strong>Dots and rings:</strong> a filled dot was seen in 1219–1239 MHz, the slice that contains GPS L2; an open dot only in 1291–1296 MHz. The ring shows how far the site's detections spread (at least 10 km).</li>
+  <li><strong>Dots and rings:</strong> a filled dot has a GPS L2 signature: a signal at the L2 centre (1227.6 MHz, within 1 MHz), or raised power across 1219–1239 MHz with no single tone, the pattern of a noise jammer. An open dot is any other L-band signal. Most of those are probably air-surveillance radars: the same 1221 MHz tone recurs at US radar sites. The ring shows how far the site's detections spread (at least 10 km), and a tooltip's row of boxes shows which passes saw the site.</li>
   <li><strong>Time:</strong> the layer shows sites with a detection in the 30 days up to the selected day. NISAR revisits each spot every few days, and NASA posts its data about two days after it's taken.</li>
   <li><strong>Coverage:</strong> NISAR is processed over two areas, drawn as dashed boxes: the Baltic and Nordic region (9–31°E, 53–66°N, from 22 Sep 2026) and the Novaya Zemlya test sites (51–57.5°E, 70.8–74.2°N, from 17 Jun 2026). An empty map elsewhere means nobody looked.</li>
   <li><strong>Data:</strong> the daily file is in the <a href="https://github.com/metacog-osint/noise-floor/releases/tag/nisar-data">nisar-data release</a>, with every detection's NISAR granule so anyone can check it against NASA's archive.</li>

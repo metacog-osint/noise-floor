@@ -223,6 +223,9 @@ dl.gloss dd { margin: .125rem 0 0; }
 .map-tip .h b { font-weight: 600; }
 .map-tip .r { display: flex; justify-content: space-between; gap: .9rem; }
 .map-tip .r span { color: var(--mut); }
+.map-tip .strip { display: inline-flex; flex-wrap: wrap; gap: 2px; justify-content: flex-end; max-width: 14rem; }
+.map-tip .strip i { display: inline-block; width: 6px; height: 11px; border: 1px solid var(--map-nisar); border-radius: 1px; }
+.map-tip .strip i.on { background: var(--map-nisar); }
 .legend-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .6rem 0 .2rem; }
 .map-legend { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: var(--fs-sm); color: var(--mut); }
 .map-legend span { display: inline-flex; align-items: center; gap: .35rem; }
