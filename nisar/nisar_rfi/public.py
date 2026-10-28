@@ -158,9 +158,10 @@ def area_record(cfg, state):
             "passes": len(starts)}
 
 
-def build(cfgs, now=None, adsb=None):
+def build(cfgs, now=None, adsb=None, community=None):
     """Public document from loaded configs (pipeline.load_config). Areas marked "public": false are skipped.
-    With adsb (an Adsb), coverage entries carry the aircraft cross-check."""
+    With adsb (an Adsb), coverage entries carry the aircraft cross-check. community: {site id: [approved post links]}
+    (community.public_view); sites with approved posts carry them."""
     now = now or datetime.now(timezone.utc)
     areas, sites = [], []
     for cfg in cfgs:
@@ -175,6 +176,8 @@ def build(cfgs, now=None, adsb=None):
         for s in state.get("sites", {}).values():
             r = site_record(s, [dets[i] for i in s.get("detections", []) if i in dets], adsb)
             if r:
+                if community and community.get(r["id"]):
+                    r["community"] = community[r["id"]]
                 sites.append(r)
     sites.sort(key=lambda r: r["last_seen"], reverse=True)
     extra = {"licence_adsb": LICENCE_ADSB,

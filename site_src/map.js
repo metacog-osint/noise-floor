@@ -814,6 +814,11 @@
     lines.push(["First seen", fmtDay(s.first_seen.slice(0, 10))]);
     lines.push(["Orbit tracks", tracks.length + (dirs.indexOf("A") >= 0 && dirs.indexOf("D") >= 0 ? " (ascending and descending)" : "")]);
     lines.push(["Position", ll2(s.lat, s.lon) + ", spread " + Math.round(s.spread_km || 0) + " km"]);
+    if (s.community && s.community.length) {          // public posts Tom approved (links are in the data file)
+      lines.push(["Community reports", s.community.map(function (c) {
+        return c.author + ", " + fmtDay(c.date) + (c.same_sensor ? " (NISAR imagery)" : "");
+      }).join("; ")]);
+    }
     lines.push(["", "A lead, not attribution: something transmitted here inside NISAR's receive band"]);
     return lines;
   }

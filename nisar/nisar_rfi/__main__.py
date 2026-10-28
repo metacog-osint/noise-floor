@@ -30,13 +30,38 @@ def cmd_run(a):
         print(f"nisar: run complete, {len(alerts)} alert(s)")
 
 
+def _write_community(links):
+    """Private: every post linked to a site, for the private view (private/nisar/out/community.json)."""
+    import json
+    out = os.path.join(pipeline.REPO, "private", "nisar", "out")
+    os.makedirs(out, exist_ok=True)
+    with open(os.path.join(out, "community.json"), "w", encoding="utf-8") as f:
+        json.dump(links, f, ensure_ascii=False, indent=1)
+
+
+def cmd_community(a):
+    """Link community posts to sites and print them (private; nothing published)."""
+    from . import community, public
+    cfgs = public.default_configs(pipeline.load_config, pipeline.REPO)
+    links = community.build_links(cfgs, pipeline.REPO)
+    _write_community(links)
+    for x in links:
+        where = x["site"] or ("area: " + x["area"])
+        print(f'{x["date"]}  {where:24s} {x["place"]:16s} {x["author"] or "":32s} {"NISAR " if x["same_sensor"] else ""}{x["url"]}')
+    print(f"community: {len(links)} link(s) to {len({x['site'] for x in links})} site(s)")
+
+
 def cmd_export(a):
     """Public repeat-site file (nisar_rfi/public.py) from every public area; optionally upload it."""
     from . import public
     cfgs = ([pipeline.load_config(p) for p in a.config] if a.config
             else public.default_configs(pipeline.load_config, pipeline.REPO))
     adsb = None if a.no_adsb else public.Adsb(os.path.join(pipeline.REPO, "data", "adsb"))
-    doc = public.build(cfgs, adsb=adsb)
+    from . import community
+    links = community.build_links(cfgs, pipeline.REPO)
+    _write_community(links)
+    ok = community.approved(os.path.join(pipeline.REPO, "private", "watch", "community_public.txt"))
+    doc = public.build(cfgs, adsb=adsb, community=community.public_view(links, ok))
     path = public.write(doc, a.out or os.path.join(pipeline.REPO, "private", "nisar", "public"))
     print(f"export: {len(doc['sites'])} site(s) in {len(doc['areas'])} area(s) -> {path}")
     if a.upload:
@@ -202,6 +227,8 @@ def main(argv=None):
     e.add_argument("--no-adsb", action="store_true",
                    help="skip the aircraft cross-check (otherwise reads the public map's day files into data/adsb/)")
     e.set_defaults(fn=cmd_export)
+    cm = sub.add_parser("community")
+    cm.set_defaults(fn=cmd_community)
     a = ap.parse_args(argv)
     a.fn(a)
 

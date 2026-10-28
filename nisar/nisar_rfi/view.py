@@ -107,6 +107,16 @@ def index_html(state, cfg, now, maps, files):
         ("First seen", lambda s: e(_ct(s.get("first_seen")))),
         ("Status", lambda s: e(s.get("status", ""))),
     ]
+    # community reports (nisar_rfi/community.py, written by the export): newest first
+    cpath = os.path.join(cfg["out_dir"], "community.json")
+    comm = sorted(json.load(open(cpath, encoding="utf-8")), key=lambda x: x["date"], reverse=True)[:60] if os.path.exists(cpath) else []
+    comm_cols = [
+        ("Date", lambda x: e(x["date"])),
+        ("Site or area", lambda x: e(x["site"] or ("area: " + x["area"]))),
+        ("Place", lambda x: e(x["place"] + (f' ({x["km"]} km)' if x.get("km") is not None else ""))),
+        ("Author", lambda x: e(x["author"] or "")),
+        ("Post", lambda x: f'<a href="{e(x["url"] or "")}">{e(x["snippet"][:110])}</a>' + (" <b>(NISAR imagery: same sensor)</b>" if x["same_sensor"] else "")),
+    ]
     tok_txt = (f'{tok.get("days_left")} days (expires {tok.get("expires")})' if tok else "unknown")
     warn = ' class="warn"' if tok and tok.get("days_left", 99) < 14 else ""
     links = "".join(f'<li><a href="{e(href)}">{e(title)}</a></li>' for title, href in maps)
@@ -138,6 +148,7 @@ th,td{{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);
 <h2>Maps</h2><ul>{links}</ul>
 <h2>New sites since the baseline</h2><div class="tw">{_rows(recent, new_cols)}</div>
 <h2>Strongest repeat sites</h2><div class="tw">{_rows(strong[:40], site_cols)}</div>
+<h2>Community reports linked to sites</h2><p class="sub">Posts from the watched Bluesky accounts that name a place near a site within 14 days of its detections. Leads, not corroboration; posts built on NISAR imagery are the same sensor as ours. To show one on the public map, add its URL to private/watch/community_public.txt.</p><div class="tw">{_rows(comm, comm_cols)}</div>
 <h2>Downloads</h2><ul>{dl}</ul>
 <p class="note">Each detection is a lead from one radar snapshot, not a finding. Methods and limits: the lane's README and validation report in the public repo. Times are Central with the zone named.</p>
 </main></body></html>"""
