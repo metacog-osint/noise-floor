@@ -95,8 +95,8 @@ class Ctx:
         self.opener, self.chayka_fetcher = opener, chayka_fetcher
         self.panels, self.notes = {}, {}
 
-    def get(self, url, source, ext, accept="*/*", timeout=45):
-        body = self.opener(url, {"User-Agent": UA, "Accept": accept}, timeout)
+    def get(self, url, source, ext, accept="*/*", timeout=45, ua=None):
+        body = self.opener(url, {"User-Agent": ua or UA, "Accept": accept}, timeout)
         sha = hashlib.sha256(body).hexdigest()
         d = os.path.join(self.raw_dir, self.now.strftime("%Y-%m-%d")); os.makedirs(d, exist_ok=True)
         last = self.state.setdefault("raw", {}).get(url) or {}
@@ -112,8 +112,8 @@ class Ctx:
             f.write(json.dumps(rec) + "\n")
         return body
 
-    def json(self, url, source, timeout=45):
-        return json.loads(self.get(url, source, "json", "application/json", timeout).decode("utf-8"))
+    def json(self, url, source, timeout=45, ua=None):
+        return json.loads(self.get(url, source, "json", "application/json", timeout, ua).decode("utf-8"))
 
     def html(self, url, source, timeout=45):
         return self.get(url, source, "html", "text/html", timeout).decode("utf-8", "replace")
@@ -177,11 +177,30 @@ NGA_AREAS = {"4": "NAVAREA IV", "12": "NAVAREA XII", "A": "HYDROLANT", "P": "HYD
 NGA_STALE_DAYS = 30
 
 
+NGA_SMAPS = "https://msi.nga.mil/api/publications/smaps?navArea={a}&status=active&category=14&output=json"
+
+
 def src_nga(ctx):
-    d = ctx.json("https://msi.nga.mil/api/publications/broadcast-warn?output=json&status=A", "nga", timeout=60)
-    items = d.get("broadcast-warn") if isinstance(d, dict) else d
-    if not isinstance(items, list):
-        raise ValueError(f"NGA MSI: unexpected shape {list(d)[:6] if isinstance(d, dict) else type(d)}")
+    # The broadcast-warn endpoint froze on 10 May 2024; the site's own pages read "smaps" (category=14 is required).
+    # Fields differ: msgText, msgSqncNumber, createdOn ("271205Z OCT 2026"); the area name is in the text header.
+    items = []
+    for a in ("4", "12", "A", "P", "C"):
+        # NGA's firewall answers 403 to the usual UA (its parentheses and semicolon, tested 28 Oct 2026)
+        d = ctx.json(NGA_SMAPS.format(a=a), f"nga-{a}", timeout=90, ua="noise-floor-watch")
+        got = d.get("smaps") if isinstance(d, dict) else None
+        if not isinstance(got, list):
+            raise ValueError(f"NGA MSI: unexpected shape for navArea {a}: {list(d)[:6] if isinstance(d, dict) else type(d)}")
+        for w in got:
+            text = w.get("msgText") or ""
+            hm = re.search(r"\b(?:HYDROARC|HYDROLANT|HYDROPAC|NAVAREA [IVX]+) (\d+)/(\d{2})\.?", text)
+            w["navArea"] = a                               # the code NGA_AREAS names
+            w["msgNumber"] = int(hm.group(1)) if hm else w.get("msgSqncNumber")
+            w["issueDate"] = w.get("createdOn")
+            w["msgYear"] = (dtg_iso(w["issueDate"]) or "")[:4] if re.match(r"\d{4}", dtg_iso(w["issueDate"]) or "") \
+                else ("20" + hm.group(2) if hm else "")
+            w["subregion"] = w.get("subRegion") if w.get("subRegion") not in (None, "", "null") else None
+            w["text"] = text[hm.end():].strip() if hm else text   # the body, without the DTG and ID header lines
+        items += got
     issued = [t for t in (dtg_iso(w.get("issueDate")) for w in items) if re.match(r"\d{4}-\d\d-\d\dT", t)]
     if issued and max(issued) < (ctx.now - timedelta(days=NGA_STALE_DAYS)).strftime("%Y-%m-%dT%H:%MZ"):
         raise ValueError(f"NGA MSI: feed looks frozen: the newest of {len(items)} in-force warnings was issued "

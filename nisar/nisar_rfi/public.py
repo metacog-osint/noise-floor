@@ -15,7 +15,7 @@ import glob
 import json
 import math
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 LICENCE = "Derived from NASA-ISRO NISAR (ASF DAAC), NASA open data, CC0"
 LICENCE_ADSB = "ODbL 1.0; derived from adsb.lol (the coverage entries' aircraft counts only)"
@@ -158,7 +158,10 @@ def area_record(cfg, state):
             "passes": len(starts)}
 
 
-def build(cfgs, now=None, adsb=None, community=None):
+DECLARED_KM = 400.0     # navigational warnings with an area vertex this close to a site are listed on it
+
+
+def build(cfgs, now=None, adsb=None, community=None, declared=None):
     """Public document from loaded configs (pipeline.load_config). Areas marked "public": false are skipped.
     With adsb (an Adsb), coverage entries carry the aircraft cross-check. community: {site id: [approved post links]}
     (community.public_view); sites with approved posts carry them."""
@@ -178,6 +181,12 @@ def build(cfgs, now=None, adsb=None, community=None):
             if r:
                 if community and community.get(r["id"]):
                     r["community"] = community[r["id"]]
+                if declared:            # declared activity nearby while the site was active (navwarnings.near)
+                    lo = (datetime.fromisoformat(r["first_seen"].replace("Z", "+00:00")) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%MZ")
+                    hi = (datetime.fromisoformat(r["last_seen"].replace("Z", "+00:00")) + timedelta(days=7)).strftime("%Y-%m-%dT%H:%MZ")
+                    near = declared(r["lat"], r["lon"], DECLARED_KM, lo, hi)
+                    if near:
+                        r["declared"] = near
                 sites.append(r)
     sites.sort(key=lambda r: r["last_seen"], reverse=True)
     extra = {"licence_adsb": LICENCE_ADSB,

@@ -91,13 +91,19 @@ class Fake:
                  "message": "Space Weather Message Code: WATA50\r\nWATCH: Geomagnetic Storm Category G1 Predicted\r\n"},
                 {"product_id": "K04A", "issue_datetime": (NOW - timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S.000"),
                  "message": "ALERT: Geomagnetic K-index of 4\r\n"}]).encode()
-        if "msi.nga.mil" in url:
-            return json.dumps({"broadcast-warn": [
-                {"navArea": "4", "msgNumber": 1, "msgYear": 2026, "subregion": "11", "issueDate": "051133Z OCT 2026",
-                 "text": "GPS SIGNALS\nUNRELIABLE IN AREA"},
-                {"navArea": "4", "msgNumber": 2, "msgYear": 2026, "text": "DERELICT VESSEL"},
-                {"navArea": "12", "msgNumber": 3, "msgYear": 2026, "text": "BARRIER MARKED WITH WHITE LIGHTS AND RADAR REFLECTORS"},
-            ]}).encode()
+        if "msi.nga.mil" in url:                       # the smaps endpoint, one request per navArea
+            if "navArea=4&" in url:
+                return json.dumps({"smaps": [
+                    {"msgSqncNumber": 1, "subRegion": "11", "createdOn": "051133Z OCT 2026",
+                     "msgText": "051133Z OCT 26\nNAVAREA IV 1/26.\nGPS SIGNALS\nUNRELIABLE IN AREA"},
+                    {"msgSqncNumber": 2, "createdOn": "051200Z OCT 2026", "msgText": "051200Z OCT 26\nNAVAREA IV 2/26.\nDERELICT VESSEL"},
+                ]}).encode()
+            if "navArea=12&" in url:
+                return json.dumps({"smaps": [
+                    {"msgSqncNumber": 3, "createdOn": "051300Z OCT 2026",
+                     "msgText": "051300Z OCT 26\nNAVAREA XII 3/26.\nBARRIER MARKED WITH WHITE LIGHTS AND RADAR REFLECTORS"},
+                ]}).encode()
+            return json.dumps({"smaps": [], "fake_area": url.split("navArea=")[1].split("&")[0]}).encode()   # bodies differ per area, as real ones do
         if url == W.NAVCEN_TESTS:
             return b"%PDF-test"   # pdf_text is replaced in the end-to-end test
         if url == W.NAVCEN_REPORTS:
@@ -161,8 +167,8 @@ def test_nga_frozen_feed_is_an_error():
     class Old(Fake):
         def __call__(self, url, headers, timeout):
             if "msi.nga.mil" in url:
-                return json.dumps({"broadcast-warn": [{"navArea": "4", "msgNumber": 517, "msgYear": 2024,
-                                                       "issueDate": "101542Z MAY 2024", "text": "GPS UNRELIABLE"}]}).encode()
+                return json.dumps({"smaps": [{"msgSqncNumber": 517, "createdOn": "101542Z MAY 2024",
+                                              "msgText": "101542Z MAY 24\nNAVAREA IV 517/24.\nGPS UNRELIABLE"}]}).encode()
             return super().__call__(url, headers, timeout)
     ctx = W.Ctx(NOW, {"health": {}}, None, tempfile.gettempdir(), tempfile.gettempdir(), opener=Old())
     try:

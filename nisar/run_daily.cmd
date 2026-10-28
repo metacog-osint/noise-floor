@@ -25,6 +25,8 @@ if exist ..\private\watch\nisar.d\*.json (
     if errorlevel 1 if %RC%==0 set RC=1
   )
 )
+rem NGA navigational warnings (HYDROARC, HYDROLANT) into the local archive; a failure here doesn't stop the export.
+..\.venv\Scripts\python.exe ..\tools\navwarnings.py fetch --areas C,A >> ..\data\logs\nisar.log 2>&1
 rem Public repeat-site file for the site's map layer (public areas only), uploaded to the nisar-data release.
 ..\.venv\Scripts\python.exe -W ignore::RuntimeWarning -m nisar_rfi export --upload >> ..\data\logs\nisar.log 2>&1
 if errorlevel 1 if %RC%==0 set RC=1
