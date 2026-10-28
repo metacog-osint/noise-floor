@@ -89,6 +89,23 @@ def main():
         assert doc["areas"][0]["since"] == "2026-06-17" and doc["areas"][0]["passes"] == 4, doc["areas"]
         assert doc["licence"] == public.LICENCE and doc["day"] == "2026-10-28"
 
+        # aircraft cross-check from a local day file (no network): one judged cell at jamming scale near NZ-0001 on t1
+        import h3
+        adir = os.path.join(work, "adsb")
+        os.makedirs(adir)
+        near, far = h3.latlng_to_cell(73.05, 53.65, 4), h3.latlng_to_cell(60.0, 20.0, 4)
+        json.dump({"cols": ["h3", "aircraft", "bad_live", "bad_raw", "capable", "capable_bad10"],
+                   "cells": [[near, 10, 3, 3, 10, 3], [far, 50, 40, 40, 50, 40]]},
+                  open(os.path.join(adir, t1[:10] + ".map.json"), "w"))
+        json.dump({"cols": ["h3", "aircraft", "bad_live", "bad_raw", "capable", "capable_bad10"],
+                   "cells": [[near, 4, 4, 4, 4, 4]]},                 # under 5 aircraft: not judged
+                  open(os.path.join(adir, t2[:10] + ".map.json"), "w"))
+        doc2 = public.build(cfgs[:1], now=datetime(2026, 10, 28, 12, 0, tzinfo=timezone.utc),
+                            adsb=public.Adsb(adir, fetch=False))
+        covs = doc2["sites"][0]["coverage"]
+        assert covs == [[t1, 1, [1, 1]], [t2, 1, None], [t3, 0, None]], covs    # (3-1)/10 = 20% -> jamming scale
+        assert "ODbL" in doc2["licence_adsb"] and "licence_adsb" not in doc
+
         path = public.write(doc, os.path.join(work, "out"))
         assert os.path.basename(path) == "2026-10-28.nisar.json"
         assert json.load(open(path, encoding="utf-8"))["sites"][0]["id"] == "NZ-0001"
