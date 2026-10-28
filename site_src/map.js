@@ -44,7 +44,7 @@
                low: css("--map-low"), ramp: [css("--ramp-1"), css("--ramp-2"), css("--ramp-3"), css("--ramp-4")],
                focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean"), test: css("--ink-2"),
                border: css("--map-border"), label: css("--map-label"), halo: css("--map-halo"), area: css("--map-area"),
-               spoof: css("--map-spoof"), cyg: css("--map-cyg") };
+               spoof: css("--map-spoof"), cyg: css("--map-cyg"), nisar: css("--map-nisar") };
     mapEl.style.background = colors.ocean;
   }
 
@@ -227,6 +227,29 @@
         });
         g.restore();
       }
+      if (state.nisShow && state.nis) {                              // NISAR: repeat L-band emitter sites (leads)
+        g.save(); g.strokeStyle = colors.nisar; g.fillStyle = colors.nisar;
+        g.setLineDash([4, 4]); g.lineWidth = 1; g.globalAlpha = 0.75;   // where the layer looks: absence elsewhere means nothing
+        (state.nis.areas || []).forEach(function (a) {
+          if (!a.bbox) return;
+          var p0 = cp(a.bbox[3], a.bbox[0]), p1 = cp(a.bbox[1], a.bbox[2]);
+          g.strokeRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+          labels.push({ text: "NISAR coverage: " + a.name, x: p0.x + 4, y: p1.y - 5, kind: "area" });
+        });
+        g.setLineDash([]);
+        nisVisible().forEach(function (v) {
+          var q = cp(v.s.lat, v.s.lon), top = cp(v.s.lat + Math.max(v.s.spread_km || 0, NIS_MIN_RING_KM) / 111.32, v.s.lon);
+          var r = Math.max(Math.abs(q.y - top.y), 6);
+          g.globalAlpha = 0.10; g.beginPath(); g.arc(q.x, q.y, r, 0, 2 * Math.PI); g.fill();        // position spread
+          g.globalAlpha = 0.55; g.lineWidth = 1; g.stroke();
+          g.globalAlpha = 1; g.lineWidth = 2; g.beginPath(); g.arc(q.x, q.y, 4.5, 0, 2 * Math.PI);
+          if (v.l2) g.fill();                                       // filled: seen in the slice containing GPS L2
+          else { g.fillStyle = colors.halo; g.fill(); g.fillStyle = colors.nisar; }
+          g.stroke();
+          if (state.nisFocus === v.s.id) { g.strokeStyle = colors.focus; g.lineWidth = 2; g.beginPath(); g.arc(q.x, q.y, 8, 0, 2 * Math.PI); g.stroke(); g.strokeStyle = colors.nisar; }
+        });
+        g.restore();
+      }
       if (state.evShow && state.ev && state.ev.tests) {
         g.save(); g.setLineDash([6, 5]); g.strokeStyle = colors.test; g.lineWidth = 1.5;
         state.ev.tests.forEach(function (t) {
@@ -330,8 +353,8 @@
     }
     return lines;
   }
-  function showTip(h, pt) {
-    var lines = describe(h);
+  function showTip(h, pt) { renderTip(describe(h), pt); }
+  function renderTip(lines, pt) {
     if (!lines) { tip.hidden = true; return; }
     tip.textContent = "";
     lines.forEach(function (l, i) {
@@ -346,11 +369,16 @@
   }
   map.on("mousemove", function (ev) {
     if (state.pinned) return;
+    var v = nisAt(ev.containerPoint);                  // a NISAR site under the pointer wins over the hex
+    if (v) { renderTip(describeSite(v), ev.containerPoint); return; }
     var h = h3.latLngToCell(ev.latlng.lat, ev.latlng.lng, 4);
     if (cells[h]) showTip(h, ev.containerPoint); else tip.hidden = true;
   });
   map.on("mouseout", function () { if (!state.pinned) tip.hidden = true; });
   map.on("click", function (ev) {
+    var v = nisAt(ev.containerPoint);
+    if (v) { state.pinned = true; state.focus = null; state.nisFocus = v.s.id; renderTip(describeSite(v), ev.containerPoint); layer.redraw(); return; }
+    state.nisFocus = null;
     var h = h3.latLngToCell(ev.latlng.lat, ev.latlng.lng, 4);
     if (cells[h]) { state.pinned = true; state.focus = h; showTip(h, ev.containerPoint); layer.redraw(); openHistory(h); }
     else { state.pinned = false; state.focus = null; tip.hidden = true; layer.redraw(); }
@@ -643,7 +671,7 @@
   function hashFor() {
     var c = map.getCenter();
     return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") + (imagery.on ? "&img=esri" : "") +
-           (state.spoofShow ? "&sp=1" : "") + (state.cygShow ? "&cy=1" : "") +
+           (state.spoofShow ? "&sp=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") +
            "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
   }
   function writeHash() { if (state.day) history.replaceState(null, "", hashFor()); }
@@ -673,10 +701,14 @@
     [i - 1, i + 1].forEach(function (k) { if (days[k]) fetchDay(days[k].day).catch(function () {}); });
   }
 
-  var layerIndex = {};                                 // days with spoofing / CYGNSS files (data/<kind>/index.json)
+  var layerIndex = {};                                 // days with spoofing / CYGNSS / NISAR files (data/<kind>/index.json)
   function layerFor(kind, day) {                       // the day's file, or for CYGNSS the newest day up to 3 days before
     var idx = layerIndex[kind] || [];
     var pick = idx.indexOf(day) >= 0 ? day : null;
+    if (!pick && kind === "nisar" && idx.length) {     // NISAR files are snapshots of every site so far: the newest one
+      var before = idx.filter(function (d) { return d <= day; });   // up to the day, else the oldest (it holds the history)
+      pick = before.length ? before[before.length - 1] : idx[0];
+    }
     if (!pick && kind === "cygnss") {
       for (var k = 1; k <= 3 && !pick; k++) {
         var d = new Date(Date.parse(day + "T00:00:00Z") - k * 86400000).toISOString().slice(0, 10);
@@ -685,6 +717,56 @@
     }
     if (!pick) return Promise.resolve(null);
     return fetch("/data/" + kind + "/" + pick + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  }
+  // ---------- NISAR sites: repeat L-band emitter sites from nisar_rfi export (leads, not attribution)
+  var NIS_WINDOW_DAYS = 30, NIS_MIN_RING_KM = 10, nisCache = { doc: null, day: null, list: [] };
+  function nisVisible() {                              // sites with a detection in the 30 days up to the selected day
+    if (!state.nis || !state.day) return [];
+    if (nisCache.doc === state.nis && nisCache.day === state.day) return nisCache.list;
+    var end = Date.parse(state.day + "T23:59:59Z"), start = end - NIS_WINDOW_DAYS * 86400000;
+    var inWin = function (t) { var x = Date.parse(t); return x > start && x <= end; };
+    var list = [];
+    (state.nis.sites || []).forEach(function (s) {
+      var dets = (s.detections || []).filter(function (d) { return inWin(d.t); });
+      if (!dets.length) return;
+      var cov = (s.coverage || []).filter(function (c) { return inWin(c[0]); });
+      list.push({ s: s, dets: dets, l2: dets.some(function (d) { return /A/.test(d.band || ""); }),
+                  covered: cov.length, seen: cov.filter(function (c) { return c[1]; }).length,
+                  partial: s.coverage_from && Date.parse(s.coverage_from) > start + 86400000,
+                  last: dets[dets.length - 1].t });
+    });
+    nisCache = { doc: state.nis, day: state.day, list: list };
+    return list;
+  }
+  function nisAt(pt) {                                 // the visible site within 9 px of a container point
+    if (!state.nisShow || !state.nis) return null;
+    var best = null, bd = 81;
+    nisVisible().forEach(function (v) {
+      var q = map.latLngToContainerPoint([v.s.lat, v.s.lon]), d = (q.x - pt.x) * (q.x - pt.x) + (q.y - pt.y) * (q.y - pt.y);
+      if (d < bd) { bd = d; best = v; }
+    });
+    return best;
+  }
+  function utcAndLocal(t) {                            // "19 Oct 2026, 23:10 UTC (6:10 PM CDT)"
+    var day = t.slice(0, 10), mins = +t.slice(11, 13) * 60 + +t.slice(14, 16), c = central(day, mins);
+    return fmtDay(day) + ", " + t.slice(11, 16) + " UTC (" + c.time + (c.date !== c.utcDate ? " " + c.dateText : "") + " " + c.zone + ")";
+  }
+  function describeSite(v) {
+    var s = v.s, freqs = [], area = (state.nis.areas || []).filter(function (a) {
+      return a.bbox && s.lon >= a.bbox[0] && s.lon <= a.bbox[2] && s.lat >= a.bbox[1] && s.lat <= a.bbox[3];
+    })[0];
+    v.dets.forEach(function (d) { if (d.freq && freqs.indexOf(d.freq) < 0) freqs.push(d.freq); });
+    var tracks = s.geometries || [], dirs = tracks.map(function (x) { return x.slice(-1); });
+    var lines = [["", "L-band emitter site (NISAR) · " + (where(s.lat, s.lon).indexOf("Near") === 0 ? where(s.lat, s.lon) : area ? area.name : where(s.lat, s.lon))]];
+    lines.push(["Frequencies", freqs.slice(0, 2).join("; ") + (freqs.length > 2 ? " and " + (freqs.length - 2) + " more" : "")]);
+    lines.push(["Seen", v.seen + " of " + v.covered + " passes that covered it in the " + NIS_WINDOW_DAYS + " days to " + fmtDay(state.day) +
+                (v.partial ? " (counted from " + fmtDay(s.coverage_from.slice(0, 10)) + ")" : "")]);
+    lines.push(["Last seen", utcAndLocal(v.last)]);
+    lines.push(["First seen", fmtDay(s.first_seen.slice(0, 10))]);
+    lines.push(["Orbit tracks", tracks.length + (dirs.indexOf("A") >= 0 && dirs.indexOf("D") >= 0 ? " (ascending and descending)" : "")]);
+    lines.push(["Position", ll2(s.lat, s.lon) + ", spread " + Math.round(s.spread_km || 0) + " km"]);
+    lines.push(["", "A lead, not attribution: something transmitted here inside NISAR's receive band"]);
+    return lines;
   }
   function nearest(kind, day) {                        // the closest day that has a layer file, for the "none" note
     var t = Date.parse(day + "T00:00:00Z"), best = null;
@@ -700,17 +782,31 @@
       : "No spoofing layer for this day (daily from 27 Oct 2026, plus 17 earlier days)." + nearest("spoof", state.day));
     if (state.cygShow) parts.push(state.cyg ? "CYGNSS " + state.cyg.day + ": " + state.cyg.raised_cells + " cells raised 1 dB or more (exposure within a beam a few hundred km wide, not a transmitter site; about 38°N to 38°S). Source: NASA CYGNSS L1 V3.2 (PO.DAAC), NASA open data."
       : "No CYGNSS file within 3 days of this day (CYGNSS runs about six days behind)." + nearest("cygnss", state.day));
+    if (state.nisShow) {
+      if (!state.nis) parts.push((layerIndex.nisar || []).length ? "Loading NISAR sites…" : "No NISAR file published yet.");
+      else {
+        var n = nisVisible().length, ar = state.nis.areas || [];
+        var early = ar.length && ar.every(function (a) { return a.since && state.day < a.since; });
+        parts.push("NISAR: " + n + " repeat L-band emitter site" + (n === 1 ? "" : "s") + " with a detection in the " + NIS_WINDOW_DAYS +
+          " days to " + fmtDay(state.day) + (early ? " (NISAR history here starts later)" : "") + ". Leads, not attribution: " +
+          "something transmitted inside NISAR's receive slices, filled if in 1219–1239 MHz (contains GPS L2), open if only in 1291–1296 MHz; " +
+          "rings show position spread. Validation so far: one positive control passed, no known jammer confirmed, position accuracy not yet measured. " +
+          "Dashed boxes are the only areas it covers: " + ar.map(function (a) { return a.name + " (from " + fmtDay(a.since) + ")"; }).join(", ") +
+          ". Source: NASA-ISRO NISAR (ASF DAAC), NASA open data.");
+      }
+    }
     note.textContent = parts.join(" ");
   }
   function loadLayers(day) {
     if (state.spoofShow) layerFor("spoof", day).then(function (j) { if (state.day !== day) return; state.spoof = j; layerNote(); layer.redraw(); });
     if (state.cygShow) layerFor("cygnss", day).then(function (j) { if (state.day !== day) return; state.cyg = j; layerNote(); layer.redraw(); });
+    if (state.nisShow) layerFor("nisar", day).then(function (j) { if (state.day !== day) return; state.nis = j; layerNote(); layer.redraw(); });
     layerNote();
   }
 
   function loadDay(day) {
-    state.day = day; state.focus = null; state.pinned = false; tip.hidden = true;
-    state.spoof = null; state.cyg = null; loadLayers(day);
+    state.day = day; state.focus = null; state.pinned = false; tip.hidden = true; state.nisFocus = null;
+    state.spoof = null; state.cyg = null; state.nis = null; loadLayers(day);
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
     syncTimeline();
     fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
@@ -860,7 +956,7 @@
     });
   }).catch(function () { /* the map works without labels */ });
 
-  ["spoof", "cygnss"].forEach(function (k) {
+  ["spoof", "cygnss", "nisar"].forEach(function (k) {
     fetch("/data/" + k + "/index.json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (j) { layerIndex[k] = (j && j.days) || []; if (state.day) loadLayers(state.day); });
   });
@@ -908,7 +1004,7 @@
       var v = (hp.v || "").split(",").map(Number);
       state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
       imagery.want = hp.img === "esri";
-      state.spoofShow = hp.sp === "1"; state.cygShow = hp.cy === "1";
+      state.spoofShow = hp.sp === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1";
       return d;
     }
     var day = fromHash();
@@ -994,7 +1090,7 @@
     ["tl-prev", "tl-next", "tl-slider", "map-day"].forEach(function (id) {
       document.getElementById(id).addEventListener("pointerdown", function () { setPlaying(false); });
     });
-    [["spoof", "spoof"], ["cyg", "cyg"]].forEach(function (k) {
+    [["spoof", "spoof"], ["cyg", "cyg"], ["nis", "nis"]].forEach(function (k) {
       var box = document.getElementById("lyr-" + k[0]);
       if (!box) return;
       box.checked = !!state[k[0] + "Show"];

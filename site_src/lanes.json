@@ -252,7 +252,7 @@
       "data": [
         "NISAR L1 RSLC and L2 GCOV via ASF DAAC (NASA data, CC0 unless marked)"
       ],
-      "notes": "The broadband detector passed its first positive control: an area with documented L1/L2/L5 jamming was detected on 12 of 13 passes that covered it. The published Shiraz jammer was not confirmed by either detector, and the earlier image-based method failed that test. A pre-registered check against announced US GPS tests failed too (27 Oct 2026): passes inside test windows had hits no more often than passes outside them (21% against 18%), and none of the hits was at GPS L2, so they fit other L-band emitters near the ranges. Outputs stay private until validated. Credit to @auonsson, whose post prompted the idea.",
+      "notes": "The broadband detector passed its first positive control: an area with documented L1/L2/L5 jamming was detected on 12 of 13 passes that covered it. The published Shiraz jammer was not confirmed by either detector, and the earlier image-based method failed that test. A pre-registered check against announced US GPS tests failed too (27 Oct 2026): passes inside test windows had hits no more often than passes outside them (21% against 18%), and none of the hits was at GPS L2, so they fit other L-band emitters near the ranges. Since 28 Oct 2026 the repeat sites are on the map as leads, with this status beside them; the daily file is in the nisar-data release. Credit to @auonsson, whose post prompted the idea.",
       "links": [
         [
           "README",
@@ -261,6 +261,10 @@
         [
           "Validation",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/nisar.md"
+        ],
+        [
+          "Map layer",
+          "/methods#nisar-map"
         ]
       ]
     },
@@ -495,7 +499,7 @@
       "status": "running",
       "phase": "Running",
       "summary": "Daily runs over private areas of interest, behind a login, kept apart from the public site.",
-      "what": "Watch areas, keywords and alert history are private. The NISAR work runs daily over a private area and publishes to a page behind Cloudflare Access.",
+      "what": "Watch areas, keywords and alert history are private. The NISAR work also publishes a private page behind Cloudflare Access, with alert history and lower-confidence detections; its repeat sites are public on the map.",
       "how": "Private configuration never enters the public repo; a check on every commit blocks private terms.",
       "data": [
         "Same sources as the public pages"

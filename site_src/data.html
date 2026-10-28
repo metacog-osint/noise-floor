@@ -10,6 +10,7 @@
     <tr><td>The site's own map, event, trend and chart files</td><td><a href="#site-files">Site files</a> below</td><td>ODbL 1.0</td></tr>
     <tr><td>Daily summary feed</td><td><a href="/feed.xml">/feed.xml</a> (Atom)</td><td>ODbL 1.0</td></tr>
     <tr><td>Announced US GPS interference tests</td><td><a href="https://github.com/metacog-osint/noise-floor/releases/tag/declared-data">declared-data release</a>, <code>faa_gps_tests.json</code></td><td>Parsed from FAA flight advisories, a US government work (public domain in the US)</td><td>"FAA SPANS flight advisories, parsed by Noisefloor."</td></tr>
+    <tr><td>L-band emitter sites from NISAR radar (repeat sites, their detections and the passes that covered them; leads, not attribution)</td><td><a href="https://github.com/metacog-osint/noise-floor/releases/tag/nisar-data">nisar-data release</a>, <code>&lt;day&gt;.nisar.json</code>, and <code>/data/nisar/</code> below</td><td>Derived from NASA-ISRO NISAR (ASF DAAC), NASA open data, CC0</td><td>"NASA-ISRO NISAR data via ASF DAAC, processed by Noisefloor."</td></tr>
     <tr><td>Sea page vessels (sanctioned, military, law-enforcement and state-flag ships in Finland's open AIS)</td><td><a href="/data/vessels/baltic.json">baltic.json</a>, <a href="/data/vessels/gnss_at_sea.json">gnss_at_sea.json</a>, or the CSV and GeoJSON buttons on the <a href="/sea">Sea page</a></td><td>Mixed: Digitraffic AIS CC BY 4.0; OFAC SDN List (US government work); UK Sanctions List (OGL v3.0); Marine Regions zones CC BY 4.0; NGA World Port Index</td><td>Each file carries its sources' attribution lines; keep them.</td></tr>
   </tbody>
 </table></div>
@@ -117,6 +118,7 @@ print(len(features), "cells written to", f"{day}.geojson")</code></pre>
     <tr><td><a href="/data/gnss/days.json"><code>/data/gnss/days.json</code></a></td><td>Every day on the map, with its cell counts (cells with 5 or more aircraft, cells with severe GPS error, cells with 10 m loss)</td></tr>
     <tr><td><code>/data/gnss/&lt;day&gt;.json</code></td><td>The map's per-cell counts for a day</td></tr>
     <tr><td><code>/data/events/&lt;day&gt;.json</code></td><td>The day's anomaly events, bursts, SBAS flags and matching announced tests</td></tr>
+    <tr><td><a href="/data/nisar/index.json"><code>/data/nisar/index.json</code></a>, <code>/data/nisar/&lt;day&gt;.json</code></td><td>The map's NISAR layer: each day's snapshot of every repeat L-band emitter site, with its detections (time, track, frequencies, share of pulses, NISAR granule) and covering passes. CC0-derived, not ODbL</td></tr>
     <tr><td><a href="/data/trend.json"><code>/data/trend.json</code></a></td><td>The charts page's daily hotspot trend: share per named area, every day</td></tr>
     <tr><td><a href="/data/charts.json"><code>/data/charts.json</code></a></td><td>The validation charts</td></tr>
     <tr><td><a href="/feed.xml"><code>/feed.xml</code></a></td><td>Atom feed: one entry per day for the latest 30 days</td></tr>

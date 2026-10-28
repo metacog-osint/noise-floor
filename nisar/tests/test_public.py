@@ -78,6 +78,7 @@ def main():
         assert s["passes_seen"] == 2 and s["geometries"] == ["112A", "54A"], s
         assert s["first_seen"] == t1 and s["last_seen"] == t2, s
         assert s["coverage"] == [[t1, 1], [t2, 1], [t3, 0]], s["coverage"]
+        assert s["coverage_from"] == t1, s["coverage_from"]
         assert len(s["detections"]) == 2 and s["detections"][0]["granule"] == "G1", s["detections"]
         assert s["spread_km"] == 0.0, s["spread_km"]
         text = json.dumps(doc)

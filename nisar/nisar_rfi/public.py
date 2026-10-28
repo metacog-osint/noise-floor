@@ -61,6 +61,7 @@ def site_record(s, dets):
     if len(passes) < MIN_PASSES:
         return None
     spread = max(_km(s["lat"], s["lon"], d["lat"], d["lon"]) for d in q)
+    coverage = sorted(s.get("coverage", []), key=lambda cv: cv["start"])
     return {
         "id": s["id"], "lat": round(s["lat"], 3), "lon": round(s["lon"], 3),
         "where": s.get("where", ""), "country": s.get("country"),
@@ -69,9 +70,10 @@ def site_record(s, dets):
         "bands": sorted({b for d in q for b in (d.get("bands") or [d.get("band")]) if b}),
         "geometries": sorted({f'{int(d["track"])}{d["direction"]}' for d in q}),
         "passes_seen": len(passes),
-        # every pass whose footprint covered the site: [start, 1 if a qualifying detection was made on it]
-        "coverage": [[cv["start"], 1 if cv["pass"] in passes else 0]
-                     for cv in sorted(s.get("coverage", []), key=lambda cv: cv["start"])],
+        # passes whose footprint covered the site: [start, 1 if a qualifying detection was made on it].
+        # sites.prune keeps each site's latest 60, so count "seen of covered" only from coverage_from on.
+        "coverage_from": coverage[0]["start"] if coverage else None,
+        "coverage": [[cv["start"], 1 if cv["pass"] in passes else 0] for cv in coverage],
         "detections": [detection_record(d) for d in q],
     }
 
