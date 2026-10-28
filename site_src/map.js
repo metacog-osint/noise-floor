@@ -850,7 +850,8 @@
           " days to " + fmtDay(state.day) + (early ? " (NISAR history here starts later)" : "") + ". Leads, not attribution: " +
           "something transmitted inside NISAR's receive slices. Filled: a GPS L2 signature (a signal at the L2 centre, 1227.6 MHz, " +
           "or raised power across 1219–1239 MHz); open: other L-band signals, most likely radars. Rings show position spread; " +
-          "the boxes in a tooltip show which passes saw the site. Validation so far: one positive control passed, no known jammer confirmed, position accuracy not yet measured. " +
+          "the boxes in a tooltip show which passes saw the site. Validation so far: one positive control passed, no known jammer confirmed; positions roughly 3–39 km from known radars " +
+          "(closer for sites seen from several orbits), not yet checked against a surveyed emitter. " +
           "Dashed boxes are the only areas it covers: " + ar.map(function (a) { return a.name + " (from " + fmtDay(a.since) + ")"; }).join(", ") +
           ". Source: NASA-ISRO NISAR (ASF DAAC), NASA open data.");
       }
