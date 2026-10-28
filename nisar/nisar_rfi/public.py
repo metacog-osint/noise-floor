@@ -63,7 +63,7 @@ def site_record(s, dets):
     spread = max(_km(s["lat"], s["lon"], d["lat"], d["lon"]) for d in q)
     coverage = sorted(s.get("coverage", []), key=lambda cv: cv["start"])
     return {
-        "id": s["id"], "lat": round(s["lat"], 3), "lon": round(s["lon"], 3),
+        "id": s["id"], "sig": s.get("sig"), "lat": round(s["lat"], 3), "lon": round(s["lon"], 3),
         "where": s.get("where", ""), "country": s.get("country"),
         "spread_km": round(spread, 1),
         "first_seen": q[0]["start"], "last_seen": q[-1]["start"],

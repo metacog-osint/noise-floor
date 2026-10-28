@@ -65,6 +65,33 @@ def test_places():
     assert iso == "RU" and "Kaliningrad" in where
 
 
+def test_site_signature():
+    from nisar_rfi import sites
+
+    def tone(lo, hi):
+        return {"freq_runs_mhz": [[lo, hi, 0.8]], "band_text": f"{lo}-{hi} MHz", "method": "tables", "bands": ["A"], "band": "A"}
+    assert sites.signature(tone(1227.0, 1228.2)) == "L2"
+    assert sites.signature(tone(1220.9, 1221.4)) == "other"
+    assert sites.signature({"band_text": "band A broadband (1219-1239 MHz)", "method": "broadband", "bands": ["A"]}) == "L2"
+    assert sites.signature({"band_text": "band B broadband (1291-1296 MHz)", "method": "broadband", "bands": ["B"]}) == "other"
+    assert sites.signature({"band_text": "A", "method": "tables", "bands": ["A"]}) == "other"    # no frequency detail
+
+    # The Pankovo case (28 Oct 2026): an L2 fix 9 km from an older radar-like site and 20 km from an L2 site joins the
+    # L2 site, instead of the nearest one.
+    state = {"sites": {}, "detections": [], "processed": {}}
+    cfg = {"sites": {"site_prefix": "NZ"}}
+
+    def det(i, lat, lon, lo, hi):
+        d = tone(lo, hi)
+        d.update(id=f"d{i}", lat=lat, lon=lon, peak_z=5.0)
+        return d
+    sites.update(state, {"track": 51, "direction": "D", "start": "2026-06-29T17:44:38Z"}, [det(1, 73.25, 53.76, 1221.0, 1221.4)], cfg)
+    sites.update(state, {"track": 112, "direction": "A", "start": "2026-10-07T23:10:54Z"}, [det(2, 73.01, 53.72, 1227.1, 1228.2)], cfg)
+    sites.update(state, {"track": 51, "direction": "D", "start": "2026-10-15T17:44:35Z"}, [det(3, 73.185, 53.567, 1227.0, 1228.2)], cfg)
+    assert state["sites"]["NZ-0001"]["sig"] == "other" and state["sites"]["NZ-0001"]["detections"] == ["d1"], state["sites"]
+    assert state["sites"]["NZ-0002"]["sig"] == "L2" and state["sites"]["NZ-0002"]["detections"] == ["d2", "d3"], state["sites"]
+
+
 if __name__ == "__main__":
     for k, v in list(globals().items()):
         if k.startswith("test_"):
