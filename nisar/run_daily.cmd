@@ -16,6 +16,15 @@ echo === %DATE% %TIME% >> data\logs\nisar.log
 cd nisar
 ..\.venv\Scripts\python.exe -W ignore::RuntimeWarning -m nisar_rfi run >> ..\data\logs\nisar.log 2>&1
 set RC=%ERRORLEVEL%
+rem Extra areas: every private\watch\nisar.d\*.json is a full config with its own state and outputs.
+rem They run before publishing, so extra maps in the view are fresh. A failure sets RC but doesn't stop the rest.
+if exist ..\private\watch\nisar.d\*.json (
+  for %%c in (..\private\watch\nisar.d\*.json) do (
+    echo --- area %%~nc >> ..\data\logs\nisar.log
+    ..\.venv\Scripts\python.exe -W ignore::RuntimeWarning -m nisar_rfi run --config "%%c" >> ..\data\logs\nisar.log 2>&1
+    if errorlevel 1 if %RC%==0 set RC=1
+  )
+)
 rem Refresh the private web view (skipped when no "view" block is configured).
 ..\.venv\Scripts\python.exe -W ignore::RuntimeWarning -m nisar_rfi publish >> ..\data\logs\nisar.log 2>&1
 echo === exit %RC% >> ..\data\logs\nisar.log
