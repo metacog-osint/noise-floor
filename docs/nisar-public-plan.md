@@ -34,10 +34,10 @@ Published as leads with that status beside them, the sites are useful and honest
 | # | Step | Status |
 |---|---|---|
 | N1 | `python -m nisar_rfi export` writes `<day>.nisar.json` from every public area (`nisar/nisar_rfi/public.py`; test `nisar/tests/test_public.py`) | Done 28 Oct (branch) |
-| N2 | `run_daily.cmd` runs the export after the area runs and uploads it to the `nisar-data` release | Done 28 Oct (branch); release created on first upload |
-| N3 | `tools/site_layers.py` gains a `nisar` kind (`site/data/nisar/<day>.json`, `index.json`); `site_src/map.html` and `map.js`: checkbox, loader, drawing, tooltip, note | To do |
-| N4 | Pages: Methods (the layer), Validation (pointer to the layer, results unchanged), Guide (replace "its maps stay private until it passes"), Data (download and licence), `lanes.json`, `registry/sources.csv` | To do |
-| N5 | Local build and look; CI; merge to `main`; check the live map | To do |
+| N2 | `run_daily.cmd` runs the export after the area runs and uploads it to the `nisar-data` release | Done 28 Oct (branch). Release created 28 Oct with the first file: 161 sites (153 Baltic, 8 Novaya Zemlya), 362 KB |
+| N3 | `tools/site_layers.py` gains a `nisar` kind (`site/data/nisar/<day>.json`, `index.json`); `site_src/map.html` and `map.js`: checkbox, loader, drawing, tooltip, note | Done 28 Oct (branch) |
+| N4 | Pages: Methods (the layer), Validation (pointer to the layer, results unchanged), Guide (replace "its maps stay private until it passes"), Data (download and licence), `lanes.json`, `registry/sources.csv` | Done 28 Oct (branch) |
+| N5 | Local build and look; CI; merge to `main`; check the live map | Local build checked 28 Oct (light, dark, phone width); merge waits for Tom |
 
 The deploy at 12:40 UTC picks up the file from the 12:00 UTC (7:00 AM CDT) run the same day.
 
@@ -54,6 +54,8 @@ The deploy at 12:40 UTC picks up the file from the 12:00 UTC (7:00 AM CDT) run t
 | D7 | The Baltic area reads every pass. Its QA screen (read only if the processor's score is at least 10, or every 3rd pass) was dropped, and the state was rebuilt with every pass read. |
 
 **Why D7.** Passes scoring under 10 that were read anyway had a MEDIUM/HIGH detection 40% of the time (30 of 75), against 48% (142 of 297) for passes scoring 10 or more. The score is a frame-wide maximum of the interference-to-signal ratio and barely predicts emitters. The 114 passes it skipped would have hidden about 45 passes with detections.
+
+**D7 result (rebuild 28 Oct, same 490 passes, 22 Sep - 23 Oct).** Before: 372 read, 118 skipped; 862 detections (623 MEDIUM/HIGH); 288 sites, 128 passing the public gate. After: every pass read; 1,150 detections (830 MEDIUM/HIGH, +33%); 316 sites, 153 passing the gate. The one pass that failed with a 503 held 5 detections when re-read, on a score of 4.27 the old screen would have skipped. Failed passes are now retried on later runs.
 
 ## Open items
 
