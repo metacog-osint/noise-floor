@@ -88,6 +88,9 @@ Register-ScheduledTask -TaskName "noise-floor daily NISAR" -Action (New-Schedule
 
 - **Token.** The script reads `EARTHDATA_TOKEN` from the user environment, and the token is never echoed.
 - **Expiry.** Each run records the token's expiry, read from the token's own claim, in the state's `health`. From 14 days out it logs a warning to renew it.
+- **Extra areas.** Every `private/watch/nisar.d/*.json` is a full config with its own `state_dir` and `out_dir`. Each runs after the main area and before publishing, so a failure in one doesn't stop the others.
+  - Seed a new area before its first daily run (`run --config <file> --start <first day> --end <today> --seed --max <n>`), so its history doesn't raise alerts.
+  - To show its map in the private view, add `<out_dir>/map.html` to `view.extra_maps` in the main config.
 
 **Private web view.** `python -m nisar_rfi publish` builds a small static site from the outputs (`private/nisar/view/`): a landing page with run health, new sites and the strongest repeat sites, the maps, and the GeoJSON/JSONL files. It deploys the site with wrangler to a Cloudflare Pages project behind Cloudflare Access. `run_daily.cmd` publishes after every run.
 
