@@ -30,6 +30,10 @@ def test_tables():
     run("test_tables.py")
 
 
+def test_public():
+    run("test_public.py")
+
+
 def test_selftest():
     work = tempfile.mkdtemp(prefix="nisar_selftest_")
     try:
@@ -41,5 +45,6 @@ def test_selftest():
 if __name__ == "__main__":
     test_units()
     test_tables()
+    test_public()
     test_selftest()
     print("PASS test_nisar")
