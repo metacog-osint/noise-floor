@@ -9,7 +9,7 @@
 <meta property="og:description" content="How Noisefloor&#x27;s methods were tested against known events, including what failed.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=6ea269ca85">
+<link rel="stylesheet" href="/style.css?v=7934178d77">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=f511c41ac0"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
@@ -95,10 +95,11 @@
     <tr><td>Broadband detector on an area with documented L1/L2/L5 jamming (30 days, 335 passes)</td><td>Solid detections on 12 of the 13 passes that covered it, 9 of them in the slice containing GPS L2. The tone detector saw nothing at the L2 centre there</td><td><span class="chip st-validated">Pass</span></td></tr>
     <tr><td>False alarms on vegetation</td><td>Heavily forested regions with no reported jamming gave 1–4 detections each over 37–83 passes</td><td><span class="chip st-validated">Pass</span></td></tr>
     <tr><td>Repeatability</td><td>Strong detections repeat from pass to pass within 9–24 km, and agree across ascending and descending geometries</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Announced US GPS tests (pre-registered 26 Oct 2026, 16 sites)</td><td>5 hits in 24 in-window frames (20.8%) against 93 in 507 control frames (18.3%); none of the hits at GPS L2. They fit other L-band emitters near the ranges</td><td><span class="chip st-failed">Fail</span></td></tr>
     <tr><td>Position accuracy against a surveyed emitter</td><td>Not yet tested</td><td><span class="chip st-planned">Open</span></td></tr>
   </tbody>
 </table></div>
-<p>Detection locations outside the published case stay private until the method is validated.</p>
+<p>Since 28 Oct 2026 the repeat sites are on the <a href="/map#ni=1">map</a> as leads, with this status beside them (<a href="/methods#nisar-map">how the layer works</a>). Until a known emitter is confirmed and positions are checked against a surveyed one, treat every site as something to look into, not a finding.</p>
 <p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/nisar.md">Full NISAR validation report</a></p>
 
 <h2 id="cygnss">GNSS interference from orbit (CYGNSS)</h2>

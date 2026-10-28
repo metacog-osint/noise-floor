@@ -16,9 +16,10 @@ import sys
 import time
 import urllib.request
 
-FILES = re.compile(r"^(\d{4}-\d{2}-\d{2}\.(map|anomalies|bursts|sbas|hotspots|spoof|cygnss|geo|geo-region)\.json|\d{4}-\d{2}-\d{2}\.loss_daily\.parquet|geo-elements-\d{4}-\d{2}\.parquet"
+FILES = re.compile(r"^(\d{4}-\d{2}-\d{2}\.(map|anomalies|bursts|sbas|hotspots|spoof|cygnss|nisar|geo|geo-region)\.json|\d{4}-\d{2}-\d{2}\.loss_daily\.parquet|geo-elements-\d{4}-\d{2}\.parquet"
                    r"|faa_gps_tests\.json)$")
-TAGS = ("pnt-data-", "declared-data", "cygnss-data")   # daily outputs; announced GPS tests; CYGNSS daily summaries
+TAGS = ("pnt-data-", "declared-data", "cygnss-data", "nisar-data")   # daily outputs; announced GPS tests; CYGNSS daily
+                                                                     # summaries; NISAR repeat-site snapshots
 NEXT = re.compile(r'<([^>]+)>;\s*rel="next"')
 
 

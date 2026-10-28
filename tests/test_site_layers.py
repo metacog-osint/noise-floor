@@ -1,5 +1,5 @@
 """Tests for the map layers: tools/spoof_summary.py (spoofing day -> public summary with map cells) and
-tools/site_layers.py (release files -> site/data/spoof and site/data/cygnss). Run as a plain script."""
+tools/site_layers.py (release files -> site/data/spoof, site/data/cygnss and site/data/nisar). Run as a plain script."""
 import gzip
 import json
 import os
@@ -48,12 +48,18 @@ def test_site_layers():
         json.dump({"day": "2026-10-27", "active": 1, "cells": [["84abc", 1]]}, open(os.path.join(rel, "2026-10-27.spoof.json"), "w"))
         json.dump({"day": "2026-10-26", "active": 1}, open(os.path.join(rel, "2026-10-26.spoof.json"), "w"))   # no cells: skipped
         json.dump({"day": "2026-10-20", "cells": [["83abc", 1.5, 40]]}, open(os.path.join(rel, "2026-10-20.cygnss.json"), "w"))
+        json.dump({"day": "2026-10-28", "sites": [{"id": "NZ-0027"}]}, open(os.path.join(rel, "2026-10-28.nisar.json"), "w"))
+        json.dump({"day": "2026-10-29", "sites": []}, open(os.path.join(rel, "2026-10-29.nisar.json"), "w"))   # empty: kept
+        json.dump({"day": "2026-10-30"}, open(os.path.join(rel, "2026-10-30.nisar.json"), "w"))                # no sites key: skipped
         r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "site_layers.py"), rel, site], capture_output=True, text=True)
         assert r.returncode == 0, r.stderr
         idx = json.load(open(os.path.join(site, "data", "spoof", "index.json")))
         assert idx["days"] == ["2026-10-27"] and "ODbL" in idx["licence"]
         assert json.load(open(os.path.join(site, "data", "cygnss", "index.json")))["days"] == ["2026-10-20"]
         assert json.load(open(os.path.join(site, "data", "cygnss", "2026-10-20.json")))["licence"].startswith("Derived from NASA")
+        nidx = json.load(open(os.path.join(site, "data", "nisar", "index.json")))
+        assert nidx["days"] == ["2026-10-28", "2026-10-29"] and "NISAR" in nidx["licence"], nidx
+        assert json.load(open(os.path.join(site, "data", "nisar", "2026-10-28.json")))["sites"][0]["id"] == "NZ-0027"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
