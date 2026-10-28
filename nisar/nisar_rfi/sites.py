@@ -46,9 +46,30 @@ def _covers(g, lat, lon):
         return False
 
 
-def _nearest_site(state, lat, lon, km):
+L2_LO, L2_HI = 1226.6, 1228.6      # GPS L2 centre (1227.6 MHz) +- 1 MHz: the L2C main lobe
+
+
+def signature(d):
+    """'L2' for a GPS L2 signature, else 'other' (most likely a radar).
+
+    L2: a tone run at the L2 centre, or broadband power in band A (1219-1239 MHz, which contains L2) with no
+    tone: the noise-jammer pattern of the broadband detector's positive control. The public map uses the same rule.
+    """
+    if any(r[0] <= L2_HI and r[1] >= L2_LO for r in (d.get("freq_runs_mhz") or [])):
+        return "L2"
+    if "band A broadband" in (d.get("band_text") or ""):
+        return "L2"
+    if d.get("method") == "broadband" and "A" in (d.get("bands") or [d.get("band") or ""]):
+        return "L2"
+    return "other"
+
+
+def _nearest_site(state, lat, lon, km, sig=None):
+    """Nearest site within km with the same signature class (sites from before classes existed match any)."""
     best = None
     for s in state["sites"].values():
+        if sig and s.get("sig") not in (None, sig):
+            continue
         d = geo.km_between(lat, lon, s["lat"], s["lon"])
         if d <= km and (best is None or d < best[0]):
             best = (d, s)
@@ -69,13 +90,14 @@ def update(state, g, detections, cfg, baseline_run=False):
     events, touched = [], set()
     for d in detections:
         d["ignored"] = _ignored(cfg, d["lat"], d["lon"])
-        s = _nearest_site(state, d["lat"], d["lon"], c["match_km"])
+        sig = signature(d)                       # a jammer next to a radar stays its own site
+        s = _nearest_site(state, d["lat"], d["lon"], c["match_km"], sig)
         is_new = s is None
         if is_new:
             n = len(state["sites"]) + 1
             sid = f'{c["site_prefix"]}-{n:04d}'
             s = state["sites"][sid] = {
-                "id": sid, "lat": d["lat"], "lon": d["lon"], "weight": 0.0,
+                "id": sid, "sig": sig, "lat": d["lat"], "lon": d["lon"], "weight": 0.0,
                 "first_seen": g["start"], "last_seen": g["start"], "detections": [], "coverage": [],
                 "bands_seen": [], "geometries": [], "status": "ACTIVE", "clean_streak": 0, "fix": None,
                 "where": d.get("where", ""), "country": d.get("country"), "baseline": baseline_run,

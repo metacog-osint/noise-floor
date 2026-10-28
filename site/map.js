@@ -729,9 +729,10 @@
   // across the slice that contains L2 with no tone (the noise-jammer pattern of the broadband detector's positive
   // control). Tones elsewhere in the slice (1221, 1234, 1239 MHz...) and the upper slice are "other L-band":
   // air-surveillance radars share the band and recur at 1221 MHz at US radar sites.
-  function l2Signature(d) {
-    if (d.runs_mhz && d.runs_mhz.length) return d.runs_mhz.some(function (r) { return r[0] <= 1228.6 && r[1] >= 1226.6; });
-    return /A/.test(d.band || "");
+  function l2Signature(d) {                            // same rule as nisar_rfi/sites.py signature()
+    if ((d.runs_mhz || []).some(function (r) { return r[0] <= 1228.6 && r[1] >= 1226.6; })) return true;
+    if (/band A broadband/.test(d.freq || "")) return true;
+    return d.method === "broadband" && /A/.test(d.band || "");
   }
   function nisVisible() {                              // sites with a detection in the 30 days up to the selected day
     if (!state.nis || !state.day) return [];
