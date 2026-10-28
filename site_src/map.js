@@ -360,7 +360,12 @@
     lines.forEach(function (l, i) {
       var row = document.createElement("div"); row.className = i ? "r" : "h";
       if (l[0]) { var k = document.createElement("span"); k.textContent = l[0]; row.appendChild(k); }
-      var v = document.createElement("b"); v.textContent = String(l[1]); row.appendChild(v);
+      var v = document.createElement("b");
+      if (l[1] && l[1].strip) {                        // NISAR pass strip: a filled box per pass that saw the site
+        v.className = "strip"; v.setAttribute("aria-label", l[1].strip.filter(Boolean).length + " of " + l[1].strip.length + " passes saw it");
+        l[1].strip.forEach(function (on) { var b = document.createElement("i"); if (on) b.className = "on"; v.appendChild(b); });
+      } else v.textContent = String(l[1]);
+      row.appendChild(v);
       tip.appendChild(row);
     });
     tip.hidden = false;
@@ -720,6 +725,14 @@
   }
   // ---------- NISAR sites: repeat L-band emitter sites from nisar_rfi export (leads, not attribution)
   var NIS_WINDOW_DAYS = 30, NIS_MIN_RING_KM = 10, nisCache = { doc: null, day: null, list: [] };
+  // A GPS L2 signature: a narrowband run at the L2 centre (1227.6 MHz, ±1 MHz: the L2C main lobe), or raised power
+  // across the slice that contains L2 with no tone (the noise-jammer pattern of the broadband detector's positive
+  // control). Tones elsewhere in the slice (1221, 1234, 1239 MHz...) and the upper slice are "other L-band":
+  // air-surveillance radars share the band and recur at 1221 MHz at US radar sites.
+  function l2Signature(d) {
+    if (d.runs_mhz && d.runs_mhz.length) return d.runs_mhz.some(function (r) { return r[0] <= 1228.6 && r[1] >= 1226.6; });
+    return /A/.test(d.band || "");
+  }
   function nisVisible() {                              // sites with a detection in the 30 days up to the selected day
     if (!state.nis || !state.day) return [];
     if (nisCache.doc === state.nis && nisCache.day === state.day) return nisCache.list;
@@ -730,7 +743,7 @@
       var dets = (s.detections || []).filter(function (d) { return inWin(d.t); });
       if (!dets.length) return;
       var cov = (s.coverage || []).filter(function (c) { return inWin(c[0]); });
-      list.push({ s: s, dets: dets, l2: dets.some(function (d) { return /A/.test(d.band || ""); }),
+      list.push({ s: s, dets: dets, l2: dets.some(l2Signature), cov: cov,
                   covered: cov.length, seen: cov.filter(function (c) { return c[1]; }).length,
                   partial: s.coverage_from && Date.parse(s.coverage_from) > start + 86400000,
                   last: dets[dets.length - 1].t });
@@ -779,6 +792,8 @@
     var tracks = s.geometries || [], dirs = tracks.map(function (x) { return x.slice(-1); });
     var lines = [["", "L-band emitter site (NISAR) · " + (where(s.lat, s.lon).indexOf("Near") === 0 ? where(s.lat, s.lon) : area ? area.name : where(s.lat, s.lon))]];
     lines.push(["Frequencies", freqSummary(v.dets)]);
+    lines.push(["Signature", v.l2 ? "GPS L2 (at the L2 centre, or broadband across 1219–1239 MHz)" : "Other L-band, likely a radar"]);
+    if (v.cov.length) lines.push(["Passes, oldest first", { strip: v.cov.map(function (c) { return c[1]; }) }]);
     lines.push(["Seen", v.seen + " of " + v.covered + " passes that covered it in the " + NIS_WINDOW_DAYS + " days to " + fmtDay(state.day) +
                 (v.partial ? " (counted from " + fmtDay(s.coverage_from.slice(0, 10)) + ")" : "")]);
     lines.push(["Last seen", utcAndLocal(v.last)]);
@@ -809,8 +824,9 @@
         var early = ar.length && ar.every(function (a) { return a.since && state.day < a.since; });
         parts.push("NISAR: " + n + " repeat L-band emitter site" + (n === 1 ? "" : "s") + " with a detection in the " + NIS_WINDOW_DAYS +
           " days to " + fmtDay(state.day) + (early ? " (NISAR history here starts later)" : "") + ". Leads, not attribution: " +
-          "something transmitted inside NISAR's receive slices, filled if in 1219–1239 MHz (contains GPS L2), open if only in 1291–1296 MHz; " +
-          "rings show position spread. Validation so far: one positive control passed, no known jammer confirmed, position accuracy not yet measured. " +
+          "something transmitted inside NISAR's receive slices. Filled: a GPS L2 signature (a signal at the L2 centre, 1227.6 MHz, " +
+          "or raised power across 1219–1239 MHz); open: other L-band signals, most likely radars. Rings show position spread; " +
+          "the boxes in a tooltip show which passes saw the site. Validation so far: one positive control passed, no known jammer confirmed, position accuracy not yet measured. " +
           "Dashed boxes are the only areas it covers: " + ar.map(function (a) { return a.name + " (from " + fmtDay(a.since) + ")"; }).join(", ") +
           ". Source: NASA-ISRO NISAR (ASF DAAC), NASA open data.");
       }
