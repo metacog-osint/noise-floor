@@ -388,7 +388,10 @@ def run(cfg, local_dir=None, seed=False, max_granules=None, days=None, now=None,
         found = [g for g in found if g.get("footprint") and Polygon(g["footprint"]).intersects(aoi)]
         if cfg.get("full_frame_only", False):
             found = [g for g in found if g.get("full_frame", True)]
-        todo = sorted((g for g in found if g["granule"] not in state["processed"]), key=lambda g: g["start"])
+        # new passes, plus any that failed earlier (a transient 503 from the archive shouldn't lose a pass for good);
+        # the lookback window bounds the retries
+        todo = sorted((g for g in found if g["granule"] not in state["processed"]
+                       or state["processed"][g["granule"]].get("status") == "error"), key=lambda g: g["start"])
         health["search"] = {"status": "OK", "found": len(found), "new": len(todo), "at": now.strftime("%Y-%m-%dT%H:%MZ")}
     except Exception as e:
         health["search"] = {"status": "ERROR", "msg": f"{e.__class__.__name__}: {e}"[:300], "at": now.strftime("%Y-%m-%dT%H:%MZ")}
