@@ -221,6 +221,43 @@ section 5 broadband gates were set on a strong, documented L1/L2/L5 jamming area
 transmit in band A at the time of a pass: a surveyed L-band source, or a published L2 jamming event with time and place.
 Outputs stay private.
 
+## 7. Known long-range radar sites (descriptive, 28 Oct 2026; not pre-registered)
+
+**Why.** Section 6 found recurring tones near the US test ranges that fit air-surveillance radars, not jammers. If
+some of those are long-range radars at published positions, the distance from each radar to the nearest NISAR site
+is a rough upper bound on position error. This check was written up after the candidate distances had been seen, so
+it is descriptive, not a test.
+
+**Reference positions.** FAA site file of March 2010 as redistributed by open-air-data/atc-radar (compilation ODbL
+1.0, contents DbCL 1.0; the positions are the co-located beacon antennas; https://github.com/open-air-data/atc-radar),
+checked against Wikipedia's Joint Surveillance System table, and OpenStreetMap for Kaala (ODbL). Only radars within
+50 km of a repeat site were found: six, out of the 339 repeat sites (two or more MEDIUM/HIGH passes) in the 16 US
+areas. Most repeat sites have no published radar nearby; they are probably military or test radars.
+
+| Radar (type) | Nearest NISAR repeat site | Distance | Passes seen / covered | Orbit tracks | Tones |
+|---|---|---|---|---|---|
+| Francis Peak, UT (long-range; type unverified) | US04-0002 | 3.3 km | 11 / 40 | 3 (149A, 48A, 85D) | 1232.3, 1293.5, 1296.3 MHz |
+| Hill AFB, UT (AN/FPS-117) | US04-0003 | 13.2 km | 8 / 40 | 3 (149A, 157D, 85D) | 1293.5, 1296.3 MHz |
+| Boron, CA (beacon; radar type unknown) | US01-0044 and US01-0043 | 15.5 and 18.9 km, either side | 4 / 16 and 6 / 23 | 2 and 3 | 1253.2 MHz (both) |
+| Fort Fisher, NC (ARSR-4) | US06-0012 | 18.9 km | 8 / 27 | 1 (170D) | 1222.5-1223.5 MHz |
+| Kaala, Oahu (OSM only; type unverified) | US15-0001 | 28.9 km | 4 / 19 | 1 (79A) | 1221.5-1225.4 MHz |
+| Newport, MS (ARSR-3) | US12-0002 | 38.8 km | 7 / 18 | 1 (156D) | 1220.5-1220.7 MHz |
+
+**Reading.**
+
+- If each site is the radar beside it, the error is 3-39 km, median about 17 km.
+- Sites seen from several orbit tracks sit closest (3.3 and 13.2 km). Single-track sites are 19-39 km away.
+- At Boron, two sites with the same 1253.2 MHz tone lie on opposite sides of the radar. That looks like one emitter
+  placed differently from different geometries.
+- Together these suggest a geometry-dependent offset that averaging over tracks reduces. That is a hypothesis.
+- None of the six identities is confirmed. A site could be a different emitter near the radar, and the beacon
+  position isn't the primary antenna's surveyed position. So this bounds nothing firmly.
+- The public map's rings (the spread of a site's own detections, 10 km at least) are smaller than these distances
+  for single-track sites. Read single-track positions as uncertain by tens of km.
+
+**Still open.** A surveyed emitter transmitting in band A at a known time remains the test that would measure
+accuracy.
+
 ## Reproduce
 
 ```sh
