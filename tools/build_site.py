@@ -368,7 +368,8 @@ def main():
     open(os.path.join(OUT, "robots.txt"), "w", newline="\n").write("User-agent: *\nAllow: /\n")
     year, day, hour, short = ("public, max-age=31536000, immutable", "public, max-age=86400, stale-while-revalidate=604800",
                               "public, max-age=3600, stale-while-revalidate=86400", "public, max-age=300, stale-while-revalidate=3600")
-    rules = [("/*", "X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY")]
+    rules = [("/*", "X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n"
+                    "  Strict-Transport-Security: max-age=31536000")]   # HTTPS only from the first visit on (one year, this host)
     rules += [(f"/{f}", f"Cache-Control: {year}") for f in ASSETS]              # always requested as /file?v=<content hash>
     rules += [("/fonts/*", f"Cache-Control: {year}")]                         # font files never change in place
     rules += [(f"/data/{f}", f"Cache-Control: {day}") for f in ("land.json", "borders.json", "places.json")]
