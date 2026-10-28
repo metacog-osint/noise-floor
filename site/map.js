@@ -814,6 +814,11 @@
     lines.push(["First seen", fmtDay(s.first_seen.slice(0, 10))]);
     lines.push(["Orbit tracks", tracks.length + (dirs.indexOf("A") >= 0 && dirs.indexOf("D") >= 0 ? " (ascending and descending)" : "")]);
     lines.push(["Position", ll2(s.lat, s.lon) + ", spread " + Math.round(s.spread_km || 0) + " km"]);
+    if (s.declared && s.declared.length) {            // NGA navigational warnings within 400 km while the site was active
+      lines.push(["Declared nearby", s.declared.slice(0, 3).map(function (w) {
+        return w.id + ", " + w.activity.toLowerCase() + ", " + fmtDay((w.issued || "").slice(0, 10)) + " (" + w.km + " km)";
+      }).join("; ") + (s.declared.length > 3 ? "; and " + (s.declared.length - 3) + " more" : "")]);
+    }
     if (s.community && s.community.length) {          // public posts Tom approved (links are in the data file)
       lines.push(["Community reports", s.community.map(function (c) {
         return c.author + ", " + fmtDay(c.date) + (c.same_sensor ? " (NISAR imagery)" : "");

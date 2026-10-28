@@ -61,7 +61,17 @@ def cmd_export(a):
     links = community.build_links(cfgs, pipeline.REPO)
     _write_community(links)
     ok = community.approved(os.path.join(pipeline.REPO, "private", "watch", "community_public.txt"))
-    doc = public.build(cfgs, adsb=adsb, community=community.public_view(links, ok))
+    declared = None
+    try:                                                 # NGA navigational warnings archive (tools/navwarnings.py)
+        import sys
+        sys.path.insert(0, os.path.join(pipeline.REPO, "tools"))
+        import navwarnings
+        warnings = navwarnings.load(("C", "A"))
+        if warnings:
+            declared = lambda lat, lon, km, lo, hi: navwarnings.near(warnings, lat, lon, km, lo, hi)  # noqa: E731
+    except Exception as ex:
+        print(f"export: navigational warnings skipped ({type(ex).__name__}: {ex})")
+    doc = public.build(cfgs, adsb=adsb, community=community.public_view(links, ok), declared=declared)
     path = public.write(doc, a.out or os.path.join(pipeline.REPO, "private", "nisar", "public"))
     print(f"export: {len(doc['sites'])} site(s) in {len(doc['areas'])} area(s) -> {path}")
     if a.upload:
