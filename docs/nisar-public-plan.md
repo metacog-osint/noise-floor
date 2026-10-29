@@ -45,7 +45,7 @@ The deploy at 12:40 UTC picks up the file from the 12:00 UTC (7:00 AM CDT) run t
 
 | # | Decision |
 |---|---|
-| D1 | The two NISAR areas are public coverage: the Baltic and Nordic region (9-31°E, 53-66°N) and the Novaya Zemlya test sites (51.0-57.5°E, 70.8-74.2°N). Any future narrow area stays private with `"public": false`. |
+| D1 | The NISAR areas are public coverage: the Baltic and Nordic region (9-31°E, 53-66°N) and the Novaya Zemlya test sites (51.0-57.5°E, 70.8-74.2°N); from 28 Oct 2026 (Tom: all nine, 30-day backfill) also Kola/Barents (20-45°E, 66-71.5°N), Ukraine front and western Russia (30-41°E, 48-53°N), Black Sea and Crimea (27-42°E, 40.5-48°N), Caucasus (42-50°E, 40-44.5°N), Eastern Mediterranean (29-37.5°E, 30-37.5°N), Persian Gulf and Hormuz (47-60°E, 23-31°N), Red Sea and Bab el-Mandeb (36-46°E, 11-20°N), Korean peninsula (124-131°E, 33.5-43°N) and Taiwan Strait (117-123°E, 21.5-27°N). Boxes don't overlap, so each pass is read once per area. Any future narrow area stays private with `"public": false`. |
 | D2 | All sites are published the same way, allied radars included (the Baltic set has repeat sites at Trondheim/Værnes, north of Jena and offshore NE of Umeå), with effect-only wording. Filtering by country would read as attribution. |
 | D3 | Gate as above. Tighten to two viewing geometries if the map looks noisy. |
 | D4 | New release `nisar-data` in this repo. |

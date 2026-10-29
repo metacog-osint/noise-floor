@@ -31,7 +31,7 @@ def test_near():
     assert len(hit) == 1 and 430 <= hit[0]["km"] <= 445, hit         # Pankovo: about 437 km to the nearest vertex
     assert N.near([w], 73.06, 53.72, 400) == []                      # outside 400 km
     assert N.near([w], 73.06, 53.72, 500, "2026-10-14T00:00Z") == [] # cancelled before the window
-    buoy = dict(w, activity="MOORING BUOY ADRIFT")
+    buoy = dict(w, activity="MOORING BUOY ADRIFT", text="HYDROARC 276/26.\nBARENTS SEA.\nRUSSIA.\nMOORING BUOY ADRIFT IN 69-57.20N 050-57.20E.")
     assert N.near([buoy], 73.06, 53.72, 500) == [] and N.near([buoy], 73.06, 53.72, 500, military=False)
 
 
