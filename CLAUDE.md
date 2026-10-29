@@ -50,7 +50,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
 - **NISAR on the public map (approved 28 Oct 2026):** read `docs/nisar-public-plan.md` first (gate, decisions D1–D7,
   build steps N1–N5). `python -m nisar_rfi export` writes the public repeat-site file; `nisar/run_daily.cmd` runs every
   extra area in `private/watch/nisar.d/*.json` after the main one, then the export (uploaded to the `nisar-data`
-  release), then the private publish. Each detection is a lead, not attribution.
+  release), then, only after a good upload, a site deploy (`gh workflow run deploy-site.yml`; Tom approved 29 Oct 2026,
+  because GitHub's daily deploy runs before the upload), then the private publish. Each detection is a lead, not attribution.
 - **AIS beyond the Baltic (28 Oct 2026, Tom approved):** `collectors/run_aisstream.cmd` (global aisstream, private only;
   focus boxes in `private/watch/maritime.json`) and `collectors/barentswatch_ais.py` + `run_barentswatch.cmd` (Norway's open
   AIS, NLOD; Finnmark and the western Barents Sea). Both skip until Tom's credentials exist (AISSTREAM_API_KEY;
