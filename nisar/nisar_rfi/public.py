@@ -17,6 +17,8 @@ import math
 import os
 from datetime import datetime, timedelta, timezone
 
+from . import bands
+
 LICENCE = "Derived from NASA-ISRO NISAR (ASF DAAC), NASA open data, CC0"
 LICENCE_ADSB = "ODbL 1.0; derived from adsb.lol (the coverage entries' aircraft counts only)"
 MIN_PASSES = 2
@@ -128,6 +130,11 @@ def site_record(s, dets, adsb=None):
         return None
     spread = max(_km(s["lat"], s["lon"], d["lat"], d["lon"]) for d in q)
     coverage = sorted(s.get("coverage", []), key=lambda cv: cv["start"])
+    # count only passes whose receive mode could detect a signal this site has shown (a 5 MHz VV pass near 1221.5 MHz
+    # can't hear a tone at the L2 centre, or broadband power); list the others' times apart
+    needs = [n for d in q for n in bands.signal_needs(d)]
+    heard = [cv for cv in coverage if cv["pass"] in passes or bands.hears(cv.get("modes"), needs)]
+    unheard = [cv["start"] for cv in coverage if cv["pass"] not in passes and not bands.hears(cv.get("modes"), needs)]
     # the stored label comes from the site's first detection; the position is the running mean, so describe that
     where, country = s.get("where", ""), s.get("country")
     try:
@@ -148,7 +155,8 @@ def site_record(s, dets, adsb=None):
         # "seen of covered" only from coverage_from on.
         "coverage_from": coverage[0]["start"] if coverage else None,
         "coverage": [[cv["start"], 1 if cv["pass"] in passes else 0]
-                     + ([adsb.judge(cv["start"][:10], s["lat"], s["lon"])] if adsb else []) for cv in coverage],
+                     + ([adsb.judge(cv["start"][:10], s["lat"], s["lon"])] if adsb else []) for cv in heard],
+        "coverage_unheard": unheard,
         "detections": [detection_record(d) for d in q],
     }
 
@@ -181,6 +189,8 @@ def build(cfgs, now=None, adsb=None, community=None, declared=None):
         if not os.path.exists(spath):
             continue
         state = json.load(open(spath, encoding="utf-8"))
+        from . import sites as sites_mod
+        sites_mod.fill_modes(state, cfg.get("sites", {}).get("quiet_after"))   # records from before modes were kept
         dets = {d["id"]: d for d in state.get("detections", [])}
         areas.append(area_record(cfg, state))
         for s in state.get("sites", {}).values():
@@ -202,6 +212,9 @@ def build(cfgs, now=None, adsb=None, community=None, declared=None):
     return {
         "day": now.strftime("%Y-%m-%d"), "generated": now.strftime("%Y-%m-%dT%H:%MZ"), "licence": LICENCE, **extra,
         "gate": {"min_passes": MIN_PASSES, "confidence": list(KEEP), "excludes": ["widespread", "ignored", "LOW"]},
+        "coverage_rule": "coverage lists the passes over each site whose receive mode could detect a signal the site has "
+                         "shown (a tone inside a received slice, or broadband power in a dual-polarization slice); "
+                         "coverage_unheard lists the start times of the other passes over it",
         "note": "Leads, not attribution: each site is a place where something transmitted inside NISAR's L-band "
                 "receive slices (1219-1239 MHz, which contains GPS L2, and 1291-1296 MHz) on repeated passes.",
         "areas": areas, "sites": sites,

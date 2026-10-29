@@ -13,6 +13,16 @@ MODES = {
     "20+5":  {"A": (1229.0, 20.0), "B": (1293.5, 5.0)},
     "20+20": {"A": (1229.0, 20.0), "B": (1286.0, 20.0)},
     "5+5":   {"A": (1221.5, 5.0),  "B": (1236.5, 5.0)},
+    # 5 MHz only, VV (polar and sea-ice coverage: Novaya Zemlya, Kola). The products label the slice B.
+    "5":     {"B": (1221.5, 5.0)},
+}
+
+# What each mode's RFI tables actually span: the processor's own frequency axis, read from products on 29 Oct 2026
+# (20+5: a Gulf pass, 28 Sep; 5: a Novaya Zemlya pass, 19 Oct). The tables span more than the image band.
+# (low MHz, high MHz, dual-pol). Modes not listed aren't checked yet: their passes count as able to hear anything.
+TABLE_SPAN = {
+    "20+5": [(1215.0, 1263.0, True), (1290.5, 1296.5, True)],     # A 1215.00-1262.95 and B 1290.50-1296.49, HH+HV
+    "5":    [(1218.5, 1224.5, False)],                            # B 1218.50-1224.49, VV only: no L2 centre, no cross-pol
 }
 
 # GNSS signals in 1215-1300 MHz: (name, low MHz, high MHz), main-lobe extents.
@@ -35,6 +45,43 @@ def band_edges(mode, freq, centre_mhz=None, bw_mhz=None):
         return None
     c, bw = table[freq]
     return c - bw / 2, c + bw / 2
+
+
+def signal_needs(d):
+    """What a pass must receive to detect this detection's signal again: [("tone", lo, hi) | ("broad", lo, hi)].
+
+    A tone needs a slice containing its frequencies; broadband power needs a dual-polarization slice over the same
+    frequencies (the cross-pol test). Band edges come from the detection's own mode."""
+    mode, out = d.get("mode") or "20+5", []
+
+    def add(part, band):
+        runs = part.get("freq_runs_mhz") or []
+        out.extend(("tone", r[0], r[1]) for r in runs)
+        e = band_edges(mode, band) if band else None
+        if e and (part.get("method") == "broadband" or part.get("broadband")):
+            out.append(("broad", e[0], e[1]))
+        elif e and not runs:
+            out.append(("any", e[0], e[1]))       # no frequency detail: the slice itself
+    add(d, d.get("band"))
+    if isinstance(d.get("band_b"), dict):
+        add(d["band_b"], "B")
+    return out
+
+
+def hears(modes, needs):
+    """True if a pass in any of `modes` could detect at least one of `needs`. Unknown modes or needs: True."""
+    modes = [m for m in (modes or []) if m]
+    if not modes or not needs:
+        return True
+    for m in modes:
+        span = TABLE_SPAN.get(str(m).replace(" ", ""))
+        if span is None:
+            return True
+        for lo, hi, dual in span:
+            for kind, a, b in needs:
+                if a <= hi and b >= lo and (kind != "broad" or dual):
+                    return True
+    return False
 
 
 def gnss_in(low, high):

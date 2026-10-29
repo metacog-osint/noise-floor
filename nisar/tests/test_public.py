@@ -30,8 +30,11 @@ def site(sid, det_ids, coverage, lat=73.05, lon=53.65, **extra):
             "country": "RU", "baseline": True, **extra}
 
 
-def cov(start, track=54, direction="A", active=True):
-    return {"pass": f"{track:03d}{direction}{start[:13]}", "start": start, "active": active}
+def cov(start, track=54, direction="A", active=True, modes=None):
+    c = {"pass": f"{track:03d}{direction}{start[:13]}", "start": start, "active": active}
+    if modes is not None:
+        c["modes"] = modes
+    return c
 
 
 def write_state(folder, sites, dets, processed_starts):
@@ -45,6 +48,7 @@ def main():
     work = tempfile.mkdtemp(prefix="nisar_public_")
     try:
         t1, t2, t3 = "2026-10-07T23:10:54Z", "2026-10-15T22:38:28Z", "2026-10-17T22:55:00Z"
+        t4 = "2026-10-18T18:00:00Z"                     # a 5 MHz VV pass: it can't hear a tone at the L2 centre
         dets = [
             det(1, t1, track=112), det(2, t2, track=54),                               # A: two passes -> in
             det(3, t2, track=54, lat=70.0, lon=50.0), det(4, t2, track=54, lat=70.01, lon=50.0),  # B: one pass, two frames
@@ -55,7 +59,8 @@ def main():
             det(10, t1, lat=74.0, lon=55.0), det(11, t3, lat=74.0, lon=55.0),           # E: ignored site
         ]
         sites = [
-            site("NZ-0001", ["d1", "d2"], [cov(t1, 112), cov(t2), cov(t3, 83, active=False)]),
+            site("NZ-0001", ["d1", "d2"], [cov(t1, 112), cov(t2), cov(t3, 83, active=False),
+                                           cov(t4, 51, active=False, modes=["5"])]),
             site("NZ-0002", ["d3", "d4"], [cov(t2)], lat=70.0, lon=50.0),
             site("NZ-0003", ["d5", "d6"], [cov(t1), cov(t2)], lat=71.0, lon=51.0),
             site("NZ-0004", ["d7", "d8", "d9"], [cov(t1), cov(t2), cov(t3)], lat=72.6, lon=52.9),
@@ -78,6 +83,7 @@ def main():
         assert s["passes_seen"] == 2 and s["geometries"] == ["112A", "54A"], s
         assert s["first_seen"] == t1 and s["last_seen"] == t2, s
         assert s["coverage"] == [[t1, 1], [t2, 1], [t3, 0]], s["coverage"]
+        assert s["coverage_unheard"] == [t4], s["coverage_unheard"]
         assert s["coverage_from"] == t1, s["coverage_from"]
         assert len(s["detections"]) == 2 and s["detections"][0]["granule"] == "G1", s["detections"]
         assert s["spread_km"] == 0.0, s["spread_km"]
