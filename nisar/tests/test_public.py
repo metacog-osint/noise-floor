@@ -81,6 +81,8 @@ def main():
         assert s["coverage_from"] == t1, s["coverage_from"]
         assert len(s["detections"]) == 2 and s["detections"][0]["granule"] == "G1", s["detections"]
         assert s["spread_km"] == 0.0, s["spread_km"]
+        # the label follows the site's mean position, not the stored first-detection text
+        assert s["where"] != "near a place" and s["country"] == "RU", (s["where"], s["country"])
         text = json.dumps(doc)
         for private in ("interpretation", "rfi_likelihood", "cmr.example", "clean_streak", "baseline", "status",
                         "Private box", "Consistent with a GNSS jammer"):

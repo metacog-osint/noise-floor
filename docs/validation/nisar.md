@@ -260,7 +260,8 @@ accuracy.
 
 ## 8. A ground station 5 km from an L2 site (pre-stated 28 Oct 2026, 23:57 UTC; result MIXED)
 
-**Why.** Baltic site BAL-0103, just west of Minsk, carries a narrow tone at the GPS L2 centre (1227.5-1227.7 MHz,
+**Why.** Baltic site BAL-0103, 5 km east of central Minsk (the map then labelled it "4 km W", from its first
+detection; labels now follow the site's mean position), carries a narrow tone at the GPS L2 centre (1227.5-1227.7 MHz,
 MEDIUM, both polarizations) on 5 of 11 covering passes, all at 17:25-17:42 UTC. The EPN station MNKW00BLR is 5.4 km
 away. If the tone is an L2 jammer, the station should lose L2 when NISAR sees it, and not when NISAR covers the site
 and sees nothing.
@@ -289,6 +290,11 @@ loses GPS on most days whether or not NISAR sees the site.
 - So the station shows that GPS near Minsk is degraded on most days, but it neither confirms nor rules out the NISAR
   tone.
 - The station's own records (receiver logs, its operator) would be needed to separate jamming from a station effect.
+
+**After the 29 Oct rebuild.** The Baltic history was rebuilt from 17 Jun 2026 with every pass read, which renumbered
+the sites. The same emitter is now BAL-0034. With the longer record its mean position is 53.928N 27.701E, 9.0 km from
+the station (5.4 km before), and NISAR has seen it since 19 Jun (20 of 43 covering passes). The test above used only
+the 26 Sep-22 Oct days and stands as run; a test on the longer record would need its own rule, written first.
 
 ## Reproduce
 
