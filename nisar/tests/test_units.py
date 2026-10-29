@@ -92,6 +92,45 @@ def test_site_signature():
     assert state["sites"]["NZ-0002"]["sig"] == "L2" and state["sites"]["NZ-0002"]["detections"] == ["d2", "d3"], state["sites"]
 
 
+def test_site_late_pass():
+    """A pass older than a site's latest coverage (a retried failure) re-derives the site from its time-ordered
+    record, raises no RETURNED or QUIET event, and prune keeps the newest coverage, not the last appended."""
+    from datetime import datetime, timezone
+    from nisar_rfi import sites
+    state = {"sites": {}, "detections": [], "processed": {}}
+    cfg = {"sites": {"site_prefix": "T", "quiet_after": 2}}
+    box = [[19.0, 54.0], [21.0, 54.0], [21.0, 56.0], [19.0, 56.0], [19.0, 54.0]]
+
+    def g(day, track=1):
+        return {"track": track, "direction": "A", "start": f"2026-{day}T12:00:00Z", "footprint": box}
+
+    def det(i):
+        return {"id": f"d{i}", "lat": 55.0, "lon": 20.0, "peak_z": 5.0, "bands": ["A"], "method": "tables"}
+
+    def kinds(ev):
+        return [e["kind"] for e in ev]
+    assert kinds(sites.update(state, g("10-01"), [det(1)], cfg)) == ["NEW"]
+    sites.update(state, g("10-10"), [], cfg)
+    assert kinds(sites.update(state, g("10-20"), [], cfg)) == ["QUIET"]
+    s = state["sites"]["T-0001"]
+    # late detection between the two clean passes: active again (one clean pass since), but no RETURNED alert
+    assert kinds(sites.update(state, g("10-15", 2), [det(2)], cfg)) == []
+    assert (s["status"], s["clean_streak"], s["last_seen"][:10]) == ("ACTIVE", 1, "2026-10-15"), s
+    # late detection before the first: first_seen moves back; late clean pass: no QUIET event, order kept
+    sites.update(state, g("08-01", 3), [det(3)], cfg)
+    assert kinds(sites.update(state, g("09-01", 4), [], cfg)) == []
+    assert s["first_seen"][:10] == "2026-08-01" and s["status"] == "ACTIVE"
+    assert [cv["start"][:10] for cv in s["coverage"]] == ["2026-08-01", "2026-09-01", "2026-10-01", "2026-10-10",
+                                                           "2026-10-15", "2026-10-20"]
+    # back in order: the next clean pass makes it QUIET with an event, as before
+    assert kinds(sites.update(state, g("10-30"), [], cfg)) == ["QUIET"]
+    # prune keeps the newest 60 by time even if an old entry was appended last
+    s["coverage"] = [{"pass": f"p{i}", "start": f"2026-10-{1 + i % 28:02d}T{i % 24:02d}:00:00Z", "active": False}
+                     for i in range(70)] + [{"pass": "old", "start": "2026-08-15T00:00:00Z", "active": True}]
+    sites.prune(state, 400, datetime(2026, 10, 31, tzinfo=timezone.utc))
+    assert len(s["coverage"]) == 60 and all(cv["pass"] != "old" for cv in s["coverage"])
+
+
 if __name__ == "__main__":
     for k, v in list(globals().items()):
         if k.startswith("test_"):

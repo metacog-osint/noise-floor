@@ -128,9 +128,16 @@ def site_record(s, dets, adsb=None):
         return None
     spread = max(_km(s["lat"], s["lon"], d["lat"], d["lon"]) for d in q)
     coverage = sorted(s.get("coverage", []), key=lambda cv: cv["start"])
+    # the stored label comes from the site's first detection; the position is the running mean, so describe that
+    where, country = s.get("where", ""), s.get("country")
+    try:
+        from . import places
+        where, country = places.describe(s["lat"], s["lon"])
+    except Exception:
+        pass
     return {
         "id": s["id"], "sig": s.get("sig"), "lat": round(s["lat"], 3), "lon": round(s["lon"], 3),
-        "where": s.get("where", ""), "country": s.get("country"),
+        "where": where, "country": country,
         "spread_km": round(spread, 1),
         "first_seen": q[0]["start"], "last_seen": q[-1]["start"],
         "bands": sorted({b for d in q for b in (d.get("bands") or [d.get("band")]) if b}),

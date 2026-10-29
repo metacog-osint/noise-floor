@@ -83,8 +83,32 @@ def _ignored(cfg, lat, lon):
     return None
 
 
+def _settle(s, quiet_after):
+    """Re-derive a site's status, clean streak and seen dates from its coverage in time order.
+
+    Used when a pass arrives after newer ones (a retried failure, a backfill gap), so the running counters don't apply.
+    """
+    s["coverage"].sort(key=lambda cv: cv["start"])
+    if s["coverage"]:
+        streak = 0
+        for cv in reversed(s["coverage"]):
+            if cv["active"]:
+                break
+            streak += 1
+        s["clean_streak"] = streak
+        s["status"] = "QUIET" if streak >= quiet_after else "ACTIVE"
+    seen = [cv["start"] for cv in s["coverage"] if cv["active"]]
+    if seen:
+        s["first_seen"] = min(s["first_seen"], seen[0])
+        s["last_seen"] = max(s["last_seen"], seen[-1])
+
+
 def update(state, g, detections, cfg, baseline_run=False):
-    """Fold one granule's detections into the site table. Returns events."""
+    """Fold one granule's detections into the site table. Returns events.
+
+    Passes normally arrive in time order. One older than a site's latest coverage re-derives that site's state from
+    the time-ordered record and raises no RETURNED or QUIET event (it says nothing about now).
+    """
     c = {**DEFAULTS, **cfg.get("sites", {})}
     pk = pass_key(g)
     events, touched = [], set()
@@ -112,22 +136,27 @@ def update(state, g, detections, cfg, baseline_run=False):
             s["detections"].append(d["id"])
             if not prior["active"]:
                 prior.update(active=True, det=d["id"])
-                s["status"], s["clean_streak"] = "ACTIVE", 0
+                _settle(s, c["quiet_after"])       # right for in-order and late passes alike
             continue
         was_quiet = s["status"] == "QUIET"
+        late = any(cv["start"] > g["start"] for cv in s["coverage"])
         w = max(d["peak_z"], 1.0)
         s["lat"] = round((s["lat"] * s["weight"] + d["lat"] * w) / (s["weight"] + w), 4)
         s["lon"] = round((s["lon"] * s["weight"] + d["lon"] * w) / (s["weight"] + w), 4)
         s["weight"] += w
+        s["first_seen"] = min(s["first_seen"], g["start"])
         s["last_seen"] = max(s["last_seen"], g["start"])
         s["detections"].append(d["id"])
         s["coverage"].append({"pass": pk, "start": g["start"], "active": True, "det": d["id"]})
         s["bands_seen"] = sorted(set(s["bands_seen"]) | set(d["bands"]))
         s["geometries"] = sorted(set(s["geometries"]) | {f'{g["track"]}{g["direction"]}'})
-        s["status"], s["clean_streak"] = "ACTIVE", 0
+        if late:
+            _settle(s, c["quiet_after"])
+        else:
+            s["status"], s["clean_streak"] = "ACTIVE", 0
         if d["ignored"]:
             s["ignored"] = d["ignored"]
-        kind = "NEW" if is_new else "RETURNED" if was_quiet else None
+        kind = "NEW" if is_new else "RETURNED" if was_quiet and not late else None
         if kind:
             events.append({"kind": kind, "site": s["id"], "det": d, "baseline": baseline_run})
     # sites this footprint covered without a detection
@@ -136,7 +165,11 @@ def update(state, g, detections, cfg, baseline_run=False):
             continue
         if any(cv["pass"] == pk for cv in s["coverage"]):
             continue
+        late = any(cv["start"] > g["start"] for cv in s["coverage"])
         s["coverage"].append({"pass": pk, "start": g["start"], "active": False})
+        if late:
+            _settle(s, c["quiet_after"])
+            continue
         s["clean_streak"] += 1
         if s["status"] == "ACTIVE" and s["clean_streak"] >= c["quiet_after"]:
             s["status"] = "QUIET"
@@ -176,6 +209,6 @@ def prune(state, keep_days, now):
     keep = {d["id"] for d in state["detections"]}
     for s in state["sites"].values():
         s["detections"] = [i for i in s["detections"] if i in keep]
-        s["coverage"] = [cv for cv in s["coverage"] if cv["start"] >= cut][-60:]
+        s["coverage"] = sorted((cv for cv in s["coverage"] if cv["start"] >= cut), key=lambda cv: cv["start"])[-60:]
     state["processed"] = {k: v for k, v in state["processed"].items()
                           if v.get("start", "9") >= (now - timedelta(days=max(keep_days, 120))).strftime("%Y-%m-%d")}
