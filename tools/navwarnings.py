@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """navwarnings.py: NGA navigational warnings (HYDROARC, HYDROLANT, NAVAREA IV/XII, HYDROPAC), archived and parsed.
 
-  python tools/navwarnings.py fetch [--areas C,A] [--year 2026]   # merge into data/declared/navwarn/<area>-<year>.json
+  python tools/navwarnings.py fetch [--areas C,A,P] [--year 2026]   # merge into data/declared/navwarn/<area>-<year>.json
   python tools/navwarnings.py near LAT LON [--km 400] [--since YYYY-MM-DD]   # warnings with an area vertex in range
 
 Source: NGA Maritime Safety Information, the "smaps" endpoint behind msi.nga.mil's warnings pages
@@ -58,8 +58,11 @@ def parse(rec):
     cancel = cancel or dtg(rec.get("cancelledOn"))
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     regions = [l.rstrip(".") for l in lines[2:6] if re.fullmatch(r"[A-Z .,'-]+\.", l) and not l.startswith(NAMES.get(area, "~"))]
-    act = next((l for l in lines if re.match(r"1\.\s", l)), "")
-    act = re.split(r"\s\d{4,6}Z|\sIN AREA|\sDAILY|\sBOUND BY", act[3:])[0].strip(" .,")
+    act = next((l for l in lines if re.match(r"1\.\s", l)), "")[3:]
+    if not act:      # unnumbered messages (common in HYDROPAC): the first body line after the DTG, ID and region lines
+        body = [l for l in lines[2:] if not re.fullmatch(r"[A-Z0-9 .,'()/-]+\.", l) or COORD.search(l) or len(l) > 40]
+        act = body[0] if body else ""
+    act = re.split(r"\s\d{4,6}Z|\sIN AREA|\sDAILY|\sBOUND BY", act)[0].strip(" .,")
     hm = re.search(r"\b(HYDROARC|HYDROLANT|HYDROPAC|NAVAREA [IVX]+) (\d+)/(\d{2})", text)
     ident = f"{hm.group(1)} {int(hm.group(2))}/{hm.group(3)}" if hm else f"{NAMES.get(area, area)} {num}/{yy}"
     return {"id": ident, "area": area, "number": num, "issued": issued,
@@ -98,7 +101,7 @@ def fetch(areas, year, log=print):
         time.sleep(1.0)                                   # one request per query; the site sits behind a firewall
 
 
-def load(areas=("C", "A"), years=None):
+def load(areas=("C", "A", "P"), years=None):
     years = years or [datetime.now(timezone.utc).year]
     out = []
     for area in areas:
@@ -124,7 +127,8 @@ def near(warnings, lat, lon, max_km=400, start=None, end=None, military=True):
     military=True keeps only firing, missile, rocket, exercise and GNSS warnings (not buoys, cables, surveys)."""
     out = []
     for w in warnings:
-        if not w["points"] or military and not MILITARY.search(w["activity"] or ""):
+        # the military/GNSS test reads the whole message: unnumbered warnings name their activity anywhere in the body
+        if not w["points"] or military and not MILITARY.search((w["activity"] or "") + " " + (w.get("text") or "")):
             continue
         d = min(km(lat, lon, p[0], p[1]) for p in w["points"])
         if d > max_km:
@@ -141,7 +145,7 @@ def main():
     ap = argparse.ArgumentParser(prog="navwarnings")
     sub = ap.add_subparsers(dest="cmd", required=True)
     f = sub.add_parser("fetch")
-    f.add_argument("--areas", default="C,A")
+    f.add_argument("--areas", default="C,A,P")
     f.add_argument("--year", type=int, default=datetime.now(timezone.utc).year)
     n = sub.add_parser("near")
     n.add_argument("lat", type=float)

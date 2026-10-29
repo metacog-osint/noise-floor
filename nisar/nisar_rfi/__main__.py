@@ -66,7 +66,7 @@ def cmd_export(a):
         import sys
         sys.path.insert(0, os.path.join(pipeline.REPO, "tools"))
         import navwarnings
-        warnings = navwarnings.load(("C", "A"))
+        warnings = navwarnings.load(("C", "A", "P"))
         if warnings:
             declared = lambda lat, lon, km, lo, hi: navwarnings.near(warnings, lat, lon, km, lo, hi)  # noqa: E731
     except Exception as ex:
