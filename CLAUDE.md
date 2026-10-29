@@ -51,6 +51,11 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   build steps N1–N5). `python -m nisar_rfi export` writes the public repeat-site file; `nisar/run_daily.cmd` runs every
   extra area in `private/watch/nisar.d/*.json` after the main one, then the export (uploaded to the `nisar-data`
   release), then the private publish. Each detection is a lead, not attribution.
+- **AIS beyond the Baltic (28 Oct 2026, Tom approved):** `collectors/run_aisstream.cmd` (global aisstream, private only;
+  focus boxes in `private/watch/maritime.json`) and `collectors/barentswatch_ais.py` + `run_barentswatch.cmd` (Norway's open
+  AIS, NLOD; Finnmark and the western Barents Sea). Both skip until Tom's credentials exist (AISSTREAM_API_KEY;
+  BARENTSWATCH_CLIENT_ID/SECRET) and run from Task Scheduler tasks Tom registers. Data stay private in `data/ais/`; publishing
+  anything derived waits on the terms answers (registry rows `barentswatch-ais`, `dma-ais`).
 - **Lanes added 23–24 Oct 2026 (prototypes; each has a write-up in `docs/validation/` or `docs/assessment/`):**
   `tools/cygnss_rfi.py` (CYGNSS noise floor, needs `EARTHDATA_TOKEN`; held-out checks in `tools/cygnss_checks.py`), `tools/s1_rfi.py` (Sentinel-1 RFI annotations),
   `tools/events.py` (observations → graded events, private register in `data/events/`; from v1.1, 27 Oct 2026, EASA's FIR
