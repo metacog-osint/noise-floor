@@ -258,6 +258,38 @@ areas. Most repeat sites have no published radar nearby; they are probably milit
 **Still open.** A surveyed emitter transmitting in band A at a known time remains the test that would measure
 accuracy.
 
+## 8. A ground station 5 km from an L2 site (pre-stated 28 Oct 2026, 23:57 UTC; result MIXED)
+
+**Why.** Baltic site BAL-0103, just west of Minsk, carries a narrow tone at the GPS L2 centre (1227.5-1227.7 MHz,
+MEDIUM, both polarizations) on 5 of 11 covering passes, all at 17:25-17:42 UTC. The EPN station MNKW00BLR is 5.4 km
+away. If the tone is an L2 jammer, the station should lose L2 when NISAR sees it, and not when NISAR covers the site
+and sees nothing.
+
+**Rule, written before any station file was downloaded.** `tools/station_cn0.py` unchanged (the rule in
+`docs/validation/ground-stations.md`), but GPS L2 decides instead of L1, because NISAR sees L2. Test days: 26 Sep, 6,
+8, 13 and 18 Oct (NISAR saw the site). Control days: 28 Sep, 1, 5, 10, 17 and 22 Oct (covered, nothing seen).
+PRESENT needs 10+ flagged L2 minutes on at least 2 test days and at most 2 on each control day; NULL needs every test
+day under 10; MIXED is anything else.
+
+| Days | GPS L2 flagged minutes | GPS L1 C/A flagged minutes |
+|---|---|---|
+| Test (26 Sep, 6, 13, 18 Oct; no station data for 8 Oct) | 32, 74, 111, 20 | 27, 76, 111, 20 |
+| Control (28 Sep, 1, 5, 17, 22 Oct; no data for 10 Oct) | 149, 133, 118, 46, 261 | 155, 140, 122, 46, 265 |
+
+**Verdict: MIXED.** Every test day passes the 10-minute mark, but so does every control day, by more. The station
+loses GPS on most days whether or not NISAR sees the site.
+
+**Reported, not scored.** In the hour around the NISAR pass (17:00-18:15 UTC), L2 was flagged on 2 of the 4 test days
+(8 minutes each) and on none of the 5 control days. That is too few to mean much.
+
+**Reading.**
+
+- L1 and L2 drop together, minute for minute, in short bursts across most satellites. A narrow tone at L2 wouldn't do
+  that. A broadband source, or something at the station itself, would.
+- So the station shows that GPS near Minsk is degraded on most days, but it neither confirms nor rules out the NISAR
+  tone.
+- The station's own records (receiver logs, its operator) would be needed to separate jamming from a station effect.
+
 ## Reproduce
 
 ```sh
