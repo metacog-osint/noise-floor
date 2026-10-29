@@ -245,10 +245,130 @@ def test_parse_obs():
     assert obs["G05"]["S1C"][2879] == np.float32(41.5)
     assert np.isfinite(obs["G01"]["S1C"]).sum() == 1                    # the 00:01:15 epoch was not stored
     try:
-        S.parse_obs(hline("     2.11           OBSERVATION DATA    M", "RINEX VERSION / TYPE") + "\n", "2026-05-09")
-        raise AssertionError("RINEX 2 accepted")
+        S.parse_obs(hline("     1.00           OBSERVATION DATA    M", "RINEX VERSION / TYPE") + "\n", "2026-05-09")
+        raise AssertionError("RINEX 1 accepted")
     except ValueError:
         pass
+
+
+TYPES2 = ["C1", "L1", "S1", "C2", "P2", "L2", "S2", "C5", "L5", "S5"]
+
+
+def epoch2(hh, mi, sec, flag, sats, day=(26, 10, 22)):
+    """A RINEX 2.11 epoch line (plus continuation lines for more than 12 satellites)."""
+    ids = "".join(sats) if isinstance(sats, list) else ""
+    ns = len(sats) if isinstance(sats, list) else sats
+    head = f" {day[0]:02d} {day[1]:2d} {day[2]:2d} {hh:2d} {mi:2d}{sec:11.7f}  {flag:1d}{ns:3d}"
+    out = [head + ids[:36]]
+    for k in range(36, len(ids), 36):
+        out.append(" " * 32 + ids[k:k + 36])
+    return out
+
+
+def rec2(vals):
+    """One satellite's RINEX 2.11 record for TYPES2: 10 values, 5 per line; None = blank. A line of blanks stays empty."""
+    cells = ["" if v is None else f"{v:14.3f}  " for v in vals]
+    lines = []
+    for k in range(0, len(cells), 5):
+        lines.append("".join(c if c else " " * 16 for c in cells[k:k + 5]).rstrip())
+    return lines
+
+
+def obs2(s1, s2=None, s5=None):
+    return rec2([21000000.0, 110000000.0, s1, None, 21000001.0, 86000000.0, s2, None, None, s5])
+
+
+def rinex2(time_sys="GPS", ftype="O"):
+    sats13 = ["G01", "G 2", "G03", "G04", "G05", "G06", "G07", "G08", "G09", "G10", "R05", "G11", " 13"]
+    body = epoch2(0, 0, 0.0, 0, sats13)
+    body += obs2(45.25, 38.0, 50.5)                                    # G01
+    body += rec2([21000000.0, 110000000.0, 42.0, None, None, None, None, None, None, None])  # G02: 2nd line empty
+    for prn in (3, 4, 5, 6, 7, 8, 9, 10):
+        body += obs2(40.0 + prn, 30.0 + prn)
+    body += obs2(47.0)                                                 # R05: GLONASS, not kept
+    body += obs2(51.0)                                                 # G11
+    body += obs2(44.0)                                                 # G13 (blank system letter)
+    body += epoch2(0, 0, 30.0, 0, ["G01", "G12"])
+    body += obs2(None, 37.5)                                           # G01: blank S1
+    body += obs2(50.0)
+    body += [" " * 28 + "4  2", hline("RINEX FILE SPLICE", "COMMENT"), hline("", "COMMENT")]   # event: 2 records
+    body += epoch2(0, 1, 0.0, 6, ["G01"]) + obs2(99.0)                # cycle-slip record: not an observation
+    body += epoch2(0, 1, 15.0, 0, ["G01"]) + obs2(30.0)               # off the 30 s grid
+    body += epoch2(0, 1, 30.0, 1, ["G01"]) + obs2(46.0)               # flag 1 (power failure before): kept
+    body += epoch2(23, 59, 30.0, 0, ["G05"]) + obs2(41.5)
+    hdr = [hline(f"     2.11           {'OBSERVATION' if ftype == 'O' else 'NAVIGATION'} DATA    M (MIXED)",
+                 "RINEX VERSION / TYPE"),
+           hline("TEST", "MARKER NAME"),
+           hline("12345               TRIMBLE ALLOY       Nav 6.40", "REC # / TYPE / VERS"),
+           hline("1                   TRM115000.00    NONE", "ANT # / TYPE"),
+           hline(" -1234567.0000 -5000000.0000  3400000.0000", "APPROX POSITION XYZ"),
+           hline(f"{len(TYPES2):6d}" + "".join(f"{t:>6}" for t in TYPES2[:9]), "# / TYPES OF OBSERV"),
+           hline(" " * 6 + "".join(f"{t:>6}" for t in TYPES2[9:]), "# / TYPES OF OBSERV"),
+           hline("    30.000", "INTERVAL"),
+           hline(f"  2026    10    22     0     0    0.0000000     {time_sys}", "TIME OF FIRST OBS"),
+           hline("", "END OF HEADER")]
+    if ftype != "O":
+        hdr[0] = hdr[0][:20] + ftype + hdr[0][21:]
+    return "\n".join(hdr + body + [""])
+
+
+def test_parse_obs2():
+    hdr, obs, present = S.parse_obs(rinex2(), "2026-10-22")
+    assert hdr["version"] == "2.11" and hdr["receiver"] == "TRIMBLE ALLOY" and hdr["time_system"] == "GPS"
+    assert hdr["xyz"] == [-1234567.0, -5000000.0, 3400000.0] and hdr["interval"] == 30.0
+    assert hdr["types"] == {"G": ["S1", "S2", "S5"]}, hdr["types"]                 # no Galileo, GLONASS not kept
+    assert present[0] and present[1] and present[3] and present[2879] and present.sum() == 4, np.flatnonzero(present)
+    assert obs["G01"]["S1"][0] == np.float32(45.25) and obs["G01"]["S2"][0] == 38.0 and obs["G01"]["S5"][0] == 50.5
+    assert obs["G02"]["S1"][0] == 42.0 and "S2" not in obs["G02"]                 # "G 2" spelling; empty 2nd line
+    assert obs["G10"]["S2"][0] == 40.0 and obs["G11"]["S1"][0] == 51.0
+    assert obs["G13"]["S1"][0] == 44.0                                             # continuation line, blank system
+    assert "R05" not in obs
+    assert np.isnan(obs["G01"]["S1"][1]) and obs["G01"]["S2"][1] == 37.5 and obs["G12"]["S1"][1] == 50.0
+    assert obs["G01"]["S1"][3] == 46.0                                             # flag-1 epoch kept
+    assert np.isfinite(obs["G01"]["S1"]).sum() == 2                               # cycle slip and 00:01:15 not stored
+    assert obs["G05"]["S1"][2879] == np.float32(41.5)
+    for bad in (rinex2(time_sys="GLO"), rinex2(ftype="N")):
+        try:
+            S.parse_obs(bad, "2026-10-22")
+            raise AssertionError("accepted")
+        except ValueError:
+            pass
+    # the RINEX 2 codes feed the same signals as RINEX 3
+    for name, code in (("GPS L1 C/A", "S1"), ("GPS L2", "S2"), ("GPS L5", "S5")):
+        assert code in S.SIGNALS[name][1]
+    assert S._sat2("G 5") == "G05" and S._sat2(" 13") == "G13" and S._sat2("E11") == "E11" and S._sat2("   ") is None
+
+
+def test_noaa_access():
+    assert S.is_noaa("P041") and S.is_noaa("colb") and not S.is_noaa("LAMA00POL")
+    assert S.norm("colb") == "COLB" and S.norm("LAMA00POL") == "LAMA00POL" and S.network("cobk") == "noaa"
+    assert S.obs_name("colb", "2026-10-22") == "https://noaa-cors-pds.s3.amazonaws.com/rinex/2026/295/colb/colb2950.26d.gz"
+    assert S.obs_name("P041", "2025-01-05").endswith("/rinex/2025/005/p041/p0410050.25d.gz")
+    text = "\n".join([
+        "October 25, 2026", "",
+        " SITE   EPOCH       Latitude          Longitude     Ellip. Ht.   Vn      Ve      Vu    Ctry.  State      Site ",
+        "P041  2010.00  39 56 58.14992 N  105 11 39.31653 W  1729.716     0.9     1.2    -1.7    US      CO      Operational",
+        "TEST  2010.00  12  0  0.00000 S   45 30  0.00000 E    10.000     0.0     0.0     0.0    XX      XX      Decommissioned",
+        "BAD!  2010.00  39 56 58.14992 N  105 11 39.31653 W  1729.716"])
+    rows = S.parse_noaa_coords(text)
+    assert [r[0] for r in rows] == ["P041", "TEST"] and rows[0][3] == "Operational" and rows[1][3] == "Decommissioned"
+    assert abs(rows[0][1] - 39.94949) < 1e-4 and abs(rows[0][2] + 105.19425) < 1e-4
+    assert rows[1][1] == -12.0 and rows[1][2] == 45.5
+
+
+def test_windows_and_measure():
+    m = S.window_minutes([["2026-03-06T07:15Z", "2026-03-06T07:44Z"], ["2026-03-05T23:50Z", "2026-03-06T00:09Z"],
+                          ["2026-03-06T23:50Z", "2026-03-07T02:00Z"]], "2026-03-06")
+    assert m[435] and m[464] and not m[434] and not m[465]               # 07:15-07:44 inclusive: 30 minutes
+    assert m[0] and m[9] and not m[10] and m[1439] and m.sum() == 30 + 10 + 10   # clipped to the day
+    em = S.epoch_minutes()
+    assert em[0] == -1 and em[1] == 0 and em[2] == 0 and em[3] == 1      # GPS 00:00:00 is UTC 23:59:42 the day before
+    sig = {"flagged_minutes": 40, "scored_share": 0.9, "flagged_minutes_in_windows": 12, "scored_share_in_windows": 0.6}
+    res = {"signals": {S.PRIMARY: sig}}
+    assert S.day_measure(res, windowed=True) == 12 and S.day_measure(res, windowed=False) == 40
+    assert S.day_measure({"signals": {S.PRIMARY: dict(sig, scored_share_in_windows=0.4)}}, True) is None
+    assert S.day_measure({"signals": {S.PRIMARY: dict(sig, scored_share=0.3)}}, False) is None
+    assert S.day_measure(None, False) is None and S.day_measure({"signals": {}}, True) is None
 
 
 def nav_rec(sat, vals):
