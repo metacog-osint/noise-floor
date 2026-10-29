@@ -91,6 +91,7 @@ Register-ScheduledTask -TaskName "noise-floor daily NISAR" -Action (New-Schedule
 - **Extra areas.** Every `private/watch/nisar.d/*.json` is a full config with its own `state_dir` and `out_dir`. Each runs after the main area and before publishing, so a failure in one doesn't stop the others.
   - Seed a new area before its first daily run (`run --config <file> --start <first day> --end <today> --seed --max <n>`), so its history doesn't raise alerts.
   - To show its map in the private view, add `<out_dir>/map.html` to `view.extra_maps` in the main config.
+- **Public file and site deploy.** After the areas, `export --upload` puts the day's file on the `nisar-data` release. Only if that worked, the script starts the site's `deploy-site.yml` (`gh workflow run`), so the map shows the file within minutes; GitHub's own daily deploy runs before the upload. Both steps need the gh CLI signed in, and a failure in either sets the exit code.
 
 **Private web view.** `python -m nisar_rfi publish` builds a small static site from the outputs (`private/nisar/view/`): a landing page with run health, new sites and the strongest repeat sites, the maps, and the GeoJSON/JSONL files. It deploys the site with wrangler to a Cloudflare Pages project behind Cloudflare Access. `run_daily.cmd` publishes after every run.
 
