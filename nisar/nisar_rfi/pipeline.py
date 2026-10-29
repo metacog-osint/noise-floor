@@ -493,6 +493,7 @@ def run(cfg, local_dir=None, seed=False, max_granules=None, days=None, now=None,
                               "processed": len(todo) - errors, "errors": errors, "at": now.strftime("%Y-%m-%dT%H:%MZ")}
 
     # 3. sites, fixes, outputs
+    sites.fill_modes(state, cfg.get("sites", {}).get("quiet_after"))      # older records: modes and signal needs
     sites.refresh_fixes(state, cfg)
     sites.prune(state, cfg.get("keep_days", 60), now)
     alerts = report.alerts_from_events(events, state, cfg, now)

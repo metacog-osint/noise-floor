@@ -20,6 +20,15 @@ NISAR's L-band SAR listens in 1215–1300 MHz. Over most land it acquires in **2
 
 Other modes (40+5, 77, 20+20, 5+5) exist. The table method reads each pass's real frequency axis, so it doesn't depend on the mode. The whole range is also the L-band air-surveillance radar allocation. GPS L1 is out of band, so L1-only jammers don't appear.
 
+**What a pass can hear.** The RFI tables span more than the image band. Read from products on 29 Oct 2026:
+
+| Mode | RFI table span | Polarization |
+|---|---|---|
+| 20+5 (a Gulf pass) | A 1215.00–1262.95 MHz, B 1290.50–1296.49 MHz | HH+HV |
+| 5 (a Novaya Zemlya pass; frequent over the Arctic, Kola and the northern Baltic) | B 1218.50–1224.49 MHz | VV only |
+
+A 5 MHz pass can't hear a signal at the GPS L2 centre (1226.6–1228.6 MHz), and with one polarization the broadband test can't run. So each coverage entry records the receive modes of the frames that covered the site, and each site records what its signal needs (tone ranges, broadband slices; `bands.signal_needs`). A clean pass in a mode that couldn't hear the site doesn't count towards QUIET (`sites.could_hear`), and the public export lists such passes apart (`coverage_unheard`) instead of as passes that missed the site. Modes whose span hasn't been read yet (40+5, 77, 20+20, 5+5) count as able to hear anything. `sites.fill_modes` rebuilds modes for older records from the processed-pass log.
+
 ## Table method
 
 PROVISIONAL products (acquired from 17 Jun 2026) are processed with RFI **tone-rank** detection and mitigation. Along the way the processor writes, into each RSLC, a grid of analysis blocks (azimuth time × slant range) holding:

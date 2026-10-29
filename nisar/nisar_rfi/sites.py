@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from shapely.geometry import Point, Polygon
 
+from . import bands
 from . import geometry as geo
 
 DEFAULTS = {
@@ -83,10 +84,36 @@ def _ignored(cfg, lat, lon):
     return None
 
 
+def _add_mode(cv, g):
+    """Note the receive mode of a frame that covered this pass (a pass's frames can differ in mode)."""
+    m = g.get("mode")
+    cv.setdefault("modes", [])
+    if m and m not in cv["modes"]:
+        cv["modes"].append(m)
+
+
+def _add_needs(s, d):
+    """Fold a detection's signal into the site's record of what a pass must receive to see it again."""
+    merged = []
+    for kind, lo, hi in sorted([tuple(x) for x in s.get("needs", [])] + bands.signal_needs(d)):
+        last = merged[-1] if merged else None
+        if last and last[0] == kind and lo <= last[2] + 0.5:          # ranges of one kind within 0.5 MHz merge
+            last[2] = max(last[2], round(hi, 2))
+        else:
+            merged.append([kind, round(lo, 2), round(hi, 2)])
+    s["needs"] = merged
+
+
+def could_hear(s, cv):
+    """True if this covering pass could have detected the site's signal (an active pass always could)."""
+    return cv["active"] or bands.hears(cv.get("modes"), [tuple(x) for x in s.get("needs", [])])
+
+
 def _settle(s, quiet_after):
     """Re-derive a site's status, clean streak and seen dates from its coverage in time order.
 
     Used when a pass arrives after newer ones (a retried failure, a backfill gap), so the running counters don't apply.
+    Passes whose receive mode couldn't hear the site's signal don't count towards QUIET.
     """
     s["coverage"].sort(key=lambda cv: cv["start"])
     if s["coverage"]:
@@ -94,7 +121,8 @@ def _settle(s, quiet_after):
         for cv in reversed(s["coverage"]):
             if cv["active"]:
                 break
-            streak += 1
+            if could_hear(s, cv):
+                streak += 1
         s["clean_streak"] = streak
         s["status"] = "QUIET" if streak >= quiet_after else "ACTIVE"
     seen = [cv["start"] for cv in s["coverage"] if cv["active"]]
@@ -127,6 +155,7 @@ def update(state, g, detections, cfg, baseline_run=False):
                 "where": d.get("where", ""), "country": d.get("country"), "baseline": baseline_run,
             }
         d["site"] = s["id"]
+        _add_needs(s, d)
         if s["id"] in touched:                  # second blob for the same site in this granule
             s["detections"].append(d["id"])
             continue
@@ -134,6 +163,7 @@ def update(state, g, detections, cfg, baseline_run=False):
         prior = next((cv for cv in s["coverage"] if cv["pass"] == pk), None)
         if prior is not None:                   # adjacent frame of a pass already counted
             s["detections"].append(d["id"])
+            _add_mode(prior, g)
             if not prior["active"]:
                 prior.update(active=True, det=d["id"])
                 _settle(s, c["quiet_after"])       # right for in-order and late passes alike
@@ -147,7 +177,9 @@ def update(state, g, detections, cfg, baseline_run=False):
         s["first_seen"] = min(s["first_seen"], g["start"])
         s["last_seen"] = max(s["last_seen"], g["start"])
         s["detections"].append(d["id"])
-        s["coverage"].append({"pass": pk, "start": g["start"], "active": True, "det": d["id"]})
+        cv = {"pass": pk, "start": g["start"], "active": True, "det": d["id"]}
+        _add_mode(cv, g)
+        s["coverage"].append(cv)
         s["bands_seen"] = sorted(set(s["bands_seen"]) | set(d["bands"]))
         s["geometries"] = sorted(set(s["geometries"]) | {f'{g["track"]}{g["direction"]}'})
         if late:
@@ -163,18 +195,69 @@ def update(state, g, detections, cfg, baseline_run=False):
     for s in state["sites"].values():
         if s["id"] in touched or not _covers(g, s["lat"], s["lon"]):
             continue
-        if any(cv["pass"] == pk for cv in s["coverage"]):
+        cv = next((x for x in s["coverage"] if x["pass"] == pk), None)
+        if cv is not None:                      # another frame of a pass already counted
+            heard = could_hear(s, cv)
+            _add_mode(cv, g)
+            if not heard and could_hear(s, cv):  # this frame's mode can hear the site: now it counts as clean
+                was = s["status"]
+                _settle(s, c["quiet_after"])
+                if was == "ACTIVE" and s["status"] == "QUIET" and cv is s["coverage"][-1]:
+                    events.append({"kind": "QUIET", "site": s["id"], "det": None, "baseline": baseline_run})
             continue
-        late = any(cv["start"] > g["start"] for cv in s["coverage"])
-        s["coverage"].append({"pass": pk, "start": g["start"], "active": False})
+        late = any(x["start"] > g["start"] for x in s["coverage"])
+        cv = {"pass": pk, "start": g["start"], "active": False}
+        _add_mode(cv, g)
+        s["coverage"].append(cv)
         if late:
             _settle(s, c["quiet_after"])
+            continue
+        if not could_hear(s, cv):               # a mode that can't receive this site's signal: says nothing about it
             continue
         s["clean_streak"] += 1
         if s["status"] == "ACTIVE" and s["clean_streak"] >= c["quiet_after"]:
             s["status"] = "QUIET"
             events.append({"kind": "QUIET", "site": s["id"], "det": None, "baseline": baseline_run})
     return events
+
+
+def fill_modes(state, quiet_after=None):
+    """Fill what older records lack: each coverage entry's receive modes (from the processed-pass log, frames whose
+    footprint covers the site) and each site's signal needs (from its detections), then re-derive status without
+    events. Entries whose pass is no longer in the log get an empty list (unknown: counted as able to hear).
+    Returns the number of sites changed."""
+    from shapely.prepared import prep
+    quiet_after = quiet_after or DEFAULTS["quiet_after"]
+    frames = {}
+    dets = {d["id"]: d for d in state.get("detections", [])}
+    changed = 0
+    for s in state["sites"].values():
+        todo = [cv for cv in s["coverage"] if "modes" not in cv]
+        if "needs" in s and not todo:
+            continue
+        if not frames:
+            for p in state.get("processed", {}).values():
+                if p.get("status") == "ok" and p.get("mode") and p.get("footprint") and len(p["footprint"]) >= 3:
+                    try:
+                        raw = Polygon(p["footprint"])
+                        poly = prep(raw.buffer(-0.02))
+                    except Exception:
+                        continue
+                    frames.setdefault(pass_key(p), []).append((poly, p["mode"], raw))
+        if "needs" not in s:
+            s["needs"] = []
+            for i in s.get("detections", []):
+                if i in dets:
+                    _add_needs(s, dets[i])
+        pt = Point(s["lon"], s["lat"])
+        for cv in todo:
+            fr = frames.get(cv["pass"], [])
+            cv["modes"] = sorted({m for poly, m, _ in fr if poly.contains(pt)})
+            if fr and not cv["modes"]:          # the site's mean position has since moved off the frame: nearest one
+                cv["modes"] = [min(fr, key=lambda f: f[2].distance(pt))[1]]
+        _settle(s, quiet_after)
+        changed += 1
+    return changed
 
 
 def refresh_fixes(state, cfg):

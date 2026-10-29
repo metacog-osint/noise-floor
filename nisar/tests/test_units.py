@@ -131,6 +131,46 @@ def test_site_late_pass():
     assert len(s["coverage"]) == 60 and all(cv["pass"] != "old" for cv in s["coverage"])
 
 
+def test_mode_hearing():
+    """A 5 MHz VV pass (tables span 1218.5-1224.5 MHz) can't hear the L2 centre or broadband power; 20+5 tables span
+    1215-1263 MHz, so they hear 1247 MHz; unchecked modes count as able to hear. Clean passes in a mode that can't
+    hear a site don't make it QUIET; older records get their modes back from the processed-pass log."""
+    from nisar_rfi import sites
+    l2, low, mid, broad = [("tone", 1227.0, 1228.2)], [("tone", 1221.0, 1221.0)], [("tone", 1247.2, 1247.3)], [("broad", 1219.0, 1239.0)]
+    assert not bands.hears(["5"], l2) and bands.hears(["5"], low) and not bands.hears(["5"], broad)
+    assert bands.hears(["20+5"], mid) and bands.hears(["20+5"], broad) and bands.hears(["5", "20+5"], l2)
+    assert bands.hears(["40+5"], l2) and bands.hears([], l2) and bands.hears(["5"], [])
+    d = {"band": "A", "mode": "20+5", "freq_runs_mhz": [[1227.1, 1228.2, 0.6]], "broadband": {"confidence": "HIGH"},
+         "band_b": {"method": "broadband", "freq_runs_mhz": []}}
+    assert bands.signal_needs(d) == [("tone", 1227.1, 1228.2), ("broad", 1219.0, 1239.0), ("broad", 1291.0, 1296.0)]
+
+    state = {"sites": {}, "detections": [], "processed": {}}
+    cfg = {"sites": {"site_prefix": "M", "quiet_after": 2}}
+    box = [[52.0, 72.0], [56.0, 72.0], [56.0, 74.0], [52.0, 74.0], [52.0, 72.0]]
+
+    def g(day, mode):
+        return {"track": 1, "direction": "A", "start": f"2026-10-{day}T12:00:00Z", "footprint": box, "mode": mode}
+    det = {"id": "d1", "lat": 73.0, "lon": 54.0, "peak_z": 5.0, "bands": ["A"], "method": "tables", **d}
+    assert [e["kind"] for e in sites.update(state, g("07", "20+5"), [det], cfg)] == ["NEW"]
+    s = state["sites"]["M-0001"]
+    assert [e["kind"] for e in sites.update(state, g("08", "5"), [], cfg)] == []
+    assert [e["kind"] for e in sites.update(state, g("09", "5"), [], cfg)] == []
+    assert (s["status"], s["clean_streak"]) == ("ACTIVE", 0) and s["coverage"][-1]["modes"] == ["5"], s
+    sites.update(state, g("10", "20+5"), [], cfg)
+    assert [e["kind"] for e in sites.update(state, g("11", "20+5"), [], cfg)] == ["QUIET"]
+
+    # an older record: no modes or needs stored; the processed log has the frames
+    for cv in s["coverage"]:
+        cv.pop("modes")
+    s.pop("needs")
+    state["detections"] = [det]
+    state["processed"] = {f"G{day}": {"status": "ok", "track": 1, "direction": "A", "start": f"2026-10-{day}T12:00:00Z",
+                                      "footprint": box, "mode": m} for day, m in (("07", "20+5"), ("08", "5"), ("09", "5"))}
+    assert sites.fill_modes(state, 2) == 1
+    assert [cv.get("modes") for cv in s["coverage"]] == [["20+5"], ["5"], ["5"], [], []], s["coverage"]
+    assert s["status"] == "QUIET" and s["needs"], s          # the two 20+5 clean passes (modes unknown now) still count
+
+
 if __name__ == "__main__":
     for k, v in list(globals().items()):
         if k.startswith("test_"):

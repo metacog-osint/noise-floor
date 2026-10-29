@@ -745,6 +745,7 @@
       if (!dets.length) return;
       var cov = (s.coverage || []).filter(function (c) { return inWin(c[0]); });
       list.push({ s: s, dets: dets, l2: dets.some(l2Signature), cov: cov,
+                  unheard: (s.coverage_unheard || []).filter(inWin).length,   // passes in a mode that can't hear it
                   covered: cov.length, seen: cov.filter(function (c) { return c[1]; }).length,
                   partial: s.coverage_from && Date.parse(s.coverage_from) > start + 86400000,
                   last: dets[dets.length - 1].t });
@@ -808,8 +809,9 @@
         "GPS errors at jamming scale on " + onJam + " of " + on + " day" + (on === 1 ? "" : "s") + " NISAR saw it" +
         (off ? ", " + offJam + " of " + off + " day" + (off === 1 ? "" : "s") + " it didn't" : "")]);
     }
-    lines.push(["Seen", v.seen + " of " + v.covered + " passes that covered it in the " + NIS_WINDOW_DAYS + " days to " + fmtDay(state.day) +
-                (v.partial ? " (counted from " + fmtDay(s.coverage_from.slice(0, 10)) + ")" : "")]);
+    lines.push(["Seen", v.seen + " of " + v.covered + " passes that could hear it in the " + NIS_WINDOW_DAYS + " days to " + fmtDay(state.day) +
+                (v.partial ? " (counted from " + fmtDay(s.coverage_from.slice(0, 10)) + ")" : "") +
+                (v.unheard ? "; " + v.unheard + " more passed over in a receive mode that can't pick up this signal" : "")]);
     lines.push(["Last seen", utcAndLocal(v.last)]);
     lines.push(["First seen", fmtDay(s.first_seen.slice(0, 10))]);
     lines.push(["Orbit tracks", tracks.length + (dirs.indexOf("A") >= 0 && dirs.indexOf("D") >= 0 ? " (ascending and descending)" : "")]);

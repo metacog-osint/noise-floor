@@ -196,7 +196,7 @@ def write_map(state, cfg, now, path, demo=False, truth=None):
         for f in bl["features"] if shape(f["geometry"]).intersects(view)]}
     gz = json.load(gzip.open(os.path.join(HERE, "assets", "gazetteer.json.gz"), "rt", encoding="utf-8"))
     vw, vs, ve, vn = view.bounds
-    places = sorted(([p[0], p[1], p[2], p[4]] for p in gz["places"] if vs <= p[1] <= vn and vw <= p[2] <= ve),
+    places = sorted(([" ".join(p[0].split()), p[1], p[2], p[4]] for p in gz["places"] if vs <= p[1] <= vn and vw <= p[2] <= ve),
                     key=lambda p: -(p[3] or 0))[:600]           # [name, lat, lon, population], largest first
     countries = []
     for f in gz["countries"]["features"]:                 # one label per country, inside the view
