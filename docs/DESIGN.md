@@ -131,7 +131,7 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
 4. **Spoofing and maritime:** ADS-B spoofing detectors, AIS (Digitraffic, Kystverket), declared-warning layers. **Extended 23 Oct 2026** by the maritime lane plan (`docs/maritime-plan.md`): vessels and their signals in the South China Sea and Indian Ocean, led by one validated method (dark ships and phantom tracks).
 5. **Emitters:** Sentinel-1 RFI board and weather-radar spokes.
 6. **Assessment:** event fusion and grading, attribution and exclusion layers, community lane, Claude digests, private dashboard behind Access.
-7. **Extensions:** spaceborne and network GNSS (CYGNSS, NISAR, COSMIC-2, CORS/IGS, SMOS/SMAP).
+7. **Extensions:** spaceborne and network GNSS (CYGNSS, NISAR, COSMIC-2, CORS/IGS, SMOS/SMAP). **Planned 30 Oct 2026** in `docs/space-sensors-plan.md`: COSMIC-2, HydroGNSS, SMAP and polar radio occultation, with Sentinel-1 as a possible public region layer.
 
 ### Maritime lane plan (23 Oct 2026)
 
