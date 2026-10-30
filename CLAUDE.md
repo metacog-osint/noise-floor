@@ -67,6 +67,10 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   first. COSMIC-2 occultation files carry a per-link RFI index (`podTc2` variable `RFI`, 458 MB a day, anonymous);
   HydroGNSS (L1 and L5 reflections, near-polar) waits on Tom's registration; then SMAP (1400–1427 MHz emitters) and polar
   occultation (Sentinel-6, Metop GRAS). Steps C, H, R, P; Sentinel-1 public layer is option S.
+  **Step E (added 30 Oct 2026):** the Sentinel-1C/1D/2B/2C/3A/3B navigation receivers (Copernicus `AUX_GNSSRD`, the
+  SAT-JAM method; E0 done: signal strength present, 10 s, ~6 days behind). Downloads use S3 keys in the user variables
+  `CDSE_S3_ACCESS_KEY` and `CDSE_S3_SECRET_KEY`; Sentinel-6A stays in step P (PO.DAAC). The plan's collectors section maps
+  ground-truth sources onto `watch.py`; `CLOUDFLARE_RADAR_TOKEN` (read-only) is set for a Radar source.
 - **AIS beyond the Baltic (28 Oct 2026, Tom approved):** `collectors/run_aisstream.cmd` (global aisstream, private only;
   focus boxes in `private/watch/maritime.json`) and `collectors/barentswatch_ais.py` + `run_barentswatch.cmd` (Norway's open
   AIS, NLOD; Finnmark and the western Barents Sea). Both skip until Tom's credentials exist (AISSTREAM_API_KEY;
