@@ -30,6 +30,15 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   clock (Tom, 27 Oct 2026). Messages to Tom use Central time.
 - Tom is a domain expert (intel, SDA, weather): cite sources and flag anything unverified.
 
+## Doctrine kit (30 Oct 2026)
+- `doctrine/kit/` is a vendored copy of The Intelligence Company's shared kit (`D:\Projects\tic-doctrine`): never edit it
+  here; change the kit and run `python D:/Projects/tic-doctrine/tools/sync.py D:/Projects/noise-floor`. CI runs
+  `doctrine/kit/tic.py kitcheck` and `registers doctrine`.
+- `doctrine/` holds Noisefloor's requirements, warning problems and indicators, assumptions, function map, source
+  extras (grades, independence groups, health probes) and method summary. Area-specific warning problems stay private.
+- `tools/feed_v2.py` writes `site/data/feed.geojson` (feed contract `tic-feed/2`) from the status board at deploy;
+  `board.py` calls it, and a failure only skips the feed. Every item is a measurement (kind observation) for now.
+
 ## Products and tools
 - `products/`: written products, dated. First: `2026-10-07-sun-outage-season.md` (Weekly Topic draft, not yet published).
 - `tools/sun_transit.py`: sun-outage windows for GEO satellites from fixed receivers (`--daily`, `--start`, `--end`,

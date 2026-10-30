@@ -446,6 +446,13 @@ def main():
         json.dump(b, f, separators=(",", ":"), ensure_ascii=False)
     print(f"board: {os.path.getsize(out) // 1024} KB; sections {[k for k in b if k not in ('problems',)]}; "
           f"problems {b['problems'] or 'none'}")
+    try:                                 # the contract v2 feed for COP is built from the same board; never fatal
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import feed_v2
+        path, n = feed_v2.write(site, b)
+        print(f"feed_v2: {n} items -> {path}")
+    except Exception as e:
+        print(f"::warning::contract v2 feed skipped: {type(e).__name__}: {str(e)[:200]}")
 
 
 if __name__ == "__main__":

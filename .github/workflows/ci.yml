@@ -21,6 +21,8 @@ jobs:
         run: python tools/check_public.py --all && python tools/check_public.py --log
       - name: Licence registry
         run: python tools/check_registry.py
+      - name: Doctrine kit copy and registers (tic-doctrine)
+        run: python doctrine/kit/tic.py kitcheck && python doctrine/kit/tic.py registers doctrine
       - name: Public site matches site_src and the registry
         run: python tools/build_site.py && git diff --exit-code -- site
       - name: Offline tests

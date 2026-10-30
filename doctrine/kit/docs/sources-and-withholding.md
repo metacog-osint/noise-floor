@@ -1,0 +1,32 @@
+# Sources and withholding
+
+## Sources
+
+Every program publishes its source register: each source's publisher, licence, how we use it (ingested, shown for
+visual comparison, linked, or excluded), its reliability grade and its health today. A source that fails or goes stale
+turns its map layers grey ("no data") until it recovers.
+
+We are a non-commercial research effort, so we use sources licensed for non-commercial use and credit each one. We leave
+out only sources whose terms forbid republishing.
+
+## Public information only
+
+We use publicly available information only. We hold no information about US persons, and every item we publish says so
+in a field that our build checks. Where a source lists individuals (for example sanctions or screening lists), we
+publish counts, not names. Where a source's terms forbid re-identifying people, we skip that data.
+
+## What we withhold, and why
+
+If something we collect contains a **credible, specific threat to kill, seriously injure or kidnap a person or group**,
+we do not publish it or put it on a map. A person reviews it, refers it to local law enforcement or the FBI, and records
+the decision privately with a note that identifies no one. This page shows only how many items were withheld each month.
+
+The rule is modelled on the trigger in US Intelligence Community Directive 191 (duty to warn). That directive binds US
+intelligence agencies, not us; we adopted its trigger voluntarily. In the spirit of Directive 107, we explain here what
+we cannot release and why.
+
+| Month | Items withheld |
+|---|---|
+| *(filled from withheld.json at build time)* | |
+
+Influence-operation reporting stays at the level of the operation, never the individual account holder.

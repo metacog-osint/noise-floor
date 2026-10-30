@@ -1,0 +1,114 @@
+{
+  "program": "noisefloor",
+  "customer": "Public readers, aviation and maritime users, analysts, and COP. Written by the program owner.",
+  "reviewed": "2026-10-30",
+  "review_by": "2027-01-31",
+  "note": "Area-specific requirements and watch areas are private configuration and stay out of this public file.",
+  "requirements": [
+    {
+      "id": "NF-SQ-2",
+      "type": "standing",
+      "standing_question": "SQ2",
+      "question": "Is critical infrastructure (PNT, internet, power) being degraded, and where?"
+    },
+    {
+      "id": "NF-PIR-1",
+      "type": "pir",
+      "parent": "NF-SQ-2",
+      "question": "Where is GPS interference degrading aircraft navigation today, and how does each place compare with its own baseline?",
+      "series": [
+        "daily map cells (severe GPS error share)",
+        "named-area trend",
+        "graded events"
+      ],
+      "warning_problems": [
+        "NF-WP-1",
+        "NF-WP-2"
+      ]
+    },
+    {
+      "id": "NF-PIR-2",
+      "type": "pir",
+      "parent": "NF-SQ-2",
+      "question": "Where has interference started or stopped this week?",
+      "series": [
+        "changes: new, ended and long-running regions"
+      ],
+      "warning_problems": [
+        "NF-WP-1"
+      ]
+    },
+    {
+      "id": "NF-PIR-3",
+      "type": "pir",
+      "parent": "NF-SQ-2",
+      "question": "Is a given episode deliberate interference, a declared test, space weather, or an artefact of the data?",
+      "series": [
+        "ESA scintillation nowcast",
+        "NOAA SWPC indices",
+        "spoofing episodes",
+        "position loss",
+        "declared notices"
+      ],
+      "warning_problems": [
+        "NF-WP-1",
+        "NF-WP-2"
+      ]
+    },
+    {
+      "id": "NF-PIR-4",
+      "type": "pir",
+      "parent": "NF-SQ-2",
+      "question": "Do declared notices (US GPS tests, EASA's FIR reports, official notices) match what aircraft see?",
+      "series": [
+        "declared notices",
+        "daily map cells"
+      ]
+    },
+    {
+      "id": "NF-PIR-5",
+      "type": "pir",
+      "standing_question": "SQ3",
+      "question": "What changed in the geostationary belt over the regions the GEO page covers?",
+      "series": [
+        "GEO region arrivals and departures"
+      ]
+    },
+    {
+      "id": "NF-EEI-1",
+      "type": "eei",
+      "parent": "NF-PIR-1",
+      "question": "Share of aircraft in each cell reporting position error worse than 93 m (severe GPS error).",
+      "series": [
+        "daily map cells (severe GPS error share)"
+      ]
+    },
+    {
+      "id": "NF-EEI-2",
+      "type": "eei",
+      "parent": "NF-PIR-3",
+      "question": "Share of aircraft heard by multilateration but sending no GNSS position.",
+      "series": [
+        "position loss"
+      ]
+    },
+    {
+      "id": "NF-EEI-3",
+      "type": "eei",
+      "parent": "NF-PIR-3",
+      "question": "Active ADS-B spoofing episodes and where they cluster.",
+      "series": [
+        "spoofing episodes"
+      ]
+    },
+    {
+      "id": "NF-EEI-4",
+      "type": "eei",
+      "parent": "NF-PIR-3",
+      "question": "Satellite reflectometry noise-floor anomalies (CYGNSS) over the same places.",
+      "series": [
+        "CYGNSS day summaries"
+      ]
+    }
+  ]
+}

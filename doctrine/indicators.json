@@ -1,0 +1,226 @@
+{
+  "program": "noisefloor",
+  "indicator_rule": "Indicators meet Gentry's test. Lists stay flat, not tiered by time (Grabo). Readouts count changed indicators per hypothesis; there is no weighted threat score. Area-specific frozen lists are private configuration.",
+  "indicators": [
+    {
+      "id": "NF-IND-1",
+      "text": "A region reaches jamming scale on days in the last 7 and on none of the 30 before",
+      "series": "changes: new regions",
+      "rule": "H3 res-2 region with 3+ res-4 cells at hex score >= 10 (>= 5 aircraft); new = in the last 7 days and none of the 30 before",
+      "baseline": "30 days before the last 7 (rolling)",
+      "gentry": {
+        "predictive": true,
+        "diagnostic": false,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "NF-IND-2",
+      "text": "A named area's severe share rises 5 points or more above its 30-day median",
+      "series": "named-area trend",
+      "rule": "today - median(previous 30 days) >= 5 percentage points, area share >= 5%",
+      "baseline": "30-day rolling median",
+      "gentry": {
+        "predictive": true,
+        "diagnostic": false,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "NF-IND-3",
+      "text": "A fifth or more of aircraft heard over the area send no position",
+      "series": "position loss",
+      "rule": "position-loss share >= 20% where at least half the cells have MLAT coverage",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": false,
+        "collectable": true
+      }
+    },
+    {
+      "id": "NF-IND-4",
+      "text": "Active spoofing episodes in or next to the area",
+      "series": "spoofing episodes",
+      "rule": "one or more active episodes within 350 km on the same day",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "NF-IND-5",
+      "text": "A declared notice covers the area and time (US GPS test, official notice, EASA FIR listing)",
+      "series": "declared notices",
+      "rule": "notice polygon or FIR intersects the region on the same day",
+      "gentry": {
+        "predictive": true,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "NF-IND-6",
+      "text": "Ionospheric scintillation moderate or strong over the area at the same hours",
+      "series": "ESA scintillation nowcast; NOAA SWPC Kp",
+      "rule": "nowcast level moderate or strong, or Kp >= 5, within 3 hours",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "NF-IND-7",
+      "text": "Degraded reports come mostly from one receiver or one aircraft family",
+      "series": "per-feeder and per-type breakdown",
+      "rule": "more than 80% of degraded reports from one source",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "NF-IND-8",
+      "text": "Aircraft coverage over the area falls more than 30% below its 28-day median",
+      "series": "named-area trend (aircraft counts)",
+      "rule": "aircraft count < 0.7 x 28-day median",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": false,
+        "unambiguous": false,
+        "collectable": true
+      }
+    },
+    {
+      "id": "NF-IND-9",
+      "text": "Satellite reflectometry (CYGNSS) shows a raised noise floor over the area",
+      "series": "CYGNSS day summaries",
+      "rule": "cell noise floor above its own 90-day 95th percentile",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    }
+  ],
+  "warning_problems": [
+    {
+      "id": "NF-WP-1",
+      "title": "New GPS interference area (anywhere on the map)",
+      "frozen": "2026-10-30",
+      "watch_condition": {
+        "current": "set daily per region",
+        "levels": [
+          "normal",
+          "elevated",
+          "warning"
+        ]
+      },
+      "issue_on_change": "Issue a notice only when a region's watch condition changes; stay silent while it holds (ICD 203 allows silence for recurring products).",
+      "deactivation": "A region returns to normal after 14 days with NF-IND-1 absent and coverage at or above half its median.",
+      "hypotheses": [
+        {
+          "id": "NF-WP-1-H1",
+          "statement": "Undeclared jamming or spoofing has begun",
+          "emerging": [
+            "NF-IND-1",
+            "NF-IND-3",
+            "NF-IND-4",
+            "NF-IND-9"
+          ],
+          "not_emerging": [
+            "NF-IND-5",
+            "NF-IND-6",
+            "NF-IND-7"
+          ]
+        },
+        {
+          "id": "NF-WP-1-H2",
+          "statement": "A declared test or exercise",
+          "emerging": [
+            "NF-IND-5"
+          ],
+          "not_emerging": []
+        },
+        {
+          "id": "NF-WP-1-H3",
+          "statement": "Space weather (ionospheric scintillation)",
+          "emerging": [
+            "NF-IND-6"
+          ],
+          "not_emerging": [
+            "NF-IND-4"
+          ]
+        },
+        {
+          "id": "NF-WP-1-H4",
+          "statement": "Artefact or data failure",
+          "emerging": [
+            "NF-IND-7",
+            "NF-IND-8"
+          ],
+          "not_emerging": [
+            "NF-IND-9"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "NF-WP-2",
+      "title": "Escalation over a named area",
+      "frozen": "2026-10-30",
+      "watch_condition": {
+        "current": "set daily per area",
+        "levels": [
+          "normal",
+          "elevated",
+          "warning"
+        ]
+      },
+      "issue_on_change": "Issue a notice when NF-IND-2 holds on 3 of the last 5 days, and again when it lapses.",
+      "deactivation": "Back to normal when the area's share is within 5 points of its 30-day median for 7 days.",
+      "hypotheses": [
+        {
+          "id": "NF-WP-2-H1",
+          "statement": "Interference over the area has intensified",
+          "emerging": [
+            "NF-IND-2",
+            "NF-IND-3",
+            "NF-IND-4"
+          ],
+          "not_emerging": [
+            "NF-IND-8"
+          ]
+        },
+        {
+          "id": "NF-WP-2-H2",
+          "statement": "Space weather",
+          "emerging": [
+            "NF-IND-6"
+          ],
+          "not_emerging": []
+        },
+        {
+          "id": "NF-WP-2-H3",
+          "statement": "Artefact: coverage or receiver change",
+          "emerging": [
+            "NF-IND-7",
+            "NF-IND-8"
+          ],
+          "not_emerging": []
+        }
+      ]
+    }
+  ],
+  "emerging_concerns": "A region that reaches jamming scale but matches no warning problem goes to the review queue. It is promoted after it recurs in 3 separate weeks and demoted after 60 quiet days."
+}

@@ -1,0 +1,71 @@
+{
+  "program": "noisefloor",
+  "register": "registry/sources.csv",
+  "note": "The register of record is registry/sources.csv (licence, use, assessment). The rows here add what the doctrine kit needs for the sources that feed public products: Admiralty grade, independence group, how easily the data could be faked, expected cadence and a health probe.",
+  "extra": {
+    "adsblol-archive": {
+      "grade": "B2",
+      "independence_group": "adsb-feeders",
+      "ease_of_faking": "medium",
+      "cadence_s": 86400,
+      "descriptor": "Crowd-fed ADS-B receiver archive (readsb traces with navigation-accuracy fields); daily file posted next morning.",
+      "probe": {
+        "url": "https://api.github.com/repos/adsblol/globe_history_2026/releases/latest",
+        "expect": "json",
+        "time_path": "published_at"
+      }
+    },
+    "noaa-swpc": {
+      "grade": "A1",
+      "independence_group": "noaa",
+      "ease_of_faking": "low",
+      "cadence_s": 10800,
+      "descriptor": "NOAA Space Weather Prediction Center official indices and alerts.",
+      "probe": {
+        "url": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
+        "expect": "json",
+        "time_path": "-1.0"
+      }
+    },
+    "esa-swe-scint": {
+      "grade": "B2",
+      "independence_group": "esa",
+      "ease_of_faking": "low",
+      "cadence_s": 3600,
+      "descriptor": "ESA Space Weather Service Network ionospheric scintillation nowcast grid.",
+      "probe": {
+        "url": "https://swe.ssa.esa.int/assets/ism/ism_nowcast/s4_nowcast_grid.xml",
+        "expect": "any"
+      }
+    },
+    "easa-gnss-firs": {
+      "grade": "A2",
+      "independence_group": "easa",
+      "ease_of_faking": "low",
+      "cadence_s": 2592000,
+      "descriptor": "EASA's table of FIRs with reported GNSS interference; official, updated irregularly.",
+      "probe": {
+        "url": "https://www.easa.europa.eu/en/domains/air-operations/global-navigation-satellite-system-outages-and-alterations",
+        "expect": "any"
+      }
+    },
+    "navcen-gps-tests": {
+      "grade": "A1",
+      "independence_group": "us-gov",
+      "ease_of_faking": "low",
+      "cadence_s": 604800,
+      "descriptor": "US Coast Guard Navigation Center notices of US GPS interference testing.",
+      "probe": {
+        "url": "https://www.navcen.uscg.gov/gps-service-interruptions",
+        "expect": "any"
+      }
+    },
+    "cygnss-l1": {
+      "grade": "B2",
+      "independence_group": "nasa-cygnss",
+      "ease_of_faking": "low",
+      "cadence_s": 604800,
+      "descriptor": "NASA CYGNSS level-1 reflectometry; its noise floor is an independent sensing method for interference."
+    }
+  }
+}
