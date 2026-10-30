@@ -63,6 +63,10 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   extra area in `private/watch/nisar.d/*.json` after the main one, then the export (uploaded to the `nisar-data`
   release), then, only after a good upload, a site deploy (`gh workflow run deploy-site.yml`; Tom approved 29 Oct 2026,
   because GitHub's daily deploy runs before the upload), then the private publish. Each detection is a lead, not attribution.
+- **Other satellites (planned 30 Oct 2026, not built; Tom's decisions D1–D5 pending):** read `docs/space-sensors-plan.md`
+  first. COSMIC-2 occultation files carry a per-link RFI index (`podTc2` variable `RFI`, 458 MB a day, anonymous);
+  HydroGNSS (L1 and L5 reflections, near-polar) waits on Tom's registration; then SMAP (1400–1427 MHz emitters) and polar
+  occultation (Sentinel-6, Metop GRAS). Steps C, H, R, P; Sentinel-1 public layer is option S.
 - **AIS beyond the Baltic (28 Oct 2026, Tom approved):** `collectors/run_aisstream.cmd` (global aisstream, private only;
   focus boxes in `private/watch/maritime.json`) and `collectors/barentswatch_ais.py` + `run_barentswatch.cmd` (Norway's open
   AIS, NLOD; Finnmark and the western Barents Sea). Both skip until Tom's credentials exist (AISSTREAM_API_KEY;
