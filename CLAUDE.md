@@ -17,8 +17,10 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
 - **Nothing from Tom's employer or its projects.** No code, names, accounts or infrastructure (details in `CLAUDE.local.md`).
   Methods may be re-derived. emso-watch is Tom's own code and may be ported.
 - **Licence-clean sources only** in anything published. Every source is recorded with its licence before it feeds a layer.
-  Non-commercial sources (airplanes.live, adsb.fi, ADSBx, OpenSky, Stanford RFI, Cloudflare Radar, OONI, GFW, GPSJam) are
-  visual comparison only.
+  **Non-commercial licences are allowed (Tom, 29 Oct 2026):** Noisefloor is non-commercial, so NC sources (airplanes.live,
+  adsb.fi, OpenSky, Stanford RFI, Cloudflare Radar, OONI, GFW and others) may be ingested once their terms are recorded,
+  with the credit they ask for. Only sources whose terms forbid republishing stay out. Rows still marked `visual-only`
+  under the old rule are reviewed one at a time before they change; the ODbL rule below still applies to the hex data.
 - adsb.lol-derived downloadable data is published under ODbL, with attribution on every map.
 - Free tier only. Ask before anything billable. **Commits and pushes:** commit finished steps, and push any commit that passes
   the pre-commit checks (standing permission, Tom, 14 Oct 2026). Creating repos or services, changing deploy settings, and

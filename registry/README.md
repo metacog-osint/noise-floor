@@ -16,7 +16,7 @@ The live checks of 14 Oct 2026 are tagged `live-2026-10-14`. Rows tagged `claude
 | `id` | Stable identifier, used in code and in `raw_items` |
 | `lane` | gnss-observed · maritime · declared · context · satcom · lf-hf · emitters · community · attribution |
 | `licence` | The licence or terms as found. UNVERIFIED marks anything not read at the source |
-| `commercial` | yes · no · ask (permission needed) · unverified |
+| `commercial` | yes (commercial use allowed) · no (non-commercial only) · ask (permission needed) · unverified |
 | `use` | What the project may do with it (below) |
 | `phase` | Merged-plan phase (DESIGN.md) where it first lands |
 | `assessed` | Which pass assessed it, plus `live-YYYY-MM-DD` if fetched |
@@ -25,17 +25,19 @@ The live checks of 14 Oct 2026 are tagged `live-2026-10-14`. Rows tagged `claude
 
 | `use` | Meaning |
 |---|---|
-| `ingest` | Licence allows commercial use. May feed public layers. |
+| `ingest` | Licence is recorded and allows republishing (commercial or non-commercial). May feed public layers, with the credit the licence asks for. |
 | `ingest-after-ok` | Needs permission or a terms check first. Not ingested until this row changes. |
 | `private-watch` | Reuse terms unverified. Alerts and triage in the private watch only, never in a public layer. |
 | `cite-only` | Facts are extracted with a citation and link. Text is never republished. |
-| `visual-only` | An analyst looks at it, for example for validation side-by-sides. Never ingested. |
+| `visual-only` | An analyst looks at it, for example for validation side-by-sides. Not ingested (a choice for this source, no longer forced by a non-commercial licence). |
 | `later` | Not yet assessed closely enough. Its phase is in the future. |
 | `exclude` | Not used. |
 
 ## Rules (checked)
 
-- `use=ingest` requires `commercial=yes`.
-- `commercial=no` allows only `visual-only` or `exclude`.
+- `use=ingest` requires known terms: `commercial=yes` or `commercial=no`. Rows marked `ask` or `unverified` wait.
+- Non-commercial licences are allowed (Tom, 29 Oct 2026): Noisefloor is an unpaid, non-commercial research project. Only
+  sources whose terms forbid republishing stay out (`exclude`, or `cite-only` for facts with a link). Rows that were
+  `visual-only` because of the old rule keep that value until each is reviewed.
 - Every row needs a licence statement and an assessment tag.
 - `ingest`, `ingest-after-ok` and `private-watch` rows need a phase.
