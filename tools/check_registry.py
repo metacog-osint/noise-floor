@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """check_registry.py — validate registry/sources.csv and enforce the licence rule.
 
-Rule (CLAUDE.md): a source feeds a public layer only with a recorded licence that allows commercial use.
-  use=ingest            requires commercial=yes
-  commercial=no         allows only use=visual-only or use=exclude
+Rule (CLAUDE.md; Tom, 29 Oct 2026): Noisefloor is non-commercial, so a source feeds a public layer once its licence
+is recorded and allows republishing, commercial or not. Sources whose terms forbid republishing are excluded or kept to
+citation.
+  use=ingest            requires commercial=yes or commercial=no (terms known); ask or unverified must wait
   every row             needs a licence statement and an assessment tag
 Runs in the pre-commit hook and CI. Exit 1 lists every problem.
 """
@@ -38,10 +39,8 @@ def problems(rows, header):
             out.append(f"{where}: commercial '{r['commercial']}' not in {sorted(COMMERCIAL)}")
         if r["use"] not in USES:
             out.append(f"{where}: use '{r['use']}' not in {sorted(USES)}")
-        if r["use"] == "ingest" and r["commercial"] != "yes":
-            out.append(f"{where}: use=ingest needs commercial=yes (got {r['commercial']})")
-        if r["commercial"] == "no" and r["use"] not in ("visual-only", "exclude"):
-            out.append(f"{where}: commercial=no allows only visual-only or exclude (got {r['use']})")
+        if r["use"] == "ingest" and r["commercial"] not in ("yes", "no"):
+            out.append(f"{where}: use=ingest needs known terms, commercial=yes or no (got {r['commercial']})")
         if r["phase"] and r["phase"] not in {str(i) for i in range(1, 8)}:
             out.append(f"{where}: phase '{r['phase']}' not 1-7")
         if r["use"] in ("ingest", "ingest-after-ok", "private-watch") and not r["phase"]:
