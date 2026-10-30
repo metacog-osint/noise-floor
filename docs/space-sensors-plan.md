@@ -60,7 +60,7 @@ lane writes its checks into `docs/validation/` with a timestamp before any test 
 
 | # | Step |
 |---|---|
-| H0 | **Tom:** register at hydrognss.org and read the terms. Record them in `hydrognss-l1` |
+| H0 | **Tom:** register at hydrognss.org and read the terms. Record them in `hydrognss-l1`. **Done 30 Oct:** registered, and the ESA terms are recorded; credentials pending |
 | H1 | Probe one Level 1 file: whether users get delay-Doppler maps with delay rows ahead of the reflection (the noise rows the CYGNSS method reads), at L1 and L5, and how the measured noise power is reported |
 | H2 | Port the CYGNSS indicator (noise floor over gain against a same-day baseline per spacecraft and antenna), for L1 and, new, L5 |
 | H3 | **Checks, pre-registered:** the Baltic, Kola and Finnmark against the aircraft map; quiet controls; and the overlap band (35–38°) against CYGNSS on the same days |
@@ -93,6 +93,18 @@ lane writes its checks into `docs/validation/` with a timestamp before any test 
   rather than private boxes. The volume is unmeasured, but it should be a few hundred MB of small files a day.
 
 ## Decisions for Tom
+
+**Tom, 30 Oct 2026:**
+- **Every option is to be developed,** including those listed under "Not pursued now", where access allows.
+- **Tom registered at hydrognss.org the same day;** credentials are due within a few working days.
+- **ESA's terms** (ESA-EOPG-PDGS-PR-1, issue 1.1, 20 Sep 2023, with the ESA Data Policy) cover HydroGNSS, SMOS and
+  Biomass:
+  - Results may be published, with the credit "Data provided by the European Space Agency (ESA)" and "© ESA" plus the
+    year of reception.
+  - The data themselves may not be republished.
+  - ESA asks for a copy of any publication, sent to eopi@esa.int.
+- **Publishing:** each lane still stops before the public map. A layer goes live only after its checks pass and Tom
+  says yes.
 
 | # | Decision | Recommendation |
 |---|---|---|
