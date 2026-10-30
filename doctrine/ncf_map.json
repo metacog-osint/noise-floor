@@ -1,0 +1,48 @@
+{
+  "program": "noisefloor",
+  "note": "Deterministic: the product sets the functions. No AI calls.",
+  "rules": [
+    {
+      "match": {
+        "product": "gnss-aircraft"
+      },
+      "ncf": [
+        "provide_pnt",
+        "transport_by_air"
+      ]
+    },
+    {
+      "match": {
+        "product": "gnss-maritime"
+      },
+      "ncf": [
+        "provide_pnt",
+        "transport_by_vessel"
+      ]
+    },
+    {
+      "match": {
+        "product": "geo-region"
+      },
+      "ncf": [
+        "provide_satellite_access"
+      ]
+    },
+    {
+      "match": {
+        "product": "sun-outage"
+      },
+      "ncf": [
+        "provide_satellite_access"
+      ]
+    },
+    {
+      "match": {
+        "product": "emitter"
+      },
+      "ncf": [
+        "provide_pnt"
+      ]
+    }
+  ]
+}

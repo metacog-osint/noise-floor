@@ -1,0 +1,60 @@
+{
+  "program": "noisefloor",
+  "assumptions": [
+    {
+      "id": "NF-AS-1",
+      "text": "Aircraft-reported navigation accuracy falls because GNSS is jammed or spoofed, not because of avionics faults, when several aircraft types show it together.",
+      "test": {
+        "type": "manual",
+        "rule": "Validation days in docs/validation/ (20 days); NF-IND-7 flags single-source cases"
+      },
+      "status": "holds",
+      "reviewed": "2026-10-30",
+      "linked": [
+        "NF-WP-1",
+        "NF-WP-2"
+      ]
+    },
+    {
+      "id": "NF-AS-2",
+      "text": "adsb.lol feeder coverage over an area does not change sharply from week to week.",
+      "test": {
+        "type": "auto",
+        "rule": "NF-IND-8: aircraft count within 30% of its 28-day median"
+      },
+      "status": "untested",
+      "reviewed": "2026-10-30",
+      "linked": [
+        "NF-WP-1",
+        "NF-WP-2"
+      ]
+    },
+    {
+      "id": "NF-AS-3",
+      "text": "A fall in the severe share means interference eased.",
+      "test": {
+        "type": "auto",
+        "rule": "Read position loss before a fall: jammed aircraft can stop reporting position altogether"
+      },
+      "status": "strained",
+      "reviewed": "2026-10-30",
+      "linked": [
+        "NF-WP-2"
+      ],
+      "note": "Known to fail where position loss is high (docs/validation/position-loss.md). Falls are reported with that caveat."
+    },
+    {
+      "id": "NF-AS-4",
+      "text": "ESA's scintillation nowcast is current when it is read.",
+      "test": {
+        "type": "auto",
+        "rule": "nowcast valid time within 3 hours of the build (board.py already applies this)"
+      },
+      "status": "holds",
+      "reviewed": "2026-10-30",
+      "linked": [
+        "NF-WP-1"
+      ]
+    }
+  ]
+}
