@@ -45,6 +45,30 @@ def complete(day, today):
     return n >= MIN_FILES and age >= MIN_AGE_DAYS, n
 
 
+def _describe(lat, lon):
+    """Place wording from the NISAR lane's offline gazetteer ("36 km S of Kramatorsk (UA)"); None if unavailable."""
+    try:
+        sys.path.insert(0, os.path.join(ROOT, "nisar"))
+        from nisar_rfi import places
+        return places.describe(lat, lon)[0]
+    except Exception:
+        return None
+
+
+def _apart(rows, km_apart, top):
+    """The first `top` rows (lat, lon, ...) at least km_apart from each other, in the order given."""
+    import math
+    out = []
+    for r in rows:
+        if all(6371.0 * math.acos(min(1.0, math.sin(math.radians(r[0])) * math.sin(math.radians(o[0])) +
+               math.cos(math.radians(r[0])) * math.cos(math.radians(o[0])) * math.cos(math.radians(r[1] - o[1]))))
+               >= km_apart for o in out):
+            out.append(r)
+        if len(out) == top:
+            break
+    return out
+
+
 def summarise(day):
     import s6_rfi as S
     g = S.read_grid(day)
@@ -52,11 +76,14 @@ def summarise(day):
         raise SystemExit(f"{day}: no grid")
     rows = sorted(g.values(), key=lambda r: -r["score"])
     raised = [r for r in rows if r["score"] >= THRESHOLD]
+    peaks = _apart([(r["lat"], r["lon"], r["score"]) for r in raised], 1500.0, 3)
     meta = json.load(open(os.path.join(S.DAYS_DIR, f"{day}.json"), encoding="utf-8"))
     return {"day": day, "licence": LICENCE, "credit": [c.format(year=day[:4]) for c in CREDIT],
             "judged_cells": len(rows), "raised_cells": len(raised), "threshold": THRESHOLD, "res": 2,
             "radius_km": S.RADIUS_KM, "drop_db": S.DROP_DB, "epochs": meta.get("epochs"),
             "cells": [[r["h3"], round(float(r["score"]), 3), int(r["n_vis"])] for r in raised],
+            "peaks": [{"lat": round(float(la), 2), "lon": round(float(lo), 2), "score": round(float(sc), 3),
+                       "where": _describe(float(la), float(lo))} for la, lo, sc in peaks],
             "method": "tools/s6_rfi.py (index: tools/rx_rfi.py; map: cosmic2_rfi back-projection); "
                       "docs/validation/space-receivers.md"}
 

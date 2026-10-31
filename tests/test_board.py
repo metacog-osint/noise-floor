@@ -117,6 +117,33 @@ def test_spoofing_and_cygnss_cards():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_sentinel6_and_smap_cards():
+    tmp = tempfile.mkdtemp()
+    try:
+        c1 = h3.latlng_to_cell(48.7, 37.6, 2)              # eastern Ukraine
+        c2 = h3.latlng_to_cell(49.5, 38.5, 2)              # next door: too close to be a second peak
+        c3 = h3.latlng_to_cell(36.3, 50.0, 2)              # northern Iran
+        json.dump({"day": "2026-10-24", "raised_cells": 3, "judged_cells": 5862, "threshold": 0.2409,
+                   "cells": [[c2, 0.5, 300], [c1, 0.57, 320], [c3, 0.5, 280]]}, open(os.path.join(tmp, "2026-10-24.s6.json"), "w"))
+        json.dump({"day": "2026-10-23", "cells": [[c1, 0.3, 300]]}, open(os.path.join(tmp, "2026-10-23.s6.json"), "w"))
+        s1 = h3.latlng_to_cell(58.49, -62.59, 4)            # Saglek
+        s2 = h3.latlng_to_cell(58.6, -62.3, 4)              # 25 km away: not a second entry
+        s3 = h3.latlng_to_cell(70.13, -143.64, 4)           # Barter Island
+        json.dump({"day": "2026-10-29", "window": ["2026-10-23", "2026-10-29"],
+                   "sources": [[s1, 0.97, 0.95, 40], [s2, 0.9, 0.9, 30], [s3, 0.83, 0.8, 50]], "busy": [["83abc", 0.7, 12]]},
+                  open(os.path.join(tmp, "2026-10-29.smap.json"), "w"))
+        places = B.Places(tmp)
+        s = B.sentinel6(tmp, places)
+        assert s["day"] == "2026-10-24" and s["raised_cells"] == 3 and len(s["peaks"]) == 2, s
+        assert s["peaks"][0]["score"] == 0.57 and abs(s["peaks"][1]["lat"] - 36.3) < 2
+        m = B.smap(tmp, places)
+        assert m["day"] == "2026-10-29" and m["sources"] == 3 and m["busy_regions"] == 1
+        assert [round(x["lat"]) for x in m["strongest"]] == [59, 70] or [round(x["lat"]) for x in m["strongest"]] == [58, 70], m
+        assert "cells" not in s and isinstance(m["sources"], int)       # counts only: the map lists stay out of board.json
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_brief():
     """The home page's bottom line, from fixed rules."""
     area = lambda n, t, m, c: {"name": n, "today": t, "median30": m, "change": c}  # noqa: E731

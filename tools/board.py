@@ -5,14 +5,14 @@
 
 Reads what the deploy already has (SITE/data/gnss/*.json day maps and days.json, trend.json, events/<day>.json,
 events-monthly.json, vessels/gnss_at_sea.json, places.json; RELEASE_DIR/faa_gps_tests.json, <day>.loss_daily.parquet,
-<day>.spoof.json, cygnss/<day>.cygnss.json), the public list of official notices (site_src/official_notices.json), and
+<day>.spoof.json, cygnss/<day>.cygnss.json, <day>.s6.json, <day>.smap.json), the public list of official notices (site_src/official_notices.json), and
 two live snapshots taken at build time: EASA's table of FIRs with GNSS interference reports, and ESA's ionospheric
 scintillation nowcast. Every section is built on its own: a source that fails leaves its section out and is named in
 "problems", and the deploy carries on.
 
 Sections: summary (one line), hotspots (named areas: today, against the 30 days before, 30-day series), changes (H3
 res-2 regions at jamming scale: new, ended, long-running), declared (announced US GPS tests, official notices, EASA
-FIRs), loss (aircraft heard by MLAT but sending no position), scintillation, spoofing, cygnss, events (this month's
+FIRs), loss (aircraft heard by MLAT but sending no position), scintillation, spoofing, cygnss, sentinel6, smap, events (this month's
 graded counts), freshness. Aggregates only; licences are stated in the file.
 """
 import glob
@@ -283,6 +283,55 @@ def cygnss(release, places):
                     "exposure, not a transmitter site. About 38°N to 38°S."}
 
 
+def _latlng(cell):
+    import h3
+    return h3.cell_to_latlng(cell)
+
+
+def sentinel6(release, places, spacing_km=1500.0, top=3):
+    """The newest Sentinel-6A day: its raised cells and the strongest regions, at least spacing_km apart."""
+    files = sorted(glob.glob(os.path.join(release, "*.s6.json")))
+    if not files:
+        raise ValueError("no Sentinel-6 files yet")
+    s = load(files[-1])
+    if s.get("peaks"):                         # named at source (tools/s6_daily.py, the NISAR lane's gazetteer)
+        return {"day": s["day"], "raised_cells": s.get("raised_cells"), "judged_cells": s.get("judged_cells"),
+                "threshold": s.get("threshold"), "peaks": [{**p, "near": p.get("where")} for p in s["peaks"][:top]],
+                "note": "Sentinel-6A's own GPS receiver: regions where it lost signal strength on all its links at once; "
+                        "each cell draws on everything within 3,800 km, so these are regions, not transmitter sites."}
+    peaks = []
+    for c, score, _ in sorted(s.get("cells") or [], key=lambda r: -r[1]):
+        la, lo = _latlng(c)
+        if all(km((la, lo), (p["lat"], p["lon"])) >= spacing_km for p in peaks):
+            peaks.append({"lat": round(la, 2), "lon": round(lo, 2), "score": score, "near": places.near(la, lo, limit=500)})
+        if len(peaks) == top:
+            break
+    return {"day": s["day"], "raised_cells": s.get("raised_cells"), "judged_cells": s.get("judged_cells"),
+            "threshold": s.get("threshold"), "peaks": peaks,
+            "note": "Sentinel-6A's own GPS receiver: regions where it lost signal strength on all its links at once; each "
+                    "cell draws on everything within 3,800 km, so these are regions, not transmitter sites."}
+
+
+def smap(release, places, spacing_km=500.0, top=3):
+    """The newest SMAP 7-day window: stand-out emitter cells (count and the strongest few, apart) and busy regions."""
+    files = sorted(glob.glob(os.path.join(release, "*.smap.json")))
+    if not files:
+        raise ValueError("no SMAP files yet")
+    s = load(files[-1])
+    strongest = [{**p, "near": p.get("where")} for p in (s.get("strongest") or [])[:top]]
+    for c, share, contrast, looks in ([] if strongest else sorted(s.get("sources") or [], key=lambda r: (-r[2], -r[1], -r[3]))):
+        la, lo = _latlng(c)
+        if all(km((la, lo), (p["lat"], p["lon"])) >= spacing_km for p in strongest):
+            strongest.append({"lat": round(la, 2), "lon": round(lo, 2), "share": share, "contrast": contrast,
+                              "near": places.near(la, lo, limit=500)})
+        if len(strongest) == top:
+            break
+    return {"day": s["day"], "window": s.get("window"), "sources": len(s.get("sources") or []),
+            "busy_regions": len(s.get("busy") or []), "strongest": strongest,
+            "note": "Interference in the protected 1400-1427 MHz band flagged by NASA's SMAP: single emitters standing out "
+                    "of a quiet background, many likely L-band radars. Not GPS jammers."}
+
+
 # ---------------------------------------------------------------- the board
 def geo_card(site):
     g = load(os.path.join(site, "data", "geo.json"))
@@ -409,6 +458,8 @@ def build(release, site, now=None):
     section("scintillation", scintillation)
     section("spoofing", spoofing, release, places)
     section("cygnss", cygnss, release, places)
+    section("sentinel6", sentinel6, release, places)
+    section("smap", smap, release, places)
     section("geo", geo_card, site)
     em = load(os.path.join(site, "data", "events-monthly.json"))
 
@@ -427,6 +478,8 @@ def build(release, site, now=None):
         "easa_table": ((board.get("easa") or {}).get("tables") or [{}])[0].get("date"),
         "spoofing_day": (board.get("spoofing") or {}).get("day"),
         "cygnss_day": (board.get("cygnss") or {}).get("day"),
+        "s6_day": (board.get("sentinel6") or {}).get("day"),
+        "smap_day": (board.get("smap") or {}).get("day"),
         "geo_snapshot": (board.get("geo") or {}).get("snapshot_day"),
         "board_built": board["built_utc"],
     }
