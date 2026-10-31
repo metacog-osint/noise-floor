@@ -145,7 +145,26 @@ lane writes its checks into `docs/validation/` with a timestamp before any test 
 | # | Step |
 |---|---|
 | E0 | **Done 30 Oct:** access, file contents, lag, sizes and archive depth, as above |
-| E1 | `tools/sentinel_gnss.py` (commands `fetch` and `day`): catalogue query, signed S3 download, RINEX parse. Keep, per link and epoch: time, unit, PRN, signal, signal strength, and the GNSS satellite's elevation and azimuth in the spacecraft's local frame (zenith-pointing antenna assumed). Spacecraft position comes from Space-Track elements and SGP4: a few km of error, small against cells about 300 km across; the Copernicus orbit files are optional. GNSS positions come from broadcast navigation (`station_cn0.parse_nav`, `sat_xyz`). A few MB a day out |
+| E1 | **Built 31 Oct:** `tools/sentinel_gnss.py` (`fetch`, `day`, `latest`; tests in `tests/test_sentinel_gnss.py`). It writes one row per link and epoch: time, unit, satellite, signal strength by signal, the GNSS satellite's elevation and azimuth in the spacecraft frame (zenith-pointing antenna assumed), and the spacecraft's position. Spacecraft positions come from Space-Track elements and SGP4; GNSS positions from broadcast navigation (`station_cn0.parse_nav`, `sat_xyz`). Results below |
+
+**E1 results (24 Oct 2026, all six units, measured 31 Oct):**
+- **Output:** 638,212 link rows, 9.8 MB for the day. The first run took 83 s including downloads; a rerun from held
+  files takes 25 s.
+- **Sampling:**
+  - Sentinel-2B samples on a 10 s grid offset by 4 s.
+  - Sentinel-3A and 3B files are 1 s; the tool keeps every 10th second.
+  - The RUAG units track a median of 8 GPS satellites per epoch; the PODRIX units track 17 (GPS and Galileo).
+- **Geometry check:** GPS L1 signal strength rises with elevation in every unit, from about 37 dB-Hz near the horizon
+  to 54–55 dB-Hz overhead (correlation 0.84–0.94). Sentinel-3 tracks nothing below its horizon; the others track a few
+  per cent of links below it.
+- **Position check:** against ESA's restituted orbit for Sentinel-1C (`AUX_RESORB`, 1,259 state vectors, 10:59–14:29
+  UTC), SGP4 from element sets 8–12 h old is off by a median of 3.2 km and at most 4.3 km, almost all along-track.
+- **Coverage:** tracks reach ±81.4–81.9° latitude.
+- **Space-Track:** one `gp_history` request for the six objects, 1 Mar 2025 – 29 Oct 2026, held in
+  `data/sentinel_gnss/elements/`; later runs ask only for spans not yet held.
+- **Units:** Sentinel-1A published until 30 Jun 2026 (`--units` adds it for earlier days). Sentinel-3C (launched 15
+  Sep 2026) and Sentinel-6B publish no `AUX_GNSSRD` yet (catalogue, 31 Oct).
+- **Downloads:** the S3 connection dropped twice in the first run; the tool retries three times.
 | E2 | **Indicators, frozen before E3.** (a) SAT-JAM's, for comparison: per unit and signal, z < −1 against the global mean. (b) Ours, shared with step P: a trailing 30-day signal-strength baseline per unit, signal and 5° elevation bin; per epoch, the median residual across links and the number tracked, so jamming shows as a drop on every link at once. (c) Back-projection to cells as in `cosmic2_rfi.py`. E imports the step P functions rather than writing a second version |
 | E3 | **Checks, pre-registered** in `docs/validation/sentinel-gnss.md` before any test day is fetched: (1) place: region-scale AUC against the aircraft map's jammed and clean cells on the CYGNSS validation days; (2) change: the March 2026 Gulf surge must show; (3) the Baltic and Kaliningrad must show, since no other orbital L1 source reaches them; (4) quiet controls (central Pacific, South Atlantic, Australia) stay below a stated share; (5) agreement with SAT-JAM's map for the same window (by eye, since it has no export), and with COSMIC-2 and CYGNSS where they overlap; (6) Kp ≥ 5 days and EKS events are flagged |
 | E4 | If E3 passes: a weekly job and a `sentinel-gnss-data` release (`<week>.sentinel-gnss.json`: cell, observations, flagged share, units, window). A map layer, "GPS interference seen from orbit (Sentinel)", goes live only after Tom says yes. Its caption carries the limits above and credits Copernicus and SAT-JAM's method. If E3 fails, the write-up says so and the data stay off the map |
