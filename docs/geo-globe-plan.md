@@ -145,6 +145,32 @@ slider (recorded past, 48 h predicted), tracks for the selection or everything s
 line-of-sight circles at 0/5/10° elevation, and the flat belt strip (height or latitude against longitude). Not done
 yet: an inertial-frame toggle (left out: tracks are Earth-fixed), the sun's direction (G3).
 
+## G3 done (31 Oct 2026)
+
+All in `site_src/globe.js` and the second control row on /geo:
+- **Look from a place**: a city from `site/data/places.json` (Natural Earth), typed latitude and longitude, or a click on
+  the Earth (`pl:` in the link). One satellite: elevation, bearing and range (WGS84 station at sea level), and the next two
+  sun-outage seasons from `sunoutage.js` (the Sun page's module, threshold from dish and frequency, default 0.9 m at
+  12 GHz = 1.24°; skipped for drifting satellites). Nothing selected: every shown object above the horizon, highest first.
+  Checked: Luch (Olymp) 2 from Tehran, outages 3–9 Mar 2027 and 5–10 Oct 2027 near 07:55 UTC, which is the satellite's
+  meridian at local solar noon.
+- **Sun direction** (`sun:1`): the direction, the subsolar point, the day–night line, and the belt arc inside the
+  Earth's shadow (cylinder model); "sunlit" or "in the Earth's shadow" in the detail panel.
+- **Relative motion** (two selected): separation and radial, along-track and cross-track offsets of the second from
+  the first over the history window (recorded) and 48 hours ahead (predicted), with the closest point and a CSV. The
+  frame is built from the first object's position and its inertial velocity (Earth-fixed finite difference plus ω×r).
+- **Closest objects over time** (one selected, opened on demand): the five objects that come nearest over the same span,
+  any owner or type; chart capped at 1,000 km, CSV in long format.
+- **Board findings** (`ov:1`): rings for the board's close pairs (with a line between the two), non-routine orbit
+  changes this week and arrivals or departures.
+- Charts: one km axis, recorded solid, predicted dashed on a shaded band, a marker at the time shown, and a readout
+  that follows the pointer.
+
+Finding while checking: the board's close-pair list propagates with two-body motion, which put EWS-G3 (GOES 14) and
+Luch (Olymp) 2 about 100 km closer than SGP4 does with the same elements (16-day-old Luch elements; Kozai mean motion
+and J2 left out), and it shows one instant while that pair swings between about 290 and 1,480 km each day because
+EWS-G3 is inclined. G4 moves the board to SGP4 so callouts, board and globe agree.
+
 ## G5 done (28 Oct 2026)
 
 - **Hypothetical beams** (detail panel, one selected satellite): band (UHF to Ka, up and down), dish diameter or beamwidth
