@@ -96,8 +96,14 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   `docs/validation/sentinel-gnss.md`, frozen section 1): four checks hold (AUC 0.862, Baltic 0.917), two fail (Gulf
   change, inland-Australia control); a regional sensor about 2,000 km across, not a cell map. E4 waits on Tom. Downloads use S3 keys in
   the user variables
-  `CDSE_S3_ACCESS_KEY` and `CDSE_S3_SECRET_KEY`; Sentinel-6A stays in step P (PO.DAAC). The plan's collectors section maps
-  ground-truth sources onto `watch.py`; `CLOUDFLARE_RADAR_TOKEN` (read-only) is set for a Radar source.
+  `CDSE_S3_ACCESS_KEY` and `CDSE_S3_SECRET_KEY`; Sentinel-6A stays in step P (PO.DAAC). **E5 (31 Oct):**
+  `tools/sentinel_trend.py` (box trends and maps from a private config) and `tools/sentinel_daily.py` (daily, from
+  `collectors/run_daily.cmd`; private products in `private/sentinel/`, nothing uploaded). **Caveat:** the index reads
+  0.5-1 dB low across about 60-160°E even over empty ocean (probably BeiDou/QZSS overhead; validation section 2.5);
+  plan step E2.1 proposes the correction. SAT-JAM: no contact (Tom, 31 Oct); replicate and improve.
+  **`watch.py` sources added 31 Oct:** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch (pages in
+  `private/watch/pollers.json` `pagewatch`, each with a link pattern). FAA NOTAMs wait on API credentials (requested 30 Oct);
+  the public NOTAM Search site refuses automated clients.
 - **AIS beyond the Baltic (28 Oct 2026, Tom approved):** `collectors/run_aisstream.cmd` (global aisstream, private only;
   focus boxes in `private/watch/maritime.json`) and `collectors/barentswatch_ais.py` + `run_barentswatch.cmd` (Norway's open
   AIS, NLOD; Finnmark and the western Barents Sea). Both skip until Tom's credentials exist (AISSTREAM_API_KEY;
