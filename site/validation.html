@@ -9,7 +9,7 @@
 <meta property="og:description" content="How Noisefloor&#x27;s methods were tested against known events, including what failed.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=a6cd82c7e1">
+<link rel="stylesheet" href="/style.css?v=a22698140a">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=f511c41ac0"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
@@ -136,6 +136,22 @@
 </table></div>
 <p>It reaches 66°N, so it covers the Baltic, which CYGNSS can't see. Myanmar is weaker (own AUC 0.80).</p>
 <p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/space-receivers.md">Full Sentinel-6A validation report</a></p>
+
+<h2 id="cosmic2">GPS interference from orbit (COSMIC-2 receivers)</h2>
+<p>The six COSMIC-2 satellites (24° inclination, about 550 km up) track GPS on two navigation antennas each, one looking forward along the track and one backward. UCAR, which runs the mission's data centre, computes an interference index for each antenna every second. A cell about 300 km across is scored by how often that index was raised while a satellite could see the cell, from up to 2,500 km away, each antenna counting only its own side. Method and pass marks were fixed on six days, then tested on 21 held-out days against the aircraft map:</p>
+<div class="tw"><table>
+  <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Separates aircraft-jammed cells from clean ones (21 held-out days)</td><td>AUC 0.919 (200 jammed, 13,092 clean cell-days); 0.922 on the six tuning days</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Leaving any one region out</td><td>AUC stays at 0.920 or above</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Quiet controls (central Pacific, South Atlantic, interior Brazil, Australia, southern Africa)</td><td>0.0% of 6,216 control cell-days at or above the threshold</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Agreement with CYGNSS where both judge</td><td>Rank correlation 0.265 over 76,369 cells</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Tracks change over time (Persian Gulf, spring 2026)</td><td>Gulf cells averaged 0.333 on the spring days and 0.273 on the winter days (+0.059 against a +0.05 mark): the spring rise shows, narrowly</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Position of an emitter</td><td>Not tested. A cell's score draws on everything within 2,500 km, so the map shows regions, not transmitter sites</td><td><span class="chip st-planned">Open</span></td></tr>
+  </tbody>
+</table></div>
+<p>It covers about 45°S to 45°N, so not the Baltic. It is strongest over Myanmar (own AUC 0.97), where Sentinel-6A is weakest. Only three to five of the six satellites delivered data on the test days.</p>
+<p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/space-receivers.md">Full COSMIC-2 validation report</a></p>
 
 <h2 id="smap">L-band radars from orbit (SMAP)</h2>
 <p>NASA's SMAP satellite listens in the protected 1400–1427 MHz band and flags each look that carries interference. Long-range air-surveillance radars transmit just below the band and can spill into it. For each 36 km cell, Noisefloor counts the share of looks flagged over 7 days and how far it stands above the cells 100–300 km around.</p>
