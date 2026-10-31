@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""site_layers.py: the map page's spoofing, CYGNSS, NISAR and Sentinel-6 layers, at deploy.
+"""site_layers.py: the map page's spoofing, CYGNSS, NISAR, Sentinel-6 and SMAP layers, at deploy.
 
   python3 tools/site_layers.py RELEASE_DIR [SITE]
 
@@ -13,6 +13,8 @@ Copies RELEASE_DIR/<day>.<kind>.json -> SITE/data/<folder>/<day>.json and writes
   the map filters it to its own window.
 - s6 -> data/s6 (only files that carry map cells). tools/s6_daily.py, from the s6-data release (derived from
   Copernicus Sentinel-6A receiver data via PO.DAAC; region-scale scores, docs/validation/space-receivers.md).
+- smap -> data/smap (files with a "sources" list, even an empty one). tools/smap_daily.py, from the smap-data release
+  (derived from NASA SMAP L1C, NSIDC DAAC, NASA open data; docs/validation/smap-rfi.md).
 Standard library only.
 """
 import glob
@@ -26,7 +28,8 @@ KINDS = {"spoof": ("spoof", "ODbL 1.0; derived from adsb.lol", "cells", True),
          "cygnss": ("cygnss", "Derived from NASA CYGNSS L1 V3.2 (NASA open data)", "cells", True),
          "nisar": ("nisar", "Derived from NASA-ISRO NISAR (ASF DAAC), NASA open data, CC0", "sites", False),
          "s6": ("s6", "Derived from Copernicus Sentinel-6A data (PO.DAAC, doi:10.5067/S6AGN-1ROPD); contains modified "
-                "Copernicus Sentinel data", "cells", True)}
+                "Copernicus Sentinel data", "cells", True),
+         "smap": ("smap", "Derived from NASA SMAP L1C (NSIDC DAAC, doi:10.5067/DV7IX2DQ681Y), NASA open data", "sources", False)}
 
 
 def main():
