@@ -1,0 +1,86 @@
+# GNSS receivers in orbit: Sentinel-6A and COSMIC-2 (pre-registration, 31 Oct 2026)
+
+**Lanes:** steps P and C of `docs/space-sensors-plan.md`.
+**Tools:**
+- `tools/s6_rfi.py` (Sentinel-6A), `tools/cosmic2_rfi.py` (COSMIC-2);
+- `tools/rx_rfi.py`, the shared signal-strength index;
+- tests `tests/test_rx_rfi.py` and `tests/test_cosmic2_rfi.py`.
+
+**Reference:** the aircraft map's H3 res-4 daily tables, aggregated to res 2 (about 300 km across). The pairing rules
+are the CYGNSS lane's: 20+ aircraft in a cell; "jammed" at a GPSJam-style share of 10% or more, "clean" below 2%.
+
+## 1. What each lane measures
+
+**Sentinel-6A** (66° inclination, about 1,340 km altitude):
+- Source: PO.DAAC's hourly RINEX from the TriG receiver's RO-POD antenna, at 1 Hz.
+- Each link's GPS L1 C/A signal strength (V/V, converted to dB) is compared with the median for its 5° elevation bin
+  over the same day.
+- The epoch index is the median of those residuals over the epoch's links (at least four, at 10° elevation or more).
+- An epoch counts as "down" when the index is −2 dB or lower.
+
+**COSMIC-2** (24° inclination, about 550 km):
+- Source: UCAR's own per-antenna RFI index (`podTc2`, threshold 1e-4) for each of the two navigation antennas.
+- One antenna looks forward along the track, the other backward.
+
+**Both lanes:**
+- **Bins:** 10 s bins per receiver give a flagged share.
+- **Back-projection:** each H3 res-2 cell is scored by the correlation, across bins, between "this bin's satellite
+  could see the cell" (within a radius R of the sub-satellite point) and the bin's flagged share.
+- **Why a correlation:** the offline test shows the plain flagged share drifts toward the edge of coverage.
+- **COSMIC-2 latitude limit:** for an emitter poleward of COSMIC-2's orbit, latitude trades off against detection
+  range; longitude holds.
+
+## 2. Tuning on the six CYGNSS in-sample days
+
+Days: 2 Jan, 24 Feb, 9, 10 and 16 May, and 19 Oct 2026.
+
+**Sentinel-6A.** Twelve settings were tried: thresholds of 1, 1.5, 2 and 3 dB, each with radii of 2,000, 3,000 and
+3,800 km. The pooled AUC ran from 0.676 to 0.957. The chosen setting, 2 dB at 3,800 km (the horizon), gave:
+
+| Measure | In-sample |
+|---|---|
+| Paired cell-days | 5,123 (151 jammed, 4,839 clean) |
+| Pooled AUC | 0.957 |
+| Lowest leave-one-region-out AUC | 0.948 |
+| Clean cells' 95th-percentile score (the frozen control threshold T) | 0.2409 |
+| Control-box cell-days at or above T | 0.0% (1,776 cell-days) |
+| Spearman with CYGNSS (res-2 median excess), shared cells | 0.477 (21,753) |
+
+**Regions (in-sample):**
+- Eastern Europe, Baltic to Black Sea: 116 jammed cell-days, own AUC 0.966.
+- Gulf: 26 cell-days, own AUC 0.963.
+- Myanmar: 6 cell-days, own AUC 0.748.
+- Western Siberia: 2 cell-days.
+- India–Pakistan border: 1 cell-day.
+
+**COSMIC-2.** Section 4 is written once its last two tuning days are in.
+
+## 3. Sentinel-6A: frozen method and checks on held-out days
+
+Written and committed before any held-out Sentinel-6A day was fetched.
+
+- **Days:** the CYGNSS held-out days (`docs/validation/cygnss.md` §8.1). That is every 19th day from 1 Oct 2025:
+  2025-10-01, 10-20, 11-08, 11-27, 12-16; 2026-01-04, 01-23, 02-11, 03-02, 03-21, 04-09, 04-28, 05-17, 06-05, 06-24,
+  07-13, 08-01, 08-20, 09-08, 09-27, 10-16. A day without files, or without geometry, is skipped and reported, not
+  replaced.
+- **Method:** `tools/s6_rfi.py` and `tools/rx_rfi.py` as committed with this document:
+  - signal S1C; 5° bins; 10° mask; four links;
+  - "down" at −2 dB; 10 s bins;
+  - R = 3,800 km; res 2; a cell is judged from 30 bins (`MIN_VIS`).
+
+| # | Check | In-sample | Holds if | Fails if |
+|---|---|---|---|---|
+| S1 | Pooled AUC, jammed vs clean cell-days | 0.957 | ≥ 0.85 | < 0.75 |
+| S2 | Leave-one-region-out AUC (every judged region; `cygnss_checks.region_heldout` rules) | 0.948 | every value ≥ 0.80 | any value < 0.70 |
+| S3 | Control-box cell-days at or above T = 0.2409 | 0.0% | ≤ 5% | > 15% |
+| S4 | Spearman with CYGNSS on shared cells | 0.477 | ≥ 0.30 | < 0.15 |
+
+Between the two marks the result is "weakened". Each region's own AUC is reported too, without a mark.
+
+## 4. COSMIC-2: frozen method and checks
+
+To be written before any held-out COSMIC-2 day is fetched.
+
+## 5. Results
+
+Not run yet.
