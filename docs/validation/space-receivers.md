@@ -83,4 +83,36 @@ To be written before any held-out COSMIC-2 day is fetched.
 
 ## 5. Results
 
-Not run yet.
+### 5.1 Sentinel-6A on the 21 held-out days (run 31 Oct 2026): all four checks hold
+
+All 21 days had files and geometry. BKG refused connections that afternoon, so broadcast navigation came from the
+fallback in `tools/sentinel_gnss.fetch_nav`; the method is otherwise as frozen in section 3.
+
+| # | Check | Held-out | In-sample | Verdict |
+|---|---|---|---|---|
+| S1 | Pooled AUC (407 jammed, 16,874 clean cell-days) | **0.956** | 0.957 | **holds** (≥ 0.85) |
+| S2 | Lowest leave-one-region-out AUC | **0.918** | 0.948 | **holds** (≥ 0.80) |
+| S3 | Control-box cell-days at or above T = 0.2409 (6,216) | **0.0%** | 0.0% | **holds** (≤ 5%) |
+| S4 | Spearman with CYGNSS, shared cells (76,369) | **0.504** | 0.477 | **holds** (≥ 0.30) |
+
+**Regions (held-out),** with each region's own AUC and the AUC with it left out:
+
+| Region | Jammed cell-days | Days | Own AUC | AUC without it |
+|---|---|---|---|---|
+| Eastern Europe, Baltic to Black Sea | 348 | 21 | 0.967 | 0.918 |
+| Gulf | 33 | 7 | 0.946 | 0.962 |
+| Myanmar | 19 | 15 | 0.798 | 0.968 |
+| Red Sea | 2 | 2 | 0.750 | 0.957 |
+| India–Pakistan border | 2 | 2 | 0.984 | 0.959 |
+| Western Siberia | 2 | 2 | 0.956 | 0.956 |
+| Off Libya | 1 | 1 | 0.920 | 0.956 |
+
+**What this shows.**
+- Sentinel-6A's own receiver separates aircraft-jammed regions from clean ones, day by day, as well as CYGNSS does.
+- It reaches 66°N, so it covers the Baltic, which CYGNSS and COSMIC-2 can't see.
+
+**What it doesn't show.**
+- The score is smooth over the 3,800 km radius, so it places interference by region, not by site.
+- Eastern Europe dominates the jammed cells (348 of 407). Leaving it out still gives 0.918.
+- Myanmar is weaker (own AUC 0.80).
+- A map layer needs Tom's yes (plan step P, as for the other lanes).
