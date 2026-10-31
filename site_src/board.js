@@ -112,6 +112,14 @@
     // across the spectrum (the rows are in the page; dash.js fills sun outages, solar radio and at sea)
     set("r-spoof", s && s.active != null ? n(s.active) + " active episodes" + ((s.victims || []).length ? "; aircraft mostly near " +
       esc(s.victims.slice(0, 3).map(function (v) { return v.near; }).filter(Boolean).join(", ")) : "") : "Not available in the last build.");
+    var s6 = b.sentinel6, places6 = s6 ? (s6.peaks || []).map(function (p) { return p.near; }).filter(Boolean) : [];
+    set("r-s6", s6 ? dayShort(s6.day) + ": " + n(s6.raised_cells) + " cells raised" + (places6.length ? "; strongest: " + esc(places6.join("; ")) : "") +
+      ". Regions, not transmitter sites." : "Not available in the last build.");
+    if (s6 && $("r-s6-link")) $("r-s6-link").href = "/map#day=" + s6.day + "&s6=1";
+    var sm = b.smap, placesM = sm ? (sm.strongest || []).map(function (p) { return p.near; }).filter(Boolean) : [];
+    set("r-smap", sm ? "7 days to " + dayShort(sm.day) + ": " + n(sm.sources) + " stand-out emitter cells" +
+      (placesM.length ? ", among them " + esc(placesM.join("; ")) : "") + ". Mostly radars; not GPS jammers." : "Not available in the last build.");
+    if (sm && $("r-smap-link")) $("r-smap-link").href = "/map#day=" + sm.day + "&sm=1";
     set("r-loss", lo.length ? esc(lo.slice(0, 3).map(function (a) { return short(a.name) + " " + pct(a.share); }).join(", ")) : "Not available in the last build.");
     var sc = b.scintillation;
     set("scint-text", sc ? "Scintillation " + esc(sc.level) + "." : "");
@@ -139,6 +147,7 @@
     var fr = [["Aircraft", f.aircraft_day && dayShort(f.aircraft_day)], ["Spoofing", f.spoofing_day && dayShort(f.spoofing_day)],
       ["Ships (Finnish AIS)", dtShort(f.ships_built)], ["Satellite orbits", f.geo_snapshot && dayShort(f.geo_snapshot)],
       ["Scintillation (ESA)", dtShort(f.scintillation_valid)], ["CYGNSS", f.cygnss_day && dayShort(f.cygnss_day)],
+      ["Sentinel-6", f.s6_day && dayShort(f.s6_day)], ["SMAP (7 days to)", f.smap_day && dayShort(f.smap_day)],
       ["EASA table", f.easa_table && dayShort(f.easa_table)], ["This page", dtShort(f.board_built)]];
     set("fresh", fr.map(function (r) { return "<div><span>" + esc(r[0]) + "</span><span>" + (r[1] ? esc(r[1]) : "not yet") + "</span></div>"; }).join(""));
   }

@@ -54,6 +54,30 @@ def complete(day, today):
     return n >= MIN_ORBITS and (today - datetime.fromisoformat(day).date()).days >= MIN_AGE_DAYS, n
 
 
+def _describe(lat, lon):
+    """Place wording from the NISAR lane's offline gazetteer ("36 km S of Kramatorsk (UA)"); None if unavailable."""
+    try:
+        sys.path.insert(0, os.path.join(ROOT, "nisar"))
+        from nisar_rfi import places
+        return places.describe(lat, lon)[0]
+    except Exception:
+        return None
+
+
+def _apart(rows, km_apart, top):
+    """The first `top` rows (lat, lon, ...) at least km_apart from each other, in the order given."""
+    import math
+    out = []
+    for r in rows:
+        if all(6371.0 * math.acos(min(1.0, math.sin(math.radians(r[0])) * math.sin(math.radians(o[0])) +
+               math.cos(math.radians(r[0])) * math.cos(math.radians(o[0])) * math.cos(math.radians(r[1] - o[1]))))
+               >= km_apart for o in out):
+            out.append(r)
+        if len(out) == top:
+            break
+    return out
+
+
 def summarise(day):
     import h3
     import numpy as np
@@ -72,10 +96,14 @@ def summarise(day):
             if c not in sources or sh > sources[c][0]:
                 sources[c] = (float(sh), float(co), int(n))
     busy_rows = [[c, round(float(np.median(v)), 2), len(v)] for c, v in busy.items() if np.median(v) >= BUSY_SHARE]
+    order = sorted(sources.items(), key=lambda kv: (-kv[1][1], -kv[1][0], -kv[1][2]))
+    strong = _apart([(*h3.cell_to_latlng(c), s, co) for c, (s, co, n) in order], 500.0, 5)
     return {"day": day, "window": [window_days(day)[0], day], "days_held": len(held), "licence": LICENCE,
             "credit": [CITE], "band_mhz": [1400, 1427],
             "sources": [[c, round(s, 2), round(co, 2), n] for c, (s, co, n) in sorted(sources.items(), key=lambda kv: -kv[1][1])],
             "busy": sorted(busy_rows, key=lambda r: -r[1]),
+            "strongest": [{"lat": round(la, 2), "lon": round(lo, 2), "share": round(s, 2), "contrast": round(co, 2),
+                           "where": _describe(la, lo)} for la, lo, s, co in strong],
             "cuts": {"source_share": SOURCE_SHARE, "source_contrast": SOURCE_CONTRAST, "quiet_ring": QUIET_RING, "busy_share": BUSY_SHARE,
                      "min_looks": MIN_LOOKS},
             "method": "tools/smap_rfi.py (L1C RFI-detection bit; 7-day share; contrast against the 100-300 km ring); "
