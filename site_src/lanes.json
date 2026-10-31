@@ -9,7 +9,7 @@
     {
       "id": "emitters",
       "name": "Emitters seen from space",
-      "intro": "Transmitters that show up in satellite radar data as interference inside the radar's own band."
+      "intro": "Transmitters that show up as interference in satellite radar and radiometer data, inside the instrument's own band."
     },
     {
       "id": "satcom",
@@ -265,6 +265,26 @@
         [
           "Map layer",
           "/methods#nisar-map"
+        ]
+      ]
+    },
+    {
+      "id": "smap",
+      "group": "emitters",
+      "name": "L-band radars and other emitters from SMAP",
+      "status": "partial",
+      "phase": "Phase 7",
+      "summary": "Emitters in or spilling into the protected 1400–1427 MHz band, from the RFI flags of NASA's SMAP radiometer.",
+      "what": "SMAP's radiometer listens in 1400–1427 MHz, a band reserved for passive sensing. Its processing flags each look that carries interference. Long-range air-surveillance radars transmit just below the band, at 1215–1400 MHz, and spill into it.",
+      "how": "tools/smap_rfi.py counts, for each 36 km cell over 7 days, the share of looks flagged and how far that share stands above the cells 100–300 km around. The map shows cells that stand out (single emitters) and, faintly, regions where the band is busy everywhere.",
+      "data": [
+        "NASA SMAP L1C radiometer brightness temperatures, SPL1CTB v006 (NSIDC DAAC, NASA open data, doi:10.5067/DV7IX2DQ681Y)"
+      ],
+      "notes": "A first check against 31 US long-range sites from a 2010 FAA file failed (AUC 0.50): the US background is busy and the positions are old. A second check, pre-registered, against the 14 active North Warning System long-range radars on two unseen weeks held: AUC 0.988, 10 of 14 sites heard in both weeks, 1.2% of far cells flagged. SMAP finds L-band radars against a quiet background; in Europe, East Asia and the Middle East most looks are flagged, so single emitters can't be told apart there. It does not show GPS jammers.",
+      "links": [
+        [
+          "Validation",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/smap-rfi.md"
         ]
       ]
     },

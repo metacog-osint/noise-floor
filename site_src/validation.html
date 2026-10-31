@@ -108,6 +108,20 @@
 <p>It reaches 66°N, so it covers the Baltic, which CYGNSS can't see. Myanmar is weaker (own AUC 0.80).</p>
 <p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/space-receivers.md">Full Sentinel-6A validation report</a></p>
 
+<h2 id="smap">L-band radars from orbit (SMAP)</h2>
+<p>NASA's SMAP satellite listens in the protected 1400–1427 MHz band and flags each look that carries interference. Long-range air-surveillance radars transmit just below the band and can spill into it. For each 36 km cell, Noisefloor counts the share of looks flagged over 7 days and how far it stands above the cells 100–300 km around.</p>
+<div class="tw"><table>
+  <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>US long-range radar sites from a 2010 FAA file (31 sites, one week, set in advance)</td><td>AUC 0.502: cells near the sites were flagged no more often than cells far away (6.7% against 7.1%)</td><td><span class="chip st-failed">Fail</span></td></tr>
+    <tr><td>North Warning System long-range radars (14 active sites, two unseen weeks, set in advance)</td><td>AUC 0.988: cells near the radars were flagged on a median 80% of looks, far cells 2%; 10 of 14 sites heard in both weeks; 1.2% of far cells flagged half the time or more</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Crowded regions</td><td>Most looks are flagged across Europe, western Russia, East Asia and much of the Middle East, so single emitters can't be told apart there</td><td><span class="chip st-partial">Partly</span></td></tr>
+    <tr><td>GPS jammers</td><td>Not tested and not expected: GPS uses other parts of L-band</td><td><span class="chip st-planned">Out of scope</span></td></tr>
+  </tbody>
+</table></div>
+<p>The second check was not blind: the idea came from always-flagged cells noticed in Labrador. The site list is complete, the weeks were unseen and the pass marks were committed first.</p>
+<p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/smap-rfi.md">Full SMAP validation report</a></p>
+
 <h3>Ground reference stations</h3>
 <p>Permanent GNSS reference stations log every satellite's signal strength. Six European stations 110–486 km from the Kaliningrad coast were tested on six jammed days and two quiet days, with the rule fixed before any download.</p>
 <div class="tw"><table>
