@@ -344,6 +344,54 @@ def summary(days, res=2, radius_km=RADIUS_KM, halves=False, thresholds=(0.05, 0.
             "rates": {str(t): {"hit": rate(jam, t), "fa": rate(clean, t), "control": rate(ctrl, t)} for t in thresholds}}
 
 
+def cygnss_res2(day):
+    """CYGNSS median excess (dB) per res-2 cell: median of the judged res-3 cells under it (tools/cygnss_rfi.py)."""
+    import h3
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import cygnss_rfi as C
+    g = C.read_grid(day, 3)
+    if g is None:
+        return {}
+    acc = {}
+    for c, r in g.items():
+        if C.noise_ok(r):
+            acc.setdefault(h3.cell_to_parent(c, 2), []).append(r["med_db"])
+    return {k: float(np.median(v)) for k, v in acc.items()}
+
+
+def report(days, res=2, radius_km=RADIUS_KM, halves=False, reader=None, control_thr=None):
+    """Held-out report: pooled AUC, leave-one-region-out AUC (tools/cygnss_checks.py rules on res-`res` cells), the
+    share of control-box cell-days at or above `control_thr`, and Spearman agreement with CYGNSS where both judge."""
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import cygnss_rfi as C
+    import cygnss_checks as K
+    from scipy.stats import spearmanr
+    rd = reader or read_grid
+    P = pairs_for(days, res, radius_km, halves, rd)
+    pairs = [{"day": p[5], "h3": p[6], "lat": p[3], "lon": p[4], "med_db": p[0], "share": p[1]} for p in P]
+    reg = K.region_heldout(pairs)
+    ctrl, agree = [], []
+    for d in days:
+        g = rd(d, res, radius_km, halves) or {}
+        ctrl += [r["score"] for r in g.values()
+                 if any(C.in_box(r["lat"], r["lon"], b) for b in C.BOXES["control"].values())]
+        cy = cygnss_res2(d) if res == 2 else {}
+        agree += [(g[c]["score"], v) for c, v in cy.items() if c in g]
+    out = {"days": len(days), "pairs": len(pairs), "jam": reg.get("jam"), "clean": reg.get("clean"),
+           "pooled_auc": reg.get("pooled_auc"), "min_region_auc_without": reg.get("min_judged_auc_without"),
+           "regions": [{k: r[k] for k in ("jam", "days", "lat", "lon", "boxes", "own_auc", "auc_without", "judged")}
+                       for r in reg.get("regions", [])],
+           "control_cell_days": len(ctrl)}
+    if control_thr is not None and ctrl:
+        out["control_at_thr"] = round(float(np.mean(np.asarray(ctrl) >= control_thr)), 3)
+    clean = [p["med_db"] for p in pairs if p["share"] < C.CLEAN_SHARE]
+    out["clean_p95"] = round(float(np.percentile(clean, 95)), 4) if clean else None
+    if len(agree) > 10:
+        rho = spearmanr([a for a, _ in agree], [b for _, b in agree])
+        out["cygnss_spearman"] = {"rho": round(float(rho.correlation), 3), "n": len(agree)}
+    return out
+
+
 # ---------------------------------------------------------------------------------------------- cli
 
 def main(argv=None):
