@@ -105,6 +105,34 @@ Between the marks the result is "weakened". Also reported, without marks:
 - If O1 holds and O2 doesn't, the sensor doesn't change support; it may be recorded as context only.
 - If neither sensor qualifies, v1.2 doesn't happen and the rules stay at v1.1.
 
+### Result (run 31 Oct 2026, `tools/orbit_checks.py` as committed in b95fcda): neither sensor joins; rules stay v1.1
+
+Both sensors had grids on all 21 days. Pooled over the days:
+
+| Sensor | 93 m observations raised | 10 m observations raised | Random land points raised | O1 | O2 | Joins `orbit_rx` |
+|---|---|---|---|---|---|---|
+| Sentinel-6A (\|lat\| ≤ 66°) | 972 of 2,530 = **38.4%** (36.5–40.3) | 153 of 1,706 = 9.0% | 1,252 of 8,400 = **14.9%** (14.2–15.7) | **holds** (ratio 2.58) | **weakened**: 134 of 224 regions positive (59.8%, mark 60%), sign test p = 0.002, median difference +0.006 | **no** |
+| COSMIC-2 (\|lat\| ≤ 45°) | 714 of 1,813 = **39.4%** (37.2–41.7) | 72 of 1,055 = 6.8% | 1,573 of 8,394 = **18.7%** (17.9–19.6) | **holds** (ratio 2.10) | **fails**: 79 of 171 regions positive (46.2%), sign test p = 0.86, median difference −0.001 | **no** |
+
+(Wilson 95% intervals in brackets.)
+
+**What this shows.**
+- Both orbital receivers are raised far more often under aircraft-observed 93 m interference than over random land
+  points: they place the jamming regions.
+- Within a region, they don't rise on the days the aircraft see trouble:
+  - Sentinel-6A falls just short of the mark (59.8% of regions against 60%), though its sign test is significant.
+  - COSMIC-2 shows nothing.
+- So a raised orbital cell says "this is a region where interference happens", not "it happened here today". Counted
+  in rule S3, it would mostly re-state the region rather than corroborate a particular event.
+- This matches Sentinel-6A's own validation, where it rated the Gulf raised all year (`docs/validation/space-receivers.md`
+  §5.1).
+- 10 m observations are raised less often than random land points (9.0% and 6.8%). They sit mostly outside jamming
+  regions, as the natural rules expect.
+
+**Decision, as pre-registered.** No sensor joins `orbit_rx`; v1.2 doesn't happen, and the grading stays at v1.1. Both
+layers stay on the map as region-scale context. Recording O1-only sensors as event context (allowed above) isn't done
+now.
+
 ## v1.1: EASA's FIR tables drive D1 (27 Oct 2026)
 
 Tom approved the change on 26 Oct 2026 ("EASA spoofing marks setting deliberate_suspected"). Every other rule is as frozen
