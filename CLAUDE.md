@@ -77,6 +77,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
     (no account). It fetches each complete UCAR day (about 450-650 MB) and grids it at 2,500 km with the fore/aft
     split, writing `<day>.cosmic2.json` (cells at or above 0.23, named peaks, satellites) to the `cosmic2-data`
     release, which `site_layers.py` copies to `site/data/cosmic2/`.
+  - **Events corroboration (31 Oct 2026, pre-registered):** Sentinel-6A and COSMIC-2 were tested as a sensor family
+    for rule S3 (`tools/orbit_checks.py`, `docs/assessment/events.md`). Both place jamming regions (O1 holds), but
+    neither rises on event days within a region (O2: Sentinel-6A weakened, COSMIC-2 failed). The grading stays at v1.1.
   - **SMAP** (`tools/smap_rfi.py`): the 2010 FAA-site check failed. The pre-registered North Warning System check held
     (AUC 0.988, 10 of 14 sites): it finds L-band radars against a quiet background and saturates in crowded regions.
   - **SMAP on the map (31 Oct 2026, Tom approved):** `tools/smap_daily.py` runs from the 06:30 collectors task (needs
