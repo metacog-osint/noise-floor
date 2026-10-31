@@ -13,6 +13,8 @@ rem CYGNSS: the newest complete day -> data\cygnss\daily and the cygnss-data rel
 .venv\Scripts\python.exe tools\cygnss_daily.py >> data\logs\cygnss_daily.log 2>&1
 rem Sentinel-6A: newest complete days -> data\s6rfi\daily and the s6-data release (map layer; EARTHDATA_TOKEN + Space-Track)
 .venv\Scripts\python.exe tools\s6_daily.py >> data\logs\s6_daily.log 2>&1
+rem SMAP: newest complete days -> data\smap\daily (7-day windows) and the smap-data release (map layer; EARTHDATA_TOKEN)
+.venv\Scripts\python.exe tools\smap_daily.py >> data\logs\smap_daily.log 2>&1
 rem EASA FIR tables and the Baltic warnings page: daily history in the private archive (both show only what is current)
 .venv\Scripts\python.exe tools\notice_capture.py >> data\logs\notice_capture.log 2>&1
 endlocal

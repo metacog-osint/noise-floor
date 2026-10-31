@@ -102,6 +102,7 @@ Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-
 - Isolated always-flagged cells sit in quiet regions; they are unidentified. |
 | R2b | **Second known answer, held 31 Oct 2026:** the 14 active North Warning System long-range radars (AN/FPS-117) on two unseen weeks: AUC 0.988, 10 of 14 sites heard in both weeks, 1.2% of far cells flagged (`docs/validation/smap-rfi.md` §5). SMAP finds L-band radars where the background is quiet |
 | R3 | If R2 passes: add to the map's emitter layer beside NISAR, labelled by band. It shows radars, not GPS jammers |
+| R3b | **Live 31 Oct 2026 (Tom approved):** the map's "L-band radars and other emitters (SMAP)" layer. `tools/smap_daily.py` runs daily from the 06:30 collectors task and fills the `smap-data` release. Stand-out cells are those flagged on half the looks or more, 0.5 above a quiet ring (0.10 or less); busy regions are drawn faintly. The note says the band isn't GPS, so the layer shows radars and other emitters, not jammers |
 
 ### S: Sentinel-1 (C-band)
 

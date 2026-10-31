@@ -74,6 +74,10 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   - **COSMIC-2** (`tools/cosmic2_rfi.py`): pre-registered C1–C5; the held-out run is in progress.
   - **SMAP** (`tools/smap_rfi.py`): the 2010 FAA-site check failed. The pre-registered North Warning System check held
     (AUC 0.988, 10 of 14 sites): it finds L-band radars against a quiet background and saturates in crowded regions.
+  - **SMAP on the map (31 Oct 2026, Tom approved):** `tools/smap_daily.py` runs from the 06:30 collectors task (needs
+    EARTHDATA_TOKEN). It fetches one L1C day (about 160 MB) and writes `<day>.smap.json` for the 7 days to that day:
+    stand-out cells (share 0.5 or more, contrast 0.5 or more, ring 0.10 or less) and busy H3 res-3 regions. Files go
+    to the `smap-data` release, which `site_layers.py` copies to `site/data/smap/`. The cuts are display choices.
   - **Sentinel-1 worldwide** (`tools/s1_rfi_global.py`) and the **ALOS-2** probe (`tools/alos2_rfi.py`): built,
     descriptive only.
   - **HydroGNSS** waits on credentials. **Biomass** needs an ESA account. **SMOS** downloads with the CDSE keys.
