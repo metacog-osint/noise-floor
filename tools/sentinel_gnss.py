@@ -125,6 +125,19 @@ def secret(name):
     return v
 
 
+def replace(src, dst, tries=10, pause=1.0):
+    """os.replace, retried: on 31 Oct 2026 Windows refused several renames of fresh files for a moment ("being used
+    by another process", WinError 32), probably a virus or index scan."""
+    import time
+    for k in range(tries):
+        try:
+            return os.replace(src, dst)
+        except PermissionError:
+            if k == tries - 1:
+                raise
+            time.sleep(pause * (k + 1))
+
+
 def utc(s):
     return dt.datetime.strptime(s, "%Y%m%dT%H%M%S").replace(tzinfo=dt.timezone.utc)
 
@@ -285,7 +298,7 @@ def fetch_product(day, prod, force=False):
     tmp = f"{dest}.{os.getpid()}.part"
     with open(tmp, "wb") as f:
         f.write(data)
-    os.replace(tmp, dest)
+    replace(tmp, dest)
     rec = {"name": prod["Name"], "source": f"https://{S3_HOST}{prod['S3Path']}", "catalogue_id": prod.get("Id"),
            "fetched_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
            "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "md5_checked": bool(md5)}
@@ -350,7 +363,7 @@ def download_cddis(url, dest):
     tmp = f"{dest}.{os.getpid()}.part"
     with open(tmp, "wb") as f:
         f.write(data)
-    os.replace(tmp, dest)
+    replace(tmp, dest)
     return dest
 
 
@@ -368,7 +381,7 @@ def save_elements(store):
     tmp = ELEMENTS + ".part"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(store, f)
-    os.replace(tmp, ELEMENTS)
+    replace(tmp, ELEMENTS)
 
 
 def spans_needed(held, day, today):
@@ -641,7 +654,7 @@ def write_day(day, rows, summary):
         cols[c] = pa.array(rows[c], pa.float32(), from_pandas=True)
     path = os.path.join(DAYS_DIR, f"{day}.parquet")
     pq.write_table(pa.table(cols), path + ".part", compression="zstd")
-    os.replace(path + ".part", path)
+    replace(path + ".part", path)
     with open(os.path.join(DAYS_DIR, f"{day}.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=1, default=str)
     return path
