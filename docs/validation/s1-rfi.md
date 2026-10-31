@@ -211,6 +211,37 @@ The article also reports the Dammam Patriot battery but gives no coordinates, so
 - **Per-burst along-track weighting** (the affected-lines profile within a run), and use of the noise pre-screen, to
   sharpen positions. Both need a fresh test.
 
+## 9. Worldwide, by region (31 Oct 2026; option S of docs/space-sensors-plan.md)
+
+**Tool:** `tools/s1_rfi_global.py`. It uses the same parser, fetch and flag rule (`DETECT`) on every IW GRD product of a
+day, worldwide. It keeps one row per pass and H3 res-4 cell (flagged or not), and sums a week into res-3 cells.
+It never looks for sites.
+
+**One week, 9–15 Oct 2026.**
+- **Throughput:** 919–994 products a day (S1C and S1D only), about 3 minutes a day on 8 threads, no failures.
+  Between 9.6% and 11.8% of pass-cells were flagged each day.
+- **Coverage is thin:** 15,368 res-3 cells were covered, but only 2,381 by four or more passes. Sentinel-1 revisits
+  most places every 6 to 12 days, so a public map needs a window of about four weeks.
+- **Median share of passes with RFI**, cells with 4+ passes, by the CYGNSS lane's boxes:
+
+| Box | Cells | Median share |
+|---|---|---|
+| Levant | 19 | 1.00 |
+| Persian Gulf | 28 | 1.00 |
+| Iraq | 35 | 0.60 |
+| Iran (interior) | 13 | 0.50 |
+| Red Sea | 8 | 0.38 |
+| Egypt / Sinai / Suez | 2 | 0.33 |
+| India–Pakistan border | 2 | 0.00 |
+| Central Pacific (control) | 1 | 0.00 |
+
+**Against the aircraft map (descriptive, not a test).**
+- Over the same week, res-3 cells with 140+ aircraft: AUC **0.686** (32 jammed, 988 clean). Median share: 0.50 in
+  jammed cells, 0.17 in clean ones.
+- That is expected. The annotation measures C-band (5.4 GHz) emitters, mostly radars. They cluster in the same conflict
+  regions as GPS interference, but they are a different thing.
+- A public layer would say "C-band radar activity", never "GPS interference".
+
 ## Run
 
 ```sh
