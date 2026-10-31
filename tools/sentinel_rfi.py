@@ -180,7 +180,7 @@ def build_epochs(day):
                     for k, v in out.items()})
     path = os.path.join(EPOCH_DIR, f"{day}.parquet")
     pq.write_table(tbl, path + ".part", compression="zstd")
-    os.replace(path + ".part", path)
+    SG.replace(path + ".part", path)
     return path, {u: int((out["unit"] == u).sum()) for u in sorted(set(units))}
 
 
