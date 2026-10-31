@@ -168,3 +168,49 @@ fallback in `tools/sentinel_gnss.fetch_nav`; the method is otherwise as frozen i
 - Eastern Europe dominates the jammed cells (348 of 407). Leaving it out still gives 0.918.
 - Myanmar is weaker (own AUC 0.80).
 - A map layer needs Tom's yes (plan step P, as for the other lanes).
+
+### 5.2 COSMIC-2 on the 21 held-out days (run 31 Oct 2026): all five checks hold
+
+All 21 days had `podTc2` archives. Satellites delivering data:
+- five of six from 1 Oct 2025 to 4 Jan 2026 (C2E1, 2, 4, 5, 6);
+- three on 21 Mar and 9 Apr 2026 (C2E2, 5, 6);
+- four on the other days (C2E2, 4, 5, 6).
+
+A dropped connection on 31 Oct (drive D: and a DNS blip) interrupted the run once. It was restarted from the first
+missing day; no day was refetched or replaced. The method is as frozen in section 4.
+
+| # | Check | Held-out | In-sample | Verdict |
+|---|---|---|---|---|
+| C1 | Pooled AUC (200 jammed, 13,092 clean cell-days) | **0.919** | 0.922 | **holds** (≥ 0.85) |
+| C2 | Lowest leave-one-region-out AUC | **0.920** | 0.895 | **holds** (≥ 0.80) |
+| C3 | Control-box cell-days at or above T = 0.23 (6,216) | **0.0%** | 0.0% | **holds** (≤ 5%) |
+| C4 | Spearman with CYGNSS, shared cells (76,369) | **0.265** | 0.305 | **holds** (≥ 0.20) |
+| C5 | Persian Gulf box (8 cells): spring mean minus winter mean | **+0.059** (0.333 against 0.273) | – | **holds** (≥ +0.05), narrowly |
+
+**C5 by day:** winter 0.216–0.312; spring 0.261–0.384. The spring days are 2 Mar, 21 Mar, 9 Apr, 28 Apr and 17 May
+2026; 28 Apr reads 0.261, inside the winter range.
+
+**Regions (held-out),** with each region's own AUC and the AUC with it left out:
+
+| Region | Jammed cell-days | Days | Own AUC | AUC without it |
+|---|---|---|---|---|
+| Eastern Mediterranean and Black Sea edge | 143 | 21 | 0.895 | 0.988 |
+| Gulf | 33 | 7 | 0.997 | 0.920 |
+| Myanmar | 19 | 15 | 0.972 | 0.936 |
+| Red Sea | 2 | 2 | 1.000 | 0.920 |
+| India–Pakistan border | 2 | 2 | 0.885 | 0.923 |
+| Off Libya | 1 | 1 | 0.810 | 0.921 |
+
+**What this shows.**
+- UCAR's per-antenna RFI index, back-projected with the forward and backward antennas kept apart, separates
+  aircraft-jammed regions from clean ones on unseen days.
+- Unlike Sentinel-6A (section 5.1), it also follows the Gulf's spring 2026 rise, though by a small margin.
+- It is strongest where Sentinel-6A is weakest: Myanmar has own AUC 0.97 here, against 0.80 for Sentinel-6A.
+
+**What it doesn't show.**
+- The orbit's 24° inclination limits it to about 45°N, so there is no Baltic.
+- It places interference by region (a 2,500 km reach), not by site. North of the orbit, latitude trades off against
+  detection range.
+- Its agreement with CYGNSS is lower than Sentinel-6A's (0.265 against 0.504).
+- Only three to five of the six satellites delivered data.
+- A map layer needs Tom's yes.
