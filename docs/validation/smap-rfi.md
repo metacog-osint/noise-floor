@@ -90,7 +90,63 @@ quiet:
 These are single emitters in or spilling into the protected band. They have not been identified, and whether any is a
 radar is not checked.
 
-## 4. Next
+## 5. Second known answer: North Warning System long-range radars (pre-registration, 31 Oct 2026)
+
+Written and committed before either test week was fetched.
+
+**Where the idea came from.** Section 3 found always-flagged cells in quiet regions, two of them in Labrador and on Cape
+Breton Island. Labrador hosts long-range radars of the North Warning System (NWS). The test below is therefore not
+blind to that diagnostic. To limit the bias:
+- it takes every active NWS long-range site from one published list, not the cells already noticed;
+- it runs on two weeks nobody has looked at;
+- Cape Breton is not an NWS site and isn't in the list.
+
+**Sites.**
+- The 14 active long-range radars (AN/FPS-117) in Wikipedia's "North Warning System" station table, with the coordinates
+  given there (read 31 Oct 2026).
+- Lady Franklin Point (PIN-3) is excluded: the same table says it has been out of commission since Nov 2020.
+- The AN/FPS-117 transmits in 1215–1400 MHz, just below SMAP's 1400–1427 MHz. Premise (unverified): its out-of-band
+  emission reaches SMAP's band.
+
+| Site | Place | Lat | Lon |
+|---|---|---|---|
+| POW-M | Point Barrow, AK | 71.3272 | −156.6361 |
+| POW-2 | Oliktok, AK | 70.4983 | −149.8894 |
+| BAR-M | Barter Island, AK | 70.1303 | −143.6392 |
+| LIZ-1 | Cape Lisburne, AK | 68.8700 | −166.1500 |
+| BAR-2 | Shingle Point, YT | 68.9228 | −137.2606 |
+| PIN-M | Cape Parry, NT | 70.1714 | −124.7250 |
+| CAM-M | Cambridge Bay, NU | 69.1161 | −105.1189 |
+| CAM-3 | Shepherd Bay, NU | 68.7928 | −93.4403 |
+| FOX-M | Hall Beach, NU | 68.7608 | −81.2264 |
+| FOX-3 | Dewar Lakes, NU | 68.6506 | −71.2328 |
+| DYE-M | Cape Dyer, NU | 66.6644 | −61.3558 |
+| BAF-3 | Brevoort Island, NU | 63.3400 | −64.1581 |
+| LAB-2 | Saglek, NL | 58.4886 | −62.5856 |
+| LAB-6 | Cartwright, NL | 53.5511 | −56.8300 |
+
+**Data.** Two weeks of SMAP L1C (SPL1CTB v006), each scored on its own:
+- 1–7 Oct 2026;
+- 20–26 Oct 2026 (after the 18–19 Oct gap).
+
+The measures are as in section 1 (`share`, `contrast`, `resid_share`), with tool and thresholds unchanged.
+
+**Comparison.**
+- "Near": every cell (land or water) within 40 km of a site.
+- "Far": every cell farther than 150 km from all 14 sites, inside the sites' bounding box widened by 2 degrees
+  (about 51.5–73.3°N, 168.2–54.8°W).
+- Cells near the excluded PIN-3 count in neither group.
+- Near and far cell-weeks from the two weeks are pooled.
+
+| # | Check | Holds if | Fails if |
+|---|---|---|---|
+| N1 | AUC of `share`, near vs far (pooled) | ≥ 0.80 | < 0.65 |
+| N2 | Sites "heard" (nearest cell's share ≥ 0.5) in both weeks, out of 14 | ≥ 8 | ≤ 4 |
+| N3 | Far cells with share ≥ 0.5 (pooled) | ≤ 5% | > 15% |
+
+Between the marks the result is "weakened". `contrast` and `resid_share` AUCs are reported without marks.
+
+## 6. Next
 
 - **A fresh known answer with current positions.** Lists of L-band radars with positions and dates from the same weeks
   would do. Any rule built on the isolated-source list needs its own new test.
