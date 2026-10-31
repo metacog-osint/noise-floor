@@ -93,7 +93,7 @@ MIN_COVER_S = 3600              # a product must cover at least an hour of the d
 CHUNK_BYTES = 1 << 20           # S3 range size for downloads
 EMPTY_SHA = hashlib.sha256(b"").hexdigest()
 CREDIT = ["Contains modified Copernicus Sentinel data {year}", "Orbital data: USSPACECOM (space-track.org)",
-          "Broadcast navigation: IGS via BKG GNSS Data Center"]
+          "Broadcast navigation: IGS via BKG GNSS Data Center or NASA CDDIS"]
 NAME_RE = re.compile(r"^(S\d[A-Z])_OPER_AUX_GNSSRD_POD__(\d{8}T\d{6})_V(\d{8}T\d{6})_(\d{8}T\d{6})")
 
 
@@ -307,6 +307,7 @@ def rinex_lines(tgz):
 
 
 NAV_PREFIXES = ("BRDC00IGS_R", "BRDC00WRD_S", "BRDC00WRD_R", "BRDM00DLR_S")   # station_cn0.nav_name's order
+CDDIS = "https://cddis.nasa.gov/archive/gnss/data/daily"
 
 
 def fetch_nav(day):
@@ -318,16 +319,39 @@ def fetch_nav(day):
     import time
     url = SC.nav_name(day.isoformat())
     urls = [url] if url else [f"{folder}{p}_{day.year}{doy:03d}0000_01D_MN.rnx.gz" for p in NAV_PREFIXES]
-    for attempt in range(4):                     # BKG refused connections for a few minutes on 31 Oct 2026
+    igs = f"BRDC00IGS_R_{day.year}{doy:03d}0000_01D_MN.rnx.gz"
+    for attempt in range(3):     # BKG (and IGN) refused connections from this PC for long spells on 31 Oct 2026
         for u in urls:
             dest = os.path.join(SC.RAW, str(day.year), f"{doy:03d}", u.rsplit("/", 1)[1])
             try:
                 return SC.download(u, dest)
             except Exception as ex:
-                print(f"  navigation {u.rsplit('/', 1)[1]}: {ex}", file=sys.stderr)
-        if attempt < 3:
+                print(f"  navigation {u.rsplit('/', 1)[1]} (BKG): {ex}", file=sys.stderr)
+        try:                     # the same IGS file from NASA CDDIS, with the Earthdata token
+            return download_cddis(f"{CDDIS}/{day.year}/brdc/{igs}",
+                                  os.path.join(SC.RAW, str(day.year), f"{doy:03d}", igs))
+        except Exception as ex:
+            print(f"  navigation {igs} (CDDIS): {ex}", file=sys.stderr)
+        if attempt < 2:
             time.sleep(60 * (attempt + 1))
-    raise SystemExit(f"no broadcast navigation file at BKG for {day}")
+    raise SystemExit(f"no broadcast navigation file at BKG or CDDIS for {day}")
+
+
+def download_cddis(url, dest):
+    """One file from CDDIS with the Earthdata bearer token (EARTHDATA_TOKEN); kept as station_cn0.download keeps it."""
+    if os.path.exists(dest) and os.path.getsize(dest) > 0:
+        return dest
+    req = urllib.request.Request(url, headers={"Authorization": "Bearer " + secret("EARTHDATA_TOKEN"), "User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        data = r.read()
+    if data[:2] != b"\x1f\x8b":
+        raise ValueError("not a gzip file (login page?)")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    tmp = f"{dest}.{os.getpid()}.part"
+    with open(tmp, "wb") as f:
+        f.write(data)
+    os.replace(tmp, dest)
+    return dest
 
 
 # ---------------------------------------------------------------------------------------------- element sets
