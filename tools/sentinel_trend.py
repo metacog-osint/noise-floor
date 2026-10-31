@@ -271,10 +271,11 @@ def draw_chart(cfg, area, res, kp_days, path):
             label=f"{a['name']}, weekly median")
     ax.plot(wk, [r["reference"]["median"] for r in res["weekly"]], "-s", color="#718096", lw=1.2, ms=4,
             label="quiet references (pooled), weekly")
-    styles = ["-^", "-v", "-d"]
+    styles = ["-^", "-v", "-d", "-p"]
+    colors = ["#c05621", "#2f855a", "#6b46c1", "#b7791f"]
     for i, c in enumerate(res["comparisons"]):
-        ax.plot(wk, [r[c["id"]]["median"] for r in res["weekly"]], styles[i % 3], color="#c05621", lw=1, ms=4,
-                alpha=0.8, label=f"{c['name']} (comparison), weekly")
+        ax.plot(wk, [r[c["id"]]["median"] for r in res["weekly"]], styles[i % 4], color=colors[i % 4], lw=1, ms=4,
+                alpha=0.85, label=f"{c['name']} (comparison), weekly")
     ax.axhline(0, color="#999", lw=0.8)
     ax.axhline(DEGRADED_DB, color="#999", lw=0.8, ls="--")
     lo, hi = min(d_days + wk), max(d_days + wk)
