@@ -19,9 +19,16 @@ Sources (licence and use: registry/sources.csv, verified 22 Oct 2026)
   Chayka (DF6NM DL0AO)        df6nm-dl0ao        private-watch  status only (collectors/chayka.py); 15 min at most
   Sun transit                 (computed)                        windows for watched receiver/GEO pairs, next 48 h,
                                                                 using tools/sun_transit.py geometry
-Not ported: IODA (ask first), Cloudflare Radar and GPSJam (visual comparison only), ntfy pushes (need Tom's OK).
+  Cloudflare Radar            cloudflare-radar   ingest (NC)    outage annotations and traffic anomalies, last 7 days,
+                                                                for the watched countries and satellite-ISP networks
+                                                                (Starlink by default); token CLOUDFLARE_RADAR_TOKEN
+  Page watch                  itu-rrb, kratos-public, opsgroup-blog (cite-only): new links on listed pages;
+                                                                robots.txt obeyed; the first read is the baseline
+Not ported: IODA (ask first), GPSJam (visual comparison only), ntfy pushes (need Tom's OK). FAA NOTAMs wait on NMS API
+credentials (requested 30 Oct 2026); the public NOTAM Search site refuses automated clients.
 
-Config (private, gitignored): private/watch/pollers.json holds the watch lists (KingOfSat slots and watched channels,
+Config (private, gitignored): private/watch/pollers.json holds the watch lists (pagewatch pages, cfradar ASNs,
+KingOfSat slots and watched channels,
 sun-transit pairs, watch countries). A source whose list is missing reports SKIP; the others still run.
 
 First run: UKMTO and KingOfSat list their back catalogue, so that run is recorded silently as a baseline; NAVCEN user
@@ -39,7 +46,7 @@ Usage
   python collectors/watch.py                     # all sources
   python collectors/watch.py --only nga,ukmto    # some sources (keys: see SOURCES)
 """
-import argparse, hashlib, html, io, json, os, re, sys, traceback, urllib.request
+import argparse, hashlib, html, io, json, os, re, sys, traceback, urllib.error, urllib.parse, urllib.request
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -93,10 +100,11 @@ class Ctx:
     def __init__(self, now, state, cfg, raw_dir, out_dir, opener=http_get, chayka_fetcher=None):
         self.now, self.state, self.cfg, self.raw_dir, self.out_dir = now, state, cfg, raw_dir, out_dir
         self.opener, self.chayka_fetcher = opener, chayka_fetcher
-        self.panels, self.notes = {}, {}
+        self.panels, self.notes, self.msgs, self.robots = {}, {}, {}, {}
 
-    def get(self, url, source, ext, accept="*/*", timeout=45, ua=None):
-        body = self.opener(url, {"User-Agent": ua or UA, "Accept": accept}, timeout)
+    def get(self, url, source, ext, accept="*/*", timeout=45, ua=None, headers=None):
+        """GET and archive the body (extra headers, such as a token, are sent but never stored)."""
+        body = self.opener(url, {"User-Agent": ua or UA, "Accept": accept, **(headers or {})}, timeout)
         sha = hashlib.sha256(body).hexdigest()
         d = os.path.join(self.raw_dir, self.now.strftime("%Y-%m-%d")); os.makedirs(d, exist_ok=True)
         last = self.state.setdefault("raw", {}).get(url) or {}
@@ -112,8 +120,8 @@ class Ctx:
             f.write(json.dumps(rec) + "\n")
         return body
 
-    def json(self, url, source, timeout=45, ua=None):
-        return json.loads(self.get(url, source, "json", "application/json", timeout, ua).decode("utf-8"))
+    def json(self, url, source, timeout=45, ua=None, headers=None):
+        return json.loads(self.get(url, source, "json", "application/json", timeout, ua, headers).decode("utf-8"))
 
     def html(self, url, source, timeout=45):
         return self.get(url, source, "html", "text/html", timeout).decode("utf-8", "replace")
@@ -515,10 +523,183 @@ def src_sun(ctx):
 
 
 # key, label, function. Labels name the source in the digest and in state.json health.
+# ---------------- Cloudflare Radar (private watch; data CC BY-NC 4.0) ----------------
+CF_RADAR = "https://api.cloudflare.com/client/v4/radar"
+CF_DEFAULT_ASNS = ["14593"]          # Starlink; more satellite-ISP networks can be listed in pollers.json "cfradar"
+
+
+def user_env(name):
+    """An account value from the environment or, on Windows, the user variables (set after this process started)."""
+    v = os.environ.get(name)
+    if not v and sys.platform == "win32":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as k:
+                v = winreg.QueryValueEx(k, name)[0]
+        except OSError:
+            v = None
+    return v
+
+
+def src_cfradar(ctx):
+    """Verified outage annotations and automatic traffic anomalies of the last 7 days, for the watched countries and
+    satellite-ISP networks. Shows the effect on traffic, never the cause: cause stays unknown unless Cloudflare names it."""
+    tok = user_env("CLOUDFLARE_RADAR_TOKEN")
+    if not tok:
+        raise Skip("CLOUDFLARE_RADAR_TOKEN not set")
+    cfg = ctx.cfg or {}
+    countries = set((cfg.get("watch_countries") or {}).get("codes") or [])
+    asns = {str(a) for a in ((cfg.get("cfradar") or {}).get("asns") or CF_DEFAULT_ASNS)}
+    ctx.due("cfradar", 60)
+    hdr = {"Authorization": "Bearer " + tok}
+    ann = ctx.json(f"{CF_RADAR}/annotations/outages?dateRange=7d&limit=100&format=json", "cfradar", headers=hdr)
+    anom = ctx.json(f"{CF_RADAR}/traffic_anomalies?dateRange=7d&limit=100&format=json", "cfradar", headers=hdr)
+    if not (ann.get("success") and anom.get("success")):
+        raise ValueError(f"Cloudflare Radar: unsuccessful response {str(ann.get('errors') or anom.get('errors'))[:150]}")
+    out = []
+    for a in (ann.get("result") or {}).get("annotations") or []:
+        locs = set(a.get("locations") or [])
+        a_asns = {str(x.get("asn")) for x in a.get("asnsDetails") or []} | {str(x) for x in a.get("asns") or []}
+        if not (locs & countries or a_asns & asns):
+            continue
+        names = ", ".join([x.get("name", "") for x in a.get("locationsDetails") or []] +
+                          [f"AS{x.get('asn')} {x.get('name', '')}" for x in a.get("asnsDetails") or []]) or "unnamed"
+        o = a.get("outage") or {}
+        cause = (o.get("outageCause") or "cause not given").replace("_", " ").lower()
+        out.append(ctx.trig("Cloudflare Radar", "EFFECT", f"Internet outage: {names} ({cause})",
+                            f"{a.get('startDate', '')} to {a.get('endDate') or 'ongoing'}. {a.get('description') or ''} "
+                            "Cloudflare-verified outage annotation; traffic effect, cause as Cloudflare states it.",
+                            a.get("linkedUrl") or "https://radar.cloudflare.com/outage-center", a.get("startDate"),
+                            key=f"ann|{a.get('id')}"))
+    for t in (anom.get("result") or {}).get("trafficAnomalies") or []:
+        ad = t.get("asnDetails") or {}
+        loc = (t.get("locationDetails") or {}).get("code") or (ad.get("location") or {}).get("code")
+        asn = str(ad.get("asn")) if ad.get("asn") else None
+        if not (loc in countries or (asn and asn in asns)):
+            continue
+        who = f"AS{asn} {ad.get('name', '')} ({loc})" if asn else ((t.get("locationDetails") or {}).get("name") or loc)
+        status = {"tp": "confirmed", "fp": "false positive"}.get((t.get("status") or "").lower(),
+                                                                 (t.get("status") or "unknown").lower())
+        if status == "false positive":
+            continue
+        out.append(ctx.trig("Cloudflare Radar", "EFFECT", f"Traffic anomaly ({status}): {who}",
+                            f"{t.get('startDate', '')} to {t.get('endDate') or 'ongoing'}; Cloudflare's automatic "
+                            f"detection ({t.get('type', '')}), status {status}. Cause unknown: throttling, power and "
+                            "software failures look the same.",
+                            f"https://radar.cloudflare.com/{'as' + asn if asn else (loc or '').lower()}", t.get("startDate"),
+                            key=f"anom|{t.get('uuid')}|{status}"))
+    return out
+
+
+# ---------------- Page watch (official and vendor pages; cite only) ----------------
+PAGEWATCH_EVERY_MIN = 180            # courtesy: the daily task reads each page once; manual reruns wait 3 h
+A_RE = re.compile(r"""<a\b[^>]*?href\s*=\s*["']([^"'#]+)["'][^>]*>(.*?)</a>""", re.I | re.S)
+
+
+def robots_rules(text, agent="noise-floor"):
+    """(allow|disallow, pattern) rules from robots.txt for our agent, else for '*'."""
+    groups, cur = [], None
+    for line in text.splitlines():
+        line = line.split("#", 1)[0].strip()
+        if ":" not in line:
+            continue
+        k, v = (x.strip() for x in line.split(":", 1))
+        k = k.lower()
+        if k == "user-agent":
+            if cur is None or cur["rules"]:
+                cur = {"agents": [], "rules": []}
+                groups.append(cur)
+            cur["agents"].append(v.lower())
+        elif k in ("allow", "disallow") and cur is not None:
+            cur["rules"].append((k, v))
+    mine = [g for g in groups if any(a not in ("", "*") and a in agent.lower() for a in g["agents"])]
+    return [r for g in (mine or [g for g in groups if "*" in g["agents"]]) for r in g["rules"]]
+
+
+def robots_ok(rules, path):
+    """Longest matching rule wins ('*' and '$' supported); an empty Disallow allows everything."""
+    best = None
+    for k, v in rules:
+        if not v:
+            continue
+        rx = "^" + re.escape(v).replace(r"\*", ".*").replace(r"\$", "$")
+        if re.match(rx, path) and (best is None or len(v) > len(best[1]) or (len(v) == len(best[1]) and k == "allow")):
+            best = (k, v)
+    return best is None or best[0] == "allow"
+
+
+def robots_allows(ctx, url):
+    parts = urllib.parse.urlsplit(url)
+    host = f"{parts.scheme}://{parts.netloc}"
+    if host not in ctx.robots:
+        try:
+            ctx.robots[host] = robots_rules(ctx.opener(host + "/robots.txt", {"User-Agent": UA, "Accept": "text/plain"},
+                                                       30).decode("utf-8", "replace"))
+        except urllib.error.HTTPError as e:
+            ctx.robots[host] = [] if e.code == 404 else [("disallow", "/")]   # no file: allowed; refused: stay out
+        except Exception:
+            ctx.robots[host] = [("disallow", "/")]
+    return robots_ok(ctx.robots[host], parts.path or "/")
+
+
+def page_links(body, base, match=None):
+    rx = re.compile(match) if match else None
+    out = set()
+    for h, t in A_RE.findall(body):
+        u = urllib.parse.urljoin(base, html.unescape(h.strip()))
+        if u.startswith("http") and (rx is None or rx.search(u)):
+            out.add(f"{u}|{text_of(t)[:160]}")
+    return out
+
+
+def src_pagewatch(ctx):
+    """New links on listed pages (ITU RRB meeting documents, regulators, vendor trackers). The first read of a page is
+    its baseline. Each new link is a lead for an analyst to read; quote nothing, cite the page."""
+    pages = (ctx.cfg or {}).get("pagewatch") or []
+    if not pages:
+        raise Skip("no pagewatch list in private/watch/pollers.json")
+    ctx.due("pagewatch", PAGEWATCH_EVERY_MIN)
+    store = ctx.state.setdefault("pagewatch", {})
+    out, problems = [], []
+    for p in pages:
+        url = p["url"]
+        if not robots_allows(ctx, url):
+            problems.append(f"{p['name']}: robots.txt disallows")
+            continue
+        try:
+            body = ctx.html(url, "pagewatch")
+        except Exception as e:
+            problems.append(f"{p['name']}: {e.__class__.__name__}")
+            continue
+        cur = page_links(body, url, p.get("match"))
+        if not cur:
+            problems.append(f"{p['name']}: no links matched")
+            continue
+        prev = store.get(url)
+        store[url] = {"links": sorted(cur)[:1500], "checked": iso(ctx.now)}
+        if prev is None:
+            continue
+        new = sorted(cur - set(prev["links"]))
+        if new:
+            generic = ("", "read more", "more", "learn more", "continue reading", "download")
+            names = [x.split("|", 1)[1] if x.split("|", 1)[1].strip().lower() not in generic else x.split("|", 1)[0]
+                     for x in new]
+            out.append(ctx.trig("Page watch", p.get("grade", "EFFECT"), f"{p['name']}: {len(new)} new link(s)",
+                                "New: " + "; ".join(names[:8]) + (" ..." if len(new) > 8 else "") +
+                                ". A changed page is a lead to read; cite the page, quote nothing.", url,
+                                key=f"{url}|{hashlib.sha1('|'.join(new).encode()).hexdigest()[:12]}"))
+    if problems and len(problems) == len(pages):
+        raise ValueError("; ".join(problems)[:200])
+    ctx.msgs["Page watch"] = "; ".join(problems)[:200]
+    ctx.notes["Page watch"] = len(out)
+    return out
+
+
 SOURCES = [("swpc", "NOAA SWPC", src_swpc), ("nga", "NGA MSI", src_nga),
            ("navcen-tests", "USCG NAVCEN", src_navcen_tests), ("navcen-reports", "USCG NAVCEN reports", src_navcen_reports),
            ("ukmto", "UKMTO", src_ukmto), ("kingofsat", "KingOfSat", src_kingofsat),
-           ("chayka", "Chayka (DL0AO)", src_chayka), ("sun-transit", "Sun transit", src_sun)]
+           ("chayka", "Chayka (DL0AO)", src_chayka), ("sun-transit", "Sun transit", src_sun),
+           ("cfradar", "Cloudflare Radar", src_cfradar), ("pagewatch", "Page watch", src_pagewatch)]
 # Sources whose first successful run lists the whole back catalogue: record it silently as a baseline.
 BASELINE_FIRST = {"UKMTO", "KingOfSat"}   # NGA returns only in-force warnings, so those show on day one
 GRADE_ORDER = {"WARNING": 0, "EFFECT": 1, "NATURAL": 2}
@@ -589,7 +770,8 @@ def digest(path, now, new, health, panels):
           for n, h in health.items()]
     L += ["", "Credits: UKMTO material contains public sector information licensed under the Open Government Licence "
           "v3.0 (JMIC notes: cite only). NGA MSI, USCG NAVCEN and NOAA SWPC: US government. KingOfSat and DF6NM "
-          "(DL0AO): private watch, not for publication."]
+          "(DL0AO): private watch, not for publication. Cloudflare Radar: CC BY-NC 4.0, private digest. Page watch: "
+          "links only; cite the page."]
     open(path, "w", encoding="utf-8").write("\n".join(L) + "\n")
 
 
@@ -627,7 +809,7 @@ def run(only=None, config=CONFIG, out=OUT, raw=RAW, now=None, opener=http_get, c
                     baselined += 1
                     continue
                 new.append(t)
-            msg = "baseline recorded (first run)" if first else ""
+            msg = "baseline recorded (first run)" if first else ctx.msgs.get(label, "")
             h.update(status="OK", count=ctx.notes.get(label, len(items)), msg=msg,
                      last_ok=f"{now:%Y-%m-%d %H:%MZ}", last_ok_iso=now.isoformat())
         except Throttled as e:

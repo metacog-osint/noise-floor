@@ -290,3 +290,41 @@ The judged controls changed by +0.16 dB between the two Gulf windows, below the 
 - **Inland Australia** needs its own look before any reading in a quiet area is trusted.
 - **Plan step E4** (a public layer) waits on Tom. A regional weekly product, captioned with the footprint and the
   Australia caveat, is the realistic form.
+
+### 2.5 After the run (31 Oct 2026, evening; descriptive, not pre-registered)
+
+**The EKS confounder, checked.**
+- The paper is Clements, Kriezis and Humphreys, "Chasing Lightning" (arXiv:2606.03673, 2 Jun 2026), read 31 Oct.
+- It counts days with wide-area L1 events (75 days with a drop of 5 dB or more, 2019–2026) but publishes no list of
+  dates, so the windows can't be matched day by day.
+- Each event lasts under 10 seconds and covers continental Europe, Greenland and Canada. One event touches at most
+  one 10 s epoch per pass, which cannot move a weekly cell median.
+- Not a material confounder for these checks.
+
+**Inland Australia, looked at.** The drop is not centred on Australia. Over the nine windows, in 5-degree boxes:
+- It is −1.0 to −1.3 dB everywhere from 100 to 130°E, open Indian Ocean included, at every latitude from 10°S to
+  45°S. It fades to −0.1 to −0.4 dB by 160–170°E.
+- It shows on every unit (−0.8 to −1.5 dB in the Australia interior box) and at every pass time (−0.85 to −1.69 dB),
+  and in all nine windows.
+
+A longitude profile over quiet bands finds the same dip around the world (median index, dB):
+
+| Band | 100–140°E | Elsewhere |
+|---|---|---|
+| 0–20°N | −0.9 to −1.2 | −0.2 to +0.3 |
+| 10–45°S | −0.7 to −1.0 | −0.4 to +0.0 |
+| 45–62°S | −0.4 to −0.5 | −0.3 to +0.1 |
+
+("Elsewhere" is every 20-degree longitude bin outside 60–160°E.)
+
+- **What it looks like:** an Earth-fixed effect thousands of km wide, weaker where the band sits far from the equator.
+- **Hypothesis (unverified):** that is where BeiDou's geostationary (80, 110.5 and 140°E) and inclined (centred near
+  118°E) satellites and QZSS sit overhead. Their L1-band signals would raise a low-orbit receiver's noise floor.
+  - A rough link budget: ten signals, each about 17 dB below the noise in a 2 MHz band, add about 0.8 dB.
+  - SBAS satellites over the Americas and Africa don't show it. That fits only a few signals there against many over
+    Asia, but it isn't tested.
+- **What it explains:** check 5's failure (inland Australia), and part of the East Asian readings, including the
+  South China Sea (−1.1 to −1.5 dB). It does not explain the Gulf (about 50°E, outside the dip).
+- **What it means for the result:** the four checks that held are unaffected, since the aircraft-jammed cells lie
+  mostly outside 80–140°E.
+- **Next:** plan step E2.1 proposes a corrected index and a pre-registered test of it.
