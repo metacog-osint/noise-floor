@@ -16,6 +16,8 @@ Commands
   share END [--days 7]          sum the days ending at END -> data/smap/share/<END>.d<N>.parquet: share of looks with RFI
                                 detected, and the contrast against the 100-300 km ring around each cell
   radars END [--days 7]         known-answer check against long-range radar sites (open-air-data/atc-radar); prints JSON
+  nws END...                    second known answer: the 14 active North Warning System long-range radars, pooled over
+                                the weeks ending at each END (checks N1-N3, docs/validation/smap-rfi.md section 5)
 
 Data: NASA SMAP L1C (NSIDC DAAC; NASA open data, citation required). Registry row `smap-rfi`.
 Plan: docs/space-sensors-plan.md (steps R0-R3).
@@ -262,6 +264,67 @@ def radar_check(end, ndays=7, near_km=40.0, far_km=150.0):
     return out
 
 
+# North Warning System long-range radars (AN/FPS-117), active sites from Wikipedia's "North Warning System" station table
+# (read 31 Oct 2026); pre-registered in docs/validation/smap-rfi.md section 5. PIN-3 is out of commission (Nov 2020).
+NWS_LRR = {"POW-M": (71.3272, -156.6361), "POW-2": (70.4983, -149.8894), "BAR-M": (70.1303, -143.6392),
+           "LIZ-1": (68.8700, -166.1500), "BAR-2": (68.9228, -137.2606), "PIN-M": (70.1714, -124.7250),
+           "CAM-M": (69.1161, -105.1189), "CAM-3": (68.7928, -93.4403), "FOX-M": (68.7608, -81.2264),
+           "FOX-3": (68.6506, -71.2328), "DYE-M": (66.6644, -61.3558), "BAF-3": (63.3400, -64.1581),
+           "LAB-2": (58.4886, -62.5856), "LAB-6": (53.5511, -56.8300)}
+NWS_EXCLUDED = {"PIN-3": (68.4792, -113.2256)}       # cells near it count in neither group
+
+
+def nws_check(ends, ndays=7, near_km=40.0, far_km=150.0, pad=2.0, heard=0.5):
+    """Checks N1-N3 of docs/validation/smap-rfi.md section 5, pooled over the weeks ending at `ends`."""
+    import pyarrow.parquet as pq
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    from cygnss_rfi import auc
+    names = list(NWS_LRR)
+    s_lat = np.array([NWS_LRR[n][0] for n in names])
+    s_lon = np.array([NWS_LRR[n][1] for n in names])
+    x_lat = np.array([v[0] for v in NWS_EXCLUDED.values()])
+    x_lon = np.array([v[1] for v in NWS_EXCLUDED.values()])
+    box = (s_lat.min() - pad, s_lat.max() + pad, s_lon.min() - pad, s_lon.max() + pad)
+    pooled = {k: {"near": [], "far": []} for k in ("share", "contrast", "resid_share")}
+    per_site = {n: [] for n in names}
+    far_share = []
+    for end in ends:
+        p = os.path.join(SHARE_DIR, f"{end}.d{ndays}.parquet")
+        if not os.path.exists(p):
+            share(end, ndays)
+        t = pq.read_table(p).to_pydict()
+        lat, lon = np.array(t["lat"], float), np.array(t["lon"], float)
+        u = unit_ll(lat, lon)
+        d = np.degrees(np.arccos(np.clip(u @ unit_ll(s_lat, s_lon).T, -1, 1))) * 111.195
+        dx = np.degrees(np.arccos(np.clip(u @ unit_ll(x_lat, x_lon).T, -1, 1))) * 111.195
+        dmin = d.min(1)
+        inbox = (lat >= box[0]) & (lat <= box[1]) & (lon >= box[2]) & (lon <= box[3])
+        near = inbox & (dmin <= near_km)
+        far = inbox & (dmin > far_km) & (dx.min(1) > far_km)
+        for k in pooled:
+            v = np.array(t[k], float)
+            pooled[k]["near"] += list(v[near & np.isfinite(v)])
+            pooled[k]["far"] += list(v[far & np.isfinite(v)])
+        sh = np.array(t["share"], float)
+        far_share += list(sh[far])
+        for j, n in enumerate(names):
+            i = int(np.argmin(d[:, j]))
+            per_site[n].append({"week_end": end, "km": round(float(d[i, j]), 1), "share": round(float(sh[i]), 3),
+                                "looks": int(t["looks"][i])} if d[i, j] <= near_km else
+                               {"week_end": end, "km": round(float(d[i, j]), 1), "share": None})
+    out = {"weeks": list(ends), "sites": len(names), "near_cells": len(pooled["share"]["near"]),
+           "far_cells": len(pooled["share"]["far"])}
+    for k, g in pooled.items():
+        out[f"auc_{k}"] = round(auc(g["near"], g["far"]), 3) if g["near"] and g["far"] else None
+        out[f"near_median_{k}"] = round(float(np.median(g["near"])), 3) if g["near"] else None
+        out[f"far_median_{k}"] = round(float(np.median(g["far"])), 3) if g["far"] else None
+    out["sites_heard_all_weeks"] = sum(1 for n in names
+                                       if all(w["share"] is not None and w["share"] >= heard for w in per_site[n]))
+    out["far_share_at_heard"] = round(float(np.mean(np.array(far_share) >= heard)), 4) if far_share else None
+    out["per_site"] = per_site
+    return out
+
+
 # ---------------------------------------------------------------------------------------------- cli
 
 def main(argv=None):
@@ -274,6 +337,8 @@ def main(argv=None):
         g = sub.add_parser(name)
         g.add_argument("end")
         g.add_argument("--days", type=int, default=7)
+    n = sub.add_parser("nws", help="North Warning System check (docs/validation/smap-rfi.md section 5)")
+    n.add_argument("ends", nargs="+", help="last day of each week")
     a = ap.parse_args(argv)
     if a.cmd == "fetch":
         for day in a.days:
@@ -285,6 +350,8 @@ def main(argv=None):
         share(a.end, a.days)
     elif a.cmd == "radars":
         print(json.dumps(radar_check(a.end, a.days), indent=1))
+    elif a.cmd == "nws":
+        print(json.dumps(nws_check(a.ends), indent=1))
 
 
 if __name__ == "__main__":

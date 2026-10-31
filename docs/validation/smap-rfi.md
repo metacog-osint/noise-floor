@@ -146,6 +146,47 @@ The measures are as in section 1 (`share`, `contrast`, `resid_share`), with tool
 
 Between the marks the result is "weakened". `contrast` and `resid_share` AUCs are reported without marks.
 
+### 5.1 Result (run 31 Oct 2026): all three checks hold
+
+The two weeks had 30–38 half-orbits a day, with 6.2–8.1% of looks flagged worldwide. The comparison pooled 82 near
+cell-weeks and 20,200 far ones.
+
+| # | Check | Result | Verdict |
+|---|---|---|---|
+| N1 | AUC of `share`, near vs far | **0.988** (median share 0.795 near, 0.021 far) | **holds** (≥ 0.80) |
+| N2 | Sites heard in both weeks | **10 of 14** | **holds** (≥ 8) |
+| N3 | Far cells with share ≥ 0.5 | **1.2%** | **holds** (≤ 5%) |
+
+Without marks: AUC of `contrast` 0.992 (median 0.75 near, 0.00 far); AUC of `resid_share` 0.965.
+
+**Per site** (share of the nearest cell within 40 km, week of 1–7 Oct / week of 20–26 Oct):
+
+| Heard | Sites |
+|---|---|
+| Yes | Barter Island 0.91 / 0.83; Cape Lisburne 0.77 / 0.94; Cape Parry 1.00 / 0.98; Cambridge Bay 0.62 / 0.71; Shepherd Bay 0.59 / 0.67; Hall Beach 0.77 / 0.77; Cape Dyer 0.90 / 0.97; Brevoort Island 1.00 / 1.00; Saglek 0.94 / 0.97; Cartwright 1.00 / 0.85 |
+| No | Dewar Lakes 0.32 / 0.13 (cell 15 km away); Point Barrow, Oliktok, Shingle Point (no cell within 40 km) |
+
+**Diagnostics (after the check; they don't change the verdict).**
+- **Why three sites had no cell.** At 70°N the 36 km EASE-Grid 2.0 cells stretch to about 90 km north–south, so the
+  nearest cell centre can sit more than 40 km from a coastal site. Their nearest cells, 41–45 km away, read:
+  - Point Barrow 0.70 / 0.75;
+  - Shingle Point 0.61 / 0.75;
+  - Oliktok 0.47 / 0.43.
+- **Dewar Lakes** reads low in both weeks, even though a cell sits 15 km away. Whether its radar was off, or why it
+  differs, is not known.
+
+**What this shows.**
+- SMAP's RFI flags pick out the North Warning System's long-range L-band radars clearly, in two unseen weeks, against
+  a quiet Arctic background.
+- With section 2's failure, this says SMAP can find L-band radars where the background is quiet. In crowded regions
+  (Europe, East Asia, and the US test of section 2) the flags saturate, or don't stand out.
+
+**What it doesn't show.**
+- It doesn't show that SMAP sees GPS jammers.
+- It doesn't locate an emitter finer than SMAP's 36–90 km cells.
+- It isn't blind: the idea came from the diagnostics in section 3, though the site list is complete and the weeks
+  were unseen.
+
 ## 6. Next
 
 - **A fresh known answer with current positions.** Lists of L-band radars with positions and dates from the same weeks
