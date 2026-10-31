@@ -155,8 +155,16 @@ fallback in `tools/sentinel_gnss.fetch_nav`; the method is otherwise as frozen i
 - Sentinel-6A's own receiver separates aircraft-jammed regions from clean ones, day by day, as well as CYGNSS does.
 - It reaches 66°N, so it covers the Baltic, which CYGNSS and COSMIC-2 can't see.
 
+**Change in the Gulf** (the measure frozen later as COSMIC-2's C5; reported here without a mark, 31 Oct).
+- **Winter vs spring:** mean score of the Persian Gulf box's 8 cells was 0.207 on the eight winter held-out days and
+  0.201 on the five spring days, a difference of **−0.006**.
+- **Day by day:** winter days ran 0.151–0.308, spring days 0.140–0.307.
+- **Reading:** Sentinel-6A rates the Gulf as raised all year. It doesn't show the spring 2026 surge that the aircraft
+  (0.5% to 39–53%) and CYGNSS recorded. It places a region, but on this evidence it doesn't track change there.
+
 **What it doesn't show.**
 - The score is smooth over the 3,800 km radius, so it places interference by region, not by site.
+- It doesn't track the Gulf's spring change (above).
 - Eastern Europe dominates the jammed cells (348 of 407). Leaving it out still gives 0.918.
 - Myanmar is weaker (own AUC 0.80).
 - A map layer needs Tom's yes (plan step P, as for the other lanes).
