@@ -922,7 +922,8 @@
       "for the COSMIC-2 satellites' GPS navigation antennas was raised while a satellite could see the cell, from up to 2,500 km away " +
       "(the forward antenna counts cells ahead, the backward one cells behind). Shading deepens with the score; outlined cells score 0.35 or more. " +
       "It covers about 45°S to 45°N and shows regions, not transmitter sites; north of the orbit (24°) a region can sit too far north or south. " +
-      "On 21 test days it separated jammed from clean areas well and followed the Gulf's spring 2026 rise (see Validation). " +
+      "On 21 test days it separated jammed from clean areas well and followed the Gulf's spring 2026 rise, but within " +
+      "a region it doesn't track which days aircraft see interference (see Validation). " +
       "Source: UCAR COSMIC-2 (CDAAC), CC BY 4.0."
       : "No COSMIC-2 file within 3 days of this day (it runs about a day behind)." + nearest("cosmic2", state.day));
     if (state.smapShow) parts.push(state.smap ? "SMAP, 7 days to " + fmtDay(state.smap.day) + ": " + (state.smap.sources || []).length +
