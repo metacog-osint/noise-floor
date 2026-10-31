@@ -44,6 +44,67 @@ The run covers 385 days (1 Oct 2025 – 22 Oct 2026, UTC): 94,651 observations f
 - No localization method feeds the lane, so `localization_error_km` is null everywhere.
 - CYGNSS exists for six days only, and it agrees with ADS-B in time only to the day.
 
+## v1.2 candidate: orbital GNSS receivers as a sensor family (pre-registration, 31 Oct 2026)
+
+Written and committed before any comparison below was run. Tom asked on 31 Oct 2026 for Sentinel-6A and COSMIC-2 to be
+added as corroborating sources, once pre-registered and checked.
+
+**What would change.** A new sensor family, `orbit_rx` (GNSS receivers on satellites: Sentinel-6A, COSMIC-2). It would
+count in rule S3 next to `adsb` and `cygnss`:
+- it is independent of both. It measures the satellites' own received signal, not aircraft position quality, and not
+  reflected-signal noise;
+- the two satellites sit in one family, because they measure the same kind of thing;
+- an ADS-B observation on the 93 m measure agrees with `orbit_rx` when one of its res-2 regions scores at or above
+  that sensor's validated threshold on the same UTC day. The thresholds are T = 0.2409 for Sentinel-6A
+  (`s6_rfi`, 3,800 km) and T = 0.23 for COSMIC-2 (`cosmic2_rfi`, 2,500 km, fore/aft split), from
+  `docs/validation/space-receivers.md`.
+
+**Why two checks, not one.**
+- Both sensors' scores are smooth over thousands of kilometres, and they rate known jamming regions raised on most
+  days.
+- A place check alone (observations against random points) could pass just because jamming regions are jamming
+  regions.
+- So a second check asks whether the score rises on the days the aircraft see trouble, within the same region.
+
+**Days.** The 21 held-out days of `docs/validation/space-receivers.md` §3: every 19th day from 1 Oct 2025. The
+thresholds were set on six other days. Every one of the 21 has a Sentinel-6A grid and a COSMIC-2 grid.
+
+**Observations.**
+- From the register built 27 Oct 2026 (v1.1): ADS-B observations (`family='adsb'`) with a measure and cells.
+- 93 m = measure `gross`; 10 m = measure `capable`.
+- An observation's orbital value is the largest score among its res-2 cells in that sensor's grid for the day, or
+  none if no cell is scored.
+- Each sensor is judged only within its reach: |latitude| ≤ 66° for Sentinel-6A and ≤ 45° for COSMIC-2. The same
+  limit applies to the random points.
+
+**Random points.**
+- 400 a day, uniform by area within the sensor's latitude limit, kept on land by the raw 0.25° mask.
+- The seed is the date as an integer: `cygnss_checks.random_points` with `band` set to the limit.
+- Each is scored at its own res-2 cell.
+
+**Checks, per sensor.**
+
+| # | Check | Holds if | Fails if |
+|---|---|---|---|
+| O1 | Place: share of 93 m observations raised against the share of random land points raised (pooled over the 21 days) | ratio ≥ 2, and the Wilson 95% intervals don't overlap | ratio < 1.5 |
+| O2 | Time, within a region (below) | ≥ 60% of regions positive, and a one-sided sign test p < 0.01 | ≤ 50% positive |
+
+**O2 in detail.**
+- A region is the res-2 cell of a 93 m observation's centroid.
+- Regions are kept if they have 93 m observations on at least 2 and at most 18 of the 21 days, and a score on every
+  one of the 21 days.
+- For each kept region: the mean score on its observation days minus the mean score on its other days.
+
+Between the marks the result is "weakened". Also reported, without marks:
+- the 10 m observations' raised share;
+- per-day shares;
+- the median O2 difference.
+
+**Decision, fixed now.**
+- A sensor joins `orbit_rx` in rule S3 only if **both** O1 and O2 hold for it.
+- If O1 holds and O2 doesn't, the sensor doesn't change support; it may be recorded as context only.
+- If neither sensor qualifies, v1.2 doesn't happen and the rules stay at v1.1.
+
 ## v1.1: EASA's FIR tables drive D1 (27 Oct 2026)
 
 Tom approved the change on 26 Oct 2026 ("EASA spoofing marks setting deliberate_suspected"). Every other rule is as frozen
