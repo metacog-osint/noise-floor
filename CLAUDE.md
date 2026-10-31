@@ -63,10 +63,19 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   extra area in `private/watch/nisar.d/*.json` after the main one, then the export (uploaded to the `nisar-data`
   release), then, only after a good upload, a site deploy (`gh workflow run deploy-site.yml`; Tom approved 29 Oct 2026,
   because GitHub's daily deploy runs before the upload), then the private publish. Each detection is a lead, not attribution.
-- **Other satellites (planned 30 Oct 2026, not built; Tom's decisions D1–D5 pending):** read `docs/space-sensors-plan.md`
-  first. COSMIC-2 occultation files carry a per-link RFI index (`podTc2` variable `RFI`, 458 MB a day, anonymous);
-  HydroGNSS (L1 and L5 reflections, near-polar) waits on Tom's registration; then SMAP (1400–1427 MHz emitters) and polar
-  occultation (Sentinel-6, Metop GRAS). Steps C, H, R, P; Sentinel-1 public layer is option S.
+- **Other satellites (planned 30 Oct 2026; Tom: develop every option):** read `docs/space-sensors-plan.md` first, and
+  `docs/validation/space-receivers.md` for the receiver lanes.
+  - **Sentinel-6A is live on the map (31 Oct 2026, Tom approved):** `tools/s6_daily.py` runs from the 06:30 collectors
+    task. It needs EARTHDATA_TOKEN and the Space-Track account, and processes complete days about three days behind
+    with the frozen method (`tools/s6_rfi.py`, `tools/rx_rfi.py`, `cosmic2_rfi` back-projection). It uploads
+    `<day>.s6.json` to the `s6-data` release, which `site_layers.py` copies to `site/data/s6/` at deploy.
+  - **The Sentinel-6A result:** all four held-out checks pass (AUC 0.956). It places regions, not sites, and doesn't
+    track the Gulf's spring 2026 rise.
+  - **COSMIC-2** (`tools/cosmic2_rfi.py`): pre-registered C1–C5; the held-out run is in progress.
+  - **SMAP** (`tools/smap_rfi.py`): the radar check failed.
+  - **Sentinel-1 worldwide** (`tools/s1_rfi_global.py`) and the **ALOS-2** probe (`tools/alos2_rfi.py`): built,
+    descriptive only.
+  - **HydroGNSS** waits on credentials. **Biomass** needs an ESA account. **SMOS** downloads with the CDSE keys.
   **Step E (added 30 Oct 2026):** the Sentinel-1C/1D/2B/2C/3A/3B navigation receivers (Copernicus `AUX_GNSSRD`, the
   SAT-JAM method; E0 done: signal strength present, 10 s, ~6 days behind). **E1 built 31 Oct:** `tools/sentinel_gnss.py`
   (`fetch`, `day`, `latest`) writes `data/sentinel_gnss/days/<day>.parquet` (one row per link and epoch, ~10 MB a day,

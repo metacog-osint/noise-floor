@@ -89,6 +89,7 @@ lane writes its checks into `docs/validation/` with a timestamp before any test 
 Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-registered in
 `docs/validation/space-receivers.md` (S1–S4) |
 | P3 | **Check:** EUMETSAT reports a rise in missed and degraded GRAS occultations from 2021 to 2024, "particularly in Eastern Europe" (Parra Ortega, 13 Sep 2024). Reproduce that, then test against the Baltic aircraft map |
+| P4 | **Live 31 Oct 2026 (Tom approved):** the map's "Sentinel-6 GPS receiver (from orbit)" layer. `tools/s6_daily.py` runs daily from the 06:30 collectors task and fills the `s6-data` release. Cells are shaded by score from the frozen threshold (0.24) up, and outlined at 0.4. The note states the limits: regions not sites, and the Gulf change not shown |
 
 ### R: SMAP (1400–1427 MHz emitters)
 
