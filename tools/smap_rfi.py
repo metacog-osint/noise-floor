@@ -152,19 +152,29 @@ def unit_ll(lat, lon):
     return np.stack([np.cos(la) * np.cos(lo), np.cos(la) * np.sin(lo), np.sin(la)], axis=-1)
 
 
-def ring_median(lat, lon, val, ring=RING, chunk=2000):
-    """Median of `val` over cells between ring[0] and ring[1] km from each cell (NaN where none)."""
-    u = unit_ll(lat, lon)
-    c0, c1 = np.cos(ring[0] / R_EARTH), np.cos(ring[1] / R_EARTH)
-    out = np.full(len(lat), np.nan)
-    for i in range(0, len(u), chunk):
-        d = u[i:i + chunk] @ u.T
-        m = (d <= c0) & (d >= c1)
-        for j in range(m.shape[0]):
-            vv = val[m[j]]
-            if len(vv):
-                out[i + j] = np.median(vv)
-    return out
+GRID_ROWS, GRID_COLS, CELL_KM = 406, 964, 36.0     # EASE-Grid 2.0 global, 36 km
+
+
+def ring_median(cell, val, ring=RING, rows=GRID_ROWS, cols=GRID_COLS, cell_km=CELL_KM):
+    """Median of `val` over the cells ring[0]-ring[1] km away, counted in grid steps of 36 km (columns wrap round the
+    globe). EASE-Grid 2.0 is equal-area, so a step is 36 km only near 30 deg latitude; elsewhere the ring is stretched
+    one way and squeezed the other. A fair stand-in for a contrast measure, not a geodesic ring."""
+    cell = np.asarray(cell, np.int64)
+    r, c = cell // 10000, cell % 10000
+    g = np.full((rows, cols), np.nan, np.float32)
+    g[r, c] = val
+    lo, hi = ring[0] / cell_km, ring[1] / cell_km
+    k = int(np.ceil(hi))
+    offs = [(dr, dc) for dr in range(-k, k + 1) for dc in range(-k, k + 1) if lo <= np.hypot(dr, dc) <= hi]
+    stack = np.full((len(offs), len(r)), np.nan, np.float32)
+    for i, (dr, dc) in enumerate(offs):
+        rr = r + dr
+        ok = (rr >= 0) & (rr < rows)
+        stack[i, ok] = g[rr[ok], (c[ok] + dc) % cols]
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        return np.nanmedian(stack, axis=0)
 
 
 def share(end, ndays=7, min_looks=8):
@@ -189,7 +199,7 @@ def share(end, ndays=7, min_looks=8):
     a = np.array([acc[k] for k in keys], dtype=float)
     lat, lon, land, looks, det, resid = a.T
     sh = det / looks
-    rm = ring_median(lat, lon, sh)
+    rm = ring_median(keys, sh)
     tab = {"cell": keys, "lat": lat.astype(np.float32), "lon": lon.astype(np.float32), "land": land.astype(bool),
            "looks": looks.astype(np.int32), "share": sh.astype(np.float32), "resid_share": (resid / looks).astype(np.float32),
            "ring": rm.astype(np.float32), "contrast": (sh - rm).astype(np.float32)}
