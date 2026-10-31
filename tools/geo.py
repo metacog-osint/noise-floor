@@ -14,7 +14,7 @@ Method (coarse, stated on the page):
   longitude   sub-satellite longitude at the element epoch from the mean elements (two-body, near-circular), and at a
               common time by two-body propagation; public elements at GEO are good to tens of km
   drift       (mean motion x 360 - 360.9856) deg/day; station-kept objects drift under DRIFT_KEPT deg/day
-  close       pairs of different owners within CLOSE_KM of each other at the common time; pairs of one owner are
+  close       pairs of different owners within CLOSE_KM of each other at the common time (SGP4 from 31 Oct 2026); pairs of one owner are
               listed apart (operators co-locate their own satellites on purpose)
   manoeuvre   between consecutive snapshots: drift rate changed by more than MAN_DRIFT deg/day, inclination by more
               than MAN_INC deg, or the longitude is more than MAN_LON deg from where the earlier elements put it at the later
@@ -105,6 +105,28 @@ def state(o, t):
     z = r * math.sin(u) * math.sin(i)
     lon = (math.degrees(math.atan2(y, x)) - gmst_deg(t) + 540) % 360 - 180
     return (x, y, z), lon
+
+
+def sgp4_state(o, t):
+    """TEME position (km) and sub-satellite longitude of object o at time t by SGP4 (sgp4 library, WGS72), as the globe
+    and the callouts compute them. Used for close pairs, where stale elements are carried many days to the common time
+    and two-body motion drifts by up to about 100 km. Falls back to two-body if sgp4 is missing."""
+    try:
+        from sgp4.api import WGS72, Satrec, jday
+    except ImportError:
+        return state(o, t)
+    ep = epoch_of(o["epoch"])
+    jd, fr = jday(ep.year, ep.month, ep.day, ep.hour, ep.minute, ep.second + ep.microsecond / 1e6)
+    s = Satrec()
+    s.sgp4init(WGS72, "i", int(o["id"]) % 100000, jd + fr - 2433281.5, o.get("bstar") or 0.0, 0.0, 0.0, max(o["e"], 1e-7),
+               math.radians(o["argp"]), math.radians(o["i"]), math.radians(o["M"]), o["n"] * 2 * math.pi / 1440.0,
+               math.radians(o["raan"]))
+    jd, fr = jday(t.year, t.month, t.day, t.hour, t.minute, t.second + t.microsecond / 1e6)
+    err, r, _ = s.sgp4(jd, fr)
+    if err:
+        raise ValueError(f"sgp4 error {err}")
+    lon = (math.degrees(math.atan2(r[1], r[0])) - gmst_deg(t) + 540) % 360 - 180
+    return tuple(r), lon
 
 
 def fetch(url):
@@ -220,7 +242,7 @@ def build(release, site, now=None):
     pos = {}
     for o in objs:
         try:
-            pos[o["id"]], o["lon_now"] = state(o, t)
+            pos[o["id"]], o["lon_now"] = sgp4_state(o, t)
         except (ValueError, ZeroDivisionError):
             continue
         o["class"] = classify(o)

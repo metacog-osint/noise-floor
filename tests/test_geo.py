@@ -37,6 +37,14 @@ def test_longitude_and_drift():
     assert G.classify(o) == "station-kept" and G.classify(d) == "drifting" and G.classify(obj(3, 0, i=3.0)) == "inclined"
 
 
+def test_sgp4_state_agrees_with_two_body_at_epoch():
+    o = obj(1, 62.0)
+    (p2, l2), (ps, ls) = G.state(o, T0), G.sgp4_state(o, T0)
+    assert abs(l2 - ls) < 0.05 and math.dist(p2, ps) < 40                   # same place, within SGP4's mean-element terms
+    later = T0 + timedelta(days=16)                                            # carried 16 days: still within tens of km
+    assert math.dist(G.state(o, later)[0], G.sgp4_state(o, later)[0]) < 150
+
+
 def test_manoeuvres():
     a = obj(1, 62.0)
     later = T0 + timedelta(days=1)

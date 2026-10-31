@@ -49,3 +49,16 @@ against.
   says what the roles say ("servicing involved", "inspection-capable involved", or "no listed role (often slot-sharing)").
 - Validation comes once there is history: score manoeuvre detection against announced relocations, and close approaches
   against published rendezvous, with the cases fixed in advance.
+
+## Close pairs by SGP4 (31 Oct 2026)
+
+The globe's relative-motion chart (G3) put EWS-G3 (GOES 14) and Luch-5X (Olymp-K 2) at 211 km or more all week, while
+the board listed them at 60 km. The board carried each object's elements to the common time with two-body motion,
+which leaves out SGP4's mean-element terms (the Kozai mean motion and J2); with Luch's elements 16 days old that came to
+about 100 km. From 31 Oct the close pairs use SGP4 (`geo.sgp4_state`); longitudes in the snapshots and the manoeuvre
+check, which compare element sets about a day apart, stay two-body. Same snapshots, same instant (31 Oct, 23:00 UTC):
+two-body listed 20 pairs and SGP4 19; for elements under 5 days old the two agree within 8 km. Intelsat 39 and Luch-5X
+(elements 16.3 days old) moved from 72 km to over 100 km and off the list; Echostar 17 and Anik G1 (4.4 days) from
+96 km to over 100; Mexsat 3 and Eutelsat 115 West B came onto it at 98 km. The pair also swings by hundreds of km each
+day when one is inclined (EWS-G3: roughly 290 to 1,480 km from Luch-5X on 1 Nov), which one instant cannot show; the
+callouts (`docs/validation/geo-callouts.md`) take the smallest of 24 hourly separations for that reason.

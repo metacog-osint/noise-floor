@@ -169,7 +169,8 @@ All in `site_src/globe.js` and the second control row on /geo:
 Finding while checking: the board's close-pair list propagates with two-body motion, which put EWS-G3 (GOES 14) and
 Luch (Olymp) 2 about 100 km closer than SGP4 does with the same elements (16-day-old Luch elements; Kozai mean motion
 and J2 left out), and it shows one instant while that pair swings between about 290 and 1,480 km each day because
-EWS-G3 is inclined. G4 moves the board to SGP4 so callouts, board and globe agree.
+EWS-G3 is inclined. Fixed the same day: the board's close pairs use SGP4 (`docs/validation/geo-board.md`), so callouts,
+board and globe agree.
 
 ## G5 done (28 Oct 2026)
 
