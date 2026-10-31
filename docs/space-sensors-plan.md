@@ -54,8 +54,8 @@ lane writes its checks into `docs/validation/` with a timestamp before any test 
 
 | # | Step |
 |---|---|
-| C1 | `tools/cosmic2_rfi.py` (commands `fetch` and `day`): stream a day's `podTc2` archive, keep per-link rows (time, receiver position, link direction, elevation, RFI index, L1 and L2 SNR), drop the rest. About 458 MB in, a few MB out |
-| C2 | **Locate.** The receiver hears an emitter anywhere within about 2,500 km, so one link says little. Back-project each flagged and unflagged sample along its link's ground-facing view, as `s1_rfi.py` does with stripes. Score cells by flagged share over all samples that could see them. Test it offline with synthetic emitters first. Freeze the method and the threshold (start from UCAR's 1e-4) before C3 |
+| C1 | `tools/cosmic2_rfi.py` (commands `fetch` and `day`): stream a day's `podTc2` archive, keep per-link rows (time, receiver position, link direction, elevation, RFI index, L1 and L2 SNR), drop the rest. About 458 MB in, a few MB out. **Built 30 Oct:** the index turned out to be per antenna and second (every link of one antenna carries the same value), so a day reduces to one row per satellite, antenna and second (about 9 MB). The two navigation antennas look forward and backward along the track. On 19 Oct only three of the six satellites delivered data |
+| C2 | **Locate.** The receiver hears an emitter anywhere within about 2,500 km, so one link says little. Back-project each flagged and unflagged sample along its link's ground-facing view, as `s1_rfi.py` does with stripes. Score cells by flagged share over all samples that could see them. Test it offline with synthetic emitters first. Freeze the method and the threshold (start from UCAR's 1e-4) before C3. **Built 30 Oct.** The offline test changed the score: the plain flagged share drifts toward the edge of coverage, so cells are scored by a matched filter (correlation across bins). For an emitter poleward of the orbit, latitude trades off against detection range; longitude holds. A fore/aft option lets each antenna see only its half |
 | C3 | **Checks, pre-registered:** (1) place: score against the aircraft map's jammed and clean cells on the CYGNSS validation days, with AUC reported at region scale (stated before running); (2) change: the March 2026 Gulf surge must show, as it did for aircraft and CYGNSS; (3) quiet controls (central Pacific, South Atlantic, Australia) stay below a stated share; (4) agreement with CYGNSS on the same days and cells |
 | C4 | If C3 passes: a daily job (GitHub Actions; global, so no watch configuration) uploading `<day>.cosmic2.json` to a `cosmic2-data` release, and a map layer, "GPS interference seen from orbit (COSMIC-2)". If it fails: the write-up says so and the data stay out of the map |
 | C5 | Optional: the Wu (2024) indicator from `conPhs` (2.67 GB a day) as a second, independent COSMIC-2 measure |
@@ -74,18 +74,31 @@ lane writes its checks into `docs/validation/` with a timestamp before any test 
 
 | # | Step |
 |---|---|
-| P0 | Probe Sentinel-6A L1B at GES DISC: whether SNR profiles are present, or only bending angles. Read its terms |
-| P1 | Only if P0 has no SNR: Tom opens a EUMETSAT Data Store account for Metop GRAS |
-| P2 | Indicators: missed and degraded occultations per region (the EUMETSAT approach) and deep-occultation SNR (Wu's) |
+| P0 | Probe Sentinel-6A L1B at GES DISC: whether SNR profiles are present, or only bending angles. Read its terms. **Done 30 Oct:**
+- GES DISC returns "EULA Acceptance Failure" until the Earthdata account approves its app. That one click is Tom's;
+  it would also open the occultation files.
+- PO.DAAC's `JASON_CS_S6A_L1B_GNSS_RO_POD_HOURLY` works with our token: 1 Hz RINEX from the receiver's RO-POD antenna,
+  GPS S1C/S1W/S2W/S2X, about 195 MB a day, about 3 days behind.
+- So step P reads the receiver's own signal strength, as step E does, rather than occultation profiles. |
+| P1 | Only if P0 has no SNR: Tom opens a EUMETSAT Data Store account for Metop GRAS. **Not needed for Sentinel-6.** Metop GRAS still needs the account if wanted |
+| P2 | Indicators: missed and degraded occultations per region (the EUMETSAT approach) and deep-occultation SNR (Wu's). **Built 31 Oct, as a receiver index instead:**
+- `tools/s6_rfi.py` (PO.DAAC files, geometry from `tools/sentinel_gnss.py`);
+- `tools/rx_rfi.py`: the median residual across links against a 5° elevation-bin baseline, shared with step E;
+- the COSMIC-2 back-projection.
+
+Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-registered in
+`docs/validation/space-receivers.md` (S1–S4) |
 | P3 | **Check:** EUMETSAT reports a rise in missed and degraded GRAS occultations from 2021 to 2024, "particularly in Eastern Europe" (Parra Ortega, 13 Sep 2024). Reproduce that, then test against the Baltic aircraft map |
 
 ### R: SMAP (1400–1427 MHz emitters)
 
 | # | Step |
 |---|---|
-| R0 | Probe the SMAP L1B brightness-temperature product's RFI flags (registry `smap-rfi`) for one day: size and fields |
-| R1 | Weekly flagged share per cell, using ascending and descending footprint crossings to narrow positions |
-| R2 | **Check, pre-registered:** long-range L-band air-surveillance radars with public positions (the FAA site file, `open-air-data-atc-radar`) should stand out. Unverified premise: that their out-of-band emissions reach 1400–1427 MHz. A miss tests that premise too |
+| R0 | Probe the SMAP L1B brightness-temperature product's RFI flags (registry `smap-rfi`) for one day: size and fields. **Done 30 Oct:** the gridded L1C (SPL1CTB v006, 36 km) carries per-cell RFI bits; about 160 MB a day |
+| R1 | Weekly flagged share per cell, using ascending and descending footprint crossings to narrow positions. **Built 30 Oct:** `tools/smap_rfi.py` (share and a 100–300 km ring contrast) |
+| R2 | **Check, pre-registered:** long-range L-band air-surveillance radars with public positions (the FAA site file, `open-air-data-atc-radar`) should stand out. Unverified premise: that their out-of-band emissions reach 1400–1427 MHz. A miss tests that premise too. **Failed 31 Oct (AUC 0.50)** (`docs/validation/smap-rfi.md`):
+- Europe, western Russia and East Asia are saturated (most looks flagged).
+- Isolated always-flagged cells sit in quiet regions; they are unidentified. |
 | R3 | If R2 passes: add to the map's emitter layer beside NISAR, labelled by band. It shows radars, not GPS jammers |
 
 ### S: Sentinel-1 (C-band)
@@ -95,6 +108,11 @@ lane writes its checks into `docs/validation/` with a timestamp before any test 
   of bursts flagged over the Gulf, none at the quiet control.
 - **Option:** a public weekly map of C-band radar activity by region, never as sites. That needs global coverage
   rather than private boxes. The volume is unmeasured, but it should be a few hundred MB of small files a day.
+- **Built 31 Oct:** `tools/s1_rfi_global.py`, about 3 minutes a day for about 950 products.
+  - **One week (9–15 Oct):** every pass flagged in Levant and Gulf cells, 0.60 in Iraq.
+  - **Against the aircraft map:** AUC 0.686, as expected for C-band.
+  - **Window:** only 2,381 of 15,368 res-3 cells had four or more passes, so a public map needs about four weeks
+    (`docs/validation/s1-rfi.md` §9).
 
 ### E: Sentinel-1, -2 and -3 navigation receivers (GPS L1/L2, Galileo E1/E5a; near-global)
 
