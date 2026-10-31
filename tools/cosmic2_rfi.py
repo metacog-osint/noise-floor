@@ -226,13 +226,13 @@ _CELLS = {}
 
 
 def cells(res=2, max_lat=MAX_ABS_LAT):
-    if res not in _CELLS:
+    if (res, max_lat) not in _CELLS:
         import h3
         ids = sorted(c for r0 in h3.get_res0_cells() for c in h3.cell_to_children(r0, res))
         ll = np.array([h3.cell_to_latlng(c) for c in ids])
         keep = np.abs(ll[:, 0]) <= max_lat
-        _CELLS[res] = ([c for c, k in zip(ids, keep) if k], ll[keep], unit_ll(ll[keep, 0], ll[keep, 1]))
-    return _CELLS[res]
+        _CELLS[(res, max_lat)] = ([c for c, k in zip(ids, keep) if k], ll[keep], unit_ll(ll[keep, 0], ll[keep, 1]))
+    return _CELLS[(res, max_lat)]
 
 
 def backproject(pos, f, centres, radius_km=RADIUS_KM, chunk=4000, along=None, sign=None):
@@ -304,13 +304,13 @@ def read_grid(day, res=2, radius_km=RADIUS_KM, halves=False):
 
 # ---------------------------------------------------------------------------------------------- score
 
-def pairs_for(days, res=2, radius_km=RADIUS_KM, halves=False):
+def pairs_for(days, res=2, radius_km=RADIUS_KM, halves=False, reader=None):
     """[(score, aircraft share %, aircraft, lat, lon, day, cell)] for cells with a score and 20+ aircraft."""
     sys.path.insert(0, os.path.join(ROOT, "tools"))
     import cygnss_rfi as C
     out = []
     for day in days:
-        g = read_grid(day, res, radius_km, halves)
+        g = (reader or read_grid)(day, res, radius_km, halves)
         ac = C.aircraft(day, res)
         if g is None or ac is None:
             print(f"{day}: missing {'grid' if g is None else 'aircraft table'}", file=sys.stderr)
@@ -322,15 +322,16 @@ def pairs_for(days, res=2, radius_km=RADIUS_KM, halves=False):
     return out
 
 
-def summary(days, res=2, radius_km=RADIUS_KM, halves=False, thresholds=(0.05, 0.1, 0.2)):
+def summary(days, res=2, radius_km=RADIUS_KM, halves=False, thresholds=(0.05, 0.1, 0.2), reader=None):
+    """Aircraft-map scores for one set of grids; `reader` reads another lane's grids (tools/s6_rfi.py)."""
     sys.path.insert(0, os.path.join(ROOT, "tools"))
     import cygnss_rfi as C
-    P = pairs_for(days, res, radius_km, halves)
+    P = pairs_for(days, res, radius_km, halves, reader)
     jam = [p[0] for p in P if p[1] >= C.JAM_SHARE]
     clean = [p[0] for p in P if p[1] < C.CLEAN_SHARE]
     ctrl = []
     for day in days:
-        g = read_grid(day, res, radius_km, halves) or {}
+        g = (reader or read_grid)(day, res, radius_km, halves) or {}
         ctrl += [r["score"] for r in g.values()
                  if any(C.in_box(r["lat"], r["lon"], b) for b in C.BOXES["control"].values())]
     rate = lambda v, t: round(float(np.mean(np.asarray(v) >= t)), 3) if len(v) else None
