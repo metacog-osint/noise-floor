@@ -204,12 +204,21 @@
       }
       if (state.s6Show && state.s6 && state.s6.cells) {             // Sentinel-6: raised receiver-drop regions (H3 res 2)
         g.save(); g.strokeStyle = colors.s6; g.fillStyle = colors.s6;
-        state.s6.cells.forEach(function (c) {
+        var t0 = state.s6.threshold || 0.24, lv = [[], [], [], [], []], strong = [];
+        state.s6.cells.forEach(function (c) {                        // shade by score in five levels
           var sh = shapeOf(c[0]);
           if (sh.wrap || !onScreen(sh.mb)) return;
-          g.globalAlpha = c[1] >= 0.4 ? 0.3 : 0.14; g.beginPath(); trace(g, sh.m, true); g.fill();
-          g.globalAlpha = 0.85; g.lineWidth = c[1] >= 0.4 ? 1.4 : 0.7; g.stroke();
+          var a = Math.max(0, Math.min(0.999, (c[1] - t0) / (0.6 - t0)));
+          lv[Math.floor(a * 5)].push(sh);
+          if (c[1] >= 0.4) strong.push(sh);
         });
+        for (var k = 0; k < 5; k++) {                               // stacked: layer k covers every cell at level k or above,
+          g.globalAlpha = k ? 0.09 : 0.06; g.beginPath();            // so shared edges sit inside the lower layers (no seams)
+          for (var j = k; j < 5; j++) lv[j].forEach(function (sh) { trace(g, sh.m, true); });
+          g.fill();
+        }
+        g.globalAlpha = 0.9; g.lineWidth = 1.2;
+        strong.forEach(function (sh) { g.beginPath(); trace(g, sh.m, true); g.stroke(); });
         g.restore();
       }
       if (state.cygShow && state.cyg && state.cyg.cells) {          // CYGNSS: raised noise-floor cells (H3 res 3)
@@ -857,11 +866,11 @@
       : "No spoofing layer for this day (daily from 27 Oct 2026, plus 17 earlier days)." + nearest("spoof", state.day));
     if (state.cygShow) parts.push(state.cyg ? "CYGNSS " + state.cyg.day + ": " + state.cyg.raised_cells + " cells raised 1 dB or more (exposure within a beam a few hundred km wide, not a transmitter site; about 38°N to 38°S). Source: NASA CYGNSS L1 V3.2 (PO.DAAC), NASA open data."
       : "No CYGNSS file within 3 days of this day (CYGNSS runs about six days behind)." + nearest("cygnss", state.day));
-    if (state.s6Show) parts.push(state.s6 ? "Sentinel-6 " + fmtDay(state.s6.day) + ": " + state.s6.raised_cells + " regions raised (score " +
+    if (state.s6Show) parts.push(state.s6 ? "Sentinel-6 " + fmtDay(state.s6.day) + ": " + state.s6.raised_cells + " cells raised (score " +
       state.s6.threshold.toFixed(2) + " or more). Each cell, about 300 km across, is scored by how often the Sentinel-6A satellite's own GPS receiver " +
-      "lost signal strength on all its links at once while it could see the cell, from up to 3,800 km away. It shows regions, not a transmitter site, " +
-      "and reaches 66°N. On 21 test days it matched the aircraft map closely (AUC 0.956), but it rated the Gulf raised all year and did not show " +
-      "the spring 2026 rise there. Source: Copernicus Sentinel-6A (PO.DAAC); contains modified Copernicus Sentinel data."
+      "lost signal strength on all its links at once while it could see the cell, from up to 3,800 km away. Shading deepens with the score; outlined cells score 0.4 or more. It shows regions, not a transmitter site, " +
+      "and reaches 66°N. On 21 test days it separated jammed from clean areas about as well as CYGNSS does, but it rated the Gulf raised all year " +
+      "and did not show the spring 2026 rise there (see Validation). Source: Copernicus Sentinel-6A (PO.DAAC); contains modified Copernicus Sentinel data."
       : "No Sentinel-6 file within 3 days of this day (it runs about three days behind)." + nearest("s6", state.day));
     if (state.nisShow) {
       if (!state.nis) parts.push((layerIndex.nisar || []).length ? "Loading NISAR sites…" : "No NISAR file published yet.");
