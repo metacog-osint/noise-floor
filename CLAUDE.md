@@ -71,7 +71,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
     `<day>.s6.json` to the `s6-data` release, which `site_layers.py` copies to `site/data/s6/` at deploy.
   - **The Sentinel-6A result:** all four held-out checks pass (AUC 0.956). It places regions, not sites, and doesn't
     track the Gulf's spring 2026 rise.
-  - **COSMIC-2** (`tools/cosmic2_rfi.py`): pre-registered C1–C5; the held-out run is in progress.
+  - **COSMIC-2** (`tools/cosmic2_rfi.py`): all five pre-registered checks held on 21 held-out days (31 Oct: AUC 0.919;
+    the Gulf's spring rise shows, narrowly). Low latitudes only (24° orbit); not on the map yet.
   - **SMAP** (`tools/smap_rfi.py`): the 2010 FAA-site check failed. The pre-registered North Warning System check held
     (AUC 0.988, 10 of 14 sites): it finds L-band radars against a quiet background and saturates in crowded regions.
   - **SMAP on the map (31 Oct 2026, Tom approved):** `tools/smap_daily.py` runs from the 06:30 collectors task (needs
