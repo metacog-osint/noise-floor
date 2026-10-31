@@ -45,8 +45,8 @@ CMR = "https://cmr.earthdata.nasa.gov/search/granules.umm_json"
 SHORT_NAME = "JASON_CS_S6A_L1B_GNSS_RO_POD_HOURLY"
 UNIT, NORAD = "S6A", 46984          # Space-Track satcat: "S6 MICHAEL FREILICH", launched 21 Nov 2020 (checked 31 Oct 2026)
 SIGS = ("s1c", "s1w", "s2w")
-RADIUS_KM = 3000.0                  # horizon from 1,336 km is about 3,800 km
-DROP_DB = 3.0
+RADIUS_KM = 3800.0                  # the horizon from 1,340 km (tuned on six days; docs/validation/space-receivers.md)
+DROP_DB = 2.0                       # an epoch is "down" at -2 dB (tuned on six days)
 
 
 def files(day):
