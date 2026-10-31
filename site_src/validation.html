@@ -92,6 +92,22 @@
 <p>About 80% of the cells CYGNSS flags have no aircraft coverage: the Red Sea, Iran, Iraq, Myanmar, Sudan and the Arabian Sea. It covers only about 38°N to 38°S, so not the Baltic. Its satellites also stop returning data for minutes at a time over Iraq, Iran and the Levant; the cause isn't confirmed.</p>
 <p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/cygnss.md">Full CYGNSS validation report</a></p>
 
+<h2 id="sentinel6">GPS interference from orbit (Sentinel-6A's own receiver)</h2>
+<p>The Sentinel-6A satellite (66° inclination, about 1,340 km up) tracks GPS for its own navigation. When a jammer is in view, every link it tracks weakens at once. Each second, Noisefloor compares each link's signal strength with what the receiver usually logs at that elevation, and takes the median across links. A cell about 300 km across is scored by how often the receiver lost strength while it could see the cell, from up to 3,800 km away. Method and pass marks were fixed on six days, then tested on 21 held-out days against the aircraft map:</p>
+<div class="tw"><table>
+  <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Separates aircraft-jammed cells from clean ones (21 held-out days)</td><td>AUC 0.956 (407 jammed, 16,874 clean cell-days); 0.957 on the six tuning days</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Leaving any one region out</td><td>AUC stays at 0.918 or above (Eastern Europe holds 348 of the 407 jammed cell-days)</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Quiet controls (central Pacific, South Atlantic, interior Brazil, Australia, southern Africa)</td><td>0.0% of 6,216 control cell-days at or above the threshold</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Agreement with CYGNSS where both judge</td><td>Rank correlation 0.504 over 76,369 cells</td><td><span class="chip st-validated">Pass</span></td></tr>
+    <tr><td>Tracks change over time (Persian Gulf, spring 2026; reported, no pass mark)</td><td>Gulf cells averaged 0.201 on the spring days and 0.207 on the winter days: Sentinel-6A rates the Gulf raised all year and does not show the spring rise the aircraft and CYGNSS saw</td><td><span class="chip st-partial">Not shown</span></td></tr>
+    <tr><td>Position of an emitter</td><td>Not tested. A cell's score draws on everything within 3,800 km, so the map shows regions, not transmitter sites</td><td><span class="chip st-planned">Open</span></td></tr>
+  </tbody>
+</table></div>
+<p>It reaches 66°N, so it covers the Baltic, which CYGNSS can't see. Myanmar is weaker (own AUC 0.80).</p>
+<p><a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/space-receivers.md">Full Sentinel-6A validation report</a></p>
+
 <h3>Ground reference stations</h3>
 <p>Permanent GNSS reference stations log every satellite's signal strength. Six European stations 110–486 km from the Kaliningrad coast were tested on six jammed days and two quiet days, with the rule fixed before any download.</p>
 <div class="tw"><table>

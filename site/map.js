@@ -44,7 +44,7 @@
                low: css("--map-low"), ramp: [css("--ramp-1"), css("--ramp-2"), css("--ramp-3"), css("--ramp-4")],
                focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean"), test: css("--ink-2"),
                border: css("--map-border"), label: css("--map-label"), halo: css("--map-halo"), area: css("--map-area"),
-               spoof: css("--map-spoof"), cyg: css("--map-cyg"), nisar: css("--map-nisar") };
+               spoof: css("--map-spoof"), cyg: css("--map-cyg"), nisar: css("--map-nisar"), s6: css("--map-s6") };
     mapEl.style.background = colors.ocean;
   }
 
@@ -202,6 +202,16 @@
           labels.push({ text: p[0], x: q.x + 5, y: q.y + 4, dot: q, cap: !!p[4], kind: "place" });
         });
       }
+      if (state.s6Show && state.s6 && state.s6.cells) {             // Sentinel-6: raised receiver-drop regions (H3 res 2)
+        g.save(); g.strokeStyle = colors.s6; g.fillStyle = colors.s6;
+        state.s6.cells.forEach(function (c) {
+          var sh = shapeOf(c[0]);
+          if (sh.wrap || !onScreen(sh.mb)) return;
+          g.globalAlpha = c[1] >= 0.4 ? 0.3 : 0.14; g.beginPath(); trace(g, sh.m, true); g.fill();
+          g.globalAlpha = 0.85; g.lineWidth = c[1] >= 0.4 ? 1.4 : 0.7; g.stroke();
+        });
+        g.restore();
+      }
       if (state.cygShow && state.cyg && state.cyg.cells) {          // CYGNSS: raised noise-floor cells (H3 res 3)
         g.save(); g.strokeStyle = colors.cyg; g.fillStyle = colors.cyg;
         state.cyg.cells.forEach(function (c) {
@@ -339,6 +349,10 @@
     if (state.cygShow && state.cyg && state.cyg.cells) {
       var p3 = h3.cellToParent(h, 3), cc = state.cyg.cells.filter(function (c) { return c[0] === p3; })[0];
       if (cc) lines.push(["CYGNSS", "+" + cc[1].toFixed(1) + " dB noise floor" + (state.cyg.day !== state.day ? " (" + state.cyg.day + ")" : "")]);
+    }
+    if (state.s6Show && state.s6 && state.s6.cells) {
+      var p2 = h3.cellToParent(h, 2), s6c = state.s6.cells.filter(function (c) { return c[0] === p2; })[0];
+      if (s6c) lines.push(["Sentinel-6", "receiver signal drop, region score " + s6c[1].toFixed(2) + (state.s6.day !== state.day ? " (" + state.s6.day + ")" : "")]);
     }
     lines.push(["", "Click for this area's history"]);
     if (state.evShow && state.ev) {
@@ -676,7 +690,7 @@
   function hashFor() {
     var c = map.getCenter();
     return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") + (imagery.on ? "&img=esri" : "") +
-           (state.spoofShow ? "&sp=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") +
+           (state.spoofShow ? "&sp=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") + (state.s6Show ? "&s6=1" : "") +
            "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
   }
   function writeHash() { if (state.day) history.replaceState(null, "", hashFor()); }
@@ -714,7 +728,7 @@
       var before = idx.filter(function (d) { return d <= day; });   // up to the day, else the oldest (it holds the history)
       pick = before.length ? before[before.length - 1] : idx[0];
     }
-    if (!pick && kind === "cygnss") {
+    if (!pick && (kind === "cygnss" || kind === "s6")) {         // both run days behind: the newest file up to 3 days before
       for (var k = 1; k <= 3 && !pick; k++) {
         var d = new Date(Date.parse(day + "T00:00:00Z") - k * 86400000).toISOString().slice(0, 10);
         if (idx.indexOf(d) >= 0) pick = d;
@@ -843,6 +857,12 @@
       : "No spoofing layer for this day (daily from 27 Oct 2026, plus 17 earlier days)." + nearest("spoof", state.day));
     if (state.cygShow) parts.push(state.cyg ? "CYGNSS " + state.cyg.day + ": " + state.cyg.raised_cells + " cells raised 1 dB or more (exposure within a beam a few hundred km wide, not a transmitter site; about 38°N to 38°S). Source: NASA CYGNSS L1 V3.2 (PO.DAAC), NASA open data."
       : "No CYGNSS file within 3 days of this day (CYGNSS runs about six days behind)." + nearest("cygnss", state.day));
+    if (state.s6Show) parts.push(state.s6 ? "Sentinel-6 " + fmtDay(state.s6.day) + ": " + state.s6.raised_cells + " regions raised (score " +
+      state.s6.threshold.toFixed(2) + " or more). Each cell, about 300 km across, is scored by how often the Sentinel-6A satellite's own GPS receiver " +
+      "lost signal strength on all its links at once while it could see the cell, from up to 3,800 km away. It shows regions, not a transmitter site, " +
+      "and reaches 66°N. On 21 test days it matched the aircraft map closely (AUC 0.956), but it rated the Gulf raised all year and did not show " +
+      "the spring 2026 rise there. Source: Copernicus Sentinel-6A (PO.DAAC); contains modified Copernicus Sentinel data."
+      : "No Sentinel-6 file within 3 days of this day (it runs about three days behind)." + nearest("s6", state.day));
     if (state.nisShow) {
       if (!state.nis) parts.push((layerIndex.nisar || []).length ? "Loading NISAR sites…" : "No NISAR file published yet.");
       else {
@@ -864,12 +884,13 @@
     if (state.spoofShow) layerFor("spoof", day).then(function (j) { if (state.day !== day) return; state.spoof = j; layerNote(); layer.redraw(); });
     if (state.cygShow) layerFor("cygnss", day).then(function (j) { if (state.day !== day) return; state.cyg = j; layerNote(); layer.redraw(); });
     if (state.nisShow) layerFor("nisar", day).then(function (j) { if (state.day !== day) return; state.nis = j; layerNote(); layer.redraw(); });
+    if (state.s6Show) layerFor("s6", day).then(function (j) { if (state.day !== day) return; state.s6 = j; layerNote(); layer.redraw(); });
     layerNote();
   }
 
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true; state.nisFocus = null;
-    state.spoof = null; state.cyg = null; state.nis = null; loadLayers(day);
+    state.spoof = null; state.cyg = null; state.nis = null; state.s6 = null; loadLayers(day);
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
     syncTimeline();
     fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
@@ -1019,7 +1040,7 @@
     });
   }).catch(function () { /* the map works without labels */ });
 
-  ["spoof", "cygnss", "nisar"].forEach(function (k) {
+  ["spoof", "cygnss", "nisar", "s6"].forEach(function (k) {
     fetch("/data/" + k + "/index.json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (j) { layerIndex[k] = (j && j.days) || []; if (state.day) loadLayers(state.day); });
   });
@@ -1067,7 +1088,7 @@
       var v = (hp.v || "").split(",").map(Number);
       state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
       imagery.want = hp.img === "esri";
-      state.spoofShow = hp.sp === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1";
+      state.spoofShow = hp.sp === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1"; state.s6Show = hp.s6 === "1";
       return d;
     }
     var day = fromHash();
@@ -1153,7 +1174,7 @@
     ["tl-prev", "tl-next", "tl-slider", "map-day"].forEach(function (id) {
       document.getElementById(id).addEventListener("pointerdown", function () { setPlaying(false); });
     });
-    [["spoof", "spoof"], ["cyg", "cyg"], ["nis", "nis"]].forEach(function (k) {
+    [["spoof", "spoof"], ["cyg", "cyg"], ["nis", "nis"], ["s6", "s6"]].forEach(function (k) {
       var box = document.getElementById("lyr-" + k[0]);
       if (!box) return;
       box.checked = !!state[k[0] + "Show"];
