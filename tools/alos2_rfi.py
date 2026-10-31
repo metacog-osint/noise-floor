@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """alos2_rfi.py: L-band interference in ALOS-2 PALSAR-2 ScanSAR images (1257.5 MHz), from JAXA's open L2.2 archive.
 
-JAXA's free ScanSAR Level 2.2 products (HH and HV gamma-nought, 25 m, Aug 2014 - Jul 2025) sit in the AWS open bucket
+JAXA's free ScanSAR Level 2.2 products (HH and HV gamma-nought, 25 m; 236,196 scenes from 4 Aug 2014 to 30 Sep 2026 when listed on 31 Oct 2026) sit in the AWS open bucket
 `jaxaalos2` under palsar2/L2.2/2025/ as cloud-optimized GeoTIFFs with overviews (200 m at level 3, 400 m at level 4),
 so a scene can be read coarsely for a few MB. The products carry no RFI tables. Interference from an emitter is not
 polarized, so it adds about as much power to HV as to HH, while natural surfaces return HV 5-12 dB below HH. Pixels with
@@ -16,7 +16,7 @@ Commands
                                 PNG of the excess -> data/alos2/score/<scene>.json and .png
 
 Data: JAXA ALOS-2 PALSAR-2 ScanSAR L2.2 (free of charge under each platform's terms; registry row `alos2-scansar`).
-History only: the open archive ends in Jul 2025. Descriptive: there is no known answer to test against yet.
+Descriptive: there is no known answer to test against yet.
 """
 import argparse
 import datetime as dt
