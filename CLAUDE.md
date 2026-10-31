@@ -85,8 +85,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   **Step E (added 30 Oct 2026):** the Sentinel-1C/1D/2B/2C/3A/3B navigation receivers (Copernicus `AUX_GNSSRD`, the
   SAT-JAM method; E0 done: signal strength present, 10 s, ~6 days behind). **E1 built 31 Oct:** `tools/sentinel_gnss.py`
   (`fetch`, `day`, `latest`) writes `data/sentinel_gnss/days/<day>.parquet` (one row per link and epoch, ~10 MB a day,
-  with elevation and azimuth in the spacecraft frame). **E3 pre-registered 31 Oct** in `docs/validation/sentinel-gnss.md`
-  (frozen E2 indicator, nine windows, six checks): don't change it after fetching test windows. Downloads use S3 keys in
+  with elevation and azimuth in the spacecraft frame). **E2/E3 done 31 Oct** (`tools/sentinel_rfi.py`;
+  `docs/validation/sentinel-gnss.md`, frozen section 1): four checks hold (AUC 0.862, Baltic 0.917), two fail (Gulf
+  change, inland-Australia control); a regional sensor about 2,000 km across, not a cell map. E4 waits on Tom. Downloads use S3 keys in
   the user variables
   `CDSE_S3_ACCESS_KEY` and `CDSE_S3_SECRET_KEY`; Sentinel-6A stays in step P (PO.DAAC). The plan's collectors section maps
   ground-truth sources onto `watch.py`; `CLOUDFLARE_RADAR_TOKEN` (read-only) is set for a Radar source.

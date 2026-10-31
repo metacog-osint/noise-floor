@@ -168,6 +168,10 @@ Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-
 |---|---|
 | E0 | **Done 30 Oct:** access, file contents, lag, sizes and archive depth, as above |
 | E1 | **Built 31 Oct:** `tools/sentinel_gnss.py` (`fetch`, `day`, `latest`; tests in `tests/test_sentinel_gnss.py`). It writes one row per link and epoch: time, unit, satellite, signal strength by signal, the GNSS satellite's elevation and azimuth in the spacecraft frame (zenith-pointing antenna assumed), and the spacecraft's position. Spacecraft positions come from Space-Track elements and SGP4; GNSS positions from broadcast navigation (`station_cn0.parse_nav`, `sat_xyz`). Results below |
+| E2 | **Built 31 Oct** as frozen in `docs/validation/sentinel-gnss.md`: `tools/sentinel_rfi.py epochs` (tests in `tests/test_sentinel_rfi.py`). Per unit-day baseline in 5° bins from 10°; per epoch, the median residual over 4+ links (step P's `tools/rx_rfi.py`); three passes keep degraded res-2 cells out of the baseline. SAT-JAM's indicator, back-projection (`cosmic2_rfi.py`), Galileo E1 and GPS L2 are computed beside it |
+| E3 | **Run 31 Oct: four checks hold, two fail** (`docs/validation/sentinel-gnss.md` section 2). Pooled AUC 0.862, region-held-out 0.827, Baltic 0.917, CYGNSS ρ 0.557 hold. The Gulf change (−0.34 dB; the Gulf read −1.2 dB or lower in every week) and the controls (10.8% degraded, all from inland Australia) fail. Clean cells within 2,000 km of jammed ones are mostly called degraded: a regional sensor, about 2,000 km across |
+| E4 | **Waiting on Tom.** By the pre-registered rule nothing goes on the map. If wanted: a weekly regional product (not cells), captioned with the footprint and the Australia caveat, in a `sentinel-gnss-data` release |
+| E5 | Watch areas in `private/watch/` read the same weekly files for private products. No areas go in this repo |
 
 **E1 results (24 Oct 2026, all six units, measured 31 Oct):**
 - **Output:** 638,212 link rows, 9.8 MB for the day. The first run took 83 s including downloads; a rerun from held
@@ -186,11 +190,13 @@ Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-
   `data/sentinel_gnss/elements/`; later runs ask only for spans not yet held.
 - **Units:** Sentinel-1A published until 30 Jun 2026 (`--units` adds it for earlier days). Sentinel-3C (launched 15
   Sep 2026) and Sentinel-6B publish no `AUX_GNSSRD` yet (catalogue, 31 Oct).
-- **Downloads:** the S3 connection dropped twice in the first run; the tool retries three times.
-| E2 | **Indicators, frozen before E3.** (a) SAT-JAM's, for comparison: per unit and signal, z < −1 against the global mean. (b) Ours, shared with step P: a trailing 30-day signal-strength baseline per unit, signal and 5° elevation bin; per epoch, the median residual across links and the number tracked, so jamming shows as a drop on every link at once. (c) Back-projection to cells as in `cosmic2_rfi.py`. E imports the step P functions rather than writing a second version |
-| E3 | **Pre-registered 31 Oct** in `docs/validation/sentinel-gnss.md`, with the E2 indicator frozen there. Nine weekly windows by a date rule (every sixth Monday from 6 Oct 2025) give 181 aircraft-jammed and 7,262 aircraft-clean cell-weeks at res 2. Six checks with pass marks: (1) pooled AUC against the aircraft map; (2) region-held-out AUC; (3) the Baltic's own AUC, since no other orbital L1 source reaches it; (4) the March 2026 Gulf surge as a change; (5) quiet controls (central Pacific, Australia, southern Africa; the two under the South Atlantic Anomaly are reported only); (6) rank agreement with CYGNSS within ±38°. Reported without marks: SAT-JAM's own indicator, back-projection, detection reach, per-receiver results, and confounders (Kp ≥ 5, EKS events) |
-| E4 | If E3 passes: a weekly job and a `sentinel-gnss-data` release (`<week>.sentinel-gnss.json`: cell, observations, flagged share, units, window). A map layer, "GPS interference seen from orbit (Sentinel)", goes live only after Tom says yes. Its caption carries the limits above and credits Copernicus and SAT-JAM's method. If E3 fails, the write-up says so and the data stay off the map |
-| E5 | Watch areas in `private/watch/` read the same weekly files for private products. No areas go in this repo |
+- **Downloads:** long single S3 reads break off at about 2 MB from this PC, so the tool downloads in 1 MiB ranges. BKG
+  and IGN refused connections for long spells on 31 Oct, so the broadcast navigation falls back to NASA CDDIS.
+
+**E3, pre-registered then run (31 Oct; full write-up in `docs/validation/sentinel-gnss.md`):** nine weekly windows by a
+date rule (every sixth Monday from 6 Oct 2025), 181 aircraft-jammed and 7,262 aircraft-clean cell-weeks at res 2, six
+checks with pass marks. Back-projection does better than the sub-satellite cell (AUC 0.918 at 1,500 km), and SAT-JAM's
+plain z-score a little worse (0.849). The Baltic box deepened from −3.2 dB (Oct 2025) to −5.9 dB (Sep 2026).
 
 ## Collectors for ground truth and context
 
