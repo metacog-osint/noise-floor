@@ -90,6 +90,7 @@ MAX_ELSET_AGE_H = 72.0          # no spacecraft position from an element set old
 MAX_EPH_AGE_S = 7200.0          # broadcast ephemeris used up to 2 h from its time of ephemeris
 OMEGA_E = 7.292115146706979e-5  # rad/s, Earth's rotation rate as used with GMST (Vallado)
 MIN_COVER_S = 3600              # a product must cover at least an hour of the day
+CHUNK_BYTES = 1 << 20           # S3 range size for downloads
 EMPTY_SHA = hashlib.sha256(b"").hexdigest()
 CREDIT = ["Contains modified Copernicus Sentinel data {year}", "Orbital data: USSPACECOM (space-track.org)",
           "Broadcast navigation: IGS via BKG GNSS Data Center"]
@@ -258,12 +259,23 @@ def md5_of(prod):
     return None
 
 
+def s3_download(path, size, chunk=CHUNK_BYTES):
+    """The whole object in signed 1 MiB range requests, each retried on its own: long single reads from the endpoint
+    break off at about 2 MB from this PC (31 Oct 2026). Without a known size, one plain GET."""
+    if not size:
+        return s3_get(path)
+    parts = []
+    for start in range(0, int(size), chunk):
+        parts.append(s3_get(path, rng=f"bytes={start}-{min(start + chunk, int(size)) - 1}", tries=5))
+    return b"".join(parts)
+
+
 def fetch_product(day, prod, force=False):
     """Download one product (signed S3 GET), check size and MD5 when the catalogue gives them, index it, keep it."""
     dest = raw_path(day, prod["Name"])
     if os.path.exists(dest) and os.path.getsize(dest) > 0 and not force:
         return dest
-    data = s3_get(prod["S3Path"])
+    data = s3_download(prod["S3Path"], prod.get("ContentLength"))
     if prod.get("ContentLength") and len(data) != int(prod["ContentLength"]):
         raise ValueError(f"{prod['Name']}: got {len(data)} bytes, catalogue says {prod['ContentLength']}")
     md5 = md5_of(prod)
@@ -294,13 +306,28 @@ def rinex_lines(tgz):
     raise ValueError(f"{os.path.basename(tgz)}: no RINEX (.DBL) member")
 
 
+NAV_PREFIXES = ("BRDC00IGS_R", "BRDC00WRD_S", "BRDC00WRD_R", "BRDM00DLR_S")   # station_cn0.nav_name's order
+
+
 def fetch_nav(day):
+    """The day's merged broadcast navigation from BKG. station_cn0's directory listing reads a failed request as an
+    empty folder, so when it finds nothing the known file names are tried directly."""
     import station_cn0 as SC
+    doy = day.timetuple().tm_yday
+    folder = f"{SC.BKG}/IGS/BRDC/{day.year}/{doy:03d}/"
+    import time
     url = SC.nav_name(day.isoformat())
-    if url is None:
-        raise SystemExit(f"no broadcast navigation file at BKG for {day}")
-    dest = os.path.join(SC.RAW, str(day.year), f"{day.timetuple().tm_yday:03d}", url.rsplit("/", 1)[1])
-    return SC.download(url, dest)
+    urls = [url] if url else [f"{folder}{p}_{day.year}{doy:03d}0000_01D_MN.rnx.gz" for p in NAV_PREFIXES]
+    for attempt in range(4):                     # BKG refused connections for a few minutes on 31 Oct 2026
+        for u in urls:
+            dest = os.path.join(SC.RAW, str(day.year), f"{doy:03d}", u.rsplit("/", 1)[1])
+            try:
+                return SC.download(u, dest)
+            except Exception as ex:
+                print(f"  navigation {u.rsplit('/', 1)[1]}: {ex}", file=sys.stderr)
+        if attempt < 3:
+            time.sleep(60 * (attempt + 1))
+    raise SystemExit(f"no broadcast navigation file at BKG for {day}")
 
 
 # ---------------------------------------------------------------------------------------------- element sets
