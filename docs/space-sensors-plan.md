@@ -100,6 +100,7 @@ Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-
 | R2 | **Check, pre-registered:** long-range L-band air-surveillance radars with public positions (the FAA site file, `open-air-data-atc-radar`) should stand out. Unverified premise: that their out-of-band emissions reach 1400–1427 MHz. A miss tests that premise too. **Failed 31 Oct (AUC 0.50)** (`docs/validation/smap-rfi.md`):
 - Europe, western Russia and East Asia are saturated (most looks flagged).
 - Isolated always-flagged cells sit in quiet regions; they are unidentified. |
+| R2b | **Second known answer, held 31 Oct 2026:** the 14 active North Warning System long-range radars (AN/FPS-117) on two unseen weeks: AUC 0.988, 10 of 14 sites heard in both weeks, 1.2% of far cells flagged (`docs/validation/smap-rfi.md` §5). SMAP finds L-band radars where the background is quiet |
 | R3 | If R2 passes: add to the map's emitter layer beside NISAR, labelled by band. It shows radars, not GPS jammers |
 
 ### S: Sentinel-1 (C-band)

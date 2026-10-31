@@ -72,7 +72,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   - **The Sentinel-6A result:** all four held-out checks pass (AUC 0.956). It places regions, not sites, and doesn't
     track the Gulf's spring 2026 rise.
   - **COSMIC-2** (`tools/cosmic2_rfi.py`): pre-registered C1–C5; the held-out run is in progress.
-  - **SMAP** (`tools/smap_rfi.py`): the radar check failed.
+  - **SMAP** (`tools/smap_rfi.py`): the 2010 FAA-site check failed. The pre-registered North Warning System check held
+    (AUC 0.988, 10 of 14 sites): it finds L-band radars against a quiet background and saturates in crowded regions.
   - **Sentinel-1 worldwide** (`tools/s1_rfi_global.py`) and the **ALOS-2** probe (`tools/alos2_rfi.py`): built,
     descriptive only.
   - **HydroGNSS** waits on credentials. **Biomass** needs an ESA account. **SMOS** downloads with the CDSE keys.
