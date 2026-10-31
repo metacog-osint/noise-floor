@@ -52,7 +52,8 @@ function main() {
   // ---------------------------------------------------------------- state
   const S = { objs: [], byId: new Map(), sel: [], q: "", regions: new Set(REGIONS.map((r) => r[0])), types: new Set(TYPES.map((t) => t[0])),
               activeOnly: false, color: "region", trails: "sel", win: 7, fp: "", t: null, track: null, tracks: {}, board: null, owners: {},
-              ownerColor: {}, strip: { x0: -180, x1: 180, y: "alt" }, beams: new Map(), aim: null, files: [] };
+              ownerColor: {}, strip: { x0: -180, x1: 180, y: "alt" }, beams: new Map(), aim: null, files: [],
+              place: null, pickPlace: false, sun: false, over: false, dish: 0.9, ghz: 12, open: {}, rel: null, near: null, look: null, sunwins: null };
   function readHash() {
     if (!location.hash.startsWith("#g=")) return;
     const kv = {};
@@ -66,6 +67,12 @@ function main() {
     if (kv.r) S.regions = new Set(kv.r.split(",").filter((r) => REGIONS.some((x) => x[0] === r)));
     if (kv.ty) S.types = new Set(kv.ty.split(",").map((t) => t.replace("_", " ")).filter((t) => TYPES.some((x) => x[0] === t)));
     if (kv.a === "1") S.activeOnly = true;
+    if (kv.sun === "1") S.sun = true;
+    if (kv.ov === "1") S.over = true;
+    if (kv.pl) {                                                          // lat~lon~name
+      const p = kv.pl.split("~");
+      if (p.length >= 2 && isFinite(+p[0]) && isFinite(+p[1]) && p[0] !== "" && p[1] !== "") S.place = { lat: Math.max(-90, Math.min(90, +p[0])), lon: ((+p[1] + 540) % 360) - 180, name: p.slice(2).join(" ") };
+    }
     if (kv.b) kv.b.split(",").forEach((x) => {                            // norad~lat~lon~beamwidth~band~dia~levels
       const p = x.split("~");
       if (p.length < 4 || !+p[0]) return;
@@ -84,6 +91,9 @@ function main() {
     if (S.regions.size !== REGIONS.length) parts.push("r:" + [...S.regions].join(","));
     if (S.types.size !== TYPES.length) parts.push("ty:" + [...S.types].map((t) => t.replace(" ", "_")).join(","));
     if (S.activeOnly) parts.push("a:1");
+    if (S.sun) parts.push("sun:1");
+    if (S.over) parts.push("ov:1");
+    if (S.place) parts.push("pl:" + [S.place.lat.toFixed(3), S.place.lon.toFixed(3), (S.place.name || "").replace(/[;~,:]/g, " ")].join("~"));
     if (S.beams.size) parts.push("b:" + [...S.beams].map(([id, b]) => [id, b.lat.toFixed(2), b.lon.toFixed(2), b.bw.toFixed(2), b.band, b.dia,
       (b.c6 ? "6" : "") + (b.c10 ? "10" : "")].join("~")).join(","));
     const h = parts.length ? "#g=" + encodeURIComponent(parts.join(";")) : "";
@@ -153,7 +163,8 @@ function main() {
   selDots.renderOrder = 2;
   scene.add(dots, selDots);
   const trailGroup = new THREE.Group(), predGroup = new THREE.Group(), fpGroup = new THREE.Group(), beamGroup = new THREE.Group(), fileGroup = new THREE.Group();
-  scene.add(trailGroup, predGroup, fpGroup, beamGroup, fileGroup);
+  const sunGroup = new THREE.Group(), placeGroup = new THREE.Group(), overGroup = new THREE.Group();
+  scene.add(trailGroup, predGroup, fpGroup, beamGroup, fileGroup, sunGroup, placeGroup, overGroup);
 
   // ---------------------------------------------------------------- colours and filters
   const col = new THREE.Color(), bgCol = new THREE.Color(SPACE);
@@ -224,6 +235,9 @@ function main() {
     selGeo.computeBoundingSphere();
     drawFootprints();
     drawBeams();
+    drawSun();
+    drawPlace();
+    drawOverlays();
     legend();
     drawStrip();
     panelUpdate();
@@ -387,6 +401,313 @@ function main() {
   });
   $("g-files").addEventListener("click", (e) => { const b = e.target.closest("button[data-file]"); if (b) { S.files.splice(+b.dataset.file, 1); drawFiles(); } });
 
+
+  // ---------------------------------------------------------------- G3: the sun, a place on the ground, board overlays
+  const SUN_COL = "#f2c94c", SHADOW_COL = "#ff6b6b", PLACE_COL = "#e7e9ed", OMEGA = 7.2921159e-5;   // rad/s, the Earth's spin
+  const OVER = [["close", "#ff6b6b", "Close to another owner"], ["man", "#c792ea", "Orbit change this week (not station-keeping)"], ["ev", "#56ccf2", "Arrival or departure"]];
+  const ringTex = dotTexture(true), discTex = dotTexture(false);
+  const ptsOf = (vs, color, size) => new THREE.Points(new THREE.BufferGeometry().setFromPoints(vs),
+    new THREE.PointsMaterial({ size, sizeAttenuation: false, color, map: size > 12 ? ringTex : discTex, alphaTest: 0.3, transparent: true, depthTest: false }));
+  const sunDir = (ms) => (window.NFSun ? window.NFSun.sunEcef(ms) : null);          // Earth-fixed unit vector to the sun
+  function inShadow(p, s) {                                               // behind the Earth and within its cylinder of shadow
+    const k = v3.dot(p, s);
+    return k < 0 && Math.hypot(...v3.sub(p, v3.mul(s, k))) < 1;
+  }
+  function circleOn(lat, lon, lam, r) {                                   // a small circle of angular radius lam around (lat, lon)
+    const f1 = lat * DEG, l1 = lon * DEG, pts = [];
+    for (let k = 0; k <= 180; k++) {
+      const th = (k / 180) * 2 * Math.PI, f2 = Math.asin(Math.sin(f1) * Math.cos(lam) + Math.cos(f1) * Math.sin(lam) * Math.cos(th));
+      const l2 = l1 + Math.atan2(Math.sin(th) * Math.sin(lam) * Math.cos(f1), Math.cos(lam) - Math.sin(f1) * Math.sin(f2));
+      pts.push(fromLLR(l2 / DEG, f2 / DEG, r));
+    }
+    return pts;
+  }
+  function drawSun() {
+    clearGroup(sunGroup);
+    const s = S.sun ? sunDir(nowMs()) : null;
+    if (!s) { dirty = true; return; }
+    const a = sc(...s), b = sc(...v3.mul(s, GEO_R * 1.35));
+    sunGroup.add(lineSet([a.x, a.y, a.z, b.x, b.y, b.z], SUN_COL, 0.7));
+    sunGroup.add(ptsOf([b], SUN_COL, 12));
+    const sub = { lat: Math.asin(s[2]) / DEG, lon: Math.atan2(s[1], s[0]) / DEG };
+    sunGroup.add(ptsOf([fromLLR(sub.lon, sub.lat, 1.003)], SUN_COL, 8));
+    const term = circleOn(sub.lat, sub.lon, Math.PI / 2, 1.003);
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(term), new THREE.LineDashedMaterial({ color: SUN_COL, dashSize: 0.02, gapSize: 0.015, transparent: true, opacity: 0.8 }));
+    line.computeLineDistances();
+    sunGroup.add(line);
+    const sh = [];                                                        // the arc of the belt inside the Earth's shadow
+    for (let lon = -180; lon < 180; lon += 0.5) {
+      const p = [GEO_R * Math.cos(lon * DEG), GEO_R * Math.sin(lon * DEG), 0], q = [GEO_R * Math.cos((lon + 0.5) * DEG), GEO_R * Math.sin((lon + 0.5) * DEG), 0];
+      if (inShadow(p, s) && inShadow(q, s)) { const u = sc(...p), w = sc(...q); sh.push(u.x, u.y, u.z, w.x, w.y, w.z); }
+    }
+    if (sh.length) { const m = lineSet(sh, SHADOW_COL, 1); m.material.depthTest = false; sunGroup.add(m); }
+    dirty = true;
+  }
+  function stationEcef(lat, lon) {                                        // km, WGS84 at sea level
+    const F = 1 / 298.257223563, E2 = F * (2 - F), la = lat * DEG, lo = lon * DEG, n = RE / Math.sqrt(1 - E2 * Math.sin(la) ** 2);
+    return [n * Math.cos(la) * Math.cos(lo), n * Math.cos(la) * Math.sin(lo), n * (1 - E2) * Math.sin(la)];
+  }
+  function lookFrom(pl, p) {                                              // bearing and elevation (degrees) and range (km) from a place
+    const d = v3.sub(v3.mul(p, RE), stationEcef(pl.lat, pl.lon)), la = pl.lat * DEG, lo = pl.lon * DEG;
+    const e = -Math.sin(lo) * d[0] + Math.cos(lo) * d[1];
+    const n = -Math.sin(la) * Math.cos(lo) * d[0] - Math.sin(la) * Math.sin(lo) * d[1] + Math.cos(la) * d[2];
+    const u = Math.cos(la) * Math.cos(lo) * d[0] + Math.cos(la) * Math.sin(lo) * d[1] + Math.sin(la) * d[2], r = Math.hypot(e, n, u);
+    return { az: (Math.atan2(e, n) / DEG + 360) % 360, el: Math.asin(u / r) / DEG, range: r };
+  }
+  const COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  const bearingTxt = (az) => Math.round(az) % 360 + "° (" + COMPASS[Math.round(az / 22.5) % 16] + ")";
+  const placeName = () => (S.place.name ? S.place.name : latTxt(S.place.lat) + ", " + lonTxt(S.place.lon));
+  function drawPlace() {
+    clearGroup(placeGroup);
+    if (!S.place) { dirty = true; return; }
+    const st = v3.mul(stationEcef(S.place.lat, S.place.lon), 1.002 / RE), at = sc(...st);
+    placeGroup.add(ptsOf([at], PLACE_COL, 13));
+    const pts = [];
+    S.sel.slice(0, 12).map((id) => S.byId.get(id)).filter((o) => o && o.p && lookFrom(S.place, o.p).el > 0).forEach((o) => {
+      const b = sc(...o.p); pts.push(at.x, at.y, at.z, b.x, b.y, b.z);
+    });
+    if (pts.length) placeGroup.add(lineSet(pts, PLACE_COL, 0.45));
+    dirty = true;
+  }
+  function overlayItems() {                                               // the board's findings, by object
+    const b = S.board || {}, out = { close: [], man: [], ev: [] };
+    (b.close_other_owner || []).forEach((p) => out.close.push([p.a[0], p.b[0]]));
+    (b.manoeuvres || []).forEach((m) => { if (m.kind && m.kind !== "station-keeping" && !out.man.includes(m.id)) out.man.push(m.id); });
+    ((b.region || {}).events || []).forEach((e) => { if (!out.ev.includes(e.norad)) out.ev.push(e.norad); });
+    return out;
+  }
+  function drawOverlays() {
+    clearGroup(overGroup);
+    if (!S.over || !S.board) { dirty = true; return; }
+    const it = overlayItems(), at = (id) => { const o = S.byId.get(id); return o && o.p ? o.p : null; };
+    const close = [], links = [];
+    it.close.forEach(([a, b]) => {
+      const A = at(a), B = at(b); if (!A || !B) return;
+      close.push(sc(...v3.mul(v3.add(A, B), 0.5)));
+      const u = sc(...A), w = sc(...B); links.push(u.x, u.y, u.z, w.x, w.y, w.z);
+    });
+    if (close.length) overGroup.add(ptsOf(close, OVER[0][1], 22));
+    if (links.length) overGroup.add(lineSet(links, OVER[0][1], 0.9));
+    const man = it.man.map(at).filter(Boolean).map((p) => sc(...p)), ev = it.ev.map(at).filter(Boolean).map((p) => sc(...p));
+    if (man.length) overGroup.add(ptsOf(man, OVER[1][1], 17));
+    if (ev.length) overGroup.add(ptsOf(ev, OVER[2][1], 13.5));
+    dirty = true;
+  }
+
+  // ---------------------------------------------------------------- G3: positions over a window, relative motion, charts
+  function posAt(o, ms) {                                                 // the same rule as updatePositions: recorded track, else SGP4
+    const T = S.track;
+    if (T && ms <= T.end) return tracked(o, ms) || (T.dec.has(o.norad) ? null : propagated(o, new Date(ms), satellite.gstime(new Date(ms))));
+    const d = new Date(ms);
+    return propagated(o, d, satellite.gstime(d));
+  }
+  function sampleTimes() {                                                // [ms, predicted]: the recorded window, then 48 hours ahead
+    const now = Date.now(), T = S.track, out = [];
+    if (T) for (let t = Math.max(T.t0, now - S.win * 86400000); t <= Math.min(T.end, now); t += T.step) out.push([t, false]);
+    for (let m = 0; m <= 2880; m += 30) out.push([now + m * 60000, true]);
+    return out;
+  }
+  function inertialVel(o, ms, p) {                                        // velocity in Earth-fixed axes plus the Earth's spin (radii per second)
+    const a = posAt(o, ms - 600000), b = posAt(o, ms + 600000), ve = a && b ? v3.mul(v3.sub(b, a), 1 / 1200) : [0, 0, 0];
+    return v3.add(ve, [-OMEGA * p[1], OMEGA * p[0], 0]);
+  }
+  function relative(A, B) {                                               // B as seen from A: separation and radial, along-track, cross-track
+    return sampleTimes().map(([t, pred]) => {
+      const pa = posAt(A, t), pb = posAt(B, t);
+      if (!pa || !pb) return null;
+      const d = v3.mul(v3.sub(pb, pa), RE), R = v3.unit(pa), C = v3.unit(v3.cross(pa, inertialVel(A, t, pa))), I = v3.cross(C, R);
+      return { t, pred, sep: Math.hypot(...d), r: v3.dot(d, R), i: v3.dot(d, I), c: v3.dot(d, C) };
+    }).filter(Boolean);
+  }
+  function neighbours(o, n) {                                             // the n objects that come closest over the window and the next 48 hours
+    const times = sampleTimes(), mine = times.map(([t]) => posAt(o, t)), rec = times.filter((x) => !x[1]).length;
+    const scored = [];
+    S.objs.forEach((x) => {
+      if (x === o || !x.p) return;
+      let min = x.p && o.p ? Math.hypot(...v3.sub(x.p, o.p)) * RE : Infinity;
+      for (let k = 0; k < rec; k++) { if (!mine[k]) continue; const q = posAt(x, times[k][0]); if (q) min = Math.min(min, Math.hypot(...v3.sub(q, mine[k])) * RE); }
+      scored.push([min, x]);
+    });
+    scored.sort((a, b) => a[0] - b[0]);
+    return scored.slice(0, 15).map(([, x]) => {                           // the 15 nearest so far, then their predicted part too
+      const pts = [];
+      times.forEach(([t, pred], k) => { const q = posAt(x, t); if (q && mine[k]) pts.push([t, Math.hypot(...v3.sub(q, mine[k])) * RE, pred]); });
+      return { o: x, pts, min: pts.reduce((m, p) => (p[1] < m[1] ? p : m), [0, Infinity]) };
+    }).sort((a, b) => a.min[1] - b.min[1]).slice(0, n);
+  }
+  function cssVar(name, fb) { const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); return v || fb; }
+  function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x))), f = x / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
+  function lineChart(cv, cfg) {                                           // one km axis; recorded solid, predicted dashed and shaded
+    cv._cfg = cfg;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const x = cv.getContext("2d");
+    x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
+    const mut = cssVar("--ink-3", "#6b7480"), grid = cssVar("--grid", "#e6e9ee"), fg = cssVar("--fg", "#141a23");
+    x.font = "11px " + getComputedStyle(document.body).fontFamily;
+    const L = 44, R = 8, T = 6, B = 18, pw = w - L - R, ph = h - T - B;
+    let lo = Infinity, hi = -Infinity;
+    cfg.series.forEach((s) => s.pts.forEach((p) => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); }));
+    if (!isFinite(lo)) { x.fillStyle = mut; x.fillText("No positions in this window", L, T + 14); return; }
+    if (cfg.cap) hi = Math.min(hi, cfg.cap);
+    const m = cfg.sym ? Math.max(Math.abs(lo), Math.abs(hi), 1) : Math.max(hi, 1), step = niceStep(m / (cfg.sym ? 2 : 4));
+    hi = Math.ceil(m / step) * step; lo = cfg.sym ? -hi : 0;
+    const X = (t) => L + ((t - cfg.t0) / (cfg.t1 - cfg.t0)) * pw, Y = (v) => T + (1 - (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * ph;
+    x.fillStyle = cssVar("--wash", "rgba(42,111,203,0.10)"); x.fillRect(X(cfg.now), T, X(cfg.t1) - X(cfg.now), ph);
+    x.strokeStyle = grid; x.lineWidth = 1; x.fillStyle = mut; x.textAlign = "right";
+    for (let v = lo; v <= hi + step / 2; v += step) { x.beginPath(); x.moveTo(L, Math.round(Y(v)) + 0.5); x.lineTo(w - R, Math.round(Y(v)) + 0.5); x.stroke(); x.fillText(fmtN(Math.round(v)), L - 5, Y(v) + 4); }
+    const days = (cfg.t1 - cfg.t0) / 86400000, dstep = days > 60 ? 15 : days > 20 ? 7 : days > 6 ? 2 : 1;
+    x.textAlign = "center";
+    for (let t = Math.ceil(cfg.t0 / 86400000) * 86400000; t <= cfg.t1; t += dstep * 86400000) {
+      const d = new Date(t); if (X(t) > L + 14 && X(t) < w - R - 14) x.fillText(d.getUTCDate() + " " + MON[d.getUTCMonth()], X(t), h - 4);
+    }
+    cfg.series.forEach((s) => {
+      x.strokeStyle = s.color; x.lineWidth = 2;
+      [false, true].forEach((pred) => {
+        x.setLineDash(pred ? [5, 3] : []); x.beginPath();
+        let on = false, last = 0;
+        s.pts.forEach((p) => {
+          if (p[2] !== pred || (cfg.cap && p[1] > cfg.cap)) { on = false; return; }   // above the cap: a break, not a flat line
+          const px = X(p[0]), py = Y(p[1]);
+          if (on && p[0] - last <= cfg.gap) x.lineTo(px, py); else x.moveTo(px, py);
+          on = true; last = p[0];
+        });
+        x.stroke();
+      });
+      x.setLineDash([]);
+    });
+    const tm = nowMs();
+    if (tm >= cfg.t0 && tm <= cfg.t1) { x.strokeStyle = fg; x.globalAlpha = 0.55; x.beginPath(); x.moveTo(Math.round(X(tm)) + 0.5, T); x.lineTo(Math.round(X(tm)) + 0.5, T + ph); x.stroke(); x.globalAlpha = 1; }
+    if (cfg.hover != null) { x.strokeStyle = mut; x.setLineDash([2, 2]); x.beginPath(); x.moveTo(Math.round(X(cfg.hover)) + 0.5, T); x.lineTo(Math.round(X(cfg.hover)) + 0.5, T + ph); x.stroke(); x.setLineDash([]); }
+    cfg.X = X; cfg.L = L; cfg.pw = pw;
+  }
+  function chartHover(e) {                                                // the readout under a chart follows the pointer
+    const cv = e.target.closest("canvas.globe-chart"); if (!cv || !cv._cfg) return;
+    const cfg = cv._cfg, r = cv.getBoundingClientRect(), t = cfg.t0 + ((e.clientX - r.left - cfg.L) / cfg.pw) * (cfg.t1 - cfg.t0);
+    if (t < cfg.t0 || t > cfg.t1) return;
+    cfg.hover = t; lineChart(cv, cfg);
+    const vals = cfg.series.map((s) => {
+      let best = null; s.pts.forEach((p) => { if (!best || Math.abs(p[0] - t) < Math.abs(best[0] - t)) best = p; });
+      return best && Math.abs(best[0] - t) <= cfg.gap ? [s, best] : null;
+    }).filter(Boolean);
+    const out = cv.parentElement.querySelector(".globe-read");
+    if (out && vals.length) out.textContent = utcTxt(vals[0][1][0]) + (vals[0][1][2] ? " (predicted): " : " (recorded): ") +
+      vals.map(([s, p]) => s.name + " " + fmtN(Math.round(p[1])) + " km").join(", ");
+  }
+  function chartLeave(e) { const cv = e.target.closest("canvas.globe-chart"); if (cv && cv._cfg) { cv._cfg.hover = null; lineChart(cv, cv._cfg); } }
+  function chartFrame(series) {
+    const now = Date.now(), all = series.flatMap((s) => s.pts.map((p) => p[0]));
+    return { t0: Math.min(...all, now), t1: Math.max(...all, now + 1), now, gap: Math.max(S.track ? S.track.step : 0, 1800000) * 2.5 };
+  }
+  function relSection(A, B) {
+    const rel = relative(A, B);
+    if (!rel.length) return '<p class="small">No common positions for these two in this window.</p>';
+    const closest = rel.reduce((m, p) => (p.sep < m.sep ? p : m), rel[0]);
+    S.rel = { A, B, rel };
+    return '<h4 class="globe-h4">Relative motion</h4><p class="small">' + esc(B.name) + " as seen from " + esc(A.name) + ". Closest in the window: <strong>" +
+      fmtN(Math.round(closest.sep)) + " km</strong>, " + esc(bothTxt(closest.t, true)) + (closest.pred ? " (predicted)" : " (recorded)") + ".</p>" +
+      '<div class="globe-chartbox"><canvas class="globe-chart" data-chart="sep" aria-label="Separation over time"></canvas><p class="small globe-read">Separation, km. Point at the chart to read it.</p></div>' +
+      '<div class="globe-chartbox"><canvas class="globe-chart" data-chart="ric" aria-label="Radial, along-track and cross-track offsets over time"></canvas>' +
+      '<p class="small globe-key"><i style="background:' + cssVar("--series-1", PAL[0]) + '"></i>Radial (up) <i style="background:' + cssVar("--series-2", PAL[1]) + '"></i>Along-track (ahead) <i style="background:' + PAL[2] + '"></i>Cross-track</p>' +
+      '<p class="small globe-read">Offsets, km. Point at the chart to read it.</p></div>' +
+      '<p class="small">Solid: recorded elements; dashed and shaded: the next 48 hours predicted from the latest elements. Public elements are good to tens of kilometres, so offsets under about 50 km are within the error.</p>' +
+      '<p class="globe-tools"><button type="button" data-act="csv-rel">Download relative motion (CSV)</button></p>';
+  }
+  function drawRelCharts() {
+    if (!S.rel) return;
+    const rel = S.rel.rel, pts = (k) => rel.map((p) => [p.t, p[k], p.pred]);
+    const sep = [{ name: "Separation", color: cssVar("--series-1", PAL[0]), pts: pts("sep") }];
+    const ric = [{ name: "Radial", color: cssVar("--series-1", PAL[0]), pts: pts("r") }, { name: "Along-track", color: cssVar("--series-2", PAL[1]), pts: pts("i") },
+                 { name: "Cross-track", color: PAL[2], pts: pts("c") }];
+    const cs = document.querySelector('#g-panel canvas[data-chart="sep"]'), cr = document.querySelector('#g-panel canvas[data-chart="ric"]');
+    if (cs) lineChart(cs, { ...chartFrame(sep), series: sep });
+    if (cr) lineChart(cr, { ...chartFrame(ric), series: ric, sym: true });
+  }
+  function nearSection(o) {
+    const box = $("g-near"); if (!box) return;
+    const near = neighbours(o, 5);
+    S.near = { o, near };
+    if (!near.length) { box.innerHTML = '<p class="small">No other objects with positions in this window.</p>'; return; }
+    const series = near.map((nb, k) => ({ name: nb.o.name, color: PAL[k], pts: nb.pts }));
+    box.innerHTML = '<div class="globe-chartbox"><canvas class="globe-chart" data-chart="near" aria-label="Separation from the closest objects over time"></canvas><p class="small globe-read">Separation, km, up to 1,000 km. Point at the chart to read it.</p></div>' +
+      '<ol class="globe-near">' + near.map((nb, k) => '<li><i style="background:' + PAL[k] + '"></i><button type="button" class="linkish" data-act="add" data-id="' + nb.o.norad + '">' + esc(nb.o.name) + "</button> " +
+        esc(nb.o.owner || "?") + " · closest " + fmtN(Math.round(nb.min[1])) + " km, " + esc(utcTxt(nb.min[0])) + (nb.min[2] ? " (predicted)" : "") + "</li>").join("") + "</ol>" +
+      '<p class="small">Any owner, any type, including debris. Solid: recorded; dashed: predicted. Click a name to add it to the selection.</p>' +
+      '<p class="globe-tools"><button type="button" data-act="csv-near">Download (CSV)</button></p>';
+    const cv = box.querySelector("canvas");
+    lineChart(cv, { ...chartFrame(series), series, cap: 1000 });
+  }
+  function seasons(wins) {                                                // consecutive outage days grouped into seasons
+    const out = [];
+    wins.forEach((w) => {
+      const s = out[out.length - 1];
+      if (s && w.peak - s.days[s.days.length - 1].peak < 1.6 * 86400000) s.days.push(w); else out.push({ days: [w] });
+    });
+    return out;
+  }
+  function sunSection(o) {
+    const box = $("g-sunwin"); if (!box || !S.place || !window.NFSun) return;
+    const g = o.p ? geodetic(o.p) : null;
+    if (!g) { box.innerHTML = '<p class="small">No position at this time.</p>'; return; }
+    if (Math.abs(o.drift) >= 0.1) { box.innerHTML = '<p class="small">This satellite is drifting, so its sun outages move from day to day; they are worked out only for satellites holding a longitude.</p>'; return; }
+    const th = window.NFSun.threshold(S.dish, S.ghz), res = window.NFSun.windows(S.place.lat, S.place.lon, g.lon, Date.now(), 366, th);
+    if (res.elev <= 0) { box.innerHTML = '<p class="small">Below the horizon from ' + esc(placeName()) + ": no sun outages there.</p>"; return; }
+    S.sunwins = { o, wins: res.windows, th };
+    const ss = seasons(res.windows);
+    box.innerHTML = '<p class="small">Sun within ' + th.toFixed(2) + "° of the satellite (half the beamwidth of a " + S.dish + " m dish at " + S.ghz + " GHz, plus the sun's radius), for a satellite sitting on the equator at " + lonTxt(g.lon) + ".</p>" +
+      (ss.length ? '<ul class="globe-near">' + ss.slice(0, 2).map((s) => {
+        const a = s.days[0], z = s.days[s.days.length - 1], top = s.days.reduce((m, d) => (d.minutes > m.minutes ? d : m), a);
+        return "<li><strong>" + a.peak.getUTCDate() + " " + MON[a.peak.getUTCMonth()] + " – " + z.peak.getUTCDate() + " " + MON[z.peak.getUTCMonth()] + " " + z.peak.getUTCFullYear() +
+          "</strong>: " + s.days.length + " days, longest " + Math.round(top.minutes) + " min, centred " + esc(bothTxt(top.peak.getTime(), true)) + "</li>";
+      }).join("") + "</ul>" : '<p class="small">No outages in the next year at this threshold.</p>') +
+      '<p class="globe-tools"><label>Dish <input data-sun="dish" type="number" min="0.3" max="15" step="0.1" value="' + S.dish + '"> m</label><label>at <input data-sun="ghz" type="number" min="1" max="40" step="0.5" value="' + S.ghz + '"> GHz</label>' +
+      (res.windows.length ? '<button type="button" data-act="csv-sun">Daily windows (CSV)</button>' : "") + "</p>" +
+      '<p class="small">The same method as the <a href="/sun">Sun outages</a> page.</p>';
+  }
+  function lookTable() {                                                  // every shown object above the horizon from the place
+    const rows = drawn.map((o) => ({ o, l: lookFrom(S.place, o.p) })).filter((r) => r.l.el > 0).sort((a, b) => b.l.el - a.l.el);
+    S.look = rows;
+    const act = rows.filter((r) => r.o.active).length;
+    return '<h4 class="globe-h4">Seen from ' + esc(placeName()) + "</h4><p class=\"small\">" + fmtN(rows.length) + " of the objects shown are above the horizon (" + fmtN(act) + " listed as active), at " + esc(bothTxt(nowMs(), true)) + ". Highest first.</p>" +
+      '<div class="tw"><table class="globe-list"><thead><tr><th>Object</th><th>Owner</th><th class="num">Elev.</th><th class="num">Bearing</th></tr></thead><tbody>' +
+      rows.slice(0, 30).map((r) => '<tr><td><button type="button" class="linkish" data-act="pick" data-id="' + r.o.norad + '">' + esc(r.o.name) + "</button></td><td>" + esc(r.o.owner || "") +
+        '</td><td class="num">' + r.l.el.toFixed(1) + '°</td><td class="num">' + Math.round(r.l.az) + "°</td></tr>").join("") + "</tbody></table></div>" +
+      (rows.length > 30 ? '<p class="small">The first 30 of ' + fmtN(rows.length) + "; the CSV has them all.</p>" : "") +
+      '<p class="globe-tools"><button type="button" data-act="csv-look">Look angles (CSV)</button></p>';
+  }
+  function download(name, head, rows) {
+    const q = (v) => (/[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v);
+    const blob = new Blob([head.join(",") + "\n" + rows.map((r) => r.map(q).join(",")).join("\n") + "\n" + '"' + S.cite + '"\n'], { type: "text/csv" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  const iso = (ms) => new Date(ms).toISOString().slice(0, 16) + "Z", stamp = () => iso(Date.now()).replace(/[:]/g, "");
+  function csvRel() {
+    if (!S.rel) return;
+    download("geo-relative-" + S.rel.A.norad + "-" + S.rel.B.norad + "-" + stamp() + ".csv",
+      ["time_utc", "kind", "from_norad", "to_norad", "separation_km", "radial_km", "along_track_km", "cross_track_km"],
+      S.rel.rel.map((p) => [iso(p.t), p.pred ? "predicted" : "recorded", S.rel.A.norad, S.rel.B.norad, p.sep.toFixed(1), p.r.toFixed(1), p.i.toFixed(1), p.c.toFixed(1)]));
+  }
+  function csvNear() {
+    if (!S.near) return;
+    const rows = [];
+    S.near.near.forEach((nb) => nb.pts.forEach((p) => rows.push([iso(p[0]), p[2] ? "predicted" : "recorded", S.near.o.norad, nb.o.norad, nb.o.name, nb.o.owner || "", p[1].toFixed(1)])));
+    download("geo-closest-" + S.near.o.norad + "-" + stamp() + ".csv", ["time_utc", "kind", "norad", "neighbour_norad", "neighbour_name", "neighbour_owner", "separation_km"], rows);
+  }
+  function csvLook() {
+    if (!S.look || !S.place) return;
+    const t = iso(nowMs());
+    download("geo-look-angles-" + stamp() + ".csv", ["norad", "name", "owner", "active", "elevation_deg", "bearing_deg", "range_km", "place", "place_lat", "place_lon", "time_utc"],
+      S.look.map((r) => [r.o.norad, r.o.name, r.o.owner || "", r.o.active ? 1 : 0, r.l.el.toFixed(2), r.l.az.toFixed(2), Math.round(r.l.range), S.place.name || "", S.place.lat.toFixed(4), S.place.lon.toFixed(4), t]));
+  }
+  function csvSun() {
+    if (!S.sunwins || !S.place) return;
+    download("geo-sun-outages-" + S.sunwins.o.norad + "-" + stamp() + ".csv", ["norad", "name", "place", "place_lat", "place_lon", "threshold_deg", "start_utc", "peak_utc", "end_utc", "minutes", "closest_deg"],
+      S.sunwins.wins.map((w) => [S.sunwins.o.norad, S.sunwins.o.name, S.place.name || "", S.place.lat.toFixed(4), S.place.lon.toFixed(4), S.sunwins.th.toFixed(3),
+        w.start.toISOString().slice(0, 19) + "Z", w.peak.toISOString().slice(0, 19) + "Z", w.end.toISOString().slice(0, 19) + "Z", w.minutes.toFixed(1), w.sep.toFixed(3)]));
+  }
+
   // ---------------------------------------------------------------- picking
   const tip = $("g-tip"), box = $("g-box"), labels = $("g-labels");
   function occluded(v) {                                                  // the Earth between the camera and the point
@@ -441,6 +762,10 @@ function main() {
     if (down.shift && down.moved) {
       const x0 = Math.min(x, down.x), x1 = Math.max(x, down.x), y0 = Math.min(y, down.y), y1 = Math.max(y, down.y);
       select(drawn.filter((o) => { const s = screenOf(o); return s && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1 && matches(o); }), true);
+    } else if (!down.moved && S.pickPlace) {
+      const ray = new THREE.Raycaster(), hit = (ray.setFromCamera(new THREE.Vector2((x / r.width) * 2 - 1, 1 - (y / r.height) * 2), camera), ray.intersectObject(earth)[0]);
+      if (hit) { const p = hit.point; setPlace({ lat: Math.asin(p.y / p.length()) / DEG, lon: Math.atan2(-p.z, p.x) / DEG, name: "" }); }
+      S.pickPlace = false; canvas.classList.remove("aiming");
     } else if (!down.moved && S.aim != null) {
       const ray = new THREE.Raycaster(), hit = (ray.setFromCamera(new THREE.Vector2((x / r.width) * 2 - 1, 1 - (y / r.height) * 2), camera), ray.intersectObject(earth)[0]);
       const o = S.byId.get(S.aim), bm = S.beams.get(S.aim);
@@ -581,7 +906,11 @@ function main() {
     else if (S.color === "active") items = [[PAL[0], "Active (CelesTrak)", drawn.filter((o) => o.active).length], [PAL[1], "Not listed as active", drawn.filter((o) => !o.active).length]];
     else items = Object.keys(S.ownerColor).map((k) => [S.ownerColor[k], S.owners[k] ? k + " · " + S.owners[k] : k, drawn.filter((o) => o.owner === k).length])
       .concat([[OTHER, "All other owners", drawn.filter((o) => !S.ownerColor[o.owner]).length]]);
-    $("g-legend").innerHTML = items.map((i) => '<span><i style="background:' + i[0] + '"></i>' + esc(i[1]) + " " + fmtN(i[2]) + "</span>").join("");
+    let extra = "";
+    if (S.over && S.board) { const it = overlayItems(), n = { close: it.close.length, man: it.man.length, ev: it.ev.length };
+      extra = OVER.map((v) => '<span><i class="ring" style="border-color:' + v[1] + '"></i>' + esc(v[2]) + " " + fmtN(n[v[0]]) + "</span>").join(""); }
+    if (S.sun) extra += '<span><i style="background:' + SUN_COL + '"></i>Sun, day–night line</span><span><i class="bar" style="background:' + SHADOW_COL + '"></i>Belt in the Earth\u2019s shadow</span>';
+    $("g-legend").innerHTML = items.map((i) => '<span><i style="background:' + i[0] + '"></i>' + esc(i[1]) + " " + fmtN(i[2]) + "</span>").join("") + extra;
   }
   const TYPE_WORD = { PAYLOAD: "Payload", "ROCKET BODY": "Rocket body", DEBRIS: "Debris", UNKNOWN: "Unknown", TBA: "Not yet identified" };
   function altitudes(o) {
@@ -603,15 +932,31 @@ function main() {
     if (ev.length) out.push(["Arrivals and departures", ev.map((e) => esc(e.day) + " " + esc(e.kind)).join("; ")]);
     return out;
   }
+  function lookTxt(o) {
+    if (!o.p || !S.place) return "not computed at this time";
+    const l = lookFrom(S.place, o.p);
+    return l.el > 0 ? "elevation " + l.el.toFixed(1) + "°, bearing " + bearingTxt(l.az) + ", " + fmtN(Math.round(l.range)) + " km away"
+                    : "below the horizon (elevation " + l.el.toFixed(1) + "°)";
+  }
+  function sunlitTxt(o) {
+    const s = sunDir(nowMs());
+    if (!o.p || !s) return "not computed";
+    return inShadow(o.p, s) ? "in the Earth's shadow at the time shown" : "sunlit at the time shown";
+  }
   let panelKey = "";
+  const keyOf = () => [S.sel.join(","), [...S.beams.keys()].filter((id) => S.sel.includes(id)).join(","), S.win, S.track ? S.track.t0 : 0,
+    S.place ? S.place.lat + "," + S.place.lon : "", S.sel.length ? "" : drawn.length + "/" + S.q].join("|");
   function panelUpdate() {
-    const key = S.sel.join(",") + "|" + [...S.beams.keys()].filter((id) => S.sel.includes(id)).join(",");
+    const key = keyOf();
     if (key !== panelKey) { panel(true); return; }
+    document.querySelectorAll("#g-panel canvas.globe-chart").forEach((cv) => { if (cv._cfg) lineChart(cv, cv._cfg); });
     const sel = S.sel.map((id) => S.byId.get(id)).filter(Boolean);
     if (sel.length === 1) {
       const o = sel[0], g = o.p ? geodetic(o.p) : null, age = (nowMs() - epochMs(o.epoch)) / 86400000, pos = $("g-pos"), ag = $("g-age");
       if (pos) pos.textContent = g ? lonTxt(g.lon) + ", " + latTxt(g.lat) + ", " + signed(g.dalt) + " from GEO" : "not computed at this time";
       if (ag) ag.textContent = (age < 1 ? Math.round(age * 24) + " hours" : age.toFixed(1) + " days") + " before the time shown";
+      const lk = $("g-look"); if (lk && S.place) lk.textContent = lookTxt(o);
+      const sl = $("g-sunlit"); if (sl) sl.textContent = sunlitTxt(o);
       const bs = $("g-bsize"), bm = S.beams.get(o.norad);
       if (bs && bm && o.p) bs.textContent = fmtN(Math.round(beamSize(o, bm)));
     } else {
@@ -636,10 +981,12 @@ function main() {
   }
   function panel(force) {
     if (!force) { panelUpdate(); return; }
-    panelKey = S.sel.join(",") + "|" + [...S.beams.keys()].filter((id) => S.sel.includes(id)).join(",");
+    panelKey = keyOf();
+    S.rel = null; S.near = null;
     const el = $("g-panel"), sel = S.sel.map((id) => S.byId.get(id)).filter(Boolean);
     if (!sel.length) {
-      el.innerHTML = '<p class="small">Click a dot to see what it is. Shift-click adds to the selection; Shift-drag a box selects every dot inside it. Search finds names, catalogue numbers, owners and countries.</p>';
+      el.innerHTML = '<p class="small">Click a dot to see what it is. Shift-click adds to the selection; Shift-drag a box selects every dot inside it. Search finds names, catalogue numbers, owners and countries.</p>' +
+        (S.place ? lookTable() : '<p class="small">Pick a place under "Look from" to list what can be seen from it.</p>');
       return;
     }
     const tools = '<p class="globe-tools"><button type="button" data-act="csv">Download CSV</button> <button type="button" data-act="clear">Clear selection</button>' +
@@ -656,10 +1003,16 @@ function main() {
         ["Perigee, apogee", signed(pe) + ", " + signed(ap) + " from GEO"],
         ["Elements", esc(bothTxt(epochMs(o.epoch), true)) + ', <span id="g-age">' + (age < 1 ? Math.round(age * 24) + " hours" : age.toFixed(1) + " days") + " before the time shown</span>"],
         ["Launched", esc(o.launch || "unknown")], ["Radar size", esc(o.rcs || "not given")],
-      ].concat(boardFor(o));
+        ["Sunlight", '<span id="g-sunlit">' + esc(sunlitTxt(o)) + "</span>"],
+      ].concat(S.place ? [["From " + esc(placeName()), '<span id="g-look">' + esc(lookTxt(o)) + "</span>"]] : []).concat(boardFor(o));
       el.innerHTML = "<h3>" + esc(o.name) + '</h3><p class="small">Catalogue ' + o.norad + (o.cospar ? " · " + esc(o.cospar) : "") +
         ' · <a href="https://celestrak.org/satcat/table-satcat.php?CATNR=' + o.norad + '">CelesTrak record</a></p><dl class="globe-dl">' +
-        rows.map((r) => "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>").join("") + "</dl>" + beamForm(o) + tools;
+        rows.map((r) => "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>").join("") + "</dl>" +
+        '<details class="globe-more" data-more="near"' + (S.open.near ? " open" : "") + '><summary>Closest objects over time</summary><div id="g-near"><p class="small">Working…</p></div></details>' +
+        (S.place ? '<details class="globe-more" data-more="sun"' + (S.open.sun ? " open" : "") + '><summary>Sun outages from ' + esc(placeName()) + '</summary><div id="g-sunwin"><p class="small">Working…</p></div></details>' : "") +
+        beamForm(o) + tools;
+      if (S.open.near) nearSection(o);
+      if (S.open.sun && S.place) sunSection(o);
     } else {
       let sep = "";
       if (sel.length === 2 && sel[0].p && sel[1].p) {
@@ -668,7 +1021,9 @@ function main() {
       }
       el.innerHTML = "<h3>" + sel.length + " selected</h3>" + sep + '<div class="tw"><table class="globe-list"><thead><tr><th>Object</th><th>Owner</th><th class="num">Longitude</th><th class="num">Drift °/day</th></tr></thead><tbody>' +
         sel.map((o) => { const g = o.p ? geodetic(o.p) : null; return '<tr data-id="' + o.norad + '"><td><button type="button" class="linkish" data-act="focus" data-id="' + o.norad + '">' + esc(o.name) + '</button></td><td>' + esc(o.owner || "") +
-          '</td><td class="num" data-lon="' + o.norad + '">' + (g ? lonTxt(g.lon) : "–") + '</td><td class="num">' + (o.drift >= 0 ? "+" : "") + o.drift.toFixed(3) + "</td></tr>"; }).join("") + "</tbody></table></div>" + tools;
+          '</td><td class="num" data-lon="' + o.norad + '">' + (g ? lonTxt(g.lon) : "–") + '</td><td class="num">' + (o.drift >= 0 ? "+" : "") + o.drift.toFixed(3) + "</td></tr>"; }).join("") + "</tbody></table></div>" +
+        (sel.length === 2 ? relSection(sel[0], sel[1]) : "") + tools;
+      if (sel.length === 2) drawRelCharts();
     }
   }
   function beamInput(e) {
@@ -681,7 +1036,19 @@ function main() {
     else bm[f] = e.target.checked;
     drawBeams(); panelUpdate(); writeHash();
   }
-  $("g-panel").addEventListener("change", beamInput);
+  $("g-panel").addEventListener("change", (e) => {
+    const f = e.target.dataset.sun;
+    if (f) { const v = +e.target.value; if (f === "dish" && v >= 0.3 && v <= 15) S.dish = v; if (f === "ghz" && v >= 1 && v <= 40) S.ghz = v; const o = S.byId.get(S.sel[0]); if (o) sunSection(o); return; }
+    beamInput(e);
+  });
+  $("g-panel").addEventListener("toggle", (e) => {                       // the slower sections are worked out when opened
+    const d = e.target; if (!d.dataset || !d.dataset.more) return;
+    S.open[d.dataset.more] = d.open;
+    const o = S.byId.get(S.sel[0]); if (!d.open || !o) return;
+    if (d.dataset.more === "near") setTimeout(() => nearSection(o), 0); else if (d.dataset.more === "sun") setTimeout(() => sunSection(o), 0);
+  }, true);
+  $("g-panel").addEventListener("pointermove", chartHover);
+  $("g-panel").addEventListener("pointerleave", chartLeave, true);
   $("g-panel").addEventListener("input", (e) => { if (e.target.dataset.beam === "bw" || e.target.dataset.beam === "dia") beamInput(e); });
   $("g-panel").addEventListener("click", (e) => {
     const pr = e.target.closest("button[data-preset]");
@@ -696,6 +1063,12 @@ function main() {
     if (act === "beam-on") { const o = S.byId.get(S.sel[0]); if (o) { S.beams.set(o.norad, newBeam(o)); drawBeams(); writeHash(); panel(true); } return; }
     if (act === "beam-off") { S.beams.delete(S.sel[0]); S.aim = null; canvas.classList.remove("aiming"); drawBeams(); writeHash(); panel(true); return; }
     if (act === "aim") { S.aim = S.sel[0]; canvas.classList.add("aiming"); $("g-aimnote").textContent = "Click a point on the Earth the satellite can see."; return; }
+    if (act === "csv-rel") { csvRel(); return; }
+    if (act === "csv-near") { csvNear(); return; }
+    if (act === "csv-look") { csvLook(); return; }
+    if (act === "csv-sun") { csvSun(); return; }
+    if (act === "add") { const o = S.byId.get(+b.dataset.id); if (o && !S.sel.includes(o.norad)) { S.sel.push(o.norad); selectionChanged(); } return; }
+    if (act === "pick") { const o = S.byId.get(+b.dataset.id); if (o) { select([o], false); focus(o); } return; }
     if (act === "clear") { S.sel = []; selectionChanged(); }
     else if (act === "home") home();
     else if (act === "focus") focus(S.byId.get(+b.dataset.id));
@@ -753,6 +1126,29 @@ function main() {
   $("g-trails").addEventListener("change", (e) => { S.trails = e.target.value; drawTrails(); writeHash(); });
   $("g-fp").addEventListener("change", (e) => { S.fp = e.target.value; drawFootprints(); dirty = true; writeHash(); });
   $("g-win").addEventListener("change", (e) => { S.win = +e.target.value; loadWindow(); writeHash(); });
+  $("g-sun").addEventListener("change", (e) => { S.sun = e.target.checked; drawSun(); legend(); writeHash(); });
+  $("g-over").addEventListener("change", (e) => { S.over = e.target.checked; drawOverlays(); legend(); writeHash(); });
+  let PLACES = [];
+  function setPlace(pl) {
+    S.place = pl; $("g-place").value = pl ? (pl.name || pl.lat.toFixed(3) + ", " + pl.lon.toFixed(3)) : ""; $("g-noplace").hidden = !pl;
+    drawPlace(); writeHash(); panel(true);
+  }
+  $("g-place").addEventListener("change", (e) => {
+    const v = e.target.value.trim(), hit = PLACES.find((p) => p[0].toLowerCase() === v.toLowerCase());
+    const m = v.match(/^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (!v) setPlace(null);
+    else if (hit) setPlace({ lat: hit[1], lon: hit[2], name: hit[0] });
+    else if (m && Math.abs(+m[1]) <= 90 && Math.abs(+m[2]) <= 180) setPlace({ lat: +m[1], lon: +m[2], name: "" });
+    else $("g-placenote").textContent = "Pick a city from the list, or type latitude, longitude (such as 35.7, 51.4).";
+    if (hit || m || !v) $("g-placenote").textContent = "";
+  });
+  $("g-pick").addEventListener("click", () => { S.pickPlace = true; S.aim = null; canvas.classList.add("aiming"); $("g-placenote").textContent = "Click a point on the Earth."; });
+  $("g-noplace").addEventListener("click", () => setPlace(null));
+  fetch("/data/places.json").then((r) => (r.ok ? r.json() : null)).then((j) => {
+    if (!j) return;
+    PLACES = j.places.filter((p) => isFinite(p[1]) && isFinite(p[2]));
+    $("g-places").innerHTML = PLACES.map((p) => '<option value="' + esc(p[0]) + '">').join("");
+  }).catch(() => {});
 
   // time: the recorded past from the tracks, the next 48 hours predicted from the latest elements
   const tIn = $("g-t");
@@ -813,6 +1209,8 @@ function main() {
   readHash();
   ["g-color", "g-trails", "g-fp", "g-win"].forEach((id) => { const v = { "g-color": S.color, "g-trails": S.trails, "g-fp": S.fp, "g-win": String(S.win) }[id]; $(id).value = v; });
   $("g-q").value = S.q;
+  $("g-sun").checked = S.sun; $("g-over").checked = S.over;
+  if (S.place) { $("g-place").value = S.place.name || S.place.lat.toFixed(3) + ", " + S.place.lon.toFixed(3); $("g-noplace").hidden = false; }
   filtersUI();
   Promise.all([fetch("/data/geo/globe.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)),
                fetch("/data/geo.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)]).then(([g, board]) => {

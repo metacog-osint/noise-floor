@@ -581,3 +581,15 @@ details.more-detail th, details.more-detail td { padding: .3rem .4rem; }
 .globe-beam label { display: flex; gap: .4rem; align-items: center; }
 .globe-beam input[type=number] { width: 5.5rem; }
 .globe-view canvas.aiming { cursor: crosshair; }
+.globe-legend i.ring { background: none; border: 2px solid; box-sizing: border-box; }
+.globe-legend i.bar { border-radius: 1px; height: .2rem; width: .9rem; vertical-align: 2px; }
+.globe-h4 { margin: .8rem 0 .2rem; font-size: var(--fs-sm); }
+.globe-more { border-top: 1px solid var(--line-2); margin-top: .6rem; padding-top: .4rem; }
+.globe-more summary { cursor: pointer; color: var(--acc); font-size: var(--fs-sm); }
+.globe-chartbox { margin: .4rem 0; }
+.globe-chart { display: block; width: 100%; height: 130px; background: var(--surface-chart); cursor: crosshair; touch-action: none; }
+.globe-read { min-height: 1.2em; margin: .15rem 0 0; }
+.globe-key i, .globe-near i { display: inline-block; width: .9rem; height: .2rem; border-radius: 1px; margin: 0 .3rem 0 .5rem; vertical-align: 3px; }
+.globe-key i:first-child { margin-left: 0; }
+.globe-near { margin: .4rem 0; padding-left: 0; list-style: none; display: grid; gap: .25rem; font-size: var(--fs-xs); }
+.globe-near i { margin-left: 0; }
