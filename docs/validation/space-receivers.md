@@ -79,7 +79,51 @@ Between the two marks the result is "weakened". Each region's own AUC is reporte
 
 ## 4. COSMIC-2: frozen method and checks
 
-To be written before any held-out COSMIC-2 day is fetched.
+Written and committed on 31 Oct 2026, before any held-out COSMIC-2 day was fetched.
+
+**Tuning on the six days.**
+- Radii of 1,500, 2,000 and 2,500 km were tried, each with and without the fore/aft split. Pooled AUC ran from 0.881 to 0.966; the split helped at every radius.
+- **Chosen:** 2,500 km with the split (each antenna sees only the cells on its own side of the satellite).
+- **Why not the best AUC:** 1,500 km scores higher (0.966), but judges only 36 jammed cell-days, because it doesn't reach the Levant or the northern Gulf. 2,500 km judges 77.
+
+| Measure (2,500 km, split) | In-sample |
+|---|---|
+| Paired cell-days | 3,926 (77 jammed, 3,764 clean) |
+| Pooled AUC | 0.922 |
+| Lowest leave-one-region-out AUC | 0.895 |
+| Clean cells' 95th-percentile score (frozen control threshold T) | 0.23 |
+| Control-box cell-days at or above T | 0.0% (1,776) |
+| Spearman with CYGNSS, shared cells | 0.305 (21,753) |
+
+**Regions (in-sample):**
+- Eastern Mediterranean and Black Sea edge: 44 cell-days, own AUC 0.871.
+- Gulf: 26 cell-days, own AUC 0.999.
+- Myanmar: 6 cell-days, own AUC 0.979.
+- India–Pakistan border: 1 cell-day.
+
+**Satellites delivering data:**
+- Five of six on 2 Jan (C2E1, 2, 4, 5, 6).
+- Four from 24 Feb to 16 May (C2E2, 4, 5, 6).
+- Three on 19 Oct (C2E2, 5, 6).
+- C2E3 delivered nothing on any tuning day.
+
+**Frozen method:** `tools/cosmic2_rfi.py` as committed with this section:
+- UCAR's threshold 1e-4; 10 s bins;
+- radius 2,500 km with the fore/aft split;
+- res 2, cells within 60° latitude, judged from 30 bins.
+
+**Days:** the same 21 held-out days as section 3. A day without a `podTc2` archive is skipped and reported.
+
+| # | Check | In-sample | Holds if | Fails if |
+|---|---|---|---|---|
+| C1 | Pooled AUC, jammed vs clean cell-days | 0.922 | ≥ 0.85 | < 0.75 |
+| C2 | Leave-one-region-out AUC (every judged region) | 0.895 | every value ≥ 0.80 | any value < 0.70 |
+| C3 | Control-box cell-days at or above T = 0.23 | 0.0% | ≤ 5% | > 15% |
+| C4 | Spearman with CYGNSS on shared cells | 0.305 | ≥ 0.20 | < 0.10 |
+| C5 | Change: mean score of Persian Gulf box cells on the spring held-out days (2 Mar, 21 Mar, 9 Apr, 28 Apr, 17 May 2026) minus the mean on the winter ones (1 Oct 2025 to 11 Feb 2026, eight days) | not measurable in-sample | ≥ +0.05 | < 0 |
+
+Between the marks the result is "weakened". Check C5 is also run on Sentinel-6A, as a report without a mark, because
+its checks were frozen before C5 was written.
 
 ## 5. Results
 
