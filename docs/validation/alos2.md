@@ -60,6 +60,40 @@ Between the marks the result is "weakened". Also reported, without marks:
 - whether a site lies within ±10 km along track of a raised line (position);
 - the scene-median measure the tool already gives (lines 3 dB above the scene median).
 
-## 4. Results
+## 4. Result (run 31 Oct 2026): fails
 
-Not run yet.
+**Selection.**
+- 948 candidate scenes in the period and frame ranges; 8 crossed the antimeridian and were skipped.
+- The open archive is thin over the Canadian Arctic: 1–3 scenes for most sites, and none over Cape Lisburne or
+  Cartwright. The rule gave 32 site scenes covering 12 of the 14 sites:
+  - Point Barrow 2, Oliktok 6, Barter Island 6, Shingle Point 6;
+  - Cape Parry 3, Cambridge Bay 1, Shepherd Bay 1, Hall Beach 3, Dewar Lakes 2, Cape Dyer 2, Brevoort Island 1,
+    Saglek 2.
+- 32 control scenes were taken from 148 available.
+- All 64 scenes were scored, with no read errors.
+
+| # | Check | Result | Verdict |
+|---|---|---|---|
+| A1 | Scenes flagged | site **0 of 32**, control **0 of 32** (Fisher p = 1.0) | **fails** (site share ≤ control share) |
+| A2 | AUC of the scene score | **0.503** (median largest local excess: 0.85 dB at sites, 0.91 dB in controls) | **fails** (< 0.60) |
+
+**Diagnostics (after the check; they don't change the verdict).**
+- **Lines far above the scene median** (the tool's earlier measure): 10 of 32 site scenes against 6 of 32 controls. Not
+  a meaningful difference.
+- **Largest local excess** (cut 3 dB):
+  - site scenes: at most 2.93 dB (90th percentile 2.28 dB);
+  - controls: at most 3.19 dB (90th percentile 3.15 dB). Single lines in a few controls passed 3 dB, but no scene had
+    the two raised lines that flag it.
+- **What the images show:** the HV − HH image of the Saglek scene (1 Jan 2026) shows terrain and sea texture and no
+  streaks across the swath.
+
+**What this shows.** The open Level 2.2 products don't show the North Warning System radars, although SMAP flags the
+same sites strongly. This test can't tell which of these is the reason:
+- JAXA's processing filters the radars' signal out before Level 2.2;
+- the radars weren't transmitting inside PALSAR-2's band during these acquisitions;
+- interference covering only part of a line doesn't move the line's median.
+
+**Next, if ALOS-2 is taken further.**
+- Products made before any filtering (Level 1.1, JAXA G-Portal account), or per-line high percentiles instead of
+  medians. Either needs a new pre-registered test.
+- Until then ALOS-2 stays a probe, not a source for the map.

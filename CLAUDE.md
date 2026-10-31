@@ -78,8 +78,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
     EARTHDATA_TOKEN). It fetches one L1C day (about 160 MB) and writes `<day>.smap.json` for the 7 days to that day:
     stand-out cells (share 0.5 or more, contrast 0.5 or more, ring 0.10 or less) and busy H3 res-3 regions. Files go
     to the `smap-data` release, which `site_layers.py` copies to `site/data/smap/`. The cuts are display choices.
-  - **Sentinel-1 worldwide** (`tools/s1_rfi_global.py`) and the **ALOS-2** probe (`tools/alos2_rfi.py`): built,
-    descriptive only.
+  - **Sentinel-1 worldwide** (`tools/s1_rfi_global.py`) and the **ALOS-2** probe (`tools/alos2_rfi.py`): built.
+    ALOS-2's North Warning System test failed (L2.2 shows no radar streaks), so it stays a probe.
   - **HydroGNSS** waits on credentials. **Biomass** needs an ESA account. **SMOS** downloads with the CDSE keys.
   **Step E (added 30 Oct 2026):** the Sentinel-1C/1D/2B/2C/3A/3B navigation receivers (Copernicus `AUX_GNSSRD`, the
   SAT-JAM method; E0 done: signal strength present, 10 s, ~6 days behind). **E1 built 31 Oct:** `tools/sentinel_gnss.py`
