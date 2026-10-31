@@ -137,12 +137,41 @@ class Fake:
             if path == "/new":
                 return kos_page(['<tr><td>26.0°E</td><td>Testsat 2</td><td>11900.00</td></tr>',
                                  f'<tr><td>Test Channel News</td><td>X</td><td>News</td><td>-</td><td>5</td><td>{d}</td></tr>']).encode()
+        if url.startswith(W.CF_RADAR):
+            assert headers.get("Authorization") == "Bearer test-token", "Radar requests carry the token"
+            if "/annotations/outages" in url:
+                return json.dumps({"success": True, "result": {"annotations": [
+                    {"id": "9001", "startDate": f"{d}T01:00:00Z", "endDate": None, "locations": ["XX"], "asns": [],
+                     "locationsDetails": [{"name": "Testland", "code": "XX"}], "asnsDetails": [],
+                     "description": "Government-directed shutdown.", "outage": {"outageCause": "GOVERNMENT_DIRECTED"},
+                     "linkedUrl": "https://radar.example/a/9001"},
+                    {"id": "9002", "startDate": f"{d}T02:00:00Z", "endDate": None, "locations": ["ZZ"], "asns": [],
+                     "locationsDetails": [{"name": "Elsewhere", "code": "ZZ"}], "asnsDetails": [],
+                     "description": "Power cut.", "outage": {"outageCause": "POWER_OUTAGE"}}]}}).encode()
+            if "/traffic_anomalies" in url:
+                return json.dumps({"success": True, "result": {"trafficAnomalies": [
+                    {"uuid": "u-1", "type": "AS", "status": "UNVERIFIED", "startDate": f"{d}T03:00:00Z", "endDate": None,
+                     "asnDetails": {"asn": "64500", "name": "TESTSAT", "location": {"code": "QQ", "name": "Q"}},
+                     "locationDetails": None},
+                    {"uuid": "u-2", "type": "AS", "status": "UNVERIFIED", "startDate": f"{d}T04:00:00Z", "endDate": None,
+                     "asnDetails": {"asn": "65000", "name": "OTHER", "location": {"code": "ZZ", "name": "Z"}},
+                     "locationDetails": None}]}}).encode()
+        if url == "https://regulator.example/robots.txt":
+            return b"User-agent: *\nDisallow: /private/\n"
+        if url == "https://regulator.example/news":
+            links = ['<a href="/news/1">Decision one</a>', '<a href="/news/2">Decision two</a>', '<a href="/about">About</a>']
+            if s.get("page_new"):
+                links.append('<a href="/news/3">Decision three</a>')
+            return ("<html><body>" + "".join(links) + "</body></html>").encode()
         raise AssertionError(f"unexpected request {url}")
 
 
 def tmp_config(d):
     p = os.path.join(d, "pollers.json")
     json.dump({"kingofsat": {"slots": ["19.2E"], "watch": ["Test Channel"]},
+               "watch_countries": {"codes": ["XX"]}, "cfradar": {"asns": ["64500"]},
+               "pagewatch": [{"name": "Test regulator", "url": "https://regulator.example/news", "match": "/news/",
+                              "grade": "WARNING"}],
                "sun_transit": {"dish_m": 0.9, "freq_ghz": 11.7, "pairs": [
                    {"receiver": "Tehran", "country": "IR", "lat": 35.6892, "lon": 51.389, "satellite": "Yahsat 1A", "slot": 52.5}]}},
               open(p, "w", encoding="utf-8"))
@@ -263,6 +292,7 @@ def test_end_to_end():
     real_pdf_text = W.pdf_text
     W.pdf_text = lambda body: NAVCEN_TEXT
     try:
+        os.environ["CLOUDFLARE_RADAR_TOKEN"] = "test-token"
         out, raw, cfg = os.path.join(tmp, "out"), os.path.join(tmp, "raw"), tmp_config(tmp)
         fake = Fake()
         img = chayka_image() if C else None
@@ -275,7 +305,9 @@ def test_end_to_end():
         r1 = go(NOW)
         alerts = [json.loads(l) for l in open(os.path.join(out, "alerts.jsonl"), encoding="utf-8")]
         srcs = {a["source"] for a in alerts}
-        assert srcs == {"NOAA SWPC", "NGA MSI", "USCG NAVCEN", "USCG NAVCEN reports"}, srcs
+        assert srcs == {"NOAA SWPC", "NGA MSI", "USCG NAVCEN", "USCG NAVCEN reports", "Cloudflare Radar"}, srcs
+        cf = sorted(a["title"] for a in alerts if a["source"] == "Cloudflare Radar")
+        assert cf == ["Internet outage: Testland (government directed)", "Traffic anomaly (unverified): AS64500 TESTSAT (QQ)"], cf
         assert len([a for a in alerts if a["source"] == "NOAA SWPC"]) == 1, "alerts only, not watches or old messages"
         nga = [a for a in alerts if a["source"] == "NGA MSI"]
         assert len(nga) == 1 and nga[0]["event_time"] == "2026-10-05T11:33Z", nga
@@ -307,7 +339,7 @@ def test_end_to_end():
         assert len(stored) == len({x["sha256"] for x in idx}), "each distinct body stored once"
 
         # third run: new UKMTO product, KingOfSat removal, NAVCEN report and an update to an earlier one
-        fake.scenario.update(ukmto_new=True, kos_new=True, report_new=True)
+        fake.scenario.update(ukmto_new=True, kos_new=True, report_new=True, page_new=True)
         r3 = go(NOW + timedelta(hours=4))
         new = [json.loads(l) for l in open(os.path.join(out, "alerts.jsonl"), encoding="utf-8")][len(alerts):]
         kos = [a for a in new if a["source"] == "KingOfSat"]
@@ -316,7 +348,10 @@ def test_end_to_end():
         assert len(uk) == 1 and "081" in uk[0]["title"] and uk[0]["url"].endswith(".pdf") and "JMIC" in uk[0]["detail"], uk
         rep = sorted(a["title"] for a in new if a["source"] == "USCG NAVCEN reports")
         assert len(rep) == 2 and rep[0].startswith("Report 2 updated") and rep[1].startswith("Report 3,"), rep
-        assert r3["new_triggers"] == 4, r3
+        pw = [a for a in new if a["source"] == "Page watch"]
+        assert len(pw) == 1 and pw[0]["grade"] == "WARNING" and "Decision three" in pw[0]["detail"], pw
+        assert "About" not in pw[0]["detail"], "links outside the page's pattern are ignored"
+        assert r3["new_triggers"] == 5, r3
 
         # a seen id is remembered beyond 14 days (emso-watch pruned at 14 d, so in-force warnings re-fired)
         r4 = go(NOW + timedelta(days=20))
@@ -329,7 +364,24 @@ def test_end_to_end():
         assert not any("ukmto" in u or u.startswith(W.KOS) for u in later), later
     finally:
         W.pdf_text = real_pdf_text
+        os.environ.pop("CLOUDFLARE_RADAR_TOKEN", None)
         shutil.rmtree(tmp)
+
+
+def test_robots_rules():
+    txt = "User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\n\nUser-agent: OtherBot\nDisallow: /\n"
+    r = W.robots_rules(txt)
+    assert W.robots_ok(r, "/sdatracker") and not W.robots_ok(r, "/wp-admin/x") and W.robots_ok(r, "/wp-admin/admin-ajax.php")
+    mine = W.robots_rules("User-agent: noise-floor\nDisallow: /feeds\nUser-agent: *\nDisallow: /\n")
+    assert W.robots_ok(mine, "/news") and not W.robots_ok(mine, "/feeds/x"), "our own group overrides '*'"
+    assert not W.robots_ok(W.robots_rules("User-agent: *\nDisallow: /*.pdf$\n"), "/a/b.pdf")
+    assert W.robots_ok(W.robots_rules("User-agent: *\nDisallow:\n"), "/anything"), "an empty Disallow allows all"
+
+
+def test_page_links():
+    body = '<a href="/md/R26-RRB26.3-C-0001/en">Doc 1</a> <a href="https://x.example/other">Other</a> <a href="#top">Top</a>'
+    got = W.page_links(body, "https://www.itu.int/md/R26-RRB26.3-C/en", r"/md/R26-RRB26\.\d-C-\d+")
+    assert got == {"https://www.itu.int/md/R26-RRB26.3-C-0001/en|Doc 1"}, got
 
 
 def test_missing_config_skips_only_those_sources():

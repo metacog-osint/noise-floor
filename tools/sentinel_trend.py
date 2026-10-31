@@ -43,7 +43,9 @@ LAND = os.path.join(ROOT, "data", "cache", "ne_50m_land.geojson")
 DEGRADED_DB, STRONG_DB = -1.0, -3.0
 CAPTION = ("Where Sentinel-1/2/3 navigation receivers (693-815 km) measured weaker GPS L1 signals: the median drop "
            "below each unit-day's baseline, by the spacecraft's position, not the emitter's. Regional, about 2,000 km "
-           "across (validation: Baltic AUC 0.917; inland Australia reads about -1 dB for an unknown reason). "
+           "across (validation: Baltic AUC 0.917). Between about 60 and 160 deg E it reads 0.5-1 dB low even over empty "
+           "ocean, probably from BeiDou and QZSS signals overhead (unverified), so a drop there is not jamming by "
+           "itself. "
            "Jamming, not spoofing. About six days behind. Contains modified Copernicus Sentinel data {year}; orbital "
            "data USSPACECOM (space-track.org).")
 

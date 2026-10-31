@@ -17,6 +17,9 @@ rem SMAP: newest complete days -> data\smap\daily (7-day windows) and the smap-d
 .venv\Scripts\python.exe tools\smap_daily.py >> data\logs\smap_daily.log 2>&1
 rem COSMIC-2: newest complete days -> data\cosmic2\daily and the cosmic2-data release (map layer; no account)
 .venv\Scripts\python.exe tools\cosmic2_daily.py >> data\logs\cosmic2_daily.log 2>&1
+rem Sentinel-1/2/3 navigation receivers: newest days -> data\sentinel_gnss (E1 tables, E2 epochs) and private area
+rem products in private\sentinel (trend, map; private config private\watch\satgnss.json). Nothing is uploaded.
+.venv\Scripts\python.exe tools\sentinel_daily.py >> data\logs\sentinel_daily.log 2>&1
 rem EASA FIR tables and the Baltic warnings page: daily history in the private archive (both show only what is current)
 .venv\Scripts\python.exe tools\notice_capture.py >> data\logs\notice_capture.log 2>&1
 endlocal

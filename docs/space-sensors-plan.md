@@ -199,6 +199,26 @@ date rule (every sixth Monday from 6 Oct 2025), 181 aircraft-jammed and 7,262 ai
 checks with pass marks. Back-projection does better than the sub-satellite cell (AUC 0.918 at 1,500 km), and SAT-JAM's
 plain z-score a little worse (0.849). The Baltic box deepened from −3.2 dB (Oct 2025) to −5.9 dB (Sep 2026).
 
+### Against SAT-JAM: what step E does differently (31 Oct 2026)
+
+| SAT-JAM (as its site describes it) | Step E | Measured effect |
+|---|---|---|
+| One z-score per observation against the global mean, no elevation term | Baseline per unit, day and 5-degree elevation bin; three passes keep degraded cells out of it | AUC 0.862 against 0.849 for SAT-JAM's rule on the same cells (E3) |
+| Per-observation flags, averaged in cells | Per-epoch median across links, so jamming shows as a drop on every link at once | Built into E2 |
+| A map, no stated validation | Checks pre-registered against the aircraft map, CYGNSS and quiet controls | Four of six hold (E3) |
+| Sub-satellite cells only | Back-projection to every cell within reach | AUC 0.918 at 1,500 km (E3, descriptive) |
+| Rolling ~6-week window | Daily and weekly series for private areas against quiet references and comparison boxes (E5) | Built |
+| No correction for regional signals | Proposed E2.1: correct for BeiDou/QZSS satellites overhead | The 60-160 deg E dip below |
+
+**E2.1 (proposed, not built): a regional signal-load term.** After E3, a longitude profile over quiet bands showed the
+index about 0.7-1.2 dB low between roughly 80 and 140 deg E at every latitude band, open Indian Ocean included, on every
+unit and at every pass time, and near 0 elsewhere (`docs/validation/sentinel-gnss.md`, section 2.5). That is where
+BeiDou's geostationary and inclined satellites and QZSS sit overhead. The hypothesis (unverified): their L1-band
+signals raise a low-orbit receiver's noise floor. The fix: count, per epoch, the healthy BeiDou GEO/IGSO and QZSS
+satellites above 10 degrees from the broadcast ephemeris, and add that count to the baseline. Pre-register the test
+(the dip over empty ocean must close; the Baltic AUC must not fall) before using it. Until then, every chart and map
+caption carries the caveat.
+
 ## Collectors for ground truth and context
 
 Same build note. These give the orbital layers something to check against: official notices and outage records.
@@ -207,11 +227,11 @@ Same build note. These give the orbital layers something to check against: offic
 |---|---|---|
 | NGA MSI navigation warnings | Running in `collectors/watch.py` (the `smaps` endpoint; the older `broadcast-warn` endpoint froze on 10 May 2024) | Tag warnings that cross test and range areas from a private list |
 | FAA GPS test notices | Running (`pipeline/faa_gps_tests.py`) | None |
-| FAA NOTAM Management Service (`faa-notam`) | Not built. API credentials by request to NOTAMS@faa.gov | Tom requests access; GNSS NOTAMs then enter events as declared items |
-| Cloudflare Radar (`cloudflare-radar`) | Read-only token set 30 Oct (`CLOUDFLARE_RADAR_TOKEN`, Account › Radar › Read); a test call worked. Terms: CC BY-NC 4.0 | A `watch.py` source for traffic anomalies and outage annotations: Starlink (AS14593) and watched countries, private digest first |
+| FAA NOTAM Management Service (`faa-notam`) | Not built. Tom requested API credentials on 30 Oct; no reply by 31 Oct evening. The public NOTAM Search site refuses automated clients (403 from its CDN, robots.txt included), so there is no credential-free route | Build when the credentials arrive; GNSS NOTAMs then enter events as declared items |
+| Cloudflare Radar (`cloudflare-radar`) | **Running from 31 Oct** in `watch.py` (`src_cfradar`): verified outage annotations and automatic traffic anomalies, last 7 days, for the watched countries and satellite-ISP networks (Starlink AS14593 by default); false positives dropped. Private digest. Terms: CC BY-NC 4.0 | A public layer needs its own check (D8) |
 | IODA (`ioda`) | Not built: responses say "All Rights Reserved" | Permission request (DESIGN decision 4) |
 | KingOfSat (`kingofsat`) | Running privately in `watch.py`; the pages its robots.txt disallows are never fetched | Nothing published. A listing change is not a reception report |
-| ITU RRB, Kratos public posts (`kratos-public`), national regulators | Not built | A page-change monitor (URL, hash, title, time) whose changes an analyst reads. Cite only |
+| ITU RRB, Kratos public posts (`kratos-public`), OPSGROUP, operators | **Running from 31 Oct** in `watch.py` (`src_pagewatch`): new links on listed pages, each with a link pattern so navigation churn doesn't fire; robots.txt obeyed; the first read is the baseline. Pages are in the private config. Left out on 31 Oct: Sweden's PTS (bot challenge), France's ANFR (request rejected), Eutelsat's newsroom (robots.txt disallows) | An analyst reads each new link. Cite only |
 
 ## Decisions for Tom
 
@@ -234,9 +254,9 @@ Same build note. These give the orbital layers something to check against: offic
 | D3 | Where COSMIC-2 runs | GitHub Actions, daily, with a new `cosmic2-data` release in this repo. No credentials are needed and nothing is watch configuration |
 | D4 | Sentinel-1 public layer | Later, after C. It shows radars, while the site's headline is GPS interference |
 | D5 | EUMETSAT account | Only if Sentinel-6 L1B lacks SNR (P0) |
-| D6 | Where E runs | This PC, weekly, from the 06:30 collectors task, where the keys already are. Move to GitHub Actions after E3 passes; Tom then sets two repository secrets |
-| D7 | SAT-JAM exports | Tom emails the author (kbone@dtu.dk, as given on sat-jam.com) for cell exports, code and the paper, so E3 compares numbers rather than images |
-| D8 | Cloudflare Radar | Private digest first. A public layer needs its own check that a traffic drop means a service outage |
+| D6 | Where E runs | **Decided 31 Oct (Tom: complete the planned items): this PC, daily,** from the 06:30 collectors task (`tools/sentinel_daily.py`; private products only, nothing uploaded) |
+| D7 | SAT-JAM | **Decided 31 Oct (Tom): no contact.** Replicate the method and do better for our purposes; see "Against SAT-JAM" below |
+| D8 | Cloudflare Radar | **Private digest first (built 31 Oct).** A public layer needs its own check that a traffic drop means a service outage |
 
 ## Not pursued now
 
