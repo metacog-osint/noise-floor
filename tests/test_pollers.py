@@ -158,6 +158,8 @@ class Fake:
                      "locationDetails": None}]}}).encode()
         if url == "https://regulator.example/robots.txt":
             return b"User-agent: *\nDisallow: /private/\n"
+        if url == "https://regulator.example/doc":       # files not posted until the page_new scenario
+            return (b'<a href="/files/summary.pdf">Summary (PDF)</a>' if s.get("page_new") else b"<p>no files yet</p>")
         if url == "https://regulator.example/news":
             links = ['<a href="/news/1">Decision one</a>', '<a href="/news/2">Decision two</a>', '<a href="/about">About</a>']
             if s.get("page_new"):
@@ -171,7 +173,9 @@ def tmp_config(d):
     json.dump({"kingofsat": {"slots": ["19.2E"], "watch": ["Test Channel"]},
                "watch_countries": {"codes": ["XX"]}, "cfradar": {"asns": ["64500"]},
                "pagewatch": [{"name": "Test regulator", "url": "https://regulator.example/news", "match": "/news/",
-                              "grade": "WARNING"}],
+                              "grade": "WARNING"},
+                             {"name": "Test document", "url": "https://regulator.example/doc", "match": r"\.pdf$",
+                              "grade": "WARNING", "allow_empty": True}],
                "sun_transit": {"dish_m": 0.9, "freq_ghz": 11.7, "pairs": [
                    {"receiver": "Tehran", "country": "IR", "lat": 35.6892, "lon": 51.389, "satellite": "Yahsat 1A", "slot": 52.5}]}},
               open(p, "w", encoding="utf-8"))
@@ -348,10 +352,13 @@ def test_end_to_end():
         assert len(uk) == 1 and "081" in uk[0]["title"] and uk[0]["url"].endswith(".pdf") and "JMIC" in uk[0]["detail"], uk
         rep = sorted(a["title"] for a in new if a["source"] == "USCG NAVCEN reports")
         assert len(rep) == 2 and rep[0].startswith("Report 2 updated") and rep[1].startswith("Report 3,"), rep
-        pw = [a for a in new if a["source"] == "Page watch"]
-        assert len(pw) == 1 and pw[0]["grade"] == "WARNING" and "Decision three" in pw[0]["detail"], pw
+        pw = sorted((a for a in new if a["source"] == "Page watch"), key=lambda a: a["title"])
+        assert len(pw) == 2, pw
+        assert "Summary (PDF)" in pw[0]["detail"], "a file appearing on an empty page fires"
+        pw = pw[1:]
+        assert pw[0]["grade"] == "WARNING" and "Decision three" in pw[0]["detail"], pw
         assert "About" not in pw[0]["detail"], "links outside the page's pattern are ignored"
-        assert r3["new_triggers"] == 5, r3
+        assert r3["new_triggers"] == 6, r3
 
         # a seen id is remembered beyond 14 days (emso-watch pruned at 14 d, so in-force warnings re-fired)
         r4 = go(NOW + timedelta(days=20))

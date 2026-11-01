@@ -672,7 +672,7 @@ def src_pagewatch(ctx):
             problems.append(f"{p['name']}: {e.__class__.__name__}")
             continue
         cur = page_links(body, url, p.get("match"))
-        if not cur:
+        if not cur and not p.get("allow_empty"):      # allow_empty: a page whose files aren't posted yet
             problems.append(f"{p['name']}: no links matched")
             continue
         prev = store.get(url)
