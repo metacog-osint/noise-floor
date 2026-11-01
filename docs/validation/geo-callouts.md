@@ -111,6 +111,112 @@ errors of roughly 10–25 km at GEO ([GMV for ESA, 2017](https://conference.sdo.
 [ISRO, 2017](https://conference.sdo.esoc.esa.int/proceedings/sdc7/paper/657/SDC7-paper657.pdf)). The searches that
 found nothing are listed in the private research note; an absence of reporting is not taken as quiet.
 
-## Results
+## Results (v1, run 1 Nov 2026)
 
-*Not run yet.*
+Run once, after the commit that froze everything above (`1b6d8fd`). Held span 8 Jul – 30 Oct 2026: 1,368 payloads,
+488,716 candidate pairs, 11,023 callouts. The seven pre-history cases used seven gp_history requests (3,098 element
+sets), stored in `data/geo/region/history/cases/`. One change after the freeze, before the full run: the engine
+cached each object's epoch list instead of rebuilding it for every lookup (speed only; the logic and every threshold
+are unchanged, and the synthetic tests pass as before). Outputs: `data/geo/callouts/callouts-v1.json` and
+`score-v1.json` (private data folder); every callout of each rule's two busiest weeks is in
+[`geo-callouts-busiest-weeks.csv`](geo-callouts-busiest-weeks.csv).
+
+**By rule, against the switch-on criteria fixed before the run** (on by default only with at least half the cases hit
+and at most 10 new callouts a week):
+
+| Rule | Cases hit | New per week (busiest) | Default |
+|---|---|---|---|
+| C1 Close to another owner's satellite | 10 of 12 | 162 (188 in the week of 19 Oct) | **off**: too many |
+| C2 Approaching | 1 of 4 | 497 (565) | **off**: too many, and missed 3 of 4 |
+| C3 Parked beside another owner | 4 of 5 | 2.3 (7) | on |
+| C4 Heading for an occupied slot | 2 of 4 | 0.9 (3) | on |
+| C5 Listed-role object changed orbit | 5 of 6 | 2.7 (5) | on |
+| C6 Arrived | 4 of 4 | 1.2 (4) | on |
+| C7 Retired to the graveyard | 3 of 4 | 0.5 (3) | on |
+| C8 Went quiet | 0 of 1 | 1.3 (8) | **off**: missed its one case |
+
+**Every expectation:**
+
+| Case | Rule | Objects | Window | Expected | Result | Found |
+|---|---|---|---|---|---|---|
+| A1 | C1 | 63157, 38070 | 2026-09-01 to 2026-09-07 | fire | hit | C1 2026-09-04, 65.3 km |
+| A1 | C2 | 63157, 38070 | 2026-08-29 to 2026-09-07 | fire | hit | C2 2026-09-04, 65.3 km |
+| A1 | C4 | 63157 | 2026-08-22 to 2026-09-08 | fire | **miss** | – |
+| A1 | C3 | 63157 | 2026-09-03 to 2026-09-11 | fire | hit | C3 2026-09-07 vs WGS F4 (USA 233) |
+| A2 | C2 | 55131, 38070 | 2026-08-29 to 2026-09-07 | fire | **miss** | – |
+| A2 | C1 | 55131, 38070 | 2026-08-29 to 2026-09-07 | silent | hit | – |
+| A3 | C2 | 64467, 41744 | 2026-09-19 to 2026-09-28 | fire | **miss** | – |
+| A3 | C1 | 64467, 41744 | 2026-09-19 to 2026-10-03 | silent | hit | – |
+| A3 | C3 | 64467 | 2026-09-27 to 2026-10-04 | fire | hit | C3 2026-10-02 vs JCSAT 10 |
+| A4 | C1 | 41745, 64467 | 2026-07-08 to 2026-07-19 | fire | hit | C1 2026-07-14, 67.7 km |
+| A6 | C5 | 44625 | 2026-07-15 to 2026-08-15 | fire | **miss** | – |
+| A7 | C7 | 37677 | 2026-09-13 to 2026-09-22 | fire | hit | C7 2026-09-19 |
+| A8 | C7 | 29494 | 2026-09-09 to 2026-09-15 | fire | **miss** | – |
+| A8 | C7 | 28158 | 2026-09-12 to 2026-09-18 | fire | hit | C7 2026-09-14 |
+| A8 | C7 | 26356 | 2026-08-31 to 2026-09-06 | fire | hit | C7 2026-09-02 |
+| A10 | C6 | 100607 | 2026-09-02 to 2026-10-02 | fire | hit | C6 2026-09-29 |
+| A10 | C6 | 100140 | 2026-07-20 to 2026-08-13 | fire | hit | C6 2026-08-11 |
+| A10 | C6 | 100172 | 2026-07-26 to 2026-09-30 | fire | hit | C6 2026-08-18 |
+| A11 | C6 | 69570 | 2026-07-08 to 2026-10-30 | silent | hit | – |
+| A11 | C1 | 69570 | 2026-07-08 to 2026-10-30 | silent | hit | – |
+| A13 | C8 | 45986 | 2026-09-23 to 2026-10-02 | fire | **miss** | – |
+| B1 | C4 | 40258 | 2015-06-08 to 2015-06-25 | fire | hit | C4 2015-06-19 vs INTELSAT 901 |
+| B1 | C3 | 40258 | 2015-06-19 to 2015-06-25 | fire | **miss** | – |
+| B1 | C1 | 40258 | 2015-06-19 to 2015-09-28 | fire | hit | C1 2015-06-22, 34.6 km; C1 2015-06-25, 34.9 km |
+| B3 | C4 | 40258 | 2017-10-15 to 2017-10-26 | fire | **miss** | – |
+| B3 | C3 | 40258 | 2017-10-21 to 2017-10-27 | fire | hit | C3 2017-10-23 vs PAKSAT 1R |
+| B5 | C1 | 44625, 26824 | 2020-02-22 to 2020-02-28 | fire | hit | C1 2020-02-08, 0.0 km |
+| B5 | C5 | 44625 | 2020-01-01 to 2020-04-30 | fire | hit | C5 2020-01-06; C5 2020-01-09 |
+| B6 | C2 | 46113, 28358 | 2021-03-20 to 2021-04-15 | fire | **miss** | – |
+| B6 | C1 | 46113, 28358 | 2021-04-05 to 2021-04-15 | fire | hit | C1 2021-03-01, 0.0 km |
+| B6 | C5 | 46113 | 2021-03-01 to 2021-04-30 | fire | hit | C5 2021-03-10; C5 2021-03-14 |
+| B9 | C4 | 55841 | 2023-09-22 to 2023-10-07 | fire | hit | C4 2023-10-01 vs EUTE 3B |
+| B9 | C3 | 55841 | 2023-10-01 to 2023-10-07 | fire | hit | C3 2023-10-06 vs EUTE 3B |
+| B9 | C1 | 55841, 39773 | 2023-10-04 to 2023-10-18 | fire | hit | C1 2023-10-03, 24.1 km |
+| B9 | C5 | 55841 | 2023-09-22 to 2023-10-07 | fire | hit | C5 2023-09-26; C5 2023-09-27 |
+| B10 | C5 | 62485 | 2025-06-07 to 2025-06-17 | fire | hit | C5 2025-06-11 |
+| B10 | C5 | 49330 | 2025-06-01 to 2025-06-08 | fire | hit | C5 2025-06-03; C5 2025-06-04 |
+| B10 | C1 | 62485, 49330 | 2025-05-15 to 2025-07-15 | silent | hit | – |
+| B13 | C1 | 51280, 63397 | 2025-04-23 to 2025-04-29 | fire | **miss** | – |
+| B13 | C1 | 51280, 63524 | 2025-04-26 to 2025-05-02 | fire | **miss** | – |
+
+**Why each miss happened** (read from the data; no rule was changed):
+
+- **A1 C4 (TJS-15).** It braked from 0.63° a day to a stop in one go, so it was never "drifting at half its recent
+  speed" while still more than 0.5° from WGS F4. C4 can only see stops made in stages; C3 caught this one on 7 Sep.
+- **A2 C2 (SJ-23).** SGP4 on the public elements puts its closest pass to WGS F4 at 285 km on 4 Sep; the published
+  figure, from a commercial sensor network, is 132 km. C2 needs under 200 km. The daily falls were there
+  (3,079 → 2,475 → 1,860 → 1,232 → 621 → 285 km).
+- **A3 C2 (Cosmos 2589).** The same: closest 215 km on 26 Sep by public elements, 112 km published. It fell for eight
+  days in a row but stayed 15 km above the 200 km mark.
+- **A6 C5 (MEV-1).** Space-Track published no elements for MEV-1 while it was docked; its first set in the held
+  history is dated 12 Aug 2026, after the undocking, so there was no earlier set to compare it with.
+- **A8 C7 (DirecTV 9S).** G1 logged "left up" on 5 Sep, seven days before the published 12 Sep, which is the date
+  KeepTrack saw it leave its slot. The callout was early, outside the window.
+- **A13 C8 (Express 80).** Its last set before the 21-day gap put it outside the zone ("left", 20 Sep), so C8, which
+  watches payloads in the zone, could not fire; G1 logged "arrived" when sets resumed on 11 Oct.
+- **B1 C3 (Luch, 2015).** Its drift first fell under 0.05° a day on 25 Jun, so C3 fired on 26 Jun beside Intelsat
+  901 (0.10° away), one day after the window. C4 fired on 19 Jun and C1 on 22 Jun (35 km).
+- **B3 C4 (Luch, 2017).** By the time it had slowed to half its top speed (21 Oct) it was already within 0.5° of its
+  stop, which C4 excludes; C3 fired on 23 Oct beside Paksat 1R.
+- **B6 C2 (MEV-2).** Its public elements matched Intelsat 10-02's from the first day of the pulled window (C1 at
+  0.0 km on 1 Mar 2021), so the separation could not fall. B5 shows the same: C1 at 0.0 km on 8 Feb 2020, 17 days
+  before the reported docking. Identical element sets for a servicer and its client are a data property, not a
+  measurement of 0 km.
+- **B13 C1 (USA 324).** Space-Track returned no element sets for USA 324 in that window, so the case could not be
+  tested; it is counted as a miss, as the plan requires.
+
+**What the noise is.** C1's 2,654 new episodes involve 2,382 different pairs, and 1,984 of them last one day: mostly
+inclined objects passing near another owner's satellite at a node crossing (median closest 73 km), plus slot-sharing
+pairs whose separation jitters across 100 km. C2's 8,170 callouts involve 7,474 pairs, chiefly the same daily
+crossings. Both rules find the published cases they were meant for (C1: 10 of 12), but at that volume they can't be
+read as alerts. A v2 of C1 and C2 (for example, two or more consecutive days, or only station-kept pairs) would be a
+new rule, written down and scored from scratch on new cases; none is adopted here.
+
+**Agreement and independence.** Seven of the in-window cases come from a newsletter or an automated detector that
+works from the same public elements (tier N), so those hits show the rules behave like other public-element
+detectors. The independent anchors held up as well: Luch 2015 (C4, C1), Luch-5X 2023 (all four rules), SJ-21 and
+SJ-25 2025 (C5 for both, C1 silent between same-owner satellites), MEV-1 and MEV-2 (C1, C5).
+
+**Switch-on (next commit):** C3, C4, C5, C6 and C7 shown by default on the globe; C1, C2 and C8 behind their
+toggles, off, each with its score beside it.
