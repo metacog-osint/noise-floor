@@ -94,6 +94,82 @@ For each pair, over cell-windows judged on both signals:
   back to L5/E5a or L2C in those regions get little relief.
 - A flagged own background (1.4) limits any lower-band map to the regions where the flag doesn't apply.
 
-## 2. Results
+## 2. Results (run 1 Nov 2026, 14:48 UTC)
 
-Not yet run.
+`python tools/sentinel_bands.py bands` on the 63 window days, then `checks` (`data/sentinel_gnss/x3_results.json`).
+The pre-registration was committed as 5a718af at 14:06 UTC; the "14:10 UTC" in section 1 should read 14:05.
+
+**Bottom line: both checks hold, and the lower bands drop more than L1, not less.** On the same Galileo and GPS links,
+the index falls two to three times as far at 1176 MHz (E5a) and 1227 MHz (L2C) as at 1575 MHz. By the fixed readings
+that is *wideband*. The reading's wording, "nearly as much as L1", understates it.
+
+### 2.1 Checks
+
+| # | Signal | AUC | Jammed / clean cell-windows | Verdict |
+|---|---|---|---|---|
+| X3-1 | Galileo E5a | 0.911 | 177 / 6,355 | **holds** |
+| X3-2 | GPS L2C | 0.898 | 178 / 6,433 | **holds** |
+
+For reference, on the same PODRIX units: GPS L1 0.872, L1 paired 0.870, Galileo E1 0.863, E1 paired 0.863. Both lower
+bands separate the aircraft-jammed regions better than L1 does.
+
+### 2.2 Band ratios
+
+| Pair | Where | Jammed | Drop, lower band | Drop, paired L1 | R (95% interval) | Reading |
+|---|---|---|---|---|---|---|
+| E5a / E1 paired | pooled | 177 | −8.67 dB | −3.25 dB | 2.67 (2.47–2.93) | wideband |
+| E5a / E1 paired | Baltic | 28 | −10.61 dB | −4.98 dB | 2.13 (1.92–2.38) | wideband |
+| E5a / E1 paired | Persian Gulf | 7 | | | | not judged |
+| L2C / L1 paired | pooled | 178 | −8.87 dB | −3.39 dB | 2.62 (2.38–2.92) | wideband |
+| L2C / L1 paired | Baltic | 28 | −11.12 dB | −4.97 dB | 2.24 (2.03–2.55) | wideband |
+| L2C / L1 paired | Persian Gulf | 7 | | | | not judged |
+
+The Persian Gulf had 7 jammed cell-windows judged on both signals, under the 10 required.
+
+### 2.3 Descriptive
+
+- **Own background over busy airspace** (clean cell-windows minus the Central Pacific): L1 −0.45, L1 paired −0.50,
+  L2C −0.44, E1 −0.50, E1 paired −0.49, E5a −0.81 dB. **No flag:** every band reads low there, so the paired L1 signals
+  are not quiet. E5a reads 0.3 dB lower than E1. That could be aviation DME and TACAN, or E5a's larger response to
+  jamming nearby (clean cells within 2,000 km of jammed ones read low on L1 too; E3). This run can't tell them apart.
+- **The regional dip** (box medians, dB):
+
+| Signal | Central Pacific | Australia interior | Difference |
+|---|---|---|---|
+| GPS L1 | −0.14 | −1.39 | −1.25 |
+| Galileo E1 | −0.17 | −1.24 | −1.07 |
+| Galileo E5a | −0.10 | −1.27 | −1.17 |
+| GPS L2C | +0.01 | −0.30 | −0.31 |
+
+  The dip is a quarter as deep on L2C. Its 1227.60 MHz carrier is the only one of the four that no BeiDou signal shares
+  (only QZSS L2C sits there). L1 and E1 share 1575.42 MHz with BeiDou B1C, and E5a shares 1176.45 MHz with BeiDou B2a.
+  This supports the regional-signal explanation of the dip (`docs/validation/sentinel-gnss.md` section 2.5, plan step
+  E2.1), from a direction the E2.1 correction doesn't use.
+- **Hit and false-alarm rates at −1 dB:** L1 0.97 / 0.35; L2C 0.98 / 0.30; E1 0.95 / 0.39; E5a 1.00 / 0.47. The fixed
+  −1 dB call suits E5a least, because its spread is wider.
+- **Links per scored epoch** (median): 7 for the GPS signals and 6 for the Galileo ones. **Share of PODRIX epochs
+  scored:** 0.988–1.000.
+- **Units:** Sentinel-1C and 2C in every window; 1D from the 4 May 2026 window.
+
+### 2.4 Robustness (exploratory, not pre-registered)
+
+- **Per unit:** E5a / E1 paired 2.45 (Sentinel-1C), 2.40 (1D), 2.76 (2C); L2C / L1 paired 2.15, 2.61, 2.25.
+- **Per window** (the seven with 10+ jammed cell-windows): E5a / E1 paired 2.04–2.93; L2C / L1 paired 1.76–4.49.
+- **Lost links don't drive it:** jammed and clean cell-windows both keep a median of 6 links per scored epoch on every
+  signal. The paired L1 signals use only links where the lower band was tracked, so both sides of each ratio lose the
+  same links.
+
+### 2.5 What it means, and what it doesn't
+
+- **The regions where aircraft lose GPS are at least as disturbed at 1176 and 1227 MHz, as these receivers hear them.**
+  By section 1.5, a receiver that falls back to L5/E5a or L2C in those regions would get little relief.
+- **The size of the ratio has two possible sources, not separated here** (unverified):
+  - the emitters put more power into the lower L-band than at L1;
+  - the receivers pick up the ground better at lower frequencies. Their antennas point away from Earth, so a ground
+    emitter arrives through side and back lobes, and how much leaks around an antenna depends on frequency. The PODRIX
+    antenna patterns were not checked.
+- **In interference terms:** a 3.25 dB drop means interference about equal to the receiver's noise (J/N ≈ 1.1); an
+  8.67 dB drop means J/N ≈ 6.4. As received, the lower band carries about 7.6 dB more interference relative to noise.
+- **The ground station case points the same way.** At Vaiņode (`docs/multi-gnss-plan.md`, X1 results) the lower L-band
+  fell furthest on both evenings. That was a single development case at a site no aircraft data covered.
+- **Effects only.** Nothing here identifies an emitter or its type.
