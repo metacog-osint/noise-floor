@@ -163,19 +163,21 @@ def gmst_rad(ts):
     return np.radians((280.46061837 + 360.98564736629 * d + 0.000387933 * T * T - T ** 3 / 38710000.0) % 360.0)
 
 
-def element_at(rows, t):
-    """The latest element set with epoch at or before t (unix seconds) and no older than MAX_AGE_DAYS, or None."""
-    ts = [r["t"] for r in rows]
+def element_at(rows, t, ts=None):
+    """The latest element set with epoch at or before t (unix seconds) and no older than MAX_AGE_DAYS, or None.
+    ts: the rows' epochs, precomputed (a speed-up only)."""
+    ts = ts if ts is not None else [r["t"] for r in rows]
     k = bisect.bisect_right(ts, t) - 1
     if k < 0 or t - rows[k]["t"] > MAX_AGE_DAYS * 86400:
         return None
     return rows[k]
 
 
-def positions(rows, times):
+def positions(rows, times, ts=None):
     """TEME km (len(times) x 3), NaN where no usable element set; and the element set used at each time."""
     out = np.full((len(times), 3), np.nan)
-    used = [element_at(rows, t) for t in times]
+    ts = ts if ts is not None else [r["t"] for r in rows]
+    used = [element_at(rows, t, ts) for t in times]
     k = 0
     while k < len(times):
         r = used[k]
@@ -223,11 +225,13 @@ def run(elements, static, roles, start, end, events=None, ids=None, owners=None)
     drift = np.full((nd, npay), np.nan)
     incl = np.full((nd, npay), np.nan)
     pos = {}                                                    # (day index) -> (npay x 24 x 3)
+    TS = {k: [r["t"] for r in elements[k]] for k in pay}       # epochs per object, built once (speed only)
+    IDX = {k: j for j, k in enumerate(pay)}
     for di, d in enumerate(days):
         hours = [d.timestamp() + 3600 * h for h in range(24)]
         P = np.full((npay, 24, 3), np.nan)
         for j, k in enumerate(pay):
-            P[j], used = positions(elements[k], hours)
+            P[j], used = positions(elements[k], hours, TS[k])
             r = used[12]
             if r is not None and not np.isnan(P[j, 12, 0]):
                 lon[di, j] = lon_deg(P[j, 12], noon[di])
@@ -258,14 +262,14 @@ def run(elements, static, roles, start, end, events=None, ids=None, owners=None)
                 key = (min(a, b), max(a, b))
                 if key in dv and not np.isnan(dv[key][di]) and dv[key][di] != np.inf:
                     continue
-                ia, ib = pay.index(key[0]), pay.index(key[1])
+                ia, ib = IDX[key[0]], IDX[key[1]]
                 sep = np.linalg.norm(pos[di][ia] - pos[di][ib], axis=1)
                 val = np.nanmin(sep) if np.any(~np.isnan(sep)) else np.nan
                 arr = dv.setdefault(key, np.full(nd, np.inf))
                 arr[di] = val
     known = ~np.isnan(lon)
     for key, arr in dv.items():                                 # a day with no position for either is unknown, not far
-        ia, ib = pay.index(key[0]), pay.index(key[1])
+        ia, ib = IDX[key[0]], IDX[key[1]]
         arr[~(known[:, ia] & known[:, ib])] = np.nan
 
     def pair_rec(rule, di, a, b, **kw):
