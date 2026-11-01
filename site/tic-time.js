@@ -1,4 +1,4 @@
-/*! tic-time.js v1.2 · The Intelligence Company shared time display · canonical copy:
+/*! tic-time.js v1.3 · The Intelligence Company shared time display · canonical copy:
  *  D:\Projects\theintelligence-company\site\shared\tic-time.js (copy this file into each site; keep the version line).
  *
  *  House rule (Tom, 27 Oct 2026): store UTC; show times in the viewer's own time zone by default, always naming
@@ -11,9 +11,11 @@
  *      options: date (default true), time (default true), seconds, year, weekday (v1.1: "Mon 14:00 CDT"),
  *      zoneName: false (v1.1: leave the zone off, e.g. chart axes when the page names the zone once;
  *      TicTime.zoneLabel() gives that name, e.g. "CDT" or "Zulu (UTC)")
+ *      year (v1.3): a full date in the house style, "31 Oct 2026", in the viewer's zone, Zulu included
  *    TicTime.onChange(fn)              re-render when the setting changes (also from another tab)
  *    TicTime.mountSettings(el)         adds a "Time" button that opens the settings dialog
- *    TicTime.renderAll(root)           fills every <time datetime="..." data-tic="datetime|time|date"> in root
+ *    TicTime.renderAll(root)           fills every <time datetime="..." data-tic="datetime|time|date"> in root;
+ *                                      add data-tic-year for the full date (v1.3)
  */
 (function () {
   "use strict";
@@ -29,6 +31,7 @@
     ["Asia/Shanghai", "China"], ["Asia/Taipei", "Taipei"], ["Asia/Seoul", "Korea"], ["Asia/Tokyo", "Japan"],
     ["Australia/Sydney", "Sydney"]
   ];
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var listeners = [];
 
   function validZone(z) {
@@ -91,6 +94,19 @@
     var d = toDate(v);
     if (!d || isNaN(d.getTime())) return "—";
     var z = zone(), h12 = hour12(), showDate = opts.date !== false, showTime = opts.time !== false;
+    if (opts.year && showDate) {
+      // v1.3: a full date reads the house way, "31 Oct 2026", whatever the zone or clock.
+      var q;
+      try {
+        q = new Intl.DateTimeFormat("en-US", { timeZone: z, weekday: "short", day: "numeric", month: "numeric",
+          year: "numeric" }).formatToParts(d);
+      } catch (e) { return d.toISOString().slice(0, 10); }
+      var pick = function (t) { var x = q.filter(function (r) { return r.type === t; })[0]; return x ? x.value : ""; };
+      var full = (opts.weekday ? pick("weekday") + " " : "") + Number(pick("day")) + " " +
+        MONTHS[Number(pick("month")) - 1] + " " + pick("year");
+      if (!showTime) return full;
+      return full + (z === "UTC" && !h12 ? " " : ", ") + format(d, { date: false, seconds: opts.seconds, zoneName: opts.zoneName });
+    }
     if (z === "UTC" && !h12) {
       var p = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short",
         hour: "2-digit", minute: "2-digit", second: opts.seconds ? "2-digit" : undefined, hourCycle: "h23" }).formatToParts(d);
@@ -102,7 +118,7 @@
     }
     var o = { timeZone: z };
     if (opts.weekday) o.weekday = "short";
-    if (showDate) { o.day = "numeric"; o.month = "short"; if (opts.year) o.year = "numeric"; }
+    if (showDate) { o.day = "numeric"; o.month = "short"; }
     if (showTime) {
       o.hour = "numeric"; o.minute = "2-digit"; if (opts.seconds) o.second = "2-digit";
       o.hourCycle = h12 ? "h12" : "h23"; if (opts.zoneName !== false) o.timeZoneName = "short";
@@ -134,7 +150,8 @@
     for (var i = 0; i < els.length; i++) {
       var kind = els[i].getAttribute("data-tic");
       els[i].textContent = format(els[i].getAttribute("datetime"),
-        { date: kind !== "time", time: kind !== "date", seconds: els[i].hasAttribute("data-tic-seconds") });
+        { date: kind !== "time", time: kind !== "date", seconds: els[i].hasAttribute("data-tic-seconds"),
+          year: els[i].hasAttribute("data-tic-year") });
     }
   }
 
@@ -200,6 +217,6 @@
     return btn;
   }
 
-  window.TicTime = { version: "1.2", format: format, zone: zone, zoneLabel: zoneLabel, hour12: hour12, get: function () { return Object.assign({}, settings); },
+  window.TicTime = { version: "1.3", format: format, zone: zone, zoneLabel: zoneLabel, hour12: hour12, get: function () { return Object.assign({}, settings); },
     set: set, onChange: onChange, renderAll: renderAll, mountSettings: mountSettings, zones: ZONES.slice() };
 })();
