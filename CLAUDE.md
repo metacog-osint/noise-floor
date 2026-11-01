@@ -110,9 +110,12 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   **`watch.py` sources added 31 Oct:** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch (pages in
   `private/watch/pollers.json` `pagewatch`, each with a link pattern). FAA NOTAMs wait on API credentials (requested 30 Oct);
   the public NOTAM Search site refuses automated clients.
-- **Every constellation and band (planned 1 Nov 2026, not built):** read `docs/multi-gnss-plan.md` first (signal table,
+- **Every constellation and band (planned 1 Nov 2026):** read `docs/multi-gnss-plan.md` first (signal table,
   sensors by band, checks that separate interference from outages, scintillation and equipment, steps X1–X6, decisions
-  D1–D4). First probe: the Vaiņode event of 17 May 2026 fell on every band at once.
+  D1–D4). **X1 built 1 Nov:** `tools/station_bands.py day STATION DAY --window HH:MM-HH:MM` scores every signal of
+  every system at an EPN/IGS station (GLONASS by RK4 from broadcast state vectors; BeiDou GEO rotation; per-constellation
+  baselines) and writes band signatures and the GLONASS channel ladder; `station_cn0.fetch` uses held files first, then
+  BKG, then CDDIS (IGS stations, EARTHDATA_TOKEN). Vaiņode, 17 May 2026: every band fell at once; Riga quiet.
 - **AIS beyond the Baltic (28 Oct 2026, Tom approved):** `collectors/run_aisstream.cmd` (global aisstream, private only;
   focus boxes in `private/watch/maritime.json`) and `collectors/barentswatch_ais.py` + `run_barentswatch.cmd` (Norway's open
   AIS, NLOD; Finnmark and the western Barents Sea). Both skip until Tom's credentials exist (AISSTREAM_API_KEY;

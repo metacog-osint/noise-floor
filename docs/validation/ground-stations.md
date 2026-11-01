@@ -235,7 +235,7 @@ Every station-day had all 2,880 epochs except Redzikowo on 9 May (2,876) and 17 
 - **The reference doesn't explain it.** Subtracting GOPE leaves −1.82 dB-Hz at Vaiņode on 16 May.
 - The event is local to the site. The cause is unknown: local interference in the lower L-band (the drop is largest at 1176 MHz), or equipment.
 - There is no aircraft extract for 17 May, and the 16 May aircraft data near Vaiņode are too sparse at that hour to compare.
-- **Every band (exploratory, added 1 Nov 2026):** at 00:09–00:18Z on 17 May, every signal Vaiņode tracks fell together: GPS, GLONASS, Galileo and BeiDou, 1176–1606 MHz, by 1.3–3.2 dB-Hz (median per signal). Riga was quiet on every signal. That fits broadband noise or equipment at the site rather than an L1 jammer. Method and table: `docs/multi-gnss-plan.md`, "First probe".
+- **Every band (added 1 Nov 2026, `tools/station_bands.py`; a development case, not a test):** at 00:09–00:18Z on 17 May, every signal Vaiņode tracks fell together: GPS, GLONASS, Galileo and BeiDou, 1176–1606 MHz, by 3.6–6.3 dB-Hz (median per signal, quiet-day baselines). On both evenings the lower L-band (1176–1249 MHz) fell at least twice as far as the upper L-band. Riga was quiet on every signal. The new tool reproduces this section's GPS and Galileo figures. Table: `docs/multi-gnss-plan.md`, "X1 results".
 
 **Olsztyn, low-elevation losses on 2 Jan 2026.**
 

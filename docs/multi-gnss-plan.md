@@ -1,8 +1,8 @@
 # Interference on every constellation and band: plan
 
 Written 1 Nov 2026 (UTC) at Tom's request ("explore ways to identify and document observed interference of BeiDou,
-GLONASS, QZSS, and the other GNSS freqs"). Nothing here is built yet except the probe in "First probe" below, which was
-run from scratch scripts. No watch areas appear here; area work stays in private config.
+GLONASS, QZSS, and the other GNSS freqs"). Step X1, the station tool for every signal, was built the same day
+(`tools/station_bands.py`, results below); the first probe was run from scratch scripts before it. No watch areas appear here; area work stays in private config.
 
 ## Bottom line
 
@@ -143,13 +143,59 @@ What the probe shows:
 
 Kp at the time was 1.7 (17 May, 00–03 UTC; 3.3–3.7 on the evening of 16 May; GFZ Potsdam, CC BY 4.0).
 
+## X1 results: Vaiņode and Riga, 16–17 May 2026 (1 Nov 2026)
+
+`tools/station_bands.py day` with five quiet baseline days per station (Vaiņode: 27 and 28 Apr, 1 and 4 May, 2 Jun;
+Riga: 1, 4, 27, 29 and 30 May). **A development case, not a test:** the event was known before the tool was written.
+
+**Agreement with the validated GPS and Galileo tool** (`station_cn0.py`, `docs/validation/ground-stations.md`):
+- 17 May: GPS L1 C/A flagged 00:09–00:18Z (10 minutes), lowest −4.92 dB-Hz; GPS L5 flagged 103 minutes that day.
+  Both as before.
+- 16 May evening: lowest 5-minute values GPS L5 −5.65, Galileo E5a −6.52, GPS L2 P(Y) −2.7 dB-Hz, against 5.6, 6.5
+  and 2.7 before.
+
+**Median drop per signal**, dB-Hz (quiet-day baselines; for 16 May, the lowest 5-minute value from 20:00Z):
+
+| MHz | Signal | Vaiņode 17 May 00:09–00:18 | Vaiņode 17 May 18:55–21:50 | Vaiņode 16 May evening (lowest) | Riga 17 May, both windows |
+|---|---|---|---|---|---|
+| 1176.45 | GPS L5 / Galileo E5a / BeiDou B2a | −5.5 / −5.4 / −5.2 | −3.0 / −2.8 / −2.8 | −5.7 / −6.5 / −6.8 | +0.3 to −0.1 |
+| 1191.795 | Galileo E5 | −5.7 | −3.0 | −6.9 | +0.2 to +0.1 |
+| 1207.14 | Galileo E5b / BeiDou B2b | −5.9 / −5.6 | −2.7 / −2.7 | −7.3 / −7.0 | +0.2 to 0.0 |
+| 1227.60 | GPS L2C / L2 P(Y) | −6.3 / −5.1 | −2.9 / −1.3 | −5.6 / −2.7 | 0.0 to −0.1 |
+| 1242.9–1248.6 | GLONASS G2 | −5.1 | −2.5 | −5.9 | +0.3 to 0.0 |
+| 1268.52 | BeiDou B3I | −3.6 | −1.3 | −4.8 | +0.3 to −0.2 |
+| 1278.75 | Galileo E6 | −4.2 | −1.8 | −4.8 | +0.1 to −0.1 |
+| 1561.098 | BeiDou B1I | −4.0 | −0.5 | −2.2 | +0.3 to +0.2 |
+| 1575.42 | GPS L1 C/A / Galileo E1 / BeiDou B1C | −4.7 / −4.9 / −4.7 | −1.0 / −0.9 / −0.6 | −2.0 / −2.7 / −2.4 | +0.2 to −0.1 |
+| 1598.1–1605.4 | GLONASS G1 | −4.2 | −1.1 | −2.3 | 0.0 |
+
+Riga's GPS signals were unscored at 00:09–00:18: three of its baseline days fall after the test day, and at the start of
+a day their sidereal match lands on the day before (the day-edge limit in `docs/validation/ground-stations.md`
+section 6).
+
+What X1 adds to the GPS and Galileo tool:
+- **Two patterns at one site.** At 00:09–00:18 on 17 May every system and band fell 3.6–6.3 dB-Hz. On both evenings
+  the lower L-band (1176–1249 MHz) fell at least twice as far as the upper L-band (1559–1606 MHz), with the
+  1268–1279 MHz pair in between.
+- **Every GLONASS channel fell together** at 00:09–00:18 on 17 May: 3.3–4.8 dB-Hz on the eight G1 satellites and
+  4.2–5.5 on the six G2 satellites, so whatever caused it covered both FDMA bands. On the evenings the channels spread
+  more (G2 −1.3 to −3.6 on 17 May), but none stood out.
+- **Riga, 148 km away, was quiet on every signal** in the same windows.
+- Effects only: a lower-band emitter near the antenna, or the station's own antenna or receiver, would both fit. The
+  station log and a recurrence check (ground-stations section 7, step 4) come next.
+
+**Orbit checks (1 Nov):**
+- BeiDou C01 and C03 come out at 140.0°E and 110.6°E, their GEO slots; QZS-3 (J07) at 127.1°E.
+- GLONASS state vectors integrated 30 minutes forward match the next broadcast record to 2.2 m (median; R01, R09, R18).
+- On 17 May no satellite of any system was tracked at Vaiņode while computed below the horizon.
+
 ## Build steps
 
 Each step writes its checks into `docs/validation/` before results are read, as the other lanes do.
 
 | # | Step |
 |---|---|
-| X1 | **Station tool, every signal.** Extend `tools/station_cn0.py`: GLONASS orbits from the broadcast state vectors (numerical integration, GLONASS ICD 2008 appendix), BeiDou and QZSS from their Keplerian elements (BeiDou GEO needs its own rotation, already written for the regional-satellite test), quiet-day baselines per signal (repeats by constellation, pooled bins as fallback), and broadcast-health exclusion. Output per station-day: D and F per signal, a band-signature table and the GLONASS channel ladder |
+| X1 | **Built 1 Nov:** `tools/station_bands.py` (`signals`, `day`; tests in `tests/test_station_bands.py`), beside `station_cn0.py`, whose rule and Baltic test are unchanged. It scores every signal-strength code in a RINEX 3/4 file with the same rule (D, F, 5-minute flags). Orbits: Keplerian for GPS, Galileo, QZSS and BeiDou (BDT and the BeiDou GEO rotation), RK4 integration of the GLONASS state vectors. Baselines per satellite: the sidereal sky match for GPS (246 s a day) and for QZSS and BeiDou GEO/IGSO (one sidereal day); own elevation-bin medians for GLONASS, Galileo and BeiDou MEO. Losses count only where the baseline days tracked that part of the sky. Unhealthy satellites are dropped (QZSS health is recorded only). Outputs per station-day: every signal's flags, and for each window and event a band signature and GLONASS channel ladder (`data/stations/<STATION>/<day>.bands.json`, `.png`). `station_cn0.fetch` now uses held files first and falls back to NASA CDDIS for IGS stations when BKG is unreachable. Results above |
 | X2 | **A positive control with known frequencies and times.** Jammertest (Andøya, Norway) publishes its test plan with frequencies and times; a station inside its range would give a known-answer test across bands. Norway's national network terms are not checked (`docs/validation/ground-stations.md` section 7). Announced US tests near NOAA CORS stations are the open-data alternative (mostly L1) |
 | X3 | **Sentinel E5a and L2C from orbit.** The day tables already hold `s5q` and `s2l` (PODRIX units). Add `d_e5a` and `d_l2c` to the E2 epochs, pre-register a two-band check (does the orbital drop over known L1 jamming also appear at 1176 MHz?) and run it on the E3 windows |
 | X4 | **Exclusion feeds.** Broadcast health from the daily navigation files; the operators' notice pages (list above) through the page-watch collector, each with a registry row |
@@ -170,7 +216,7 @@ Each step writes its checks into `docs/validation/` before results are read, as 
 
 | # | Decision | Recommendation |
 |---|---|---|
-| D1 | Build X1 now | Yes: it reuses the built station tool and held files, and needs no new accounts |
+| D1 | Build X1 now | **Decided 1 Nov (Tom: "Yes, build X1").** Built the same day |
 | D2 | X3 (Sentinel E5a and L2C) | Yes, as a pre-registered check: the data are held and the change is small |
 | D3 | National networks (GEONET, Geoscience Australia, Norway) | Read terms first; register only where they allow republishing derived results |
 | D4 | Anything public | Later. A band-signature table per event, beside the existing station results, once X2 passes |

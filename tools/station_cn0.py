@@ -367,10 +367,11 @@ def nearest_days(test_day, n=6, max_days=4, exclude=()):
 
 # ---------- RINEX parsing ----------
 
-def parse_obs(text, day):
+def parse_obs(text, day, keep=None):
     """RINEX 2.11, 3 or 4 observation text -> (header dict, {sat: {code: float32[NEP]}}, present bool[NEP]).
 
-    Keeps the S codes in KEEP. Epochs off the STEP grid are ignored."""
+    Keeps the S codes in KEEP (or in keep, a {system: codes} dict; keep="all" keeps every S code of every system,
+    RINEX 3/4 only). Epochs off the STEP grid are ignored."""
     lines = text.splitlines()
     first = lines[0] if lines else ""
     if first[60:80].strip() == "RINEX VERSION / TYPE" and first[:9].strip().startswith("2"):
@@ -406,7 +407,11 @@ def parse_obs(text, day):
             break
     if not hdr.get("version", "").startswith(("3", "4")):
         raise ValueError(f"not RINEX 3/4 observation data (version {hdr.get('version')})")
-    want = {s: [(c, k) for k, c in enumerate(types[s]) if c in KEEP.get(s, ())] for s in types}
+    if keep == "all":
+        want = {s: [(c, k) for k, c in enumerate(types[s]) if c.startswith("S")] for s in types}
+    else:
+        kp = KEEP if keep is None else keep
+        want = {s: [(c, k) for k, c in enumerate(types[s]) if c in kp.get(s, ())] for s in types}
     hdr["types"] = {s: [c for c, _ in w] for s, w in want.items() if w}
     d0 = pday(day)
     store, present = {}, np.zeros(NEP, bool)
@@ -633,9 +638,73 @@ def sky(eph, sta_xyz, day, max_age=7200.0):
 _LISTINGS = {}
 
 
-def http_get(url, timeout=120):
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
+def http_get(url, timeout=120, headers=None):
+    with urllib.request.urlopen(urllib.request.Request(url, headers=headers or UA), timeout=timeout) as r:
         return r.read()
+
+
+CDDIS = "https://cddis.nasa.gov/archive/gnss/data/daily"
+
+
+def earthdata_token():
+    """EARTHDATA_TOKEN from the environment or, on Windows, the user variables; None if unset."""
+    v = os.environ.get("EARTHDATA_TOKEN")
+    if not v and sys.platform == "win32":
+        import winreg
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as k:
+                v = winreg.QueryValueEx(k, "EARTHDATA_TOKEN")[0]
+        except OSError:
+            v = None
+    return v or None
+
+
+def cddis_headers():
+    tok = earthdata_token()
+    return dict(UA, Authorization="Bearer " + tok) if tok else None
+
+
+def cddis_obs_url(sta, day):
+    """IGS daily observation file at NASA CDDIS (Earthdata token), for when BKG is unreachable; None if not found."""
+    h = cddis_headers()
+    if not h or is_noaa(sta):
+        return None
+    d = pday(day)
+    doy = d.timetuple().tm_yday
+    url = f"{CDDIS}/{d.year}/{doy:03d}/{d.year % 100:02d}d/"
+    if url not in _LISTINGS:
+        try:
+            _LISTINGS[url] = set(re.findall(r"^(\S+)\s", http_get(url + "*?list", headers=h).decode("latin-1"), re.M))
+        except Exception:
+            _LISTINGS[url] = set()
+    pat = re.compile(rf"^{sta}_[RSU]_{d.year}{doy:03d}0000_01D_30S_MO\.crx\.gz$")
+    f = next((f for f in sorted(_LISTINGS[url]) if pat.match(f)), None)
+    return url + f if f else None
+
+
+def cddis_nav_url(day):
+    if not cddis_headers():
+        return None
+    d = pday(day)
+    return f"{CDDIS}/{d.year}/brdc/BRDC00IGS_R_{d.year}{d.timetuple().tm_yday:03d}0000_01D_MN.rnx.gz"
+
+
+def local_raw(sta, day):
+    """Already-downloaded (obs, nav) paths for a station-day in data/stations/raw, each None if absent."""
+    d = pday(day)
+    doy = d.timetuple().tm_yday
+    sub = os.path.join(RAW, str(d.year), f"{doy:03d}")
+    files = sorted(os.listdir(sub)) if os.path.isdir(sub) else []
+    if is_noaa(sta):
+        want = f"{sta.lower()}{doy:03d}0.{d.year % 100:02d}d.gz"
+        obs = want if want in files else None
+    else:
+        pat = re.compile(rf"^{sta}_[RSU]_{d.year}{doy:03d}0000_01D_30S_MO\.crx\.gz$")
+        obs = next((f for f in files if pat.match(f)), None)
+    nav = next((f"{p}_{d.year}{doy:03d}0000_01D_MN.rnx.gz" for p in ("BRDC00IGS_R", "BRDC00WRD_S", "BRDC00WRD_R", "BRDM00DLR_S")
+                if f"{p}_{d.year}{doy:03d}0000_01D_MN.rnx.gz" in files), None)
+    ok = lambda f: f and os.path.getsize(os.path.join(sub, f)) > 0  # noqa: E731
+    return (os.path.join(sub, obs) if ok(obs) else None), (os.path.join(sub, nav) if ok(nav) else None)
 
 
 def listing(url):
@@ -684,11 +753,13 @@ def nav_name(day):
     return None
 
 
-def download(url, dest):
+def download(url, dest, headers=None):
     if os.path.exists(dest) and os.path.getsize(dest) > 0:
         return dest
     os.makedirs(os.path.dirname(dest), exist_ok=True)
-    data = http_get(url)
+    data = http_get(url, headers=headers)
+    if url.startswith(CDDIS) and data[:2] != b"\x1f\x8b":
+        raise ValueError("CDDIS returned a page, not a gzip file (token expired?)")
     tmp = f"{dest}.{os.getpid()}.part"
     with open(tmp, "wb") as f:
         f.write(data)
@@ -697,19 +768,28 @@ def download(url, dest):
 
 
 def fetch(sta, day):
-    """Download (if needed) one station-day and that day's broadcast nav. Returns (obs path or None, nav path or None)."""
+    """One station-day and that day's broadcast nav: files already in data/stations/raw first, then BKG, then NASA
+    CDDIS (IGS stations only; needs EARTHDATA_TOKEN). Returns (obs path or None, nav path or None)."""
     d = pday(day)
     sub = os.path.join(RAW, str(d.year), f"{d.timetuple().tm_yday:03d}")
+    have = local_raw(sta, d)
     out = []
-    for url in (obs_name(sta, d), nav_name(d)):
-        if url is None:
-            out.append(None)
+    for k, (held, bkg, cddis) in enumerate(((have[0], lambda: obs_name(sta, d), lambda: cddis_obs_url(sta, d)),
+                                            (have[1], lambda: nav_name(d), lambda: cddis_nav_url(d)))):
+        if held:
+            out.append(held)
             continue
-        try:
-            out.append(download(url, os.path.join(sub, url.rsplit("/", 1)[1])))
-        except Exception as ex:
-            print(f"  download failed: {url}: {ex}", file=sys.stderr)
-            out.append(None)
+        got = None
+        for src, find in (("BKG", bkg), ("CDDIS", cddis)):
+            url = find()
+            if url is None:
+                continue
+            try:
+                got = download(url, os.path.join(sub, url.rsplit("/", 1)[1]), headers=cddis_headers() if src == "CDDIS" else None)
+                break
+            except Exception as ex:
+                print(f"  download failed: {url}: {ex}", file=sys.stderr)
+        out.append(got)
     return tuple(out)
 
 
