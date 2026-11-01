@@ -207,5 +207,31 @@ Found while building box trends on L2C. Not pre-registered; the regions were dra
 - **Not explained:** a broad rise in lower L-band interference over East Asia would fit (the lower bands respond
   about 2.6 times as strongly, section 2.2), and so would other regional emitters in 1164–1300 MHz, such as L-band
   radars. Western Europe and West Siberia read far lower on every band, within reach of the Baltic and Russian jamming.
-- **Next:** Japanese IGS stations over the same year (GPS L2C against QZSS L2C on one receiver separates a transmitter
-  change from interference), a daily rhythm check, and the same table on the held-out E2.1 weeks once they are fetched.
+- **Ground check (1 Nov 2026, 17:40 UTC; exploratory).** Six IGS stations, one day in each E3 week plus 30 Sep and
+  21 Oct 2026, from NASA CDDIS, with `tools/station_bands.load_day` (all systems and signals, broadcast orbits). On each
+  satellite at 15° or more, each band minus L1 C/A on the same satellite, averaged over 5° elevation bins (dB):
+
+| Station | GPS L2C − L1, Oct 2025 | GPS L2C − L1, Sep–Oct 2026 | QZSS L2C − L1, Oct 2025 | QZSS L2C − L1, Sep–Oct 2026 | Galileo E5a − E1, Oct 2025 → Sep–Oct 2026 |
+|---|---|---|---|---|---|
+| STK200JPN (Hokkaido) | +0.53 | +0.40 to +0.61 | +3.56 | +3.30 to +3.61 | +1.37 → +1.09 to +1.30 |
+| MIZU00JPN (northern Honshu) | −2.03 | −1.98 to −1.85 | +1.39 | +1.22 to +1.40 | +3.27 → +2.89 to +3.04 |
+| MCIL00JPN (Minamitorishima) | +0.76 | +1.10 to +1.32 | +4.00 | +4.00 | +2.04 → +1.74 to +1.87 |
+| DAEJ00KOR (Daejeon; files to 29 Jul) | +2.46 | +2.43 (Jul) | +5.24 | +5.30 (Jul) | +4.24 → +3.80 (Jul) |
+| GUAM00GUM (control) | −1.36 | −1.37 to −1.31 | +2.33 | +2.12 to +2.18 | +3.63 → +3.03 to +3.20 |
+| ALIC00AUS (inland Australia, control) | −0.05 | −0.28 to −0.10 | +3.02 | +2.76 to +2.86 | +3.74 → +3.46 to +3.59 |
+
+  - **Not a GPS transmitter change.** A change in what the GPS satellites send would reach these antennas too. GPS L2C
+    relative to L1 ended the year within 0.25 dB of where it started at every station except Minamitorishima, where it
+    rose 0.3–0.6 dB, the opposite direction (Daejeon swung 0.5 dB within the year and came back). QZSS L2C relative to
+    L1 ended within 0.3 dB everywhere.
+  - **No lower-band change at ground level near these stations.** Galileo E5a against E1 eased by 0.1–0.6 dB at every
+    station, the controls included, so it isn't East Asian. L1 C/A at 40–60° held within 0.4 dB at four stations;
+    Daejeon varied 0.7 dB with no trend, and at Minamitorishima it eased about 0.6 dB while L2C and L5 held, an L1-only
+    change at that site, the opposite of the orbital pattern.
+  - **Equipment:** firmware updates at Mizusawa, Guam and Alice Springs during the year left no step.
+  - **So the drift is in what the orbiting receivers hear, not in the signals the satellites send.** A ground antenna
+    hears an emitter only within line of sight (`docs/validation/ground-stations.md` section 6). Emitters spread over
+    the region, or elevated or airborne ones, could reach 700–800 km altitude without reaching these sites. Cause still
+    not established.
+- **Next:** a daily-rhythm check on the orbital L2C index over East Asia, ITU and NOTAM records of lower L-band activity,
+  and the same regional table on the held-out E2.1 weeks once they are fetched.
