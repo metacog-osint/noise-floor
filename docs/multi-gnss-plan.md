@@ -21,8 +21,9 @@ GLONASS, QZSS, and the other GNSS freqs"). Step X1, the station tool for every s
   - Every band from 1176 to 1606 MHz fell together, on all four constellations: 1.3–3.2 dB-Hz by median.
   - A station 148 km away saw nothing on any signal it was tracking at the time.
   - That fits a broadband rise or equipment at the site, not a GPS L1 jammer.
-- **From orbit,** the Sentinel PODRIX receivers already log Galileo E5a and GPS L2C beside L1. They're held in our
-  day tables but not yet used. NISAR hears GPS and QZSS L2. COSMIC-2 may log GLONASS links (to probe).
+- **From orbit (X3, 1 Nov):** on the Sentinel PODRIX receivers, Galileo E5a and GPS L2C pick out the regions where
+  aircraft lose GPS better than L1 does (AUC 0.911 and 0.898), and drop 2.1–2.7 times as far as L1 on the same
+  links. NISAR hears GPS and QZSS L2. COSMIC-2 may log GLONASS links (to probe).
 - **QZSS can only be observed from East Asia and Oceania.** The IGS stations in Japan that were checked track it on
   L1, L1C, L1S, L2C and L5, but not BeiDou.
 
@@ -60,7 +61,7 @@ What this means for detection:
 |---|---|---|---|
 | **Aircraft (ADS-B NIC/NACp)** | Position quality only. The message doesn't say which constellations the receiver used | Wherever aircraft fly | In use |
 | **EPN and IGS reference stations** (RINEX 3, 30 s) | Whatever each receiver tracks. Checked: Vaiņode G/R/E/C on 19 signals; Riga adds QZSS, GLONASS G3 and SBAS (25 signals); two Japanese stations track G/R/E/J (QZSS on five signals) but not BeiDou | Fixed sites, line of sight only (`docs/validation/ground-stations.md` section 6) | GPS L1/L2/L5 and Galileo E1/E5a built; the rest is step X1 |
-| **Sentinel-1C, 1D, 2C** (PODRIX) | GPS L1 C/A, L2 P(Y), L2C; Galileo E1, E5a | Near-global, regional footprint about 2,000 km | L1, E1 and L2 P(Y) built (step E of `docs/space-sensors-plan.md`); E5a and L2C held, unused (step X3) |
+| **Sentinel-1C, 1D, 2C** (PODRIX) | GPS L1 C/A, L2 P(Y), L2C; Galileo E1, E5a | Near-global, regional footprint about 2,000 km | L1, E1 and L2 P(Y) built (step E of `docs/space-sensors-plan.md`); E5a and L2C checked in X3 (`docs/validation/sentinel-gnss-x3.md`) |
 | **Sentinel-2B, 3A, 3B** (RUAG) | GPS L1, L2 P(Y) | Near-global | Built |
 | **CYGNSS** | GPS L1 | ±38° latitude | In use |
 | **NISAR** | 1219–1239 MHz (GPS and QZSS L2) and 1291–1296 MHz (the top of the Galileo E6 band) | Passes in a mode that hears the signal | In use (`nisar/README.md`) |
@@ -197,7 +198,7 @@ Each step writes its checks into `docs/validation/` before results are read, as 
 |---|---|
 | X1 | **Built 1 Nov:** `tools/station_bands.py` (`signals`, `day`; tests in `tests/test_station_bands.py`), beside `station_cn0.py`, whose rule and Baltic test are unchanged. It scores every signal-strength code in a RINEX 3/4 file with the same rule (D, F, 5-minute flags). Orbits: Keplerian for GPS, Galileo, QZSS and BeiDou (BDT and the BeiDou GEO rotation), RK4 integration of the GLONASS state vectors. Baselines per satellite: the sidereal sky match for GPS (246 s a day) and for QZSS and BeiDou GEO/IGSO (one sidereal day); own elevation-bin medians for GLONASS, Galileo and BeiDou MEO. Losses count only where the baseline days tracked that part of the sky. Unhealthy satellites are dropped (QZSS health is recorded only). Outputs per station-day: every signal's flags, and for each window and event a band signature and GLONASS channel ladder (`data/stations/<STATION>/<day>.bands.json`, `.png`). `station_cn0.fetch` now uses held files first and falls back to NASA CDDIS for IGS stations when BKG is unreachable. Results above |
 | X2 | **A positive control with known frequencies and times.** Jammertest (Andøya, Norway) publishes its test plan with frequencies and times; a station inside its range would give a known-answer test across bands. Norway's national network terms are not checked (`docs/validation/ground-stations.md` section 7). Announced US tests near NOAA CORS stations are the open-data alternative (mostly L1) |
-| X3 | **Sentinel E5a and L2C from orbit.** The day tables already hold `s5q` and `s2l` (PODRIX units). Add `d_e5a` and `d_l2c` to the E2 epochs, pre-register a two-band check (does the orbital drop over known L1 jamming also appear at 1176 MHz?) and run it on the E3 windows |
+| X3 | **Done 1 Nov** (`docs/validation/sentinel-gnss-x3.md`; `tools/sentinel_bands.py`, tests in `tests/test_sentinel_bands.py`). Pre-registered at 14:06 UTC, run at 14:48 UTC on the 63 E3 days, PODRIX units. **Both checks hold:** Galileo E5a AUC 0.911, GPS L2C 0.898, against 0.863–0.872 on L1 and E1. **On the same links the lower bands drop 2.1–2.7 times as far as L1** (pooled −8.7 against −3.2 dB; Baltic −10.6 against −5.0 dB): *wideband* by the fixed readings, and steady across units and windows. Whether the emitters or the antennas favour the lower band is not separated. **The 60–160°E dip is a quarter as deep on L2C**, the only band no BeiDou signal shares |
 | X4 | **Exclusion feeds.** Broadcast health from the daily navigation files; the operators' notice pages (list above) through the page-watch collector, each with a registry row |
 | X5 | **Probes.** Whether COSMIC-2 `podTc2` files include GLONASS links; whether FY-3 GNOS BeiDou data can be had without a paid or restricted account |
 | X6 | **Stations that see QZSS and BeiDou GEO.** IGS daily files at NASA CDDIS on 27 Oct 2026 came from 451 stations, including 11 in Japan, 4 in South Korea, 4 in Taiwan, 2 in Hong Kong, 3 in the Philippines, 1 in Guam, 1 in Mongolia, 2 in China and 6 in Russia (BADG, KZN2, NVSK, SVTL, URAL, ZECK). National networks (Japan's GEONET, Geoscience Australia) add density; their terms are **not checked** |
@@ -217,7 +218,7 @@ Each step writes its checks into `docs/validation/` before results are read, as 
 | # | Decision | Recommendation |
 |---|---|---|
 | D1 | Build X1 now | **Decided 1 Nov (Tom: "Yes, build X1").** Built the same day |
-| D2 | X3 (Sentinel E5a and L2C) | Yes, as a pre-registered check: the data are held and the change is small |
+| D2 | X3 (Sentinel E5a and L2C) | **Decided 1 Nov (Tom: "Yes, run X3").** Run the same day; both checks hold |
 | D3 | National networks (GEONET, Geoscience Australia, Norway) | Read terms first; register only where they allow republishing derived results |
 | D4 | Anything public | Later. A band-signature table per event, beside the existing station results, once X2 passes |
 

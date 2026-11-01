@@ -116,6 +116,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   every system at an EPN/IGS station (GLONASS by RK4 from broadcast state vectors; BeiDou GEO rotation; per-constellation
   baselines) and writes band signatures and the GLONASS channel ladder; `station_cn0.fetch` uses held files first, then
   BKG, then CDDIS (IGS stations, EARTHDATA_TOKEN). Vaiņode, 17 May 2026: every band fell at once; Riga quiet.
+  **X3 done 1 Nov:** `tools/sentinel_bands.py` (`bands`, `checks`) runs the frozen E2 index on Galileo E5a and GPS L2C
+  (PODRIX units) beside paired L1/E1 (`docs/validation/sentinel-gnss-x3.md`): both checks hold (AUC 0.911, 0.898), the
+  lower bands drop 2.1–2.7x as far as L1 on the same links, and the 60–160°E dip is a quarter as deep on L2C.
 - **AIS beyond the Baltic (28 Oct 2026, Tom approved):** `collectors/run_aisstream.cmd` (global aisstream, private only;
   focus boxes in `private/watch/maritime.json`) and `collectors/barentswatch_ais.py` + `run_barentswatch.cmd` (Norway's open
   AIS, NLOD; Finnmark and the western Barents Sea). Both skip until Tom's credentials exist (AISSTREAM_API_KEY;
