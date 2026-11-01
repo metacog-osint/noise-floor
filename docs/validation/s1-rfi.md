@@ -242,6 +242,63 @@ It never looks for sites.
   regions as GPS interference, but they are a different thing.
 - A public layer would say "C-band radar activity", never "GPS interference".
 
+## 10. Four weeks worldwide (2–29 Oct 2026; descriptive, not a test)
+
+**Run.**
+- 28 days, 563–1,000 IW GRD products a day (S1C and S1D). The lowest days were 26, 27 and 29 Oct (659, 564 and 596
+  products), the number Planetary Computer listed.
+- This PC lost its internet connection on 21 Oct. That day was run again in full, and 22–29 Oct after it; no day kept
+  failed reads.
+
+**Coverage.**
+- 17,856 res-3 cells were covered. 13,437 (75%) had four or more passes, against 2,381 in one week; 5,551 had eight or
+  more.
+- The median cell had 5 passes, and the 90th percentile 16.
+
+**Median share of passes with RFI**, cells with 4+ passes, by the CYGNSS lane's boxes:
+
+| Box | Cells | Median share |
+|---|---|---|
+| Persian Gulf | 62 | 1.00 |
+| Levant | 23 | 0.83 |
+| Iran (interior) | 70 | 0.60 |
+| Red Sea | 117 | 0.60 |
+| South China Sea | 45 | 0.57 |
+| Iraq | 60 | 0.56 |
+| Egypt / Sinai / Suez | 10 | 0.37 |
+| India–Pakistan border | 55 | 0.00 |
+| Myanmar | 53 | 0.00 |
+| Controls: Central Pacific, Brazil, Australia and southern Africa interiors | 22, 122, 141, 123 | 0.00 each |
+
+The South Atlantic control has no cells: Sentinel-1 doesn't image the open ocean in IW mode.
+
+**Against the aircraft map (descriptive).**
+- Over the same 28 days, res-3 cells with 140+ aircraft: AUC **0.747** (47 jammed, 3,717 clean), against 0.686 for one
+  week.
+- Median share: 0.48 in jammed cells, 0.00 in clean ones.
+- As in section 9, this is C-band activity, mostly radars, clustering where GPS interference also does.
+
+**Where every pass carried RFI.**
+- 166 cells had eight or more passes, nearly all with RFI (share 0.9 or more).
+- By country of the nearest place:
+  - China 28, Saudi Arabia 20, Iran 17, Turkey 12;
+  - the UAE and the Philippines 8 each, Sweden 6;
+  - Iraq and Oman 5 each;
+  - 57 more: 50 in 27 other countries, 4 at sea and 3 in disputed areas.
+- The six busiest places at least 800 km apart, all with every pass flagged (18–26 passes), are:
+  - the Gulf of Gdańsk;
+  - offshore of Samandağ, Turkey (near the Syrian border);
+  - offshore west of Abu Dhabi;
+  - offshore north-west of Naples;
+  - the northern Gulf south-east of Abadan;
+  - the Sea of Azov south-east of Yeysk.
+
+  These are regions about 110 km across, not transmitter positions (section 3).
+
+**What this means for a public layer.** Four weeks give enough passes for three quarters of covered cells. Every control
+reads zero, and the known conflict regions read high. A 28-day "C-band radar activity" layer would show regions, and
+never sites or GPS interference.
+
 ## Run
 
 ```sh
