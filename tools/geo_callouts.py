@@ -518,10 +518,54 @@ def score(held_path=OUT):
     return out
 
 
+# ---------------------------------------------------------------- the globe's file
+# Scores of v1 (docs/validation/geo-callouts.md, Results, 1 Nov 2026) and the default each earned by the frozen criteria.
+RULES = {
+    "C1": ("Close to another owner's satellite", False, "found 10 of 12 published cases, but about 160 new a week"),
+    "C2": ("Approaching", False, "found 1 of 4 published cases; about 500 new a week"),
+    "C3": ("Parked beside another owner", True, "found 4 of 5 published cases; about 2 a week"),
+    "C4": ("Heading for an occupied slot", True, "found 2 of 4 published cases; about 1 a week"),
+    "C5": ("Listed-role object changed orbit", True, "found 5 of 6 published cases; about 3 a week"),
+    "C6": ("Arrived in the protected zone", True, "found 4 of 4 published cases; about 1 a week"),
+    "C7": ("Retired to the graveyard", True, "found 3 of 4 published cases; under 1 a week"),
+    "C8": ("Went quiet", False, "missed its one published case; about 1 a week"),
+}
+
+
+def publish(data, days, out, show_days=14):
+    """The last `show_days` of callouts (computed over `days`, so the look-back rules have history) for the globe."""
+    end = (datetime.now(timezone.utc) - timedelta(days=1)).date()
+    start = end - timedelta(days=days - 1)
+    first_shown = (end - timedelta(days=show_days - 1)).isoformat()
+    doc = run(load_elements(data), load_static(data), load_roles(), start.isoformat(), end.isoformat(),
+              events=load_events(data, start.isoformat(), end.isoformat()))
+    keep = []
+    for c in doc["callouts"]:
+        if c["day"] < first_shown and not (c["rule"] == "C1" and c.get("end", c["day"]) >= first_shown):
+            continue
+        k = {"r": c["rule"], "d": c["day"], "a": c["a"]}
+        for f in ("b", "end", "min_km", "km", "from_km", "deg", "days", "drift", "lon", "role", "kind", "between",
+                  "drift_change", "inc_change", "lon_off_deg", "standing"):
+            if f in c and c[f] is not None and c[f] is not False:      # keep zeros (0 == False in Python)
+                k[f] = c[f]
+        keep.append(k)
+    pub = {"version": VERSION, "built_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "start": first_shown,
+           "end": end.isoformat(), "source": CITE, "rules_doc": "docs/validation/geo-callouts.md",
+           "rules": [{"id": r, "name": n, "default_on": on, "score": sc} for r, (n, on, sc) in RULES.items()], "callouts": keep}
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(pub, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"{out}: {len(keep)} callouts, {first_shown} to {end}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("pull", help="fetch the history each pre-history case needs (Space-Track, once)")
+    pb = sub.add_parser("publish", help="the globe's file: the last two weeks of callouts")
+    pb.add_argument("--data", default=DATA)
+    pb.add_argument("--days", type=int, default=21)
+    pb.add_argument("--out", default=os.path.join(ROOT, "site", "data", "geo", "callouts.json"))
     sc = sub.add_parser("score", help="score the held run and the case runs against docs/validation/geo-callouts-cases.json")
     sc.add_argument("--held", default=OUT)
     r = sub.add_parser("run")
@@ -542,6 +586,9 @@ def main():
         return 0
     if a.cmd == "score":
         score(a.held)
+        return 0
+    if a.cmd == "publish":
+        publish(a.data, a.days, a.out)
         return 0
     roles = load_roles()
     if a.cmd == "run":
