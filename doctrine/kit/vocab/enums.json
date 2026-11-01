@@ -101,9 +101,11 @@
     }
   },
   "us_person_data": {
-    "basis": "Public information only; no data on US persons (suite rule)",
+    "basis": "A label, not a restriction (Tom, 30 Oct 2026). The programs are not bound by the US intelligence community's limits on US-person information; a consumer that is (for example a government user) filters on this field and strips what its own rules require. US persons are US citizens, permanent residents, US-incorporated companies and associations made up substantially of citizens or permanent residents (FISA, 50 U.S.C. 1801(i); the intelligence community's rules define them the same way in substance).",
     "values": {
-      "none": "Asserted and validated: the item holds no information about a US person."
+      "none": "Names no person or organization (counts, measurements, places).",
+      "organizations": "Names organizations, which may include US companies or other US organizations.",
+      "individuals": "Names or identifies individuals, who may be US persons (it may name organizations too)."
     }
   },
   "ease_of_faking": {

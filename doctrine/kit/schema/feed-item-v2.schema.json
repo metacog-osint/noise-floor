@@ -115,7 +115,12 @@
       "description": "JP 2-0 intelligence products by purpose, adapted"
     },
     "us_person_data": {
-      "const": "none"
+      "enum": [
+        "individuals",
+        "none",
+        "organizations"
+      ],
+      "description": "A label, not a restriction (Tom, 30 Oct 2026). The programs are not bound by the US intelligence community's limits on US-person information; a consumer that is (for example a government user) filters on this field and strips what its own rules require. US persons are US citizens, permanent residents, US-incorporated companies and associations made up substantially of citizens or permanent residents (FISA, 50 U.S.C. 1801(i); the intelligence community's rules define them the same way in substance)."
     },
     "supersedes": {
       "type": "string"
@@ -305,6 +310,23 @@
           "independence_group": {
             "type": "string"
           },
+          "owner": {
+            "enum": [
+              "individual",
+              "intergovernmental",
+              "ngo",
+              "private",
+              "public",
+              "state",
+              "unknown"
+            ],
+            "description": "Watchfloor's source catalog (owner field, 27 Oct 2026). Public means publicly funded with editorial independence; state means controlled or directed by a government."
+          },
+          "perspective": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The program's source group: the perspective the source speaks from (e.g. russian_state), so coverage splits by side. Labels go in the feed header's perspectives map."
+          },
           "accessed_at": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?Z$"
@@ -312,6 +334,107 @@
           "published_at": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?Z$"
+          }
+        }
+      }
+    },
+    "actors": {
+      "type": "array",
+      "description": "How feed items characterise entities and sides (Tom, 31 Oct 2026: 'we don't have to say adversary but we do need a mechanism to characterize entities and sides'). A role says what part an actor plays in what the item describes, as the cited sources describe it; it is never a judgment of friend or foe. No value here means friendly, hostile, enemy or adversary, and the drawing frame is only ever 'unknown' or 'neutral' (the COP symbol rule). A side is named the way the sources name it ('Russia', 'Ukraine'), never judged.",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "role",
+          "status_class"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "enum": [
+              "affected",
+              "civilians",
+              "party",
+              "responsible",
+              "supporter",
+              "third_party",
+              "unknown"
+            ],
+            "description": "UCDP's primary and secondary warring parties (support to a party); the civilian and party distinction of international humanitarian law (Additional Protocol I, arts. 43 and 50); attribution as a judgment that needs its evidence (ODNI, A Guide to Cyber Attribution, 2018)"
+          },
+          "actor_type": {
+            "enum": [
+              "armed_forces",
+              "armed_group",
+              "company",
+              "criminal_group",
+              "government",
+              "individual",
+              "intergovernmental",
+              "media",
+              "ngo",
+              "political_group",
+              "population",
+              "security_service",
+              "unknown"
+            ],
+            "description": "Adapted from ACLED's actor types and the STIX 2.1 identity classes"
+          },
+          "side": {
+            "type": "string",
+            "description": "The party, named as the sources name it. Required for party and supporter; never a judgment of friend or foe."
+          },
+          "function": {
+            "type": "string",
+            "description": "What a third party does: mediator, monitor, aid."
+          },
+          "country": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "status_class": {
+            "enum": [
+              "assessed",
+              "claimed",
+              "reported"
+            ],
+            "description": "Watchfloor two-source rule; Berkeley Protocol"
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "ids from this item's sources[] that the characterisation rests on."
+          },
+          "designations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "by",
+                "label"
+              ],
+              "properties": {
+                "by": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "source_id": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Government designations, quoted as published (e.g. a sanctions listing)."
+          },
+          "ref": {
+            "type": "string",
+            "description": "A stable id for the actor, e.g. wikidata:Q12345."
           }
         }
       }
@@ -502,7 +625,11 @@
         "state_travel_advisory:level_1",
         "state_travel_advisory:level_2",
         "state_travel_advisory:level_3",
-        "state_travel_advisory:level_4"
+        "state_travel_advisory:level_4",
+        "usgs_volcano:advisory",
+        "usgs_volcano:normal",
+        "usgs_volcano:warning",
+        "usgs_volcano:watch"
       ]
     },
     "disarm_technique": {

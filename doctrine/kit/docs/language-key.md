@@ -42,6 +42,16 @@ Each judgment lists what would raise its confidence. The full rules are in [the 
 When a source stops or covers too little of an area, the map shows grey and says "no data". Silence from a feed never
 means quiet.
 
+## Who's who: how we describe sides
+
+We name the actors in an event and say what part each plays, the way our sources describe it: a party to a conflict,
+a supporter of a party, the one held responsible, those affected, civilians, or a third party such as a mediator or
+monitor. We never label anyone friendly, hostile or an enemy. Sides are named the way the sources name them.
+
+Every description says how we know it: **assessed** (our own method, or several independent sources), **reported** (an
+independent outlet or agency), or **claimed** (one party or one source; drawn hollow, and never enough on its own to
+move a warning). Where it matters, we show how each side's media is telling the same story.
+
 ## How we keep score
 
 Every forecast is logged before the event, with a written rule for deciding whether it came true. Verdict scores them
