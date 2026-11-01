@@ -37,14 +37,14 @@ def test_series_on_synthetic_epochs():
            "references": [{"id": "r", "name": "R", "box": [-10, 10, -150, -140]}], "comparisons": []}
     days = {dt.date(2026, 9, 14): -2.0, dt.date(2026, 9, 15): -1.0, dt.date(2026, 9, 21): 0.0}
 
-    def fake(day, cols=None):
+    def fake(day, signal="l1"):
         if day not in days:
             return None
         lat = np.array([-35.0] * 5 + [0.0] * 5)
         lon = np.array([65.0] * 5 + [-145.0] * 5)
         d = np.r_[np.full(5, days[day]), np.full(5, 0.1)].astype(np.float32)
         return {"unit": np.array(["S1C"] * 10), "lat": lat, "lon": lon, "cell": np.array(["c"] * 10),
-                "present": np.ones(10, bool), "d_l1": d}
+                "present": np.ones(10, bool), "d": d}
     old = M.load_day
     M.load_day = fake
     try:
@@ -57,6 +57,18 @@ def test_series_on_synthetic_epochs():
     assert set(wk) == {"2026-09-14", "2026-09-21"}
     assert wk["2026-09-14"]["x"]["median"] == -1.5 and wk["2026-09-14"]["x"]["days"] == 2
     assert wk["2026-09-14"]["x"]["deg1"] == 1.0 and wk["2026-09-21"]["x"]["deg1"] == 0.0
+    assert res["signal"] == "l1"
+
+
+def test_signals_and_stems():
+    assert M.stem("far", "l1") == "far" and M.stem("far", "l2c") == "far_l2c"
+    assert M.SIGNALS["l1"][:2] == (M.EPOCH_DIR, "d_l1")
+    assert M.SIGNALS["l2c"][:2] == (M.BANDS_DIR, "d_l2c") and M.SIGNALS["e5a"][1] == "d_e5a"
+    for name, (_, _, label, floor, caption) in M.SIGNALS.items():
+        text = caption.format(year=2026)
+        assert "2026" in text and "{" not in text, name
+        assert floor < 0 and label
+    assert "1227.60 MHz" in M.SIGNALS["l2c"][4] and "Sentinel-1C, 1D and 2C" in M.SIGNALS["e5a"][4]
 
 
 if __name__ == "__main__":
