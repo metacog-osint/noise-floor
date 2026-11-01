@@ -131,6 +131,10 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   `SECTIONS` in `tools/build_site.py`), with a section bar on Space and About pages; every page shares the header's 75rem grid.
   The home page is a daily briefing: `board.py` writes the bottom-line sentence (`brief`, fixed rules, tested), `board.js` and
   `dash.js` fill the page, and `tools/map_thumb.py` draws the map thumbnail at deploy (`site/data/today-map*.svg`).
+  The hub (theintelligence.company) quotes `brief` too, so it must make sense to someone who has never seen Noisefloor
+  (Tom, 31 Oct 2026): it names the measure ("the share of aircraft with severe GPS error was above/near/below its usual
+  level", i.e. against the 30-day median, never "rose" or "fell") and says "GPS interference started in … / has stopped
+  in …"; the rules are in `brief()`'s docstring.
   Tool pages (Map, Sea, Trends, Sun, GEO) open with a `.page-head` (title, one-line subtitle, "How to read" link) and the tool; their
   explanations live in one `<section id="howto" class="howto">` at the end (site.js scrolls there without touching the hash,
   which holds map and filter state).
