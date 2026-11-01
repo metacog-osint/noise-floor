@@ -68,6 +68,8 @@ PAGE = """<!doctype html>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/tic-time.css">
 <script defer src="/tic-time.js"></script>
+<link rel="stylesheet" href="/tic-nav.css">
+<script defer src="/tic-nav.js"></script>
 <script defer src="/site.js"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 {head}
@@ -134,7 +136,7 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
-ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js", "geo.js", "globe.js")
+ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-nav.css", "tic-nav.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js", "geo.js", "globe.js")
 FONTS = os.path.join(SRC, "fonts")     # IBM Plex (SIL OFL 1.1, fonts/OFL.txt), served from this site so no visit contacts a font service
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
