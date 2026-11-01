@@ -56,7 +56,7 @@ def one_product(pc, prod):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def day(dayname, workers=8):
+def day(dayname, workers=8, max_fail=0.05):
     import pyarrow as pa
     import pyarrow.parquet as pq
     from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -78,6 +78,8 @@ def day(dayname, workers=8):
                 bad += 1
                 if bad <= 5:
                     print(f"  skip {futs[f]['id']}: {S.scrub(e)}")
+    if prods and bad > max_fail * len(prods):         # a dropped connection, not missing data: keep no file, rerun later
+        raise RuntimeError(f"{dayname}: {bad} of {len(prods)} products failed; no file written")
     rows = S.dedupe(rows)
     seen = {}
     for r in rows:
@@ -140,7 +142,10 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.cmd == "day":
         for d in a.days:
-            day(d, a.workers)
+            try:
+                day(d, a.workers)
+            except RuntimeError as e:
+                print(e, file=sys.stderr)
     else:
         week(a.end, a.days, a.res)
 
