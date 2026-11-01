@@ -73,6 +73,18 @@ def test_c3_parked_beside_another_owner_after_drifting():
     assert len(c3) == 1 and c3[0]["a"][0] == 2 and c3[0]["day"] == "2026-08-06", c3
 
 
+def test_c3_ignores_a_libration_end_and_inclined_neighbours():
+    a = daily(1, [10.0] * 12)
+    slow = [-0.13 + 0.01 * k for k in range(12)]                              # eases 0.01 deg/day each day: no burn
+    lons, x = [], 10.9
+    for d in slow:
+        lons.append(x); x += d
+    assert not rules(run(a + daily(2, lons, slow), {1: "X", 2: "Y"}, days=12), "C3")
+    tilted = [el(1, D0 + timedelta(days=k), 10.0, 0.0, inc=5.0) for k in range(8)]
+    parked = daily(2, [12.0, 11.5, 11.0, 10.5, 10.2, 10.2, 10.2, 10.2], [-0.5, -0.5, -0.5, -0.3, 0, 0, 0, 0])
+    assert not rules(run(tilted + parked, {1: "X", 2: "Y"}), "C3")             # 5 deg inclined: not station-kept
+
+
 def test_c4_slowing_toward_an_occupied_slot():
     a = daily(1, [10.0] * 8)
     far = daily(2, [27.0, 26.0, 25.0, 24.0, 23.0, 22.7, 22.4, 22.1], [-1.0, -1.0, -1.0, -1.0, -0.3, -0.3, -0.3, -0.3])
@@ -87,6 +99,16 @@ def test_c5_listed_role_orbit_change_only():
     b = daily(2, [30.0] * 4 + [30.4] * 4, [0.0] * 4 + [0.05] * 4)
     c5 = rules(run(a + b, {1: "X", 2: "Y"}, roles={1: "inspection"}), "C5")
     assert [c["a"][0] for c in c5] == [1] and c5[0]["day"] == "2026-08-05", c5
+
+
+def test_case_matching():
+    ep = {"rule": "C1", "day": "2026-09-02", "end": "2026-09-10", "a": [1, "A", "X"], "b": [2, "B", "Y"]}
+    assert C.matches(ep, {"rule": "C1", "ids": [2, 1], "window": ["2026-09-05", "2026-09-07"]})      # an episode overlapping the window
+    assert not C.matches(ep, {"rule": "C1", "ids": [1, 3], "window": ["2026-09-05", "2026-09-07"]})
+    assert C.matches(ep, {"rule": "C1", "ids": [2], "window": ["2026-09-01", "2026-09-03"]})          # one object: any partner
+    c3 = {"rule": "C3", "day": "2026-09-30", "a": [5, "S", "CIS"], "b": [6, "N", "CIS"]}
+    assert not C.matches(c3, {"rule": "C3", "ids": [5], "window": ["2026-09-27", "2026-10-04"], "not_neighbour": [6]})
+    assert C.matches(c3, {"rule": "C3", "ids": [5], "window": ["2026-09-27", "2026-10-04"]})
 
 
 def test_old_elements_are_not_used():

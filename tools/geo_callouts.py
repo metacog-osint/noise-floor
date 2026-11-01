@@ -9,6 +9,10 @@ docs/validation/geo-callouts.md (v1). Behaviour only, never intent.
       the same rules on a few objects alone (a published case before the held history), from a stored
       gp_history JSON file
 
+  python tools/geo_callouts.py pull     the gp_history each pre-history case needs (Space-Track, once, stored)
+  python tools/geo_callouts.py score    every case in docs/validation/geo-callouts-cases.json against the held run
+                                       and the case runs; data/geo/callouts/score-v1.json
+
 SGP4 from the sgp4 library (MIT), WGS72 constants, TEME positions in km; numpy for the arrays.
 Orbital data: USSPACECOM (space-track.org).
 """
@@ -35,6 +39,8 @@ VERSION = "v1"
 # frozen thresholds (docs/validation/geo-callouts.md, v1)
 MAX_AGE_DAYS = 10.0          # element sets older than this at an instant are not used
 HOLD = 0.1                   # deg/day: holding longitude
+KEPT_INC = 1.0               # deg: a station-kept neighbour (C3, C4) also holds inclination under this
+BURN_DRIFT, BURN_GAP_D = 0.02, 3.0   # C3: a drift change this large between sets this close is a manoeuvre
 C1_KM, C2_KM, C2_FALL, C2_DAYS, C2_QUIET = 100.0, 200.0, 30.0, 3, 14
 C3_STOPPED, C3_LOOKBACK, C3_DEG, C3_QUIET = 0.05, 14, 0.5, 30
 C4_LOOKBACK, C4_HORIZON, C4_DEG, C4_QUIET = 7, 14, 0.5, 30
@@ -215,6 +221,7 @@ def run(elements, static, roles, start, end, events=None, ids=None, owners=None)
     noon = np.array([d.timestamp() + 43200 for d in days])
     lon = np.full((nd, npay), np.nan)
     drift = np.full((nd, npay), np.nan)
+    incl = np.full((nd, npay), np.nan)
     pos = {}                                                    # (day index) -> (npay x 24 x 3)
     for di, d in enumerate(days):
         hours = [d.timestamp() + 3600 * h for h in range(24)]
@@ -225,6 +232,7 @@ def run(elements, static, roles, start, end, events=None, ids=None, owners=None)
             if r is not None and not np.isnan(P[j, 12, 0]):
                 lon[di, j] = lon_deg(P[j, 12], noon[di])
                 drift[di, j] = r["drift"]
+                incl[di, j] = r["i"]
         pos[di] = P
     callouts = []
 
@@ -299,7 +307,7 @@ def run(elements, static, roles, start, end, events=None, ids=None, owners=None)
                                          from_km=None if np.isinf(w[0]) else round(float(w[0]), 1)))
                 quiet_until = di + C2_QUIET - 1
 
-    holding = np.abs(drift) < HOLD
+    holding = (np.abs(drift) < HOLD) & (incl < KEPT_INC)       # station-kept neighbours only (inclined ones are far in 3D)
 
     def neighbour(di, j, within):
         """The nearest other-owner payload holding longitude within `within` degrees on day di, or None."""
@@ -321,7 +329,10 @@ def run(elements, static, roles, start, end, events=None, ids=None, owners=None)
             # C3: was drifting in the last 14 days, stopped on D-1 and D, within 0.5 deg of another owner holding longitude
             if di > q3 and abs(drift[di, j]) < C3_STOPPED and not np.isnan(drift[di - 1, j]) and abs(drift[di - 1, j]) < C3_STOPPED:
                 t0, t1 = noon[di] - C3_LOOKBACK * 86400, noon[di]
-                if any(abs(r["drift"]) >= HOLD for r in rows if t0 <= r["t"] <= t1):
+                recent = [r for r in rows if t0 <= r["t"] <= t1]
+                burned = any(abs(b["drift"] - a["drift"]) > BURN_DRIFT and b["t"] - a["t"] <= BURN_GAP_D * 86400
+                             for a, b in zip(recent, recent[1:]))   # a manoeuvre, not the slow end of a libration
+                if burned and any(abs(r["drift"]) >= HOLD for r in recent):
                     nb = neighbour(di, j, C3_DEG)
                     if nb:
                         callouts.append({"rule": "C3", "day": days[di].strftime("%Y-%m-%d"), "a": [k, name(k), own(k)],
@@ -396,9 +407,119 @@ def weekly(doc):
     return out
 
 
+# ---------------------------------------------------------------- published cases: pull, then score
+CASES = os.path.join(ROOT, "docs", "validation", "geo-callouts-cases.json")
+CASE_DIR = os.path.join(ROOT, "data", "geo", "region", "history", "cases")
+SCORE = os.path.join(ROOT, "data", "geo", "callouts", "score-v1.json")
+DEFAULT_ON_HITS, DEFAULT_ON_WEEKLY = 0.5, 10.0       # frozen switch-on criteria
+
+
+def case_file(case):
+    p = case["pull"]
+    return os.path.join(CASE_DIR, f"{case['id']}_{p['start']}_{p['end']}.json")
+
+
+def pull(cases):
+    """One gp_history request per case before the held history; stored and never fetched again."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import time
+    import geo_region as R
+    todo = [c for c in cases if c["scope"] == "history" and not os.path.exists(case_file(c))]
+    if not todo:
+        print("every case's history is held")
+        return
+    os.makedirs(CASE_DIR, exist_ok=True)
+    with R.SpaceTrack() as st:
+        for k, c in enumerate(todo):
+            if k:
+                time.sleep(R.PAUSE)
+            p = c["pull"]
+            data = st.query(R.history_path(p["ids"], p["start"], p["end"]))
+            with open(case_file(c) + ".part", "w", encoding="utf-8") as f:
+                json.dump(data, f, separators=(",", ":"))
+            os.replace(case_file(c) + ".part", case_file(c))
+            print(f"{c['id']}: {len(data)} element sets for {p['ids']}")
+
+
+def matches(c, e):
+    if c["rule"] != e["rule"]:
+        return False
+    lo, hi = e["window"]
+    if c["rule"] == "C1":
+        if c["day"] > hi or c.get("end", c["day"]) < lo:
+            return False
+    elif not lo <= c["day"] <= hi:
+        return False
+    ids = e["ids"]
+    if c["rule"] in ("C1", "C2"):
+        pair = {c["a"][0], c["b"][0]}
+        return pair == set(ids) if len(ids) == 2 else ids[0] in pair
+    if c["a"][0] != ids[0]:
+        return False
+    return not (c.get("b") and c["b"][0] in e.get("not_neighbour", []))
+
+
+def score(held_path=OUT):
+    spec = json.load(open(CASES, encoding="utf-8"))
+    held = json.load(open(held_path, encoding="utf-8"))
+    roles, static = load_roles(), load_static(DATA)
+    rows, runs = [], {}
+    for case in spec["cases"]:
+        if case["scope"] == "held":
+            callouts = held["callouts"]
+        else:
+            if not os.path.exists(case_file(case)):
+                for e in case["expect"]:
+                    rows.append({"case": case["id"], **e, "found": [], "hit": None, "note": "history not pulled"})
+                continue
+            p = case["pull"]
+            doc = run(load_history_json(case_file(case), set(p["ids"])), static, roles, p["start"], p["end"], ids=p["ids"])
+            runs[case["id"]] = doc
+            callouts = doc["callouts"]
+        for e in case["expect"]:
+            found = [c for c in callouts if matches(c, e)]
+            hit = bool(found) if e["outcome"] == "fire" else not found
+            rows.append({"case": case["id"], **e, "found": found[:5], "hit": hit})
+    by_rule = {}
+    for r in rows:
+        if r["hit"] is None:
+            continue
+        s = by_rule.setdefault(r["rule"], {"scored": 0, "hits": 0})
+        s["scored"] += 1
+        s["hits"] += int(r["hit"])
+    wk = held.get("weekly") or weekly(held)
+    weeks = max(1, len({w for ws in wk.values() for w in ws}))
+    span_weeks = max(1.0, (datetime.strptime(held["end"], "%Y-%m-%d") - datetime.strptime(held["start"], "%Y-%m-%d")).days / 7 + 1 / 7)
+    decide = {}
+    for rule in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"):
+        s = by_rule.get(rule, {"scored": 0, "hits": 0})
+        per_week = sum(wk.get(rule, {}).values()) / span_weeks
+        busiest = max(wk.get(rule, {}).items(), key=lambda x: x[1], default=(None, 0))
+        hits_ok = (s["hits"] / s["scored"] >= DEFAULT_ON_HITS) if s["scored"] else rule in ("C6", "C7", "C8")
+        decide[rule] = {**s, "new_per_week": round(per_week, 2), "busiest_week": busiest[0], "busiest_count": busiest[1],
+                        "default_on": bool(hits_ok and per_week <= DEFAULT_ON_WEEKLY)}
+    out = {"version": VERSION, "scored_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "held_span": [held["start"], held["end"]],
+           "weeks_with_callouts": weeks, "rules": decide, "expectations": rows,
+           "case_runs": {k: {"start": v["start"], "end": v["end"], "callouts": v["callouts"]} for k, v in runs.items()}}
+    os.makedirs(os.path.dirname(SCORE), exist_ok=True)
+    with open(SCORE, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
+    for r in rows:
+        mark = {True: "hit ", False: "MISS", None: "----"}[r["hit"]]
+        got = "; ".join(f"{c['rule']} {c['day']} {c['a'][1]}" + (f" / {c['b'][1]}" if c.get("b") else "") +
+                        (f" {c['min_km']} km" if "min_km" in c else f" {c['km']} km" if "km" in c else "") for c in r["found"][:2])
+        print(f"{mark} {r['case']:4} {r['rule']} {r['outcome']:6} {r['ids']} {r['window'][0]}..{r['window'][1]}  {got}")
+    for rule, d in decide.items():
+        print(rule, d)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("pull", help="fetch the history each pre-history case needs (Space-Track, once)")
+    sc = sub.add_parser("score", help="score the held run and the case runs against docs/validation/geo-callouts-cases.json")
+    sc.add_argument("--held", default=OUT)
     r = sub.add_parser("run")
     r.add_argument("--data", default=DATA)
     r.add_argument("--start", default="2026-07-08")
@@ -412,6 +533,12 @@ def main():
     c.add_argument("--owners", default="", help="norad=OWNER,... for objects missing from the held catalogue")
     c.add_argument("--out")
     a = ap.parse_args()
+    if a.cmd == "pull":
+        pull(json.load(open(CASES, encoding="utf-8"))["cases"])
+        return 0
+    if a.cmd == "score":
+        score(a.held)
+        return 0
     roles = load_roles()
     if a.cmd == "run":
         el = load_elements(a.data)

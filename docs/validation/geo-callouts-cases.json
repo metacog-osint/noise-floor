@@ -1,0 +1,88 @@
+{
+  "about": "Published cases for the GEO callouts check (docs/validation/geo-callouts.md), written 31 Oct 2026 before any rule ran on history. Each expectation names a rule, the objects (NORAD numbers), a window already widened by 3 days each side, and whether the rule should fire or stay silent. Sources and confidence tiers are in the markdown file. 'held' cases run on the full population of held elements; 'history' cases need one gp_history pull for their objects and run on those objects alone.",
+  "span": ["2026-07-08", "2026-10-30"],
+  "cases": [
+    {"id": "A1", "scope": "held", "title": "TJS-15 moves beside WGS F4 (88.4E), Aug-Sep 2026", "confidence": "N (two public-element detectors agree)",
+     "expect": [
+       {"rule": "C1", "ids": [63157, 38070], "window": ["2026-09-01", "2026-09-07"], "outcome": "fire", "why": "about 64 km on 4 Sep"},
+       {"rule": "C2", "ids": [63157, 38070], "window": ["2026-08-29", "2026-09-07"], "outcome": "fire"},
+       {"rule": "C4", "ids": [63157], "window": ["2026-08-22", "2026-09-08"], "outcome": "fire"},
+       {"rule": "C3", "ids": [63157], "window": ["2026-09-03", "2026-09-11"], "outcome": "fire", "why": "settled 6 Sep (ISR), detected 8 Sep (KTOC)"}]},
+    {"id": "A2", "scope": "held", "title": "SJ-23 drifts past WGS F4 at 132 km, 4 Sep 2026", "confidence": "C via N (a commercial tracking figure quoted by ISR University; single source)",
+     "expect": [
+       {"rule": "C2", "ids": [55131, 38070], "window": ["2026-08-29", "2026-09-07"], "outcome": "fire"},
+       {"rule": "C1", "ids": [55131, 38070], "window": ["2026-08-29", "2026-09-07"], "outcome": "silent", "why": "132 km is over the 100 km threshold"}]},
+    {"id": "A3", "scope": "held", "title": "Cosmos 2589 drifts to about 128E, brakes before a pass of USA 270, Jul-Sep 2026", "confidence": "C (a commercial tracking figure quoted by ISR University) + N",
+     "expect": [
+       {"rule": "C2", "ids": [64467, 41744], "window": ["2026-09-19", "2026-09-28"], "outcome": "fire"},
+       {"rule": "C1", "ids": [64467, 41744], "window": ["2026-09-19", "2026-10-03"], "outcome": "silent", "why": "braked to a 112 km pass (commercial tracking figure quoted by ISR University)"},
+       {"rule": "C3", "ids": [64467], "window": ["2026-09-27", "2026-10-04"], "outcome": "fire", "not_neighbour": [43432], "why": "stopped near 128.0-128.1E by 30 Sep beside JCSAT-3A and GEO-KOMPSAT-2A (other owners); Cosmos 2526 is the same owner"}]},
+    {"id": "A4", "scope": "held", "title": "USA 271 (GSSAP) takes over beside Cosmos 2589 at 98E, Jul 2026", "confidence": "N (single source)",
+     "expect": [
+       {"rule": "C1", "ids": [41745, 64467], "window": ["2026-07-08", "2026-07-19"], "outcome": "fire", "why": "40-100 km passes 12-13 Jul; an episode begun before the span counts"}]},
+    {"id": "A6", "scope": "held", "title": "MEV-1 undocks from Optus D3 before 12 Aug 2026", "confidence": "G (date not published)",
+     "expect": [
+       {"rule": "C5", "ids": [44625], "window": ["2026-07-15", "2026-08-15"], "outcome": "fire"}]},
+    {"id": "A7", "scope": "held", "title": "ZhongXing-10 retires to the graveyard, about 18 Sep 2026", "confidence": "N + catalogue",
+     "expect": [
+       {"rule": "C7", "ids": [37677], "window": ["2026-09-13", "2026-09-22"], "outcome": "fire"}]},
+    {"id": "A8", "scope": "held", "title": "Three US retirements, Sep 2026", "confidence": "N + catalogue",
+     "expect": [
+       {"rule": "C7", "ids": [29494], "window": ["2026-09-09", "2026-09-15"], "outcome": "fire", "why": "DirecTV 9S left 12 Sep"},
+       {"rule": "C7", "ids": [28158], "window": ["2026-09-12", "2026-09-18"], "outcome": "fire", "why": "USA 176 left 15 Sep"},
+       {"rule": "C7", "ids": [26356], "window": ["2026-08-31", "2026-09-06"], "outcome": "fire", "why": "USA 149 left 3 Sep"}]},
+    {"id": "A10", "scope": "held", "title": "Arrivals: EOS-05, Tianlian 2-06, Tianlian 3-01", "confidence": "G (launch) + N/C (arrival)",
+     "expect": [
+       {"rule": "C6", "ids": [100607], "window": ["2026-09-02", "2026-10-02"], "outcome": "fire"},
+       {"rule": "C6", "ids": [100140], "window": ["2026-07-20", "2026-08-13"], "outcome": "fire"},
+       {"rule": "C6", "ids": [100172], "window": ["2026-07-26", "2026-09-30"], "outcome": "fire"}]},
+    {"id": "A11", "scope": "held", "title": "Shijian-31 on a Molniya-like orbit sweeping GEO longitudes (negative)", "confidence": "P citing COMSPOC",
+     "expect": [
+       {"rule": "C6", "ids": [69570], "window": ["2026-07-08", "2026-10-30"], "outcome": "silent", "why": "inclination 63.5 deg: never in the zone"},
+       {"rule": "C1", "ids": [69570], "window": ["2026-07-08", "2026-10-30"], "outcome": "silent", "why": "apogee about 4,100 km above GEO"}]},
+    {"id": "A13", "scope": "held", "title": "Express 80: 22-day gap in public elements from about 19 Sep 2026", "confidence": "N; checkable in the held data",
+     "expect": [
+       {"rule": "C8", "ids": [45986], "window": ["2026-09-23", "2026-10-02"], "outcome": "fire", "why": "NORAD number from KeepTrack, not confirmed on CelesTrak"}]},
+
+    {"id": "B1", "scope": "history", "title": "Luch (Olymp-K 1) parks between Intelsat 7 and 901, 2015", "confidence": "G (Intelsat on record) + I (CSIS, TLE-based)",
+     "pull": {"ids": [40258, 25473, 26824], "start": "2015-04-01", "end": "2015-10-15"},
+     "expect": [
+       {"rule": "C4", "ids": [40258], "window": ["2015-06-08", "2015-06-25"], "outcome": "fire"},
+       {"rule": "C3", "ids": [40258], "window": ["2015-06-19", "2015-06-25"], "outcome": "fire", "why": "held from 22 Jun (CSIS)"},
+       {"rule": "C1", "ids": [40258], "window": ["2015-06-19", "2015-09-28"], "outcome": "fire", "why": "about 10 km at times (SpaceNews, unnamed sources)"}]},
+    {"id": "B3", "scope": "history", "title": "Luch stops at 38.1E near Athena-Fidus and Paksat 1R, Oct 2017", "confidence": "G (French minister) + I (CSIS)",
+     "pull": {"ids": [40258, 39509, 37779], "start": "2017-10-01", "end": "2018-01-20"},
+     "expect": [
+       {"rule": "C4", "ids": [40258], "window": ["2017-10-15", "2017-10-26"], "outcome": "fire"},
+       {"rule": "C3", "ids": [40258], "window": ["2017-10-21", "2017-10-27"], "outcome": "fire", "why": "Paksat 1R's number (37779) is unverified"}]},
+    {"id": "B5", "scope": "history", "title": "MEV-1 docks with Intelsat 901 in the graveyard, 25 Feb 2020", "confidence": "G",
+     "pull": {"ids": [44625, 26824], "start": "2020-01-01", "end": "2020-04-30"},
+     "expect": [
+       {"rule": "C1", "ids": [44625, 26824], "window": ["2020-02-22", "2020-02-28"], "outcome": "fire"},
+       {"rule": "C5", "ids": [44625], "window": ["2020-01-01", "2020-04-30"], "outcome": "fire"}]},
+    {"id": "B6", "scope": "history", "title": "MEV-2 docks with Intelsat 10-02, 12 Apr 2021", "confidence": "G",
+     "pull": {"ids": [46113, 28358], "start": "2021-03-01", "end": "2021-04-30"},
+     "expect": [
+       {"rule": "C2", "ids": [46113, 28358], "window": ["2021-03-20", "2021-04-15"], "outcome": "fire"},
+       {"rule": "C1", "ids": [46113, 28358], "window": ["2021-04-05", "2021-04-15"], "outcome": "fire"},
+       {"rule": "C5", "ids": [46113], "window": ["2021-03-01", "2021-04-30"], "outcome": "fire"}]},
+    {"id": "B9", "scope": "history", "title": "Luch-5X stops beside Eutelsat 3B at 3.2E, Oct 2023", "confidence": "I (Langbroek camera) + C (Slingshot)",
+     "pull": {"ids": [55841, 39773, 37258, 41310], "start": "2023-09-01", "end": "2023-10-31"},
+     "expect": [
+       {"rule": "C4", "ids": [55841], "window": ["2023-09-22", "2023-10-07"], "outcome": "fire"},
+       {"rule": "C3", "ids": [55841], "window": ["2023-10-01", "2023-10-07"], "outcome": "fire", "why": "stop from 4 Oct (Langbroek)"},
+       {"rule": "C1", "ids": [55841, 39773], "window": ["2023-10-04", "2023-10-18"], "outcome": "fire", "why": "about 18 km on 15 Oct"},
+       {"rule": "C5", "ids": [55841], "window": ["2023-09-22", "2023-10-07"], "outcome": "fire"}]},
+    {"id": "B10", "scope": "history", "title": "SJ-21 and SJ-25 meet at 127.5E, Jun 2025", "confidence": "G + C",
+     "pull": {"ids": [62485, 49330], "start": "2025-05-15", "end": "2025-07-15"},
+     "expect": [
+       {"rule": "C5", "ids": [62485], "window": ["2025-06-07", "2025-06-17"], "outcome": "fire", "why": "moved to 127.4E 10-14 Jun"},
+       {"rule": "C5", "ids": [49330], "window": ["2025-06-01", "2025-06-08"], "outcome": "fire", "why": "arrived 127.6E 5 Jun"},
+       {"rule": "C1", "ids": [62485, 49330], "window": ["2025-05-15", "2025-07-15"], "outcome": "silent", "why": "same owner"}]},
+    {"id": "B13", "scope": "history", "title": "USA 324 (GSSAP) passes TJS-16 and TJS-17, Apr 2025", "confidence": "C via P (COMSPOC via Newsweek)",
+     "pull": {"ids": [51280, 63397, 63524], "start": "2025-04-15", "end": "2025-05-10"},
+     "expect": [
+       {"rule": "C1", "ids": [51280, 63397], "window": ["2025-04-23", "2025-04-29"], "outcome": "fire", "why": "about 17 km on 26 Apr"},
+       {"rule": "C1", "ids": [51280, 63524], "window": ["2025-04-26", "2025-05-02"], "outcome": "fire", "why": "about 12 km on 29 Apr"}]}
+  ]
+}
