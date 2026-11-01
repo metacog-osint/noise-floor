@@ -86,7 +86,12 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
     EARTHDATA_TOKEN). It fetches one L1C day (about 160 MB) and writes `<day>.smap.json` for the 7 days to that day:
     stand-out cells (share 0.5 or more, contrast 0.5 or more, ring 0.10 or less) and busy H3 res-3 regions. Files go
     to the `smap-data` release, which `site_layers.py` copies to `site/data/smap/`. The cuts are display choices.
-  - **Sentinel-1 worldwide** (`tools/s1_rfi_global.py`) and the **ALOS-2** probe (`tools/alos2_rfi.py`): built.
+  - **Sentinel-1 on the map (31 Oct 2026, Tom approved):** `tools/s1_daily.py` runs from the 06:30 collectors task
+    (Planetary Computer, no account). Each day (`tools/s1_rfi_global.py day`, about 950 IW GRD annotations, 3 minutes;
+    a day with more than 5% failed reads isn't saved) feeds a 28-day window of res-3 cells (4+ passes; share 0.25 or
+    more shown) in `<day>.s1.json` on the `s1-data` release, which `site_layers.py` copies to `site/data/s1/`. It shows
+    C-band radar activity by region, never GPS interference or sites (`docs/validation/s1-rfi.md` sections 9-10).
+  - The **ALOS-2** probe (`tools/alos2_rfi.py`): built.
     ALOS-2's North Warning System test failed (L2.2 shows no radar streaks), so it stays a probe.
   - **HydroGNSS** waits on credentials. **Biomass** needs an ESA account. **SMOS** (`tools/smos_rfi.py`, browse product,
     CDSE keys): its North Warning System test failed on 31 Oct (2 of 14 sites, AUC 0.535), so it stays a probe.

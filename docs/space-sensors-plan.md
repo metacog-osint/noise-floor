@@ -120,6 +120,9 @@ Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-
     (`docs/validation/s1-rfi.md` §9).
   - **Four weeks (2–29 Oct):** 13,437 res-3 cells with four or more passes (75%); every control reads 0.00 and the Gulf
     1.00; against the aircraft map AUC 0.747 (§10).
+  - **Live 31 Oct 2026 (Tom approved):** the map's "C-band radar activity (Sentinel-1)" layer. `tools/s1_daily.py` runs
+    daily from the 06:30 collectors task and fills the `s1-data` release (28-day windows, res-3 cells with 4+ passes,
+    shaded at a quarter, half and three quarters of passes). The note says the band isn't GPS and shows regions, not sites.
 
 ### E: Sentinel-1, -2 and -3 navigation receivers (GPS L1/L2, Galileo E1/E5a; near-global)
 
