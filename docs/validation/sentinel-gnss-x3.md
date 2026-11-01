@@ -173,3 +173,39 @@ The Persian Gulf had 7 jammed cell-windows judged on both signals, under the 10 
 - **The ground station case points the same way.** At Vaiņode (`docs/multi-gnss-plan.md`, X1 results) the lower L-band
   fell furthest on both evenings. That was a single development case at a site no aircraft data covered.
 - **Effects only.** Nothing here identifies an emitter or its type.
+
+### 2.6 After the fact: a lower-band drift over East Asia (exploratory, 1 Nov 2026, 16:40 UTC)
+
+Found while building box trends on L2C. Not pre-registered; the regions were drawn after the first look.
+
+- **What:** median index minus the Central Pacific, PODRIX units, per E3 week (Oct 2025 – Sep 2026) and for the weeks
+  of 28 Sep and 19 Oct 2026:
+
+| Region | L2C, Oct 2025 | L2C, Sep–Oct 2026 | L1 (same receivers), Oct 2025 | L1, Sep–Oct 2026 |
+|---|---|---|---|---|
+| China interior (28–40°N, 100–115°E) | −1.23 | −1.86 to −2.96 | −1.36 | −1.18 to −1.81 |
+| North-east China and Amur (45–55°N, 120–135°E) | −1.17 | −2.49 to −3.05 | −0.58 | −0.95 to −1.32 |
+| East Siberia (55–68°N, 105–135°E) | −0.76 | −2.68 to −3.42 | +0.20 | −0.48 to −0.92 |
+| Japan (33–42°N, 135–145°E) | −0.63 | −2.02 to −2.84 | −1.01 | −1.17 to −1.95 |
+| North-west Pacific (30–42°N, 150–170°E) | −0.20 | −1.75 to −2.01 | −0.75 | −1.12 to −1.49 |
+| Australia interior | −0.31 | −0.38 to −0.55 | −0.73 | −0.81 to −1.32 |
+| Indian Ocean (35–10°S, 60–95°E) | −0.17 | −0.25 to −0.53 | −0.57 | −0.41 to −1.13 |
+| Central US (35–45°N, 105–90°W) | −0.42 | −0.17 to −0.55 | −0.32 | −0.11 to +0.01 |
+| North Atlantic (40–55°N, 45–25°W) | −0.43 | −0.44 to −0.55 | +0.10 | −0.38 to +0.14 |
+
+- **East Asia slid 1.2–2.2 dB on L2C over the year** (mean of the three late weeks against October 2025, by region); **the other regions didn't.** On L1 from the same receivers the East
+  Asian change is smaller (about 0.3–1 dB) and noisier.
+- **Galileo E5a slid over East Asia too** (30–65°N, 100–150°E: from −0.4 to −0.6 dB in Oct 2025 to −1.9 to −3.9 dB in
+  Sep–Oct 2026, every unit).
+- **Not a change of receivers:** Sentinel-1C and 2C each show it (L2C −0.84 and −1.07 dB in Oct 2025; −2.38 to −3.07
+  and −2.36 to −2.80 dB in Sep–Oct 2026), and Sentinel-1D matches them from May 2026.
+- **Not obviously a GPS transmitter change:** per GPS satellite, on the same links over East Asia, L2C minus L1 C/A was
+  about 0 dB in Oct 2025 and −0.5 to −2.9 dB for 27 of 28 satellites in Oct 2026. GPS "flex power" can shift power
+  between signals over chosen regions, but it would not move Galileo E5a, which slid as well.
+- **Not the BeiDou overlap behind the L1 dip:** L2C shares no carrier with BeiDou, and Australia and the Indian Ocean,
+  under the same BeiDou satellites, stayed flat.
+- **Not explained:** a broad rise in lower L-band interference over East Asia would fit (the lower bands respond
+  about 2.6 times as strongly, section 2.2), and so would other regional emitters in 1164–1300 MHz, such as L-band
+  radars. Western Europe and West Siberia read far lower on every band, within reach of the Baltic and Russian jamming.
+- **Next:** Japanese IGS stations over the same year (GPS L2C against QZSS L2C on one receiver separates a transmitter
+  change from interference), a daily rhythm check, and the same table on the held-out E2.1 weeks once they are fetched.

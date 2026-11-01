@@ -12,7 +12,11 @@ Commands
                                                     -> DIR/<ID>_map_<first>_<last>.csv and .png
   chart --config CFG --area ID --out DIR            the weekly and daily series with the config's events and Kp >= 5
                                                     days -> DIR/<ID>_trend.png (reads the series files)
-DAYS are YYYY-MM-DD or FIRST..LAST (GPS days with epoch files from tools/sentinel_rfi.py epochs).
+  --signal l1 (default) | l2c | e5a | l1p           which index: GPS L1 from the E2 epoch files (all six units), or
+                                                    GPS L2C, Galileo E5a or GPS L1 on the PODRIX units only, from the
+                                                    X3 band files (tools/sentinel_bands.py bands). Any signal but l1
+                                                    adds _<signal> to every output name.
+DAYS are YYYY-MM-DD or FIRST..LAST (GPS days with epoch or band files).
 
 The index is E2's (tools/sentinel_rfi.py): the median drop in GPS L1 signal strength below the unit-day baseline over
 an epoch's links, in dB, by where the spacecraft was. Validation (docs/validation/sentinel-gnss.md): a regional sensor
@@ -39,6 +43,7 @@ if TOOLS not in sys.path:
 import sentinel_gnss as SG  # noqa: E402
 
 EPOCH_DIR = os.path.join(SG.DATA, "epochs")
+BANDS_DIR = os.path.join(SG.DATA, "bands")
 LAND = os.path.join(ROOT, "data", "cache", "ne_50m_land.geojson")
 DEGRADED_DB, STRONG_DB = -1.0, -3.0
 CAPTION = ("Where Sentinel-1/2/3 navigation receivers (693-815 km) measured weaker GPS L1 signals: the median drop "
@@ -48,6 +53,28 @@ CAPTION = ("Where Sentinel-1/2/3 navigation receivers (693-815 km) measured weak
            "itself. "
            "Jamming, not spoofing. About six days behind. Contains modified Copernicus Sentinel data {year}; orbital "
            "data USSPACECOM (space-track.org).")
+CAPTION_L2C = ("Where Sentinel-1C, 1D and 2C navigation receivers (about 693-786 km) measured weaker GPS L2C signals "
+               "(1227.60 MHz): the median drop below each unit-day's baseline, by the spacecraft's position, not the "
+               "emitter's. Regional, about 2,000 km across. It picks out aircraft-jammed regions (AUC 0.898) and drops "
+               "about 2.6 times as far as L1 there (docs/validation/sentinel-gnss-x3.md). No BeiDou signal shares "
+               "1227.60 MHz, so the 60-160 deg E dip seen on L1 is a quarter as deep here (inland Australia -0.3 dB). "
+               "Jamming, not spoofing. About six days behind. Contains modified Copernicus Sentinel data {year}; "
+               "orbital data USSPACECOM (space-track.org).")
+CAPTION_PODRIX = ("Where Sentinel-1C, 1D and 2C navigation receivers (about 693-786 km) measured weaker {label} "
+                  "signals: the median drop below each unit-day's baseline, by the spacecraft's position, not the "
+                  "emitter's. Regional, about 2,000 km across (docs/validation/sentinel-gnss-x3.md). Jamming, not "
+                  "spoofing. About six days behind. Contains modified Copernicus Sentinel data {{year}}; orbital data "
+                  "USSPACECOM (space-track.org).")
+SIGNALS = {   # name: (directory, column, label for axes, colour-scale floor dB, caption)
+    "l1": (EPOCH_DIR, "d_l1", "GPS L1", -2.0, CAPTION),
+    "l2c": (BANDS_DIR, "d_l2c", "GPS L2C", -4.0, CAPTION_L2C),
+    "e5a": (BANDS_DIR, "d_e5a", "Galileo E5a", -4.0, CAPTION_PODRIX.format(label="Galileo E5a (1176.45 MHz)")),
+    "l1p": (BANDS_DIR, "d_l1", "GPS L1 (Sentinel-1C/1D/2C)", -2.0, CAPTION_PODRIX.format(label="GPS L1")),
+}
+
+
+def stem(area, signal):
+    return area if signal == "l1" else f"{area}_{signal}"
 
 
 def in_box(lat, lon, b):
@@ -62,16 +89,19 @@ def pad(b, deg):
     return [max(b[0] - deg, -90.0), min(b[1] + deg, 90.0), wrap(lo), wrap(hi)]
 
 
-def load_day(day, cols=("unit", "lat", "lon", "cell", "present", "d_l1")):
+def load_day(day, signal="l1"):
+    """One day's epochs: unit, lat, lon, cell, present and the signal's index as 'd' (None if the file is missing)."""
     import pyarrow.parquet as pq
-    p = os.path.join(EPOCH_DIR, f"{day}.parquet")
+    folder, col = SIGNALS[signal][:2]
+    p = os.path.join(folder, f"{day}.parquet")
     if not os.path.exists(p):
         return None
-    T = pq.read_table(p, columns=list(cols))
+    cols = ["unit", "lat", "lon", "cell", "present", col]
+    T = pq.read_table(p, columns=cols)
     out = {k: np.asarray(T.column(k).to_numpy(zero_copy_only=False)) for k in cols}
     for k in ("unit", "cell"):
-        if k in out:
-            out[k] = out[k].astype(str)
+        out[k] = out[k].astype(str)
+    out["d"] = out.pop(col)
     return out
 
 
@@ -95,26 +125,26 @@ def boxes_of(cfg, area):
     return a, cfg.get("references", []), cfg.get("comparisons", [])
 
 
-def series(cfg, area, days):
+def series(cfg, area, days, signal="l1"):
     a, refs, comps = boxes_of(cfg, area)
     named = [("area", a)] + [("ref", r) for r in refs] + [("cmp", c) for c in comps]
     daily, weekly_acc = [], {}
     for day in days:
-        e = load_day(day)
+        e = load_day(day, signal)
         if e is None:
             continue
-        ok = e["present"] & np.isfinite(e["d_l1"]) & np.isfinite(e["lat"])
+        ok = e["present"] & np.isfinite(e["d"]) & np.isfinite(e["lat"])
         row = {"day": str(day), "week": str(week_start(day))}
         ref_vals = []
         for kind, b in named:
             m = ok & in_box(e["lat"], e["lon"], b["box"])
-            row[b["id"]] = stats(e["d_l1"][m], e["unit"][m])
+            row[b["id"]] = stats(e["d"][m], e["unit"][m])
             acc = weekly_acc.setdefault(str(week_start(day)), {}).setdefault(b["id"], [[], [], set()])
-            acc[0].append(e["d_l1"][m])
+            acc[0].append(e["d"][m])
             acc[1].append(e["unit"][m])
             acc[2].add(str(day))
             if kind == "ref":
-                ref_vals.append(e["d_l1"][m])
+                ref_vals.append(e["d"][m])
         rv = np.concatenate(ref_vals) if ref_vals else np.zeros(0)
         row["reference"] = stats(rv, [])
         row["anomaly"] = (round(row[a["id"]]["median"] - row["reference"]["median"], 3)
@@ -135,7 +165,7 @@ def series(cfg, area, days):
         row["anomaly"] = (round(row[a["id"]]["median"] - row["reference"]["median"], 3)
                           if row[a["id"]]["median"] is not None and row["reference"]["median"] is not None else None)
         weekly.append(row)
-    return {"area": a, "references": refs, "comparisons": comps, "daily": daily, "weekly": weekly}
+    return {"area": a, "signal": signal, "references": refs, "comparisons": comps, "daily": daily, "weekly": weekly}
 
 
 def write_series(res, area, out):
@@ -159,17 +189,17 @@ def write_series(res, area, out):
         json.dump(res, f, indent=1)
 
 
-def cell_map(cfg, area, days):
+def cell_map(cfg, area, days, signal="l1"):
     import h3
     a, _, _ = boxes_of(cfg, area)
     box = pad(a["box"], float(cfg.get("map_pad_deg", 10.0)))
     vals = {}
     for day in days:
-        e = load_day(day)
+        e = load_day(day, signal)
         if e is None:
             continue
-        ok = e["present"] & np.isfinite(e["d_l1"]) & in_box(e["lat"], e["lon"], box) & (e["cell"] != "")
-        for c, v in zip(e["cell"][ok], e["d_l1"][ok]):
+        ok = e["present"] & np.isfinite(e["d"]) & in_box(e["lat"], e["lon"], box) & (e["cell"] != "")
+        for c, v in zip(e["cell"][ok], e["d"][ok]):
             vals.setdefault(c, []).append(float(v))
     rows = []
     for c, v in vals.items():
@@ -204,7 +234,7 @@ def land_in(box):
     return rings
 
 
-def draw_map(cfg, area, box, rows, days, path):
+def draw_map(cfg, area, box, rows, days, path, signal="l1"):
     import h3
     import matplotlib
     matplotlib.use("Agg")
@@ -226,8 +256,9 @@ def draw_map(cfg, area, box, rows, days, path):
             continue
         hexes.append(np.c_[lon, bnd[:, 0]])
         cols.append(r["median_db"])
-    pc = PolyCollection(hexes, array=np.clip(cols, -2, 1), cmap=plt.get_cmap("RdBu"),
-                        norm=TwoSlopeNorm(vmin=-2.0, vcenter=0.0, vmax=1.0), edgecolor="none", alpha=0.6, zorder=2)
+    _, _, label, floor, caption = SIGNALS[signal]
+    pc = PolyCollection(hexes, array=np.clip(cols, floor, 1), cmap=plt.get_cmap("RdBu"),
+                        norm=TwoSlopeNorm(vmin=floor, vcenter=0.0, vmax=1.0), edgecolor="none", alpha=0.6, zorder=2)
     ax.add_collection(pc)
     a = next(x for x in cfg["focus_areas"] if x["id"] == area)
     b = a["box"]
@@ -244,13 +275,13 @@ def draw_map(cfg, area, box, rows, days, path):
     ax.set_xticklabels([f"{t if t <= 180 else t - 360:.0f}" for t in ax.get_xticks()])
     ax.set_xlim(min(xl), max(xl))
     cb = fig.colorbar(pc, ax=ax, fraction=0.04, pad=0.02, extend="both")
-    cb.set_label("GPS L1 signal-strength change, dB (median per ~300 km cell)", fontsize=8)
+    cb.set_label(f"{label} signal-strength change, dB (median per ~300 km cell)", fontsize=8)
     n_days = len(days)
-    ax.set_title(f"{a['name']}\nSentinel navigation receivers, {days[0]:%d %b %Y} to {days[-1]:%d %b %Y} "
+    ax.set_title(f"{a['name']}: {label}\nSentinel navigation receivers, {days[0]:%d %b %Y} to {days[-1]:%d %b %Y} "
                  f"({n_days} days)", fontsize=9)
     ax.set_xlabel("longitude (deg; east positive)", fontsize=8)
     ax.set_ylabel("latitude (deg N)", fontsize=8)
-    fig.text(0.01, 0.005, CAPTION.format(year=days[-1].year), fontsize=6, wrap=True, va="bottom")
+    fig.text(0.01, 0.005, caption.format(year=days[-1].year), fontsize=6, wrap=True, va="bottom")
     fig.tight_layout(rect=(0, 0.07, 1, 1))
     fig.savefig(path)
     plt.close(fig)
@@ -262,6 +293,7 @@ def draw_chart(cfg, area, res, kp_days, path):
     import matplotlib.dates as mdates
     import matplotlib.pyplot as plt
     a = res["area"]
+    _, _, label, _, caption = SIGNALS[res.get("signal", "l1")]
     fig, ax = plt.subplots(figsize=(11, 5.6), dpi=150)
     d_days = [dt.date.fromisoformat(r["day"]) for r in res["daily"]]
     ax.plot(d_days, [r[a["id"]]["median"] for r in res["daily"]], ".", color="#2b6cb0", ms=4, alpha=0.6,
@@ -290,10 +322,10 @@ def draw_chart(cfg, area, res, kp_days, path):
             ax.annotate(ev["label"], (x, ax.get_ylim()[1]), rotation=90, fontsize=6.5, va="top", ha="right",
                         color="#553c9a")
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
-    ax.set_ylabel("GPS L1 signal-strength change, dB (median of epochs in the box)")
-    ax.set_title(f"{a['name']}: interference seen by Sentinel navigation receivers", fontsize=10)
+    ax.set_ylabel(f"{label} signal-strength change, dB (median of epochs in the box)")
+    ax.set_title(f"{a['name']}: interference seen by Sentinel navigation receivers, {label}", fontsize=10)
     ax.legend(fontsize=7, loc="lower left")
-    fig.text(0.01, 0.005, CAPTION.format(year=hi.year) + " Shaded: Kp >= 5 (GFZ). Dotted: events from the config.",
+    fig.text(0.01, 0.005, caption.format(year=hi.year) + " Shaded: Kp >= 5 (GFZ). Dotted: events from the config.",
              fontsize=6, wrap=True, va="bottom")
     fig.tight_layout(rect=(0, 0.07, 1, 1))
     fig.savefig(path)
@@ -308,29 +340,32 @@ def main(argv=None):
         p.add_argument("--config", required=True)
         p.add_argument("--area", required=True)
         p.add_argument("--out", required=True)
+        p.add_argument("--signal", choices=sorted(SIGNALS), default="l1")
         if name != "chart":
             p.add_argument("days", nargs="+")
     a = ap.parse_args(argv)
+    st = stem(a.area, a.signal)
     with open(a.config, encoding="utf-8") as f:
         cfg = json.load(f)
     if a.cmd == "series":
-        res = series(cfg, a.area, SG.days_arg(a.days))
-        write_series(res, a.area, a.out)
+        res = series(cfg, a.area, SG.days_arg(a.days), a.signal)
+        write_series(res, st, a.out)
         print(json.dumps({"days": len(res["daily"]), "weeks": len(res["weekly"]), "out": a.out}))
     elif a.cmd == "map":
-        days = [d for d in SG.days_arg(a.days) if os.path.exists(os.path.join(EPOCH_DIR, f"{d}.parquet"))]
-        box, rows = cell_map(cfg, a.area, days)
+        folder = SIGNALS[a.signal][0]
+        days = [d for d in SG.days_arg(a.days) if os.path.exists(os.path.join(folder, f"{d}.parquet"))]
+        box, rows = cell_map(cfg, a.area, days, a.signal)
         os.makedirs(a.out, exist_ok=True)
-        stem = os.path.join(a.out, f"{a.area}_map_{days[0]}_{days[-1]}")
-        with open(stem + ".csv", "w", newline="", encoding="utf-8") as f:
+        base = os.path.join(a.out, f"{st}_map_{days[0]}_{days[-1]}")
+        with open(base + ".csv", "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=list(rows[0]))
             w.writeheader()
             w.writerows(rows)
-        draw_map(cfg, a.area, box, rows, days, stem + ".png")
-        print(json.dumps({"cells": len(rows), "days": len(days), "png": stem + ".png"}))
+        draw_map(cfg, a.area, box, rows, days, base + ".png", a.signal)
+        print(json.dumps({"cells": len(rows), "days": len(days), "png": base + ".png"}))
     else:
         import sentinel_rfi as R
-        with open(os.path.join(a.out, f"{a.area}.json"), encoding="utf-8") as f:
+        with open(os.path.join(a.out, f"{st}.json"), encoding="utf-8") as f:
             res = json.load(f)
         first = dt.date.fromisoformat(res["daily"][0]["day"])
         last = dt.date.fromisoformat(res["daily"][-1]["day"])
@@ -339,7 +374,7 @@ def main(argv=None):
         except Exception as ex:
             print(f"Kp not fetched: {ex}", file=sys.stderr)
             kp = []
-        path = os.path.join(a.out, f"{a.area}_trend.png")
+        path = os.path.join(a.out, f"{st}_trend.png")
         draw_chart(cfg, a.area, res, kp, path)
         print(json.dumps({"png": path, "kp5_days": kp}))
     return 0
