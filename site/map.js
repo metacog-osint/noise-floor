@@ -44,7 +44,7 @@
                low: css("--map-low"), ramp: [css("--ramp-1"), css("--ramp-2"), css("--ramp-3"), css("--ramp-4")],
                focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean"), test: css("--ink-2"),
                border: css("--map-border"), label: css("--map-label"), halo: css("--map-halo"), area: css("--map-area"),
-               spoof: css("--map-spoof"), cyg: css("--map-cyg"), nisar: css("--map-nisar"), s6: css("--map-s6"), smap: css("--map-smap"), c2: css("--map-c2") };
+               spoof: css("--map-spoof"), cyg: css("--map-cyg"), nisar: css("--map-nisar"), s6: css("--map-s6"), smap: css("--map-smap"), c2: css("--map-c2"), s1: css("--map-s1") };
     mapEl.style.background = colors.ocean;
   }
 
@@ -216,6 +216,21 @@
           g.globalAlpha = 0.45; g.beginPath(); trace(g, sh.m, true); g.fill();
           g.globalAlpha = 1; g.lineWidth = 1.4; g.stroke();
         });
+        g.restore();
+      }
+      if (state.s1Show && state.s1 && state.s1.cells) {             // Sentinel-1: share of passes with C-band RFI (H3 res 3)
+        g.save(); g.fillStyle = colors.s1;
+        var sl = [[], [], []];
+        state.s1.cells.forEach(function (c) {                        // three levels: a quarter, half, three quarters of passes
+          var sh = shapeOf(c[0]);
+          if (sh.wrap || !onScreen(sh.mb)) return;
+          sl[c[1] >= 0.75 ? 2 : c[1] >= 0.5 ? 1 : 0].push(sh);
+        });
+        for (var sk = 0; sk < 3; sk++) {                             // stacked, as Sentinel-6: no seams between cells
+          g.globalAlpha = 0.13; g.beginPath();
+          for (var sj = sk; sj < 3; sj++) sl[sj].forEach(function (sh) { trace(g, sh.m, true); });
+          g.fill();
+        }
         g.restore();
       }
       if (state.c2Show && state.c2 && state.c2.cells) {             // COSMIC-2: raised RFI-index regions (H3 res 2)
@@ -399,6 +414,11 @@
       var p3s = h3.cellToParent(h, 3), bz = (state.smap.busy || []).filter(function (c) { return c[0] === p3s; })[0];
       if (src) lines.push(["SMAP", "1400–1427 MHz flagged on " + Math.round(src[1] * 100) + "% of looks, " + Math.round(src[2] * 100) + " points above its surroundings"]);
       else if (bz) lines.push(["SMAP", "1400–1427 MHz busy: flagged on " + Math.round(bz[1] * 100) + "% of looks (single emitters can't be told apart)"]);
+    }
+    if (state.s1Show && state.s1 && state.s1.cells) {
+      var p3c = h3.cellToParent(h, 3), s1c = state.s1.cells.filter(function (c) { return c[0] === p3c; })[0];
+      if (s1c) lines.push(["Sentinel-1", "C-band interference on " + Math.round(s1c[1] * s1c[2]) + " of " + s1c[2] + " radar passes (" +
+        Math.round(s1c[1] * 100) + "%), 28 days to " + fmtDay(state.s1.day)]);
     }
     if (state.c2Show && state.c2 && state.c2.cells) {
       var q2 = h3.cellToParent(h, 2), c2c = state.c2.cells.filter(function (c) { return c[0] === q2; })[0];
@@ -744,7 +764,7 @@
   function hashFor() {
     var c = map.getCenter();
     return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") + (imagery.on ? "&img=esri" : "") +
-           (state.spoofShow ? "&sp=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") + (state.s6Show ? "&s6=1" : "") + (state.smapShow ? "&sm=1" : "") + (state.c2Show ? "&c2=1" : "") +
+           (state.spoofShow ? "&sp=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") + (state.s6Show ? "&s6=1" : "") + (state.smapShow ? "&sm=1" : "") + (state.c2Show ? "&c2=1" : "") + (state.s1Show ? "&s1=1" : "") +
            "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
   }
   function writeHash() { if (state.day) history.replaceState(null, "", hashFor()); }
@@ -786,6 +806,12 @@
       for (var k = 1; k <= 3 && !pick; k++) {
         var d = new Date(Date.parse(day + "T00:00:00Z") - k * 86400000).toISOString().slice(0, 10);
         if (idx.indexOf(d) >= 0) pick = d;
+      }
+    }
+    if (!pick && kind === "s1") {                      // 28-day windows: the newest file up to 7 days before
+      for (var k1 = 1; k1 <= 7 && !pick; k1++) {
+        var d1 = new Date(Date.parse(day + "T00:00:00Z") - k1 * 86400000).toISOString().slice(0, 10);
+        if (idx.indexOf(d1) >= 0) pick = d1;
       }
     }
     if (!pick) return Promise.resolve(null);
@@ -926,6 +952,12 @@
       "a region it doesn't track which days aircraft see interference (see Validation). " +
       "Source: UCAR COSMIC-2 (CDAAC), CC BY 4.0."
       : "No COSMIC-2 file within 3 days of this day (it runs about a day behind)." + nearest("cosmic2", state.day));
+    if (state.s1Show) parts.push(state.s1 ? "Sentinel-1, 28 days to " + fmtDay(state.s1.day) + ": shaded cells, about 110 km across, are where " +
+      "the Copernicus Sentinel-1 radar satellites reported interference in their own band (C-band, 5.4 GHz) on at least a quarter of their passes; " +
+      "darker means half or three quarters of passes. Cells passed over fewer than 4 times are left out. This band is not GPS: it shows radars " +
+      "and other C-band transmitters, and it shows regions, not sites (a check against known radar sites failed; see Validation). " +
+      "Source: Copernicus Sentinel-1, read through Microsoft Planetary Computer; contains modified Copernicus Sentinel data " + state.s1.day.slice(0, 4) + "."
+      : "No Sentinel-1 file within 7 days of this day (each covers 28 days and runs about two days behind)." + nearest("s1", state.day));
     if (state.smapShow) parts.push(state.smap ? "SMAP, 7 days to " + fmtDay(state.smap.day) + ": " + (state.smap.sources || []).length +
       " stand-out cells (solid) where NASA's SMAP satellite flagged interference in the protected 1400–1427 MHz band on at least half its looks, " +
       "at least 50 points more often than the cells 100–300 km around, which are themselves quiet. Many are likely L-band radars: tested against the North Warning System's " +
@@ -956,13 +988,14 @@
     if (state.nisShow) layerFor("nisar", day).then(function (j) { if (state.day !== day) return; state.nis = j; layerNote(); layer.redraw(); });
     if (state.s6Show) layerFor("s6", day).then(function (j) { if (state.day !== day) return; state.s6 = j; layerNote(); layer.redraw(); });
     if (state.c2Show) layerFor("cosmic2", day).then(function (j) { if (state.day !== day) return; state.c2 = j; layerNote(); layer.redraw(); });
+    if (state.s1Show) layerFor("s1", day).then(function (j) { if (state.day !== day) return; state.s1 = j; layerNote(); layer.redraw(); });
     if (state.smapShow) layerFor("smap", day).then(function (j) { if (state.day !== day) return; state.smap = j; layerNote(); layer.redraw(); });
     layerNote();
   }
 
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true; state.nisFocus = null;
-    state.spoof = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; loadLayers(day);
+    state.spoof = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; state.s1 = null; loadLayers(day);
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
     syncTimeline();
     fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
@@ -1112,7 +1145,7 @@
     });
   }).catch(function () { /* the map works without labels */ });
 
-  ["spoof", "cygnss", "nisar", "s6", "smap", "cosmic2"].forEach(function (k) {
+  ["spoof", "cygnss", "nisar", "s6", "smap", "cosmic2", "s1"].forEach(function (k) {
     fetch("/data/" + k + "/index.json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (j) { layerIndex[k] = (j && j.days) || []; if (state.day) loadLayers(state.day); });
   });
@@ -1160,7 +1193,7 @@
       var v = (hp.v || "").split(",").map(Number);
       state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
       imagery.want = hp.img === "esri";
-      state.spoofShow = hp.sp === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1"; state.s6Show = hp.s6 === "1"; state.smapShow = hp.sm === "1"; state.c2Show = hp.c2 === "1";
+      state.spoofShow = hp.sp === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1"; state.s6Show = hp.s6 === "1"; state.smapShow = hp.sm === "1"; state.c2Show = hp.c2 === "1"; state.s1Show = hp.s1 === "1";
       return d;
     }
     var day = fromHash();
@@ -1246,7 +1279,7 @@
     ["tl-prev", "tl-next", "tl-slider", "map-day"].forEach(function (id) {
       document.getElementById(id).addEventListener("pointerdown", function () { setPlaying(false); });
     });
-    [["spoof", "spoof"], ["cyg", "cyg"], ["nis", "nis"], ["s6", "s6"], ["smap", "smap"], ["c2", "c2"]].forEach(function (k) {
+    [["spoof", "spoof"], ["cyg", "cyg"], ["nis", "nis"], ["s6", "s6"], ["smap", "smap"], ["c2", "c2"], ["s1", "s1"]].forEach(function (k) {
       var box = document.getElementById("lyr-" + k[0]);
       if (!box) return;
       box.checked = !!state[k[0] + "Show"];
