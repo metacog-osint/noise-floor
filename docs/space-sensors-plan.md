@@ -210,14 +210,12 @@ plain z-score a little worse (0.849). The Baltic box deepened from −3.2 dB (Oc
 | Rolling ~6-week window | Daily and weekly series for private areas against quiet references and comparison boxes (E5) | Built |
 | No correction for regional signals | Proposed E2.1: correct for BeiDou/QZSS satellites overhead | The 60-160 deg E dip below |
 
-**E2.1 (proposed, not built): a regional signal-load term.** After E3, a longitude profile over quiet bands showed the
-index about 0.7-1.2 dB low between roughly 80 and 140 deg E at every latitude band, open Indian Ocean included, on every
-unit and at every pass time, and near 0 elsewhere (`docs/validation/sentinel-gnss.md`, section 2.5). That is where
-BeiDou's geostationary and inclined satellites and QZSS sit overhead. The hypothesis (unverified): their L1-band
-signals raise a low-orbit receiver's noise floor. The fix: count, per epoch, the healthy BeiDou GEO/IGSO and QZSS
-satellites above 10 degrees from the broadcast ephemeris, and add that count to the baseline. Pre-register the test
-(the dip over empty ocean must close; the Baltic AUC must not fall) before using it. Until then, every chart and map
-caption carries the caveat.
+**E2.1 (pre-registered 1 Nov, not run): a regional signal-load term.** A quick test on the E3 days supported the
+hypothesis: over the quiet southern band the index falls steadily with the number of BeiDou and SBAS
+geosynchronous satellites overhead (-0.05 dB with 0-1, -0.72 dB with 20-21), and an elevation-weighted load
+(-0.062 dB per unit) cuts the longitude dip from 1.07 to 0.47 dB while leaving the Baltic near -4.1 dB.
+Pre-registered in `docs/validation/sentinel-gnss-e21.md` (per unit-day slope on the load; five checks on eight
+held-out weeks). Until it passes, every chart and map caption carries the caveat.
 
 ## Collectors for ground truth and context
 
