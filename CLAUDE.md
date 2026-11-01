@@ -110,6 +110,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   **`watch.py` sources added 31 Oct:** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch (pages in
   `private/watch/pollers.json` `pagewatch`, each with a link pattern). FAA NOTAMs wait on API credentials (requested 30 Oct);
   the public NOTAM Search site refuses automated clients.
+- **Every constellation and band (planned 1 Nov 2026, not built):** read `docs/multi-gnss-plan.md` first (signal table,
+  sensors by band, checks that separate interference from outages, scintillation and equipment, steps X1–X6, decisions
+  D1–D4). First probe: the Vaiņode event of 17 May 2026 fell on every band at once.
 - **AIS beyond the Baltic (28 Oct 2026, Tom approved):** `collectors/run_aisstream.cmd` (global aisstream, private only;
   focus boxes in `private/watch/maritime.json`) and `collectors/barentswatch_ais.py` + `run_barentswatch.cmd` (Norway's open
   AIS, NLOD; Finnmark and the western Barents Sea). Both skip until Tom's credentials exist (AISSTREAM_API_KEY;
