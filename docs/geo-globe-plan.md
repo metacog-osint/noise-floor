@@ -172,6 +172,16 @@ and J2 left out), and it shows one instant while that pair swings between about 
 EWS-G3 is inclined. Fixed the same day: the board's close pairs use SGP4 (`docs/validation/geo-board.md`), so callouts,
 board and globe agree.
 
+## G4 done (1 Nov 2026)
+
+Pre-registered in `docs/validation/geo-callouts.md` (rules v1, 17 published cases with sources, scorer; commit
+`1b6d8fd`) before any run, then scored once (`44dc36c`). C3 parked beside (4 of 5), C4 heading for a slot (2 of 4), C5
+listed-role orbit change (5 of 6), C6 arrived (4 of 4) and C7 retired (3 of 4) met the frozen criteria and show by
+default; C1 close (10 of 12, but about 160 new a week), C2 approaching (1 of 4, about 500 a week) and C8 went quiet
+(0 of 1) stay behind toggles. `tools/geo_callouts.py publish` writes `site/data/geo/callouts.json` at deploy; the
+globe's Callouts control, rings, the panel's recent list and each object's callouts read it. A v2 of C1 and C2 would
+be new rules on new cases.
+
 ## G5 done (28 Oct 2026)
 
 - **Hypothetical beams** (detail panel, one selected satellite): band (UHF to Ka, up and down), dish diameter or beamwidth

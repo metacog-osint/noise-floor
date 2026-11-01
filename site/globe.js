@@ -53,7 +53,8 @@ function main() {
   const S = { objs: [], byId: new Map(), sel: [], q: "", regions: new Set(REGIONS.map((r) => r[0])), types: new Set(TYPES.map((t) => t[0])),
               activeOnly: false, color: "region", trails: "sel", win: 7, fp: "", t: null, track: null, tracks: {}, board: null, owners: {},
               ownerColor: {}, strip: { x0: -180, x1: 180, y: "alt" }, beams: new Map(), aim: null, files: [],
-              place: null, pickPlace: false, sun: false, over: false, dish: 0.9, ghz: 12, open: {}, rel: null, near: null, look: null, sunwins: null };
+              place: null, pickPlace: false, sun: false, over: false, dish: 0.9, ghz: 12, open: {}, rel: null, near: null, look: null, sunwins: null,
+              co: null, coHash: null, coData: null };
   function readHash() {
     if (!location.hash.startsWith("#g=")) return;
     const kv = {};
@@ -69,6 +70,7 @@ function main() {
     if (kv.a === "1") S.activeOnly = true;
     if (kv.sun === "1") S.sun = true;
     if (kv.ov === "1") S.over = true;
+    if (kv.co != null) S.coHash = kv.co.split(",").filter((x) => /^C[1-8]$/.test(x));
     if (kv.pl) {                                                          // lat~lon~name
       const p = kv.pl.split("~");
       if (p.length >= 2 && isFinite(+p[0]) && isFinite(+p[1]) && p[0] !== "" && p[1] !== "") S.place = { lat: Math.max(-90, Math.min(90, +p[0])), lon: ((+p[1] + 540) % 360) - 180, name: p.slice(2).join(" ") };
@@ -93,6 +95,7 @@ function main() {
     if (S.activeOnly) parts.push("a:1");
     if (S.sun) parts.push("sun:1");
     if (S.over) parts.push("ov:1");
+    if (S.co && S.coData) { const def = S.coData.rules.filter((r) => r.default_on).map((r) => r.id).join(","), cur = [...S.co].sort().join(","); if (cur !== def) parts.push("co:" + cur); }
     if (S.place) parts.push("pl:" + [S.place.lat.toFixed(3), S.place.lon.toFixed(3), (S.place.name || "").replace(/[;~,:]/g, " ")].join("~"));
     if (S.beams.size) parts.push("b:" + [...S.beams].map(([id, b]) => [id, b.lat.toFixed(2), b.lon.toFixed(2), b.bw.toFixed(2), b.band, b.dia,
       (b.c6 ? "6" : "") + (b.c10 ? "10" : "")].join("~")).join(","));
@@ -163,8 +166,8 @@ function main() {
   selDots.renderOrder = 2;
   scene.add(dots, selDots);
   const trailGroup = new THREE.Group(), predGroup = new THREE.Group(), fpGroup = new THREE.Group(), beamGroup = new THREE.Group(), fileGroup = new THREE.Group();
-  const sunGroup = new THREE.Group(), placeGroup = new THREE.Group(), overGroup = new THREE.Group();
-  scene.add(trailGroup, predGroup, fpGroup, beamGroup, fileGroup, sunGroup, placeGroup, overGroup);
+  const sunGroup = new THREE.Group(), placeGroup = new THREE.Group(), overGroup = new THREE.Group(), coGroup = new THREE.Group();
+  scene.add(trailGroup, predGroup, fpGroup, beamGroup, fileGroup, sunGroup, placeGroup, overGroup, coGroup);
 
   // ---------------------------------------------------------------- colours and filters
   const col = new THREE.Color(), bgCol = new THREE.Color(SPACE);
@@ -238,6 +241,7 @@ function main() {
     drawSun();
     drawPlace();
     drawOverlays();
+    drawCallouts();
     legend();
     drawStrip();
     panelUpdate();
@@ -708,6 +712,59 @@ function main() {
         w.start.toISOString().slice(0, 19) + "Z", w.peak.toISOString().slice(0, 19) + "Z", w.end.toISOString().slice(0, 19) + "Z", w.minutes.toFixed(1), w.sep.toFixed(3)]));
   }
 
+  // ---------------------------------------------------------------- G4: callouts (docs/validation/geo-callouts.md, v1)
+  const CO_COL = { C1: "#ff8c42", C2: "#ffb380", C3: "#ff5d8f", C4: "#ff9ec0", C5: "#c792ea", C6: "#4dd0e1", C7: "#9be7f0", C8: "#9aa5b1" };
+  const coRule = (id) => (S.coData ? S.coData.rules.find((r) => r.id === id) : null) || { name: id, score: "" };
+  function coShown() {                                                    // enabled callouts in the 14 days up to the time shown
+    if (!S.coData || !S.co) return [];
+    const day = new Date(nowMs()).toISOString().slice(0, 10), from = new Date(nowMs() - 13 * 86400000).toISOString().slice(0, 10);
+    return S.coData.callouts.filter((c) => S.co.has(c.r) && c.d <= day && (c.end || c.d) >= from);
+  }
+  function drawCallouts() {
+    clearGroup(coGroup);
+    const by = {};
+    coShown().forEach((c) => [c.a, c.b].filter(Boolean).forEach((x) => {
+      const o = S.byId.get(x[0]); if (o && o.p && shown(o)) (by[c.r] = by[c.r] || new Set()).add(o);
+    }));
+    Object.keys(by).forEach((r) => coGroup.add(ptsOf([...by[r]].map((o) => sc(...o.p)), CO_COL[r], 19)));
+    dirty = true;
+  }
+  function calloutText(c, me) {
+    const other = c.b ? (c.b[0] === me ? c.a : c.b) : null;
+    const who = other ? " · " + other[1] + " (" + (other[2] || "?") + ")" : "";
+    let n = "";
+    if (c.min_km != null) n = ", closest " + fmtN(Math.round(c.min_km)) + " km";
+    else if (c.km != null) n = ", " + fmtN(Math.round(c.km)) + " km" + (c.from_km != null ? " (from " + fmtN(Math.round(c.from_km)) + ")" : "");
+    else if (c.r === "C3" && c.deg != null) n = ", " + c.deg.toFixed(2) + "° apart in longitude";
+    else if (c.r === "C4" && c.days != null) n = ", about " + c.days + " days away at " + Math.abs(c.drift || 0).toFixed(2) + "° a day";
+    else if (c.r === "C5") n = ": drift changed " + (c.drift_change || 0).toFixed(3) + "° a day, inclination " + (c.inc_change || 0).toFixed(3) + "°, longitude " + (c.lon_off_deg || 0).toFixed(2) + "° off";
+    else if (c.kind) n = " (" + c.kind + ")";
+    const d = (s) => { const x = new Date(s + "T00:00:00Z"); return x.getUTCDate() + " " + MON[x.getUTCMonth()]; };
+    return d(c.d) + (c.end && c.end !== c.d ? "–" + d(c.end) : "") + " · " + c.r + " " + coRule(c.r).name + who + n + (c.role ? " · listed " + c.role + " role" : "");
+  }
+  function coFor(o) {
+    if (!S.coData || !S.co) return [];
+    const list = S.coData.callouts.filter((c) => S.co.has(c.r) && (c.a[0] === o.norad || (c.b && c.b[0] === o.norad)));
+    return list.length ? [["Callouts", list.slice(-8).reverse().map((c) => esc(calloutText(c, o.norad))).join("<br>")]] : [];
+  }
+  function coRecent() {
+    const list = coShown().slice().sort((a, b) => (a.d < b.d ? 1 : -1)).slice(0, 20);
+    if (!S.coData) return "";
+    return '<h4 class="globe-h4">Callouts in the 14 days to ' + esc(utcTxt(nowMs(), true).split(",")[0]) + "</h4>" +
+      (list.length ? '<ul class="globe-near">' + list.map((c) => '<li><i style="background:' + CO_COL[c.r] + '"></i><button type="button" class="linkish" data-act="copick" data-ids="' +
+        [c.a[0]].concat(c.b ? [c.b[0]] : []).join(",") + '">' + esc(c.a[1]) + "</button> " + esc(calloutText(c, c.a[0])) + "</li>").join("") + "</ul>"
+        : '<p class="small">None for the rules switched on.</p>') +
+      '<p class="small">Behaviour only, never intent. Each rule was tested on published cases before it was switched on; see Callouts above for the scores.</p>';
+  }
+  function coUI() {
+    const el = $("g-callouts");
+    if (!S.coData) { el.innerHTML = '<p class="small">The callouts file could not be loaded.</p>'; return; }
+    el.innerHTML = "<fieldset><legend>Callouts, last 14 days</legend>" + S.coData.rules.map((r) => '<label><input type="checkbox" data-co="' + r.id + '"' +
+      (S.co.has(r.id) ? " checked" : "") + '> <i class="co-key" style="background:' + CO_COL[r.id] + '"></i>' + esc(r.id + " " + r.name) +
+      ' <span class="small">(' + esc(r.score) + ")</span></label>").join("") + '</fieldset><p class="small">Behaviour only, never intent. ' +
+      '<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/geo-callouts.md">How each rule was tested</a>.</p>';
+  }
+
   // ---------------------------------------------------------------- picking
   const tip = $("g-tip"), box = $("g-box"), labels = $("g-labels");
   function occluded(v) {                                                  // the Earth between the camera and the point
@@ -909,6 +966,7 @@ function main() {
     let extra = "";
     if (S.over && S.board) { const it = overlayItems(), n = { close: it.close.length, man: it.man.length, ev: it.ev.length };
       extra = OVER.map((v) => '<span><i class="ring" style="border-color:' + v[1] + '"></i>' + esc(v[2]) + " " + fmtN(n[v[0]]) + "</span>").join(""); }
+    if (S.co && S.coData) { const on = S.coData.rules.filter((r) => S.co.has(r.id)); if (on.length) extra += on.map((r) => '<span><i class="ring" style="border-color:' + CO_COL[r.id] + '"></i>' + esc(r.id + " " + r.name) + "</span>").join(""); }
     if (S.sun) extra += '<span><i style="background:' + SUN_COL + '"></i>Sun, day–night line</span><span><i class="bar" style="background:' + SHADOW_COL + '"></i>Belt in the Earth\u2019s shadow</span>';
     $("g-legend").innerHTML = items.map((i) => '<span><i style="background:' + i[0] + '"></i>' + esc(i[1]) + " " + fmtN(i[2]) + "</span>").join("") + extra;
   }
@@ -945,7 +1003,8 @@ function main() {
   }
   let panelKey = "";
   const keyOf = () => [S.sel.join(","), [...S.beams.keys()].filter((id) => S.sel.includes(id)).join(","), S.win, S.track ? S.track.t0 : 0,
-    S.place ? S.place.lat + "," + S.place.lon : "", S.sel.length ? "" : drawn.length + "/" + S.q].join("|");
+    S.place ? S.place.lat + "," + S.place.lon : "", S.sel.length ? "" : drawn.length + "/" + S.q, S.co ? [...S.co].join(",") : "-",
+    S.sel.length ? "" : new Date(nowMs()).toISOString().slice(0, 10)].join("|");
   function panelUpdate() {
     const key = keyOf();
     if (key !== panelKey) { panel(true); return; }
@@ -986,7 +1045,7 @@ function main() {
     const el = $("g-panel"), sel = S.sel.map((id) => S.byId.get(id)).filter(Boolean);
     if (!sel.length) {
       el.innerHTML = '<p class="small">Click a dot to see what it is. Shift-click adds to the selection; Shift-drag a box selects every dot inside it. Search finds names, catalogue numbers, owners and countries.</p>' +
-        (S.place ? lookTable() : '<p class="small">Pick a place under "Look from" to list what can be seen from it.</p>');
+        coRecent() + (S.place ? lookTable() : '<p class="small">Pick a place under "Look from" to list what can be seen from it.</p>');
       return;
     }
     const tools = '<p class="globe-tools"><button type="button" data-act="csv">Download CSV</button> <button type="button" data-act="clear">Clear selection</button>' +
@@ -1004,7 +1063,7 @@ function main() {
         ["Elements", esc(bothTxt(epochMs(o.epoch), true)) + ', <span id="g-age">' + (age < 1 ? Math.round(age * 24) + " hours" : age.toFixed(1) + " days") + " before the time shown</span>"],
         ["Launched", esc(o.launch || "unknown")], ["Radar size", esc(o.rcs || "not given")],
         ["Sunlight", '<span id="g-sunlit">' + esc(sunlitTxt(o)) + "</span>"],
-      ].concat(S.place ? [["From " + esc(placeName()), '<span id="g-look">' + esc(lookTxt(o)) + "</span>"]] : []).concat(boardFor(o));
+      ].concat(S.place ? [["From " + esc(placeName()), '<span id="g-look">' + esc(lookTxt(o)) + "</span>"]] : []).concat(coFor(o)).concat(boardFor(o));
       el.innerHTML = "<h3>" + esc(o.name) + '</h3><p class="small">Catalogue ' + o.norad + (o.cospar ? " · " + esc(o.cospar) : "") +
         ' · <a href="https://celestrak.org/satcat/table-satcat.php?CATNR=' + o.norad + '">CelesTrak record</a></p><dl class="globe-dl">' +
         rows.map((r) => "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>").join("") + "</dl>" +
@@ -1069,6 +1128,7 @@ function main() {
     if (act === "csv-sun") { csvSun(); return; }
     if (act === "add") { const o = S.byId.get(+b.dataset.id); if (o && !S.sel.includes(o.norad)) { S.sel.push(o.norad); selectionChanged(); } return; }
     if (act === "pick") { const o = S.byId.get(+b.dataset.id); if (o) { select([o], false); focus(o); } return; }
+    if (act === "copick") { const os = b.dataset.ids.split(",").map((x) => S.byId.get(+x)).filter(Boolean); if (os.length) { select(os, false); focus(os[0]); } return; }
     if (act === "clear") { S.sel = []; selectionChanged(); }
     else if (act === "home") home();
     else if (act === "focus") focus(S.byId.get(+b.dataset.id));
@@ -1128,6 +1188,11 @@ function main() {
   $("g-win").addEventListener("change", (e) => { S.win = +e.target.value; loadWindow(); writeHash(); });
   $("g-sun").addEventListener("change", (e) => { S.sun = e.target.checked; drawSun(); legend(); writeHash(); });
   $("g-over").addEventListener("change", (e) => { S.over = e.target.checked; drawOverlays(); legend(); writeHash(); });
+  $("g-callouts").addEventListener("change", (e) => {
+    const r = e.target.dataset.co; if (!r || !S.co) return;
+    if (e.target.checked) S.co.add(r); else S.co.delete(r);
+    drawCallouts(); legend(); writeHash(); panel(true);
+  });
   let PLACES = [];
   function setPlace(pl) {
     S.place = pl; $("g-place").value = pl ? (pl.name || pl.lat.toFixed(3) + ", " + pl.lon.toFixed(3)) : ""; $("g-noplace").hidden = !pl;
@@ -1235,6 +1300,11 @@ function main() {
     terms = S.q.toLowerCase().split(/\s+/).filter(Boolean);
     loadWindow(); drawPredictions();
     if (terms.length) searchChanged();
+    fetch("/data/geo/callouts.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null).then((co) => {
+      S.coData = co;
+      S.co = new Set(co ? (S.coHash || co.rules.filter((r) => r.default_on).map((r) => r.id)) : []);
+      coUI(); drawCallouts(); legend(); panel(true);
+    });
     clearInterval(liveTimer);
     liveTimer = setInterval(() => { if (S.t == null) { timeLabel(); updatePositions(); } }, 30000);
     requestAnimationFrame(frame);

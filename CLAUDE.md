@@ -55,7 +55,7 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   `daily.yml`; gp_history held once in `data/geo/region/history/`, never re-fetched; `replay` rebuilds the day files
   offline) writes `<day>.geo-region.json` and `geo-elements-YYYY-MM.parquet` to the pnt-data releases; the /geo page's
   "Arrivals and departures" reads them through `geo.py build`. **G2 done 28 Oct:** the globe at the top of /geo
-  (`site_src/globe.js`; data from `tools/geo_globe.py` at deploy into `site/data/geo/`, gitignored). **G3 done 31 Oct:** look angles and sun outages from a place, sun direction and the belt's shadow, relative motion, closest objects over time, board findings on the globe, CSVs. **G5 done 28 Oct:**
+  (`site_src/globe.js`; data from `tools/geo_globe.py` at deploy into `site/data/geo/`, gitignored). **G4 done 1 Nov:** callouts pre-registered and scored (`docs/validation/geo-callouts.md`, `tools/geo_callouts.py`); C3–C7 on by default, C1, C2, C8 off. **G3 done 31 Oct:** look angles and sun outages from a place, sun direction and the belt's shadow, relative motion, closest objects over time, board findings on the globe, CSVs. **G5 done 28 Oct:**
   hypothetical beams and local footprint files in the globe; published footprints wait on licences (registry rows
   `satbeams`, `operator-coverage`, `fcc-space-filings`, `itu-space-filings`).
 - **NISAR on the public map (approved 28 Oct 2026):** read `docs/nisar-public-plan.md` first (gate, decisions D1–D7,

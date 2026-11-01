@@ -218,5 +218,6 @@ works from the same public elements (tier N), so those hits show the rules behav
 detectors. The independent anchors held up as well: Luch 2015 (C4, C1), Luch-5X 2023 (all four rules), SJ-21 and
 SJ-25 2025 (C5 for both, C1 silent between same-owner satellites), MEV-1 and MEV-2 (C1, C5).
 
-**Switch-on (next commit):** C3, C4, C5, C6 and C7 shown by default on the globe; C1, C2 and C8 behind their
-toggles, off, each with its score beside it.
+**Switched on (1 Nov 2026):** the globe's Callouts control shows C3, C4, C5, C6 and C7 by default; C1, C2 and C8 sit
+behind their toggles, off, each with its score beside it. `geo_callouts.py publish` runs at every deploy over the last
+21 days (so the look-back rules have history) and the globe shows the last 14.
