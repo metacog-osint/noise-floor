@@ -247,12 +247,12 @@ Found while building box trends on L2C. Not pre-registered; the regions were dra
 | about 22:00 (Sentinel-2C) | −0.88 | −2.95 | −0.87 | −2.41 | −1.74 | −1.83 |
 
   - **No daily rhythm at the sampled times:** in Sep–Oct 2026, L2C reads 2.2–3.0 dB low on all four passes, morning,
-    midday, evening and night. The orbits never pass East Asia between about 23:00 and 06:00 or between 12:00 and 16:00
-    local, so those hours are unchecked.
+    midday, evening and night. The orbits sample only those four times; the hours between them, including the night
+    from about 22:00 to 06:00 local, are unchecked.
   - **No weekly rhythm:** East Asia minus the Central Pacific by local day of week, Sep–Oct 2026 (14 values each):
     L2C −2.60 (Saturday) to −3.19 (Sunday), every day within that range; E5a −2.58 to −3.06; L1 −1.03 to −1.37. No
     weekend relief.
-  - **L1 moved on one pass only:** about 1.1 dB on Sentinel-1's morning pass and under 0.4 dB on the other three.
+  - **L1 moved on one pass only:** about 1.1 dB on Sentinel-1's morning pass and 0.4 dB or less on the other three.
   - **Reading:** whatever lowers the lower band over East Asia was there at every sampled hour and on every day of the
     week. That fits something running continuously rather than working-hours or scheduled activity. Still effects only;
     cause not established.
