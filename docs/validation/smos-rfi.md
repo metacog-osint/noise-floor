@@ -64,3 +64,52 @@ Between the marks the result is "weakened". Reported without marks:
 - per-site shares, and the highest share within 40 km of each site.
 
 If M1–M3 hold, a SMOS layer would follow the SMAP pattern: a weekly map of grid points with a raised hot share.
+
+## 4. Result (run 31 Oct 2026): fails
+
+**Data.**
+- 294 half-orbits over the 14 days, all read; none failed.
+- The archive is thin for 1–4 Oct, with 3, 1, 9 and 5 half-orbits; 5–7 Oct and 20–26 Oct hold 23–30 a day.
+- Two notes on the downloads:
+  - one half-orbit on 3 Oct broke off mid-download and was fetched again whole, with the chunked reader the other
+    Copernicus tools use;
+  - this PC lost its internet connection during 22 Oct, so that day was fetched again (and 23–26 Oct after it).
+
+  Each re-fetch read the same half-orbits; nothing was replaced.
+- Pooled: 613 near point-weeks and 74,782 far ones.
+- Because of the early-October gap, three southern sites (Brevoort Island, Saglek, Cartwright) had no point within
+  40 km with 8 or more looks in the first week. By the frozen rule they can't count as heard in both weeks.
+
+| # | Check | Result | Verdict |
+|---|---|---|---|
+| M1 | AUC of `share_hot320`, near vs far | **0.535** (median 0.00 near, 0.00 far) | **fails** (< 0.65) |
+| M2 | Sites heard in both weeks | **2 of 14** (Cape Parry, Cape Dyer) | **fails** (≤ 4) |
+| M3 | Far points with `share_hot320` ≥ 0.25 | **0.19%** | **holds** (≤ 5%) |
+
+**Reported without marks.**
+- AUC at 300 K: 0.546; at 350 K: 0.524.
+- AUC of the share of looks with the product's RFI_POINT_SOURCE flag: **0.705** (median 0.30 near, 0.09 far). That flag
+  draws on ESA's list of known sources, so it isn't an independent detection.
+
+**Per site** (share of hot looks at the nearest point; week of 1–7 Oct / week of 20–26 Oct):
+
+| Heard | Sites |
+|---|---|
+| Both weeks | Cape Dyer 0.90 / 0.87; Cape Parry 0.50 / 0.29 |
+| Second week only | Cartwright – / 0.30; Brevoort Island – / 0.25 (no point with 8 looks in the first week) |
+| Neither | Point Barrow, Oliktok, Barter Island, Cape Lisburne, Shingle Point, Cambridge Bay, Shepherd Bay, Hall Beach, Dewar Lakes, Saglek: 0.00 in both weeks (Shingle Point's highest point within 40 km reached 0.11) |
+
+**What this shows.**
+- Looks hotter than any natural surface mark a few of the radars clearly. Cape Dyer reads hot on nearly every look,
+  and the background stays quiet (M3).
+- Most sites never push SMOS above 320 K, while SMAP flags 10 of the same 14 (`docs/validation/smap-rfi.md` §5.1).
+  This test can't tell which of these is the reason:
+  - the radars' out-of-band energy adds only a few kelvin in SMOS's band, which the 320 K ceiling ignores;
+  - SMOS's coarser reconstruction spreads a point source out;
+  - ESA's processing reduces it before the browse product.
+- The product's own flag separates sites from background better (AUC 0.705), but it leans on ESA's list of known
+  sources and is set over most of the globe.
+
+**Next, if SMOS is taken further.** A measure sensitive to a few kelvin would need a new pre-registered test on new
+weeks: a point's brightness against its own surroundings, or the full L1C product with all incidence angles. Until
+then SMOS stays a probe, not a source for the map.
