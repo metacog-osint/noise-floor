@@ -118,6 +118,8 @@ Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-
   - **Against the aircraft map:** AUC 0.686, as expected for C-band.
   - **Window:** only 2,381 of 15,368 res-3 cells had four or more passes, so a public map needs about four weeks
     (`docs/validation/s1-rfi.md` §9).
+  - **Four weeks (2–29 Oct):** 13,437 res-3 cells with four or more passes (75%); every control reads 0.00 and the Gulf
+    1.00; against the aircraft map AUC 0.747 (§10).
 
 ### E: Sentinel-1, -2 and -3 navigation receivers (GPS L1/L2, Galileo E1/E5a; near-global)
 
