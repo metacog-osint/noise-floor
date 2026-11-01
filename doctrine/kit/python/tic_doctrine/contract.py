@@ -30,6 +30,77 @@ def is_judgment(p: dict) -> bool:
     return p.get("tier") == "warning" or p.get("kind") in JUDGED_KINDS
 
 
+# Actor types that are organizations, for the us_person_data cross-check.
+ORG_TYPES = {"government", "armed_forces", "security_service", "armed_group", "criminal_group", "political_group",
+             "company", "intergovernmental", "ngo", "media"}
+
+
+def _never_re():
+    words = sorted(vocab.never_words(), key=len, reverse=True)
+    return re.compile(r"\b(" + "|".join(re.escape(w) for w in words) + r")\b", re.IGNORECASE)
+
+
+def _check_actors(actors: list, p: dict, judged: bool, err, warn) -> None:
+    """actors[]: who plays what part, as the cited sources describe it. Roles, never friend or foe."""
+    roles, types = vocab.actor_roles(), vocab.actor_types()
+    never = _never_re()
+    source_ids = {s.get("id") for s in (p.get("sources") or []) if isinstance(s, dict) and s.get("id")}
+    names_orgs = names_people = False
+    for i, a in enumerate(actors):
+        tag = f"actors[{i}]"
+        if not isinstance(a, dict):
+            err(GENERAL, f"{tag} must be an object")
+            continue
+        if not a.get("name"):
+            err(GENERAL, f"{tag}.name missing")
+        role = a.get("role")
+        if role not in roles:
+            err(GENERAL, f"{tag}.role={role!r} not in {sorted(roles)}")
+            role = None
+        kind = a.get("actor_type")
+        if kind is not None and kind not in types:
+            err(GENERAL, f"{tag}.actor_type={kind!r} not in {sorted(types)}")
+        if a.get("status_class") not in vocab.enum("status_class"):
+            err("distinguish", f"{tag}.status_class must be assessed, reported or claimed")
+
+        side = a.get("side")
+        if role and roles[role]["side"] == "required" and not side:
+            err(GENERAL, f"{tag}: a {role} needs side (the party, named as the sources name it)")
+        if role and roles[role]["side"] == "none" and side:
+            warn(GENERAL, f"{tag}: a third party has no side; say what it does in function")
+        if isinstance(side, str) and never.search(side):
+            err(GENERAL, f"{tag}.side={side!r} judges friend or foe; name the party as the sources do")
+
+        ids = a.get("source_ids")
+        if ids is not None and (not isinstance(ids, list) or not all(isinstance(x, str) for x in ids)):
+            err("sources", f"{tag}.source_ids must be a list of sources[].id values")
+            ids = None
+        if role == "responsible" and not ids:
+            err("sources", f"{tag}: holding an actor responsible needs source_ids (the evidence for it)")
+        for sid in ids or []:
+            if sid not in source_ids:
+                err("sources", f"{tag}.source_ids has {sid!r}, which is not a sources[].id in this item")
+        if role == "responsible" and a.get("status_class") == "assessed" and not judged:
+            err("distinguish", f"{tag}: an attribution the suite makes is a judgment; use kind=assessment "
+                               "with likelihood, confidence and alternatives")
+
+        if role == "civilians" and kind == "individual":
+            err(GENERAL, f"{tag}: civilians are a population or group, never named individuals")
+        if a.get("country") is not None and not (isinstance(a["country"], str) and COUNTRY_RE.match(a["country"])):
+            err(GENERAL, f"{tag}.country must be an ISO 3166-1 alpha-2 code")
+        for j, d in enumerate(a.get("designations") or []):
+            if not isinstance(d, dict) or not d.get("by") or not d.get("label"):
+                err(GENERAL, f"{tag}.designations[{j}] needs by and label, quoted as published")
+        names_people |= kind == "individual"
+        names_orgs |= kind in ORG_TYPES
+
+    upd = p.get("us_person_data")
+    if names_people and upd != "individuals":
+        err(GENERAL, "actors name an individual: us_person_data must be 'individuals'")
+    elif names_orgs and upd == "none":
+        err(GENERAL, "actors name organizations: us_person_data must be 'organizations' or 'individuals'")
+
+
 def check(item: dict, registers: dict | None = None) -> list[tuple[str, str, str]]:
     """All problems with one item. registers (optional) holds the program's
     requirement, warning-problem and indicator ids for link checks."""
@@ -70,8 +141,7 @@ def check(item: dict, registers: dict | None = None) -> list[tuple[str, str, str
     one_of(GENERAL, "status", vocab.enum("status"))
     one_of(GENERAL, "msg_type", vocab.enum("msg_type"))
     one_of(GENERAL, "human_review", vocab.enum("human_review"))
-    if p.get("us_person_data") != "none":
-        err(GENERAL, "us_person_data must be 'none'")
+    one_of(GENERAL, "us_person_data", vocab.enum("us_person_data"))  # a label for consumers, not a restriction
     utc("sources", "data_as_of")
     utc("sources", "published_at")
     utc(GENERAL, "valid_until", required=False)
@@ -132,6 +202,11 @@ def check(item: dict, registers: dict | None = None) -> list[tuple[str, str, str
                                       and g[0] in vocab.admiralty()["reliability"]
                                       and g[1] in vocab.admiralty()["credibility"]):
                 err("sources", f"sources[{i}].grade={g!r} is not an Admiralty grade like 'B2'")
+            if s.get("owner") is not None and s["owner"] not in vocab.source_owners():
+                err("sources", f"sources[{i}].owner={s['owner']!r} not in {sorted(vocab.source_owners())}")
+            persp = s.get("perspective")
+            if persp is not None and not (isinstance(persp, str) and persp.strip()):
+                err("sources", f"sources[{i}].perspective must be the program's source-group id (a non-empty string)")
     if not p.get("method_version"):
         err("sources", "method_version missing")
     cov = p.get("coverage_fraction")
@@ -167,6 +242,12 @@ def check(item: dict, registers: dict | None = None) -> list[tuple[str, str, str
         err("distinguish", "an observation cannot be a warning: a warning is a judgment")
     if p.get("kind") in JUDGED_KINDS and p.get("tier") == "anomaly":
         err("distinguish", "an anomaly is a measurement: use kind=observation")
+    actors = p.get("actors")
+    if actors is not None:
+        if isinstance(actors, list):
+            _check_actors(actors, p, judged, err, warn)
+        else:
+            err(GENERAL, "actors must be a list")
 
     # 4. Alternatives.
     if judged:

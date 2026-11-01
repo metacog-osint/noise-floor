@@ -46,6 +46,24 @@ def admiralty() -> dict:
     return load("grading")["admiralty"]
 
 
+def actor_roles() -> dict:
+    """Roles an actor can play in an item: {id: {label, frame, side, meaning}}."""
+    return load("actors")["roles"]["values"]
+
+
+def actor_types() -> dict:
+    return load("actors")["types"]["values"]
+
+
+def source_owners() -> set[str]:
+    return set(load("actors")["source_owner"]["values"])
+
+
+def never_words() -> list[str]:
+    """Words that judge a side as friend or foe; never used to characterise an actor."""
+    return load("actors")["never"]
+
+
 def derive_sectors(ncf_ids) -> list[str]:
     """Sectors implied by a list of National Critical Function ids, sorted."""
     table = ncf()

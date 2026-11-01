@@ -11,9 +11,10 @@ out only sources whose terms forbid republishing.
 
 ## Public information only
 
-We use publicly available information only. We hold no information about US persons, and every item we publish says so
-in a field that our build checks. Where a source lists individuals (for example sanctions or screening lists), we
-publish counts, not names. Where a source's terms forbid re-identifying people, we skip that data.
+We use publicly available information only. We are not a US government body and are not bound by the US intelligence
+community's limits on information about US persons, so we do not strip it. Every item we publish carries a label saying
+whether it names organizations or individuals (`us_person_data`), so a reader who is bound by those rules can filter
+for themselves. Where a source's terms forbid re-identifying people, we follow the terms and skip that data.
 
 ## What we withhold, and why
 

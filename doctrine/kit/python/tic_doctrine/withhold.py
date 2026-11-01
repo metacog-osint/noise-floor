@@ -21,7 +21,6 @@ from pathlib import Path
 
 REASONS = {
     "threat_to_person": "Credible, specific threat to kill, seriously injure or kidnap a person or group",
-    "us_person": "Information about a US person",
     "re_identification": "Could re-identify an individual (source terms forbid it)",
 }
 
