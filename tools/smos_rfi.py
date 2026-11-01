@@ -166,14 +166,20 @@ def fetch(day, force=False):
         s3 = p["S3Path"].replace("/eodata", "", 1).lstrip("/")
         try:
             xml = SG.s3_get("/eodata/", query={"list-type": "2", "prefix": s3 + "/", "max-keys": "20"}).decode()
-            keys = [k for k in re.findall(r"<Key>([^<]+)</Key>", xml) if k.upper().endswith(".DBL")]
+            objs = re.findall(r"<Key>([^<]+)</Key>.*?<Size>(\d+)</Size>", xml, re.S)
+            keys = [(k, int(n)) for k, n in objs if k.upper().endswith(".DBL")]
             if not keys:
                 raise ValueError("no DBL in the product folder")
-            buf = SG.s3_get("/eodata/" + keys[0])
+            buf = SG.s3_download("/eodata/" + keys[0][0], keys[0][1])      # 1 MiB ranges: long reads break off
+            if len(buf) != keys[0][1]:
+                raise ValueError(f"read {len(buf)} of {keys[0][1]} bytes")
+            keys = [keys[0][0]]
             parts.append(read_dbl(buf))
             used.append({"name": p["Name"], "source": f"https://{SG.S3_HOST}/eodata/{keys[0]}", "bytes": len(buf)})
         except Exception as e:           # one bad half-orbit is skipped and listed, not fatal
             failed.append({"name": p.get("Name"), "error": f"{type(e).__name__}: {e}"})
+    if not used:                         # nothing read (no products yet, or the connection was down): keep no file
+        raise RuntimeError(f"{day}: no half-orbit read ({len(prods)} listed, {len(failed)} failed)")
     red = reduce_points(parts)
     tmp = path + ".tmp.npz"
     np.savez_compressed(tmp, **red)
