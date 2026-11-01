@@ -233,5 +233,28 @@ Found while building box trends on L2C. Not pre-registered; the regions were dra
     hears an emitter only within line of sight (`docs/validation/ground-stations.md` section 6). Emitters spread over
     the region, or elevated or airborne ones, could reach 700–800 km altitude without reaching these sites. Cause still
     not established.
-- **Next:** a daily-rhythm check on the orbital L2C index over East Asia, ITU and NOTAM records of lower L-band activity,
-  and the same regional table on the held-out E2.1 weeks once they are fetched.
+- **Rhythm check (1 Nov 2026, 18:10 UTC; exploratory).** The PODRIX units are sun-synchronous, so each passes a place at
+  nearly the same local solar time every day: over East Asia, Sentinel-1C and 1D at about 06:30 and 17:00, Sentinel-2C
+  at about 11:00 and 22:00. Each value below is East Asia (30–65°N, 100–150°E) minus the Central Pacific for the same unit
+  and pass, which cancels receiver and pass-direction effects (dB; Oct–Nov 2025 = the first two E3 weeks; Sep–Oct
+  2026 = 7 Sep – 25 Oct, 49 days):
+
+| Pass over East Asia | L2C, Oct–Nov 2025 | L2C, Sep–Oct 2026 | E5a, Oct–Nov 2025 | E5a, Sep–Oct 2026 | L1 (same receivers), Oct–Nov 2025 | L1, Sep–Oct 2026 |
+|---|---|---|---|---|---|---|
+| about 06:30 (Sentinel-1C; 1D from May) | −0.35 | −2.70 (1D −2.75) | −0.60 | −3.36 (1D −3.50) | −0.19 | −1.33 (1D −1.28) |
+| about 11:00 (Sentinel-2C) | −0.83 | −2.20 | +0.09 | −1.92 | +0.57 | +0.16 |
+| about 17:00 (Sentinel-1C; 1D from May) | −1.20 | −2.77 (1D −2.83) | −1.72 | −2.19 (1D −2.28) | −1.20 | −1.07 (1D −1.05) |
+| about 22:00 (Sentinel-2C) | −0.88 | −2.95 | −0.87 | −2.41 | −1.74 | −1.83 |
+
+  - **No daily rhythm at the sampled times:** in Sep–Oct 2026, L2C reads 2.2–3.0 dB low on all four passes, morning,
+    midday, evening and night. The orbits never pass East Asia between about 23:00 and 06:00 or between 12:00 and 16:00
+    local, so those hours are unchecked.
+  - **No weekly rhythm:** East Asia minus the Central Pacific by local day of week, Sep–Oct 2026 (14 values each):
+    L2C −2.60 (Saturday) to −3.19 (Sunday), every day within that range; E5a −2.58 to −3.06; L1 −1.03 to −1.37. No
+    weekend relief.
+  - **L1 moved on one pass only:** about 1.1 dB on Sentinel-1's morning pass and under 0.4 dB on the other three.
+  - **Reading:** whatever lowers the lower band over East Asia was there at every sampled hour and on every day of the
+    week. That fits something running continuously rather than working-hours or scheduled activity. Still effects only;
+    cause not established.
+- **Next:** ITU and NOTAM records of lower L-band activity in the region, and the same regional table on the held-out
+  E2.1 weeks once they are fetched.

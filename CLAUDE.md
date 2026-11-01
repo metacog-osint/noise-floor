@@ -121,7 +121,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   lower bands drop 2.1–2.7x as far as L1 on the same links, and the 60–160°E dip is a quarter as deep on L2C.
   `tools/sentinel_trend.py --signal l2c|e5a|l1p` builds box trends from the band files. **Caveat (section 2.6):** over
   East Asia, L2C and E5a slid 1.2–2.2 dB or more from Oct 2025 to Oct 2026 while other regions held; ground stations in
-  Japan, Korea, Guam and Australia saw no change on GPS or QZSS L2C (not a GPS transmitter change); cause not established.
+  Japan, Korea, Guam and Australia saw no change on GPS or QZSS L2C (not a GPS transmitter change); no daily or weekly
+  rhythm at the sampled hours; cause not established.
 - **AIS beyond the Baltic (28 Oct 2026, Tom approved):** `collectors/run_aisstream.cmd` (global aisstream, private only;
   focus boxes in `private/watch/maritime.json`) and `collectors/barentswatch_ais.py` + `run_barentswatch.cmd` (Norway's open
   AIS, NLOD; Finnmark and the western Barents Sea). Both skip until Tom's credentials exist (AISSTREAM_API_KEY;
