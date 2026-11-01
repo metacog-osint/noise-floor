@@ -144,23 +144,85 @@ def test_sentinel6_and_smap_cards():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def test_brief():
-    """The home page's bottom line, from fixed rules."""
-    area = lambda n, t, m, c: {"name": n, "today": t, "median30": m, "change": c}  # noqa: E731
-    near = lambda *xs: [{"near": x} for x in xs]  # noqa: E731
-    b = {"hotspots": {"areas": [area("Kaliningrad and approaches", 37.9, 41.7, -3.8), area("Southern Black Sea offshore Turkey", 37.6, 38.9, -1.2),
-                                area("Caucasus", 13.4, 13.9, -0.5), area("Cyprus–Levant", 1.6, 2.8, -1.2)]},
-         "changes": {"new": near("Malmö", "Ryazan", "Las Vegas"), "new_count": 5, "ended": near("Tel Aviv", "Yerevan"), "ended_count": 4}}
-    assert B.brief(b) == ("GPS interference held near its usual level over Kaliningrad and the southern Black Sea. "
-                          "Five areas started this week, among them Malmö and Ryazan; four stopped, including Tel Aviv.")
-    b["hotspots"]["areas"][0]["change"] = 7.0                 # a rise of 5 points or more names the area
-    b["hotspots"]["areas"][2]["change"] = -6.0
-    b["changes"] = {"new": near("Malmö"), "new_count": 1, "ended": [], "ended_count": 0}
-    assert B.brief(b) == ("GPS interference rose over Kaliningrad; the share of degraded aircraft fell over the Caucasus. "
-                          "One area started this week, near Malmö; none stopped.")
-    b["hotspots"]["areas"] = [area("Cyprus–Levant", 1.6, 2.8, -1.2)]      # small areas alone say nothing
-    b["changes"] = {"new": [], "new_count": 0, "ended": [], "ended_count": 0}
-    assert B.brief(b) == "No area started or stopped this week."
+BRIEF_AREA = lambda n, t, m, c: {"name": n, "today": t, "median30": m, "change": c}  # noqa: E731
+BRIEF_NEAR = lambda *xs: [{"near": x} for x in xs]  # noqa: E731
+M = "The share of aircraft with severe GPS error was "
+
+
+def test_brief_live_board():
+    """The board of 31 Oct 2026 (aircraft day 30 Oct): both big areas well below their 30-day median."""
+    area, near = BRIEF_AREA, BRIEF_NEAR
+    b = {"hotspots": {"areas": [area("Kaliningrad and approaches", 26.3, 41.0, -14.7),
+                                area("Southern Black Sea offshore Turkey", 21.7, 38.6, -16.9),
+                                area("Gulf of Finland / Estonia–Russia border", 12.6, 15.9, -3.3), area("Caucasus", 8.8, 13.7, -4.9),
+                                area("Western Black Sea coast", 6.6, 10.9, -4.3), area("Cyprus–Levant", 3.2, 2.5, 0.7),
+                                area("Strait of Hormuz / Gulf of Oman", 2.9, 2.0, 0.9), area("High latitude excl. Baltic/Russia", 0.1, 0.2, -0.1)]},
+         "changes": {"new": near("Peshawar", "Las Vegas", "Ryazan", "Pskov", "Sakata"), "new_count": 5,
+                     "ended": near("Tel Aviv", "Doha", "Lviv", "Yerevan", "Tianjin", "Kushiro"), "ended_count": 6}}
+    assert B.brief(b) == (M + "below its usual level over Kaliningrad and the southern Black Sea. "
+                          "GPS interference started in five areas this week, among them Peshawar and Las Vegas; "
+                          "it has stopped in six, including Tel Aviv."), B.brief(b)
+
+
+def test_brief_watched_areas():
+    """Sentence 1: today's share against the 30 days before, 5 points either way; small areas say nothing."""
+    area = BRIEF_AREA
+    held = [area("Kaliningrad and approaches", 37.9, 41.7, -3.8), area("Southern Black Sea offshore Turkey", 37.6, 38.9, -1.2),
+            area("Caucasus", 13.4, 13.9, -0.5), area("Cyprus–Levant", 1.6, 2.8, -1.2)]
+    one = lambda areas: B.brief({"hotspots": {"areas": areas}})  # noqa: E731
+    assert one(held) == M + "near its usual level over Kaliningrad and the southern Black Sea."
+    assert one([area("Kaliningrad and approaches", 37.9, 41.7, -3.8)]) == M + "near its usual level over Kaliningrad."
+    assert one([area("Caucasus", 20.0, 13.0, 7.0), area("Cyprus–Levant", 1.6, 2.8, -1.2)]) == \
+        M + "above its usual level over the Caucasus."
+    assert one([area("Caucasus", 18.9, 13.9, 5.0)]) == M + "above its usual level over the Caucasus."     # 5 points exactly counts
+    assert one([area("Caucasus", 18.8, 13.9, 4.9)]) == M + "near its usual level over the Caucasus."
+    assert one([area("Caucasus", 8.4, 13.4, -5.0)]) == M + "below its usual level over the Caucasus."
+    mixed = [area("Kaliningrad and approaches", 48.0, 41.0, 7.0), area("Caucasus", 7.0, 13.0, -6.0), area("Foo", 30.0, 30.0, 0.0)]
+    assert one(mixed) == M + "above its usual level over Kaliningrad and below it over the Caucasus."    # held areas unnamed
+    mixed2 = [area("Kaliningrad and approaches", 48.0, 41.0, 7.0), area("Strait of Hormuz / Gulf of Oman", 20.0, 9.0, 11.0),
+              area("Caucasus", 7.0, 13.0, -6.0), area("Western Black Sea coast", 6.0, 12.0, -6.0), area("Unlisted", 5.5, 12.0, -6.5)]
+    assert one(mixed2) == (M + "above its usual level over Kaliningrad and the Strait of Hormuz, "
+                           "and below it over the Caucasus and the western Black Sea."), one(mixed2)
+    assert one([area("Cyprus–Levant", 1.6, 2.8, -1.2), area("Strait of Hormuz / Gulf of Oman", 4.9, 2.0, 2.9)]) == ""   # below 5%
+    assert one([area("Cyprus–Levant", 1.0, 6.5, -5.5)]) == M + "below its usual level over Cyprus and the Levant."     # usually 5%+
+    assert one([area("Caucasus", None, 13.0, None), {"name": "Caucasus", "today": 9.0, "median30": None, "change": None}]) == ""
+    assert B.brief({"hotspots": None}) == B.brief({}) == ""                  # a failed section leaves its sentence out
+
+
+def test_brief_started_stopped():
+    """Sentence 2: areas where GPS interference started this week (new) or has stopped (ended)."""
+    near = BRIEF_NEAR
+    two = lambda new, n, ended, m: B.brief({"changes": {"new": new, "new_count": n, "ended": ended, "ended_count": m}})  # noqa: E731
+    assert two(near("Malmö", "Ryazan", "Las Vegas"), 5, near("Tel Aviv", "Yerevan"), 4) == \
+        "GPS interference started in five areas this week, among them Malmö and Ryazan; it has stopped in four, including Tel Aviv."
+    assert two(near("Malmö"), 1, near("Tel Aviv"), 1) == \
+        "GPS interference started in one area this week, near Malmö; it has stopped in one, near Tel Aviv."
+    assert two(near("Malmö", "Ryazan"), 2, [], 0) == \
+        "GPS interference started in two areas this week, near Malmö and Ryazan; it has stopped in none."
+    assert two(near("Malmö"), 2, [], 0) == \
+        "GPS interference started in two areas this week, among them Malmö; it has stopped in none."   # one of two unnamed
+    assert two([{"near": None}], 1, [], 0) == "GPS interference started in one area this week; it has stopped in none."
+    assert two([], 0, near("Tel Aviv", "Doha"), 6) == \
+        "GPS interference has stopped in six areas, including Tel Aviv; it started in none this week."
+    assert two([], 0, near("Tel Aviv"), 1) == "GPS interference has stopped in one area, near Tel Aviv; it started in none this week."
+    assert two([], 0, [], 3) == "GPS interference has stopped in three areas; it started in none this week."
+    assert two(near(*"ABCDEFGH"), 12, [], 10) == \
+        "GPS interference started in 12 areas this week, among them A and B; it has stopped in 10."
+    assert two([], 0, [], 0) == "GPS interference has not started or stopped in any area this week."
+    assert B.brief({"changes": {}}) == "" and B.brief({"changes": None}) == ""
+
+
+def test_brief_wording():
+    """Every case names GPS and never uses the words a new reader can't place, or says interference fell."""
+    area, near = BRIEF_AREA, BRIEF_NEAR
+    for areas in ([area("Caucasus", 20.0, 13.0, 7.0)], [area("Caucasus", 7.0, 13.0, -6.0)], [area("Caucasus", 13.0, 13.0, 0.0)],
+                  [area("Caucasus", 20.0, 13.0, 7.0), area("Kaliningrad and approaches", 30.0, 41.0, -11.0)], []):
+        for n, m in ((0, 0), (1, 0), (0, 1), (3, 2)):
+            s = B.brief({"hotspots": {"areas": areas},
+                         "changes": {"new": near("Malmö") * n, "new_count": n, "ended": near("Tel Aviv") * m, "ended_count": m}})
+            assert "GPS" in s and "degraded" not in s and "areas started" not in s and " stopped," not in s, s
+            assert "rose" not in s and "fell" not in s and "interference fell" not in s and "stopped this week" not in s, s
+            assert s.count(".") == (2 if areas else 1) and s[0].isupper(), s
 
 
 def main():

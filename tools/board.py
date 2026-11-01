@@ -365,42 +365,63 @@ def _and(xs):
     return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1] if xs else ""
 
 
-def _count(n, word):
-    w = WORDS[n] if n < len(WORDS) else str(n)
-    return f"{w} {word}{'' if n == 1 else 's'}"
+def _num(n):
+    """A count inside a sentence: 'one', 'six', '12'."""
+    return WORDS[n].lower() if n < len(WORDS) else str(n)
+
+
+def _named(names, n, some):
+    """', near A and B' when the names cover all n areas; otherwise `some` (', among them ') and the names."""
+    return ((", near " if len(names) == n else some) + _and(names)) if names else ""
+
+
+BRIEF_MEASURE = "The share of aircraft with severe GPS error was "   # the site's name for NACp below 8 (93 m or worse)
 
 
 def brief(b):
-    """The home page's bottom line, by fixed rules (not written by a person): how the watched areas compare with their
-    30-day median, then what started and stopped this week. Areas below 5% both today and usually are left out; a
-    change of 5 points or more counts as a rise or fall. A fall in the share can mean jammed aircraft stopped
-    reporting, which the page's position-loss row shows."""
+    """The home page's bottom line, by fixed rules (not written by a person), in up to two sentences. It is also the
+    headline other sites quote, so it names what it measures for a reader who has never seen Noisefloor.
+
+    1. The watched areas: today's share of aircraft with severe GPS error (NACp below 8: the aircraft reports its
+       position could be off by 93 m or more) against its median over the 30 days before, "its usual level". Areas
+       below 5% both today and usually are left out. A difference of 5 points or more is "above" or "below" (not
+       "rose" or "fell": the comparison is with the month, not with yesterday); anything less is "near". It never
+       says interference fell, because a lower share can mean jammed aircraft stopped reporting a position at all,
+       which the page's position-loss row shows.
+    2. GPS interference by area (changes(): H3 res-2 regions with 3+ cells at jamming scale): it "started this week"
+       in a region seen on any of the last 7 days and none of the 30 before, and "has stopped" in a region seen on 3+
+       of those 30 days and none of the last 7 (it may have stopped before this week began, so never "stopped this
+       week"). Up to two new areas and one stopped area are named by the nearest place.
+    A section that is missing leaves its sentence out."""
     out = []
     areas = [a for a in ((b.get("hotspots") or {}).get("areas") or [])
              if a.get("today") is not None and a.get("median30") is not None and a.get("change") is not None]
     big = sorted((a for a in areas if max(a["today"], a["median30"]) >= 5), key=lambda a: -a["today"])
     name = lambda a: SHORT.get(a["name"], a["name"])  # noqa: E731
-    up = [name(a) for a in big if a["change"] >= 5]
-    down = [name(a) for a in big if a["change"] <= -5]
-    if big and not up and not down:
-        out.append(f"GPS interference held near its usual level over {_and([name(a) for a in big[:2]])}.")
+    up = [name(a) for a in big if a["change"] >= 5][:2]
+    down = [name(a) for a in big if a["change"] <= -5][:2]
+    if up and down:
+        comma = "," if len(up) > 1 or len(down) > 1 else ""
+        out.append(f"{BRIEF_MEASURE}above its usual level over {_and(up)}{comma} and below it over {_and(down)}.")
     elif up or down:
-        bits = ([f"GPS interference rose over {_and(up[:2])}"] if up else []) + \
-               ([("the share of degraded aircraft fell over " if up else "The share of degraded aircraft fell over ") + _and(down[:2])] if down else [])
-        out.append("; ".join(bits) + ".")
+        out.append(f"{BRIEF_MEASURE}{'above' if up else 'below'} its usual level over {_and(up or down)}.")
+    elif big:
+        out.append(f"{BRIEF_MEASURE}near its usual level over {_and([name(a) for a in big[:2]])}.")
     c = b.get("changes")
     if c:
-        new = [r.get("near") for r in c.get("new") or [] if r.get("near")]
-        gone = [r.get("near") for r in c.get("ended") or [] if r.get("near")]
+        new = [r.get("near") for r in c.get("new") or [] if r.get("near")][:2]
+        gone = [r.get("near") for r in c.get("ended") or [] if r.get("near")][:1]
         n, m = c.get("new_count") or 0, c.get("ended_count") or 0
-        if n or m:
-            started = (_count(n, "area") + " started this week" +
-                       ((", among them " if n > 2 else ", near ") + _and(new[:2]) if new else "")) if n else "No area started this week"
-            stopped = (("one stopped" if m == 1 else f"{_count(m, 'area').split(' ')[0].lower()} stopped") +
-                       ((", including " if m > 1 else ", near ") + gone[0] if gone else "")) if m else "none stopped"
-            out.append(f"{started}; {stopped}.")
+        started = f"started in {_num(n)} area{'' if n == 1 else 's'} this week{_named(new, n, ', among them ')}"
+        if n and m:
+            out.append(f"GPS interference {started}; it has stopped in {_num(m)}{_named(gone, m, ', including ')}.")
+        elif n:
+            out.append(f"GPS interference {started}; it has stopped in none.")
+        elif m:
+            out.append(f"GPS interference has stopped in {_num(m)} area{'' if m == 1 else 's'}"
+                       f"{_named(gone, m, ', including ')}; it started in none this week.")
         else:
-            out.append("No area started or stopped this week.")
+            out.append("GPS interference has not started or stopped in any area this week.")
     return " ".join(out)
 
 
