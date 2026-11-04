@@ -5,11 +5,13 @@
   python tools/sentinel_daily.py [--max-days 4] [--weeks 8] [--map-days 28] [--no-fetch]
 
 1. Asks the catalogue for the newest day every default unit has posted (tools/sentinel_gnss.py latest).
-2. Builds the E1 table and the E2 epoch indices for each day after the newest held epoch file, up to that day
-   (at most --max-days per run, oldest first; nothing older than --weeks is fetched).
+2. Builds the E1 table, the E2 epoch indices and the X3 band indices (tools/sentinel_bands.py: GPS L2C and Galileo
+   E5a on the PODRIX units) for each day after the newest held epoch file, up to that day (at most --max-days per
+   run, oldest first; nothing older than --weeks is fetched). Then fills band files for up to --max-days held days in
+   the --weeks window that lack one.
 3. For each focus area in the private config (private/watch/satgnss.json): the daily and weekly trend over the last
    --weeks weeks of held days, the cell map over the last --map-days days and the trend chart, written to
-   private/sentinel/<area>/ (tools/sentinel_trend.py).
+   private/sentinel/<area>/ (tools/sentinel_trend.py), on GPS L1 and again on GPS L2C (files named <area>_l2c*).
 
 Raw product files are kept (about 27 GB a year); raw/index.jsonl holds each one's source and SHA-256. A failure in one
 step is logged and the rest still run. Exit status 1 only if nothing could be done.
@@ -43,6 +45,22 @@ def held_epoch_days():
     return sorted(dt.date.fromisoformat(f[:10]) for f in os.listdir(SR.EPOCH_DIR) if f.endswith(".parquet"))
 
 
+def held_band_days():
+    import sentinel_bands as SB
+    if not os.path.isdir(SB.BANDS_DIR):
+        return []
+    return sorted(dt.date.fromisoformat(f[:10]) for f in os.listdir(SB.BANDS_DIR) if f.endswith(".parquet"))
+
+
+def bands_missing(epoch_days, band_days, weeks, max_days):
+    """Held epoch days in the last `weeks` weeks (of the newest) without a band file, newest first, at most max_days."""
+    if not epoch_days:
+        return []
+    floor = max(epoch_days) - dt.timedelta(weeks=weeks)
+    have = set(band_days)
+    return sorted((d for d in epoch_days if d > floor and d not in have), reverse=True)[:max_days]
+
+
 def days_to_build(newest, held, max_days, weeks):
     """Days after the newest held epoch file (or from `weeks` back) up to `newest`, oldest first, at most max_days."""
     floor = newest - dt.timedelta(weeks=weeks)
@@ -66,20 +84,41 @@ def products(cfg_path, weeks, map_days):
     last = held[-1]
     series_days = [d for d in held if d > last - dt.timedelta(weeks=weeks)]
     map_list = [d for d in held if d > last - dt.timedelta(days=map_days)]
+    bands = set(held_band_days())
+    band_series = [d for d in series_days if d in bands]
+    band_map = [d for d in map_list if d in bands]
     for a in cfg.get("focus_areas", []):
         out = os.path.join(OUT, a["id"])
-        try:
-            res = ST.series(cfg, a["id"], series_days)
-            ST.write_series(res, a["id"], out)
-            ST.main(["chart", "--config", cfg_path, "--area", a["id"], "--out", out])
-            ST.main(["map", "--config", cfg_path, "--area", a["id"], "--out", out] + [str(d) for d in map_list])
-            wk = res["weekly"][-1] if res["weekly"] else {}
-            s = wk.get(a["id"], {})
-            log(f"{a['id']}: {len(series_days)} days to {last}; latest week {wk.get('week')} median {s.get('median')} dB, "
-                f"anomaly {wk.get('anomaly')} dB")
-        except Exception as e:
-            log(f"{a['id']}: product failed: {e.__class__.__name__}: {e}")
-            traceback.print_exc()
+        for signal, s_days, m_days in (("l1", series_days, map_list), ("l2c", band_series, band_map)):
+            if not s_days:
+                log(f"{a['id']} {signal}: no days held")
+                continue
+            try:
+                res = ST.series(cfg, a["id"], s_days, signal)
+                ST.write_series(res, ST.stem(a["id"], signal), out)
+                ST.main(["chart", "--config", cfg_path, "--area", a["id"], "--out", out, "--signal", signal])
+                if m_days:
+                    ST.main(["map", "--config", cfg_path, "--area", a["id"], "--out", out, "--signal", signal]
+                            + [str(d) for d in m_days])
+                wk = res["weekly"][-1] if res["weekly"] else {}
+                s = wk.get(a["id"], {})
+                log(f"{a['id']} {signal}: {len(s_days)} days to {s_days[-1]}; latest week {wk.get('week')} median "
+                    f"{s.get('median')} dB, anomaly {wk.get('anomaly')} dB")
+            except Exception as e:
+                log(f"{a['id']} {signal}: product failed: {e.__class__.__name__}: {e}")
+                traceback.print_exc()
+
+
+def build_bands(day):
+    """X3 band indices for one day; a failure is logged and never stops the run."""
+    import sentinel_bands as SB
+    try:
+        path, counts = SB.build_bands(day)
+        log(f"{day}: bands built ({', '.join(f'{u} {n}' for u, n in counts.items()) or 'no PODRIX unit'})")
+    except BaseException as e:      # build_bands raises SystemExit when a table is missing
+        if isinstance(e, KeyboardInterrupt):
+            raise
+        log(f"{day}: bands failed: {e.__class__.__name__}: {e}")
 
 
 def main(argv=None):
@@ -107,6 +146,7 @@ def main(argv=None):
                 SR.build_epochs(day)
                 log(f"{day}: E1 and E2 built")
                 did += 1
+                build_bands(day)
             except SystemExit as e:
                 log(f"{day}: stopped: {e}")
                 break
@@ -114,6 +154,8 @@ def main(argv=None):
                 log(f"{day}: failed: {e.__class__.__name__}: {e}")
                 traceback.print_exc()
                 break
+        for day in bands_missing(held_epoch_days(), held_band_days(), a.weeks, a.max_days):
+            build_bands(day)
     products(a.config, a.weeks, a.map_days)
     return 0 if (did or a.no_fetch or held_epoch_days()) else 1
 

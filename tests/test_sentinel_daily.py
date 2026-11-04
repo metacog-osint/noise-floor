@@ -21,6 +21,17 @@ def test_days_to_build():
         "an old held day doesn't pull in months of history"
 
 
+
+def test_bands_missing():
+    held = [D(2026, 10, d) for d in range(20, 29)]
+    bands = [D(2026, 10, 20), D(2026, 10, 25)]
+    assert M.bands_missing(held, bands, 8, 3) == [D(2026, 10, 28), D(2026, 10, 27), D(2026, 10, 26)], "newest first"
+    assert M.bands_missing(held, held, 8, 3) == []
+    assert M.bands_missing([], bands, 8, 3) == []
+    old = [D(2026, 1, 1)] + held
+    assert D(2026, 1, 1) not in M.bands_missing(old, bands, 1, 20), "outside the window"
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):

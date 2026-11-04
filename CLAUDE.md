@@ -104,7 +104,8 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   the user variables
   `CDSE_S3_ACCESS_KEY` and `CDSE_S3_SECRET_KEY`; Sentinel-6A stays in step P (PO.DAAC). **E5 (31 Oct):**
   `tools/sentinel_trend.py` (box trends and maps from a private config) and `tools/sentinel_daily.py` (daily, from
-  `collectors/run_daily.cmd`; private products in `private/sentinel/`, nothing uploaded). **Caveat:** the index reads
+  `collectors/run_daily.cmd`; private products in `private/sentinel/`, nothing uploaded; from 4 Nov it also builds the X3
+  band files and GPS L2C products, `<area>_l2c*`). **Caveat:** the index reads
   0.5-1 dB low across about 60-160°E even over empty ocean (probably BeiDou/QZSS overhead; validation section 2.5);
   plan step E2.1 proposes the correction. SAT-JAM: no contact (Tom, 31 Oct); replicate and improve.
   **`watch.py` sources added 31 Oct:** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch (pages in
