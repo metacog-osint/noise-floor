@@ -256,5 +256,13 @@ Found while building box trends on L2C. Not pre-registered; the regions were dra
   - **Reading:** whatever lowers the lower band over East Asia was there at every sampled hour and on every day of the
     week. That fits something running continuously rather than working-hours or scheduled activity. Still effects only;
     cause not established.
-- **Next:** ITU and NOTAM records of lower L-band activity in the region, and the same regional table on the held-out
-  E2.1 weeks once they are fetched.
+- **Published records (searched 4 Nov 2026, 20:15 UTC; extended web search).** No report was found of interference in
+  the lower L-band (1164–1300 MHz) across East Asia in 2025–2026. An absence of reports is not evidence of absence.
+  - North Korean GPS jamming aimed at South Korea fell in 2026: 10 days to 14 Sep, against 248 days in 2025 and 78 in
+    2024, per South Korean data reported by NK News (16 Oct 2026). South Korea's radio regulator detected none near
+    Baengnyeong Island in the first half of 2026 (NK News, 3 Jul 2026). That is the opposite direction to the orbital
+    lower-band slide, and those reports concern L1.
+  - The ITU Radio Regulations Board's 103rd meeting (26–30 Oct 2026; summary of decisions RRB26-3/11, posted 4 Nov)
+    had no item on GNSS or the lower L-band.
+- **Next:** the same regional table on the held-out E2.1 weeks once they are fetched, and the band files kept current by
+  the daily job (`tools/sentinel_daily.py`, from 4 Nov) so the trend can be followed.
