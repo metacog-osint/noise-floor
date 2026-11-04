@@ -92,6 +92,71 @@ the two South Atlantic Anomaly boxes stay reported only.
 - No mark, window or definition changes after a result is seen. If a bug turns up, the frozen result is reported first.
 - E2.1 replaces E2 in products only if checks 1–5 hold or are weakened, with none failed, and Tom agrees.
 
-## 2. Results
+## 2. Results (run 4 Nov 2026, 23:03 UTC)
 
-Not run yet.
+**Code:** `tools/sentinel_e21.py`, committed as d54059d (4 Nov 2026, 20:56 UTC) before any held-out day was processed;
+blob 38e574f, unchanged for the run. Tests in `tests/test_sentinel_e21.py`. Output `data/sentinel_gnss/e21_results.json`.
+**Data:** all 56 held-out days fetched and processed (no unit-day failed); 5 units a day to the 2 Mar window, 6 from
+13 Apr (Sentinel-1D); no window thin. The recomputed E2 index matched the epoch files on every unit-day.
+
+**Bottom line: all five checks hold.** The correction removes the 80–140°E dip without weakening detection, and the
+inland-Australia control that failed in E3 now passes.
+
+### 2.1 Checks
+
+| # | Check | D′ (corrected) | D (uncorrected) | Mark | Verdict |
+|---|---|---|---|---|---|
+| 1 | Quiet-band flatness, 10–45°S | 0.43 dB | 1.13 dB | ≤ 0.50 holds; > 0.80 fails | **holds** |
+| 2 | Pooled AUC (168 jammed, 6,431 clean cell-windows) | 0.858 | 0.855 | ≥ 0.80 and within 0.01 of D | **holds** |
+| 3 | Baltic AUC (24 jammed cell-windows) | 0.919 | 0.918 | ≥ 0.80 and within 0.02 of D | **holds** |
+| 4 | Controls degraded (1,728 cell-windows) | 0.12% | 10.0% | ≤ 2% holds; > 5% fails | **holds** |
+| 5 | Within place, r(inclined load, epoch value), 57,488 epochs | −0.022 | −0.068 | \|r\| ≤ 0.05 holds; > 0.10 fails | **holds** |
+
+Check 4 by box: central Pacific 0.0% (D 0.08%), southern Africa interior 0.0% (D 0.6%), inland Australia 0.66% (D 56%).
+
+### 2.2 Choices made before the run (in the module docstring at d54059d)
+
+- **SBAS and QZSS count whatever their health value.** In these files most SBAS satellites report 31 or 63 (not for
+  ranging) and QZSS reports 1 or 16 (signal bits); those describe service, not transmission, and section 0 counted
+  every SBAS satellite. BeiDou records need health 0.
+- **The inclined part of L** (check 5): BeiDou and QZSS satellites at 20° inclination or more.
+- **Fit:** least squares with an intercept; β = 0 below 100 fit epochs or a load spread under 0.05. No unit-day hit
+  the fallback (308 unit-days; the smallest fit used 2,679 epochs).
+- **Check 1** uses 20° longitude bins from −180° with 100 epochs or more; every bin qualified.
+
+### 2.3 Descriptive
+
+- **β by unit** (median, range over unit-days, dB per unit of load): Sentinel-1C −0.041 (−0.053 to −0.024), 1D −0.045
+  (−0.067 to −0.031), 2B −0.043 (−0.070 to −0.026), 2C −0.037 (−0.067 to −0.022), 3A −0.049 (−0.063 to −0.038), 3B
+  −0.053 (−0.069 to −0.036). Section 0's single fit gave −0.062.
+- **Longitude profiles** (20° bins, median epoch value, dB):
+  - 10–45°S: D falls to −1.04 at 100–140°E; D′ stays between −0.26 and +0.17.
+  - 0–20°N: D −0.98 to −1.20 at 80–140°E; D′ −0.10 to −0.25 there.
+  - 45–62°S: D −0.41 to −0.48 at 80–160°E; D′ −0.13 to +0.05 there.
+- **Week by week**, the quiet-band flatness of D′ is noisier than the pooled value: 0.57, 0.77, 0.58, 0.44, 0.63, 0.58,
+  0.40 and 0.53 dB (D: 1.12–1.47). Weekly products would still show 0.4–0.8 dB of structure along the band.
+- **Boxes** (median of judged cells, D → D′, range over the eight windows): South China Sea −0.95 to −1.52 → +0.01 to
+  −0.51; Myanmar −0.80 to −1.41 → +0.06 to −0.64; India–Pakistan border −0.68 to −1.18 → −0.05 to −0.55; inland
+  Australia −0.85 to −1.20 → +0.02 to −0.40. Jamming boxes keep their signal: Baltic −3.12 to −5.70 → −2.97 to −5.58;
+  Persian Gulf −0.78 to −2.67 → −0.37 to −2.11; Iraq −2.48 to −3.68 → −2.02 to −3.27; Levant −1.57 to −3.38 → −1.22
+  to −3.09.
+- **Region-held-out minimum AUC:** D′ 0.865, D 0.858.
+- **A positive offset:** D′ = D − β·L subtracts the whole load, though each unit-day baseline already absorbs the
+  average load, so D′ reads above zero wherever regional satellites are in view: the Central Pacific +0.02 to +0.41 dB,
+  Brazil interior +0.07 to +0.52 dB, the 0–20°N band +0.17 to +0.49 dB. No check is affected. A product would need
+  the offset removed (for example, β·(L − mean L) per unit-day), which is a new definition and would be stated as one.
+- **The broadcast files changed.** From the 25 May 2026 window the IGS merged file (BRDC00IGS_R) no longer carries
+  several operating BeiDou-3 satellites (geostationary C59 and C60, inclined C39 and C40, medium-orbit C43–C50), and
+  C05, C13 and C16 left the regional set. The regional count fell from 7 geostationary and 10 inclined to 4 and 5, and
+  the median load over 90–130°E, 45–10°S from about 19–20 to 15. The per-unit-day slope absorbs much of this (flatness
+  0.40–0.58 dB in those windows), but a product should take the load from a fuller merged file.
+- **The lower-band drift over East Asia replicates on these held-out weeks** (band files, median minus the Central
+  Pacific, dB): GPS L2C over 30–65°N, 100–150°E −0.77, −0.90, −1.08, −1.13, −1.52, −1.77, −1.87, −2.52 from Oct 2025
+  to Aug 2026; Galileo E5a −0.90 to −2.84; inland Australia (L2C) −0.20 to −0.67, the central US −0.52 to +0.17 and
+  the North Atlantic −0.48 to +0.13 with no trend. See `docs/validation/sentinel-gnss-x3.md` section 2.6.
+
+### 2.4 What follows
+
+- By section 1.5, E2.1 may replace E2 in products once Tom agrees, since every check held.
+- Before it does: remove the offset (2.3) as a stated new definition, and take the load from a merged file that carries
+  every BeiDou-3 satellite. Neither changes this result.

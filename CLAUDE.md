@@ -107,7 +107,9 @@ Read `docs/DESIGN.md` (the plan and open decisions) and `docs/research/2026-10-0
   `collectors/run_daily.cmd`; private products in `private/sentinel/`, nothing uploaded; from 4 Nov it also builds the X3
   band files and GPS L2C products, `<area>_l2c*`). **Caveat:** the index reads
   0.5-1 dB low across about 60-160°E even over empty ocean (probably BeiDou/QZSS overhead; validation section 2.5);
-  plan step E2.1 proposes the correction. SAT-JAM: no contact (Tom, 31 Oct); replicate and improve.
+  plan step E2.1 corrects it: **E2.1 run 4 Nov on eight held-out weeks, all five checks hold** (`tools/sentinel_e21.py`,
+  `docs/validation/sentinel-gnss-e21.md` section 2; flatness 0.43 dB, AUC 0.858, Australia control 0.66% degraded). Products
+  keep E2 until Tom agrees. SAT-JAM: no contact (Tom, 31 Oct); replicate and improve.
   **`watch.py` sources added 31 Oct:** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch (pages in
   `private/watch/pollers.json` `pagewatch`, each with a link pattern). FAA NOTAMs wait on API credentials (requested 30 Oct);
   the public NOTAM Search site refuses automated clients.
