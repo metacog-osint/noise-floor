@@ -215,7 +215,11 @@ plain z-score a little worse (0.849). The Baltic box deepened from −3.2 dB (Oc
 | Rolling ~6-week window | Daily and weekly series for private areas against quiet references and comparison boxes (E5) | Built |
 | No correction for regional signals | Proposed E2.1: correct for BeiDou/QZSS satellites overhead | The 60-160 deg E dip below |
 
-**E2.1 (pre-registered 1 Nov, not run): a regional signal-load term.** A quick test on the E3 days supported the
+**E2.1 (pre-registered 1 Nov; run 4 Nov on eight held-out weeks: all five checks hold).** Quiet-band flatness
+0.43 dB (uncorrected 1.13), pooled AUC 0.858 (0.855), Baltic 0.919 (0.918), controls degraded 0.12% (10.0%; inland
+Australia 0.66% against 56%), within-place r −0.022 (`docs/validation/sentinel-gnss-e21.md` section 2; code
+`tools/sentinel_e21.py`). Products switch only when Tom agrees, after removing the correction's positive offset and
+taking the load from a fuller broadcast file. A quick test on the E3 days supported the
 hypothesis: over the quiet southern band the index falls steadily with the number of BeiDou and SBAS
 geosynchronous satellites overhead (-0.05 dB with 0-1, -0.72 dB with 20-21), and an elevation-weighted load
 (-0.062 dB per unit) cuts the longitude dip from 1.07 to 0.47 dB while leaving the Baltic near -4.1 dB.
