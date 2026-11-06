@@ -144,6 +144,35 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
 3. ~~Enable R2~~ **Superseded 22 Oct 2026:** outputs are stored as GitHub Release assets (`pnt-data-YYYY-MM`, `declared-data`), free and public; R2 stays an option if the history outgrows releases.
 4. Permission requests (unchanged): RIPE NCC, Georgia Tech (IODA), adsb.lol, later 18 SDS.
 
+### SATCOM v1: reconciliation with the SATCOM build brief (5 Nov 2026)
+
+A private build brief for SATCOM interference sensing (source list, near-real-time proxies, case records and a
+visualization spec) was checked against this repo on 5 Nov 2026. Where they differ, this repo wins. Decided for SATCOM v1
+(merged phase 3):
+
+1. **Output formats:** Noisefloor publishes its own release files and the `tic-feed/2` feed. Anything another consumer
+   needs is converted on the consumer's side, not here.
+2. **Stack:** the existing one (GitHub Actions, Releases, Cloudflare Pages, plus the daily collectors task on Tom's PC).
+   No new cloud services. Stream listeners wait for an always-on host and Tom's OK.
+3. **Sources:** `registry/sources.csv` verdicts win over the brief's list. Every new source is registered with its licence
+   before it feeds anything. Channel line-up listings stay a private watch, not a public layer. IODA and RIPE Atlas wait
+   for permission (decision 4).
+4. **Grading:** the brief's alert tiers get one mapping table onto the `watch.py` grades, the five `events.py` grade fields
+   and the `tic-feed/2` tier and status class. It goes in the SATCOM plan. No composite score until a shadow-mode period
+   and a validation set give something to calibrate it against.
+5. **Plan and steps:** SATCOM v1 gets its own plan, `docs/satcom-plan.md` (to be drafted for Tom's approval), with steps
+   S1–Sn. Validation follows the repo's pattern: pre-registered checks in `docs/validation/` before anything goes public.
+6. **Watch lists and keywords** stay in `private/`. Each entry records the public source it came from.
+7. **Footprints:** FCC Schedule S filings are the first route to published beam contours (registry row
+   `fcc-space-filings`). Operator coverage maps are not traced or published.
+8. **Community text:** keyword flags only, with no paid model calls. Telegram, X and Reddit stay as the registry rows say
+   until each is re-reviewed under the 29 Oct non-commercial rule.
+
+Found in the check: Cloudflare Radar in `watch.py` reads outage annotations and Cloudflare's own anomaly detections, not
+hourly traffic series, so a backtest needs an hourly reader. Noisefloor's hourly GNSS tables come from the next-morning
+adsb.lol archive, so GNSS-to-SATCOM cross-cues run about a day behind. Two declared-lane sources have failed since late
+October (NGA MSI HTTP 503 from 29 Oct; both NAVCEN sources HTTP 403 from 26 Oct).
+
 ### Progress (14 Oct 2026)
 
 - **Phase 1, Phase 1.1 and Phase 1.2 are built and validated.** See `docs/validation/phase1.md` and `docs/method-card.md`.
