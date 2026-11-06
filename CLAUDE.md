@@ -1,6 +1,6 @@
 # Noisefloor: project notes for Claude
 
-Product name: **Noisefloor**, one word (Tom, 27 Oct 2026; it was "Noisefloor" from 14 Oct). Repo and local folder stay `noise-floor`.
+Product name: **Noisefloor**, one word (Tom, 27 Oct 2026; it was "Noise Floor" from 14 Oct). Repo and local folder stay `noise-floor`.
 
 Tom's own project under **The Intelligence Company**, to be hosted on theintelligence.company. Restarted 6 Oct 2026.
 **Merged with Interference Watch on 14 Oct 2026.** The "Merged plan" section at the end of `docs/DESIGN.md` decides what wins.
@@ -28,7 +28,7 @@ loaded automatically; read it when you need the background.
   the pre-commit checks (standing permission, Tom, 14 Oct 2026). Creating repos or services, changing deploy settings, and
   publishing anything outside this repo (posts, products, the subdomain) still need Tom's OK each time.
 - Store UTC. On the site, show UTC with the visitor's own time zone alongside, always named; the Time button
-  (`site_src/tic-time.js`, The Intelligence Company's shared module, v1.0) lets them pick any zone and a 12/24-hour
+  (`site_src/tic-time.js`, The Intelligence Company's shared module, v1.3) lets them pick any zone and a 12/24-hour
   clock (Tom, 27 Oct 2026). Messages to Tom use Central time.
 - Tom is a domain expert (intel, SDA, weather): cite sources and flag anything unverified.
 
