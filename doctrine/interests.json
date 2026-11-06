@@ -1,0 +1,38 @@
+{
+  "program": "noisefloor",
+  "note": "What Noisefloor reads from the suite's other programs instead of collecting it again (doctrine kit tips.py): Cordon's navigational warnings and EASA airspace bulletins for declared-notice corroboration (NF-IND-5), and Watchfloor's escalating conflict zones for context.",
+  "areas": {},
+  "interests": [
+    {
+      "id": "NF-INT-1",
+      "programs": ["cordon"],
+      "anywhere": true,
+      "indicator_id": "NF-IND-5",
+      "about": "NGA navigational warnings reporting GNSS interference or testing at sea, for declared-notice corroboration (NF-IND-5)",
+      "where": [{"path": "measures.category", "op": "eq", "value": "gnss"}]
+    },
+    {
+      "id": "NF-INT-2",
+      "programs": ["cordon"],
+      "anywhere": true,
+      "indicator_id": "NF-IND-5",
+      "about": "EASA Conflict Zone Information Bulletins in force, covering airspaces where GNSS jamming or spoofing is warned of (NF-IND-5)",
+      "response_stage_prefix": ["easa_czib:"]
+    },
+    {
+      "id": "NF-INT-3",
+      "programs": ["cordon"],
+      "anywhere": true,
+      "indicator_id": "NF-IND-5",
+      "about": "NGA navigational warnings on military exercises or rocket/space launches that may coincide with declared testing (NF-IND-5)",
+      "where": [{"path": "measures.category", "op": "in", "value": ["military", "launch"]}]
+    },
+    {
+      "id": "NF-INT-4",
+      "programs": ["watchfloor"],
+      "anywhere": true,
+      "tiers": ["anomaly", "warning"],
+      "about": "Conflict zones where Watchfloor flags an attention or violence anomaly, providing operational context for newly seen jamming"
+    }
+  ]
+}
