@@ -155,8 +155,9 @@ visualization spec) was checked against this repo on 5 Nov 2026. Where they diff
 2. **Stack:** the existing one (GitHub Actions, Releases, Cloudflare Pages, plus the daily collectors task on Tom's PC).
    No new cloud services. Stream listeners wait for an always-on host and Tom's OK.
 3. **Sources:** `registry/sources.csv` verdicts win over the brief's list. Every new source is registered with its licence
-   before it feeds anything. Channel line-up listings stay a private watch, not a public layer. IODA and RIPE Atlas wait
-   for permission (decision 4).
+   before it feeds anything. Channel line-up listings stay a private watch, not a public layer. IODA is read privately
+   until its permission request is answered (Tom, 5 Nov 2026): public pages cite its findings by link, never its series
+   or charts. RIPE Atlas still waits for permission (decision 4).
 4. **Grading:** the brief's alert tiers get one mapping table onto the `watch.py` grades, the five `events.py` grade fields
    and the `tic-feed/2` tier and status class. It goes in the SATCOM plan. No composite score until a shadow-mode period
    and a validation set give something to calibrate it against.
