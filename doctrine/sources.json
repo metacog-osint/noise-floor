@@ -66,6 +66,98 @@
       "ease_of_faking": "low",
       "cadence_s": 604800,
       "descriptor": "NASA CYGNSS level-1 reflectometry; its noise floor is an independent sensing method for interference."
+    },
+    "airframes": {
+      "independence_group": "airframes-feeders",
+      "descriptor": "Volunteer-fed aircraft datalink archive (ACARS, HFDL, SATCOM aero); its receivers are separate from ADS-B feeders, though some feeders run both."
+    },
+    "satnogs-db": {
+      "independence_group": "satnogs",
+      "descriptor": "Crowd-edited satellite and transmitter catalogue of the SatNOGS project."
+    },
+    "satnogs-network": {
+      "independence_group": "satnogs",
+      "descriptor": "Volunteer SatNOGS ground-station observations (waterfalls, frames); same project as satnogs-db."
+    },
+    "batc-qo100-fft": {
+      "independence_group": "batc-goonhilly",
+      "descriptor": "Wideband spectrum of the QO-100 amateur GEO transponder from one receiver at Goonhilly."
+    },
+    "isoc-pulse": {
+      "independence_group": "isoc-pulse",
+      "descriptor": "Internet Society's curated shutdown records. Compiled from Google Transparency Report, IODA, Cloudflare Radar, OONI, Access Now and others: never a separate line beside those."
+    },
+    "ooni": {
+      "independence_group": "ooni",
+      "descriptor": "OONI volunteer probe measurements of blocking by country and network."
+    },
+    "google-traffic": {
+      "independence_group": "google",
+      "descriptor": "Google's normalised product traffic by country and its hand-kept disruption list."
+    },
+    "netblocks": {
+      "independence_group": "netblocks",
+      "descriptor": "NetBlocks shutdown reports; method unpublished."
+    },
+    "traficom-gnss-stats": {
+      "independence_group": "fi-gov",
+      "descriptor": "Finnish Transport and Communications Agency interference statistics; aviation counts use its own monitoring and ADS-B."
+    },
+    "lithuania-rrt": {
+      "independence_group": "lt-gov",
+      "descriptor": "Lithuanian communications regulator statements, mostly via news interviews."
+    },
+    "pl-ilpib": {
+      "independence_group": "pl-gov",
+      "descriptor": "Polish National Institute of Telecommunications monitoring findings (with GUGiK on RTGMS.pl)."
+    },
+    "csno-tarc": {
+      "independence_group": "cn-gov",
+      "descriptor": "China Satellite Navigation Office test centre: BeiDou notices to users."
+    },
+    "miit-rab": {
+      "independence_group": "cn-gov",
+      "descriptor": "China's MIIT Radio Administration Bureau notices."
+    },
+    "srrc": {
+      "independence_group": "cn-gov",
+      "descriptor": "China's State Radio Monitoring Center case notices."
+    },
+    "glonass-iac": {
+      "independence_group": "ru-gov",
+      "descriptor": "Roscosmos GLONASS information centre: constellation status and notices."
+    },
+    "korea-crms": {
+      "independence_group": "kr-gov",
+      "descriptor": "Korea's Central Radio Management Service (MSIT) jamming figures."
+    },
+    "icao-mid-papers": {
+      "independence_group": "icao-mid",
+      "descriptor": "ICAO MID meeting papers; each paper is its submitting state's claim, so count it under that state."
+    },
+    "taiwan-mnd": {
+      "independence_group": "tw-gov",
+      "descriptor": "Taiwan Ministry of National Defense daily PLA activity counts."
+    },
+    "uhf-satcom": {
+      "independence_group": "uhf-satcom",
+      "descriptor": "Hobbyist satellite downlink observations."
+    },
+    "windward": {
+      "independence_group": "windward",
+      "descriptor": "Windward's commercial AIS analytics, published as marketing material."
+    },
+    "ut-austin-rnl": {
+      "independence_group": "ut-austin-rnl",
+      "descriptor": "UT Austin Radionavigation Laboratory research papers."
+    },
+    "leolabs-public": {
+      "independence_group": "leolabs",
+      "descriptor": "LeoLabs public statements from its LEO radar network."
+    },
+    "exoanalytic-public": {
+      "independence_group": "anduril-exoanalytic",
+      "descriptor": "ExoAnalytic (Anduril from 2026) public statements from its GEO telescope network."
     }
   }
 }
