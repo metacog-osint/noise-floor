@@ -99,6 +99,43 @@ across, so separate spoofing points more than about 5 km apart stay apart. A mov
 episode (its median), so excursions scatter into many small clusters. Spoofed-to points are where receivers were shown,
 not where a transmitter is.
 
-## Result
+## Result (scored 14 Nov 2026, about 23:30 UTC): both checks fail
 
-Not yet scored.
+| Day | GPSWise Lima flights | Matched | Noisefloor at Lima, not in GPSWise |
+|---|---|---|---|
+| 7 Nov | 9 | 0 | 1 |
+| 8 Nov | 7 | 0 | 0 |
+| 9 Nov | 6 | 0 | 0 |
+| 10 Nov | 8 | 0 | 0 |
+| 11 Nov | 12 | 0 | 0 |
+| 12 Nov | 14 | 0 | 0 |
+| **All** | **56** | **0 (0%)** | 1 |
+
+L1: 0% against ≥ 50%, **fail**. L2: 0 of 6 days against ≥ 4, **fail**. 7–11 Nov alone (not looked at first): 0 of 42.
+
+**Why the 56 were missed** (`spoof_compare.py --raw-root`):
+- 37: no position near Lima in the archive during GPSWise's window. adsb.lol mostly has MLAT positions there, over
+  Slovakia and Hungary, with the aircraft's own ground speed at about 109 kt. readsb seems to have dropped the false
+  positions, so the archive can't place these aircraft at Lima.
+- 14: ADS-B positions at Lima that no test flagged: 108–110 kt (above slow's 100 kt), mostly 30–90 s (under loiter's 3
+  minutes), and a jump to Lima and back (two jumps over 2,000 km), so the duplicate-address rule switched the excursion
+  test off. The archive's ceiling is therefore about 14 of 56 (25%), even with a perfect detector.
+- 5: aircraft not in the archive, or no positions at all in the window.
+
+**Caught:** one aircraft on 7 Nov (06:10–06:13 UTC, loiter, isolated) that GPSWise doesn't list. Its victim location
+came from the last trusted position before the episode, which was on the Romanian ring: itself a spoofed position at
+about 109 kt that no test flagged. So that episode's victim cell is wrong. **Romanian ring:** one cluster, on 9 Nov (1
+episode, excursion, 1.1 km from 47.959, 23.276).
+
+**Release files:** `<day>.spoof-targets.json` for 7–13 Nov 2026 was rebuilt on GitHub (backfill.yml `spoofing_only`)
+and is on the `pnt-data-2026-11` release. The files for 7–12 Nov are the same size as the local rerun's, byte for byte.
+
+**Fix proposed, not made (a separate, pre-registered step):**
+1. Slow test: flag ground speed under about 150 kt at or above 25,000 ft. No jet cruises that slowly; this spoofer
+   shows 108–110 kt on both rings.
+2. Duplicate-address rule: don't switch off the excursion test for a short far segment (≤ 15 min) bracketed by the
+   main track. Duplicate addresses show long alternating tracks.
+3. Both checked against the six control regions on the held-out days, at the H1 limit, before adoption. Fix 1 also stops
+   the Romanian ring positions being used as victim anchors.
+4. The 37 dropped by readsb can only be counted as spoofed, not placed: an MLAT check of reported speed against MLAT
+   movement (109 kt reported while moving at about 450 kt).
