@@ -18,7 +18,7 @@ takes every ungrouped point within TARGET_KM of its seed. A ring of about 1 km r
 is within 2 km of every other). Replay episodes (stale data, not spoofing) are left out. Per cluster: centre, spread,
 episodes and distinct aircraft, episodes by class and by kind, first and last time, the altitude range, and the H3
 res-4 cells where the aircraft really were during those episodes, with episode and aircraft counts. A separate file
-because it runs to hundreds of kB a day, which the site, which copies every <day>.spoof.json, doesn't need.
+because it runs to tens of kB a day (70 kB on 12 Nov 2026), which the site, which copies every <day>.spoof.json, doesn't need.
 """
 import argparse
 import gzip
