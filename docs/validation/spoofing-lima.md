@@ -128,7 +128,7 @@ about 109 kt that no test flagged. So that episode's victim cell is wrong. **Rom
 episode, excursion, 1.1 km from 47.959, 23.276).
 
 **Release files:** `<day>.spoof-targets.json` for 7–13 Nov 2026 was rebuilt on GitHub (backfill.yml `spoofing_only`)
-and is on the `pnt-data-2026-11` release. The files for 7–12 Nov are the same size as the local rerun's, byte for byte.
+and is on the `pnt-data-2026-11` release. The files for 7–12 Nov are the same size as the local rerun's (sizes compared, not hashes).
 
 **Fix proposed, not made (a separate, pre-registered step):**
 1. Slow test: flag ground speed under about 150 kt at or above 25,000 ft. No jet cruises that slowly; this spoofer
