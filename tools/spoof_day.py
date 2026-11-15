@@ -42,6 +42,9 @@ docs/validation/spoofing-v06.md) adds three rules found with the Lima test:
   speed      MLAT positions at or above 25,000 ft where the aircraft reports < 150 kt while MLAT moves at >= 300 kt (to
              the nearest MLAT position 60-300 s later): episodes of kind speed (categories A2-A5 or none), unless they
              overlap one of the aircraft's ADS-B episodes. Victim location: the MLAT positions; no spoofed-to point.
+v0.6.1 (the default from 15 Nov 2026, adopted on its pre-registered checks; docs/validation/spoofing-v061.md): rule A
+  (slow at cruise) applies to category A2 only at or above 36,000 ft (SLOW_HI_A2_FT), above the common turboprops'
+  ceilings, where a turboprop into a strong headwind made false alarms; --slow-hi-a2-ft 25000 gives v0.6.
 Supporting indicators (tested, reported, not used to build episodes):
   geo        geometric minus baro altitude jumps by >= 1,000 ft within 60 s (geo_step), or sits at the ADS-B
              encoding limit, |diff| >= 3,100 ft (geo_sat); and per hex-hour, an aircraft whose median diff is >= 1,500 ft
@@ -109,8 +112,8 @@ NACP_BAD, NACP_CLEAN = 8, 8
 REPLAY_KM, REPLAY_ALT_FT, REPLAY_LAG_S = 3.0, 1000, (120.0, 10800.0)   # v0.4 stale-replay test (see replay_info)
 REPLAY_SHARE, REPLAY_IQR_S, REPLAY_MIN_GS_KT, REPLAY_SHARED_KM = 0.6, 180.0, 150.0, 5.0
 SLOW_HI_KT, SLOW_HI_FT = 150, 25000           # v0.6: slow at cruise
-SLOW_HI_A2_FT = 25000                         # ... its floor for category A2 (0: rule A off for A2). 25,000 is v0.6;
-                                              #     variants scored in docs/validation/spoofing-v061.md
+SLOW_HI_A2_FT = 36000                         # ... its floor for category A2 (0: rule A off for A2). 36,000 is v0.6.1,
+                                              #     25,000 is v0.6 (docs/validation/spoofing-v061.md)
 FAR_EXC_MAX_S, FAR_EXC_MAX_N = 900.0, 2         # v0.6: short far excursions exempt from the duplicate-address rule
 SPEED_GS_KT, SPEED_FT, SPEED_MLAT_KT, SPEED_DT_S = 150, 25000, 300.0, (60.0, 300.0)   # v0.6: MLAT speed check
 SPEED_OVERLAP_S = 60.0
@@ -864,7 +867,7 @@ def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False, a2_h
     ml_unflagged_dis = sum(1 for r in nd if not r["episodes"] and r["mlat"][1] >= 2)
     secs = time.time() - t0
     summary = {
-        "day": day, "version": ("0.6" if a2_hi_ft == 25000 else "0.6.1") if v06 else "0.5" if airspeed else VERSION, "inputs": [os.path.basename(p) for p in parts],
+        "day": day, "version": ({25000: "0.6", 36000: "0.6.1"}.get(a2_hi_ft, f"0.6.1-a2-{a2_hi_ft}")) if v06 else "0.5" if airspeed else VERSION, "inputs": [os.path.basename(p) for p in parts],
         "input_bytes": chain.nbytes, "input_sha256": chain.sha.hexdigest(),
         "seconds": round(secs, 1), "seconds_read": round(t_read, 1), "workers": workers,
         **{k: st.get(k, 0) for k in ("files", "skipped", "parse_errors")},
@@ -1118,7 +1121,7 @@ def main():
                          "(docs/validation/spoofing-v06.md); --no-v06 gives v0.5")
     ap.add_argument("--slow-hi-a2-ft", type=int, default=None,
                     help="v0.6 rule A (slow at cruise) floor for category A2, ft; 0 turns it off for A2 "
-                         f"(default {SLOW_HI_A2_FT}; docs/validation/spoofing-v061.md)")
+                         f"(default {SLOW_HI_A2_FT}, v0.6.1; 25000 gives v0.6; docs/validation/spoofing-v061.md)")
     a = ap.parse_args()
     if a.cmd == "run":
         for day in a.days:

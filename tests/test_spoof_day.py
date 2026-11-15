@@ -351,7 +351,7 @@ def test_v06_day():
         traces = [trace("bbb009", lima_flight(t0)), sp] + [trace(f"bbb2{k:02d}", fly(t0 + k * 30, 50, 48.0 + 0.05 * k, 19.0)) for k in range(3)]
         build_day(raw, "2024-10-14", traces)
         s = S.run("2024-10-14", raw, out, 1, airspeed=True, v06=True)
-        assert s["version"] == "0.6" and s["episodes"] == 2 and s["episodes_by_kind"].get("speed") == 1, s["episodes_by_kind"]
+        assert s["version"] == "0.6.1" and s["episodes"] == 2 and s["episodes_by_kind"].get("speed") == 1, s["episodes_by_kind"]
         t4 = pq.read_table(os.path.join(out, "2024-10-14.hex4.parquet")).to_pylist()
         assert sum(r["spoofed_speed"] for r in t4) >= 1
         p, d, pt = SS.write(out, "2024-10-14", os.path.join(out, "pub"))
@@ -367,10 +367,10 @@ def test_v06_day():
 
 
 def test_v061_rule_a_for_a2():
-    """v0.6.1 variants (docs/validation/spoofing-v061.md): rule A's floor for category A2. A turboprop at 25,500 ft
-    making 140 kt over the ground into a headwind is slow under v0.6 (floor 25,000 ft), not with rule A off for A2 (0)
-    or with the A2 floor at 36,000 ft; a light jet doing 140 kt at 37,000 ft is still slow with the 36,000 ft floor.
-    Other categories are unchanged."""
+    """v0.6.1 (docs/validation/spoofing-v061.md): rule A's floor for category A2. A turboprop at 25,500 ft making
+    140 kt over the ground into a headwind is slow under v0.6 (floor 25,000 ft), not with rule A off for A2 (0) or with
+    the A2 floor at 36,000 ft (v0.6.1, the default); a light jet doing 140 kt at 37,000 ft is still slow with the
+    36,000 ft floor. Other categories are unchanged."""
     a2 = dict(DET, category="A2")
 
     def flight(alt):
@@ -380,8 +380,10 @@ def test_v061_rule_a_for_a2():
         A, M, cat = S.parse_trace(trace("bbb020", pts, det=det, typ="B350"))
         return S.analyse(A, M, cat, airspeed=True, v06=True, **kw)["episodes"]
 
-    assert len(eps(flight(25500), a2)) == 1, "v0.6: A2 at 25,500 ft, 140 kt, is slow"
-    assert len(eps(flight(25500), a2, a2_hi_ft=25000)) == 1
+    assert S.SLOW_HI_A2_FT == 36000, "v0.6.1 default"
+    assert not eps(flight(25500), a2), "v0.6.1 default: A2 at 25,500 ft, 140 kt, is not slow"
+    assert len(eps(flight(37000), a2)) == 1, "v0.6.1 default: A2 at 37,000 ft, 140 kt, is slow"
+    assert len(eps(flight(25500), a2, a2_hi_ft=25000)) == 1, "v0.6: A2 at 25,500 ft, 140 kt, is slow"
     assert not eps(flight(25500), a2, a2_hi_ft=0), "rule A off for A2"
     assert not eps(flight(25500), a2, a2_hi_ft=36000), "A2 below the 36,000 ft floor"
     assert len(eps(flight(37000), a2, a2_hi_ft=36000)) == 1, "A2 above the 36,000 ft floor"
