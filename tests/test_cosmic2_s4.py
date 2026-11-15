@@ -274,6 +274,45 @@ def test_job_days_gate_and_wait():
         J.http_status = old_status
 
 
+def test_job_run_day_end_to_end():
+    """run_day with the download faked: the limb file is written, uploaded once, and the interference step runs."""
+    el = np.linspace(5.0, elev_for(140.0), 400)
+    s4 = np.repeat(np.linspace(0.05, 0.5, 40), 10)
+    files = [(name_for(prn=5), nc_link(T0_GPS + 600, s4, el, prn=5)),
+             (name_for(prn=7), nc_link(T0_GPS + 7200, s4, el, prn=7))]
+    out_dir = os.path.join(ROOT, "data", "test_tmp_job")
+    calls = []
+
+    def fake_fetch(day, force=False, stream="nrt", on_link=None, on_retry=None):
+        C2.reduce_stream(tar_of(files), on_link)
+        return "table"
+
+    class A:
+        force = no_upload = False
+        s4_only = False
+        wait_minutes, deadline_hour = 0, 13
+
+    old = (J.published, J.wait_for_ucar, J.upload, J.interference, C2.fetch, S.OUT)
+    try:
+        J.published = lambda *a: False
+        J.wait_for_ucar = lambda *a, **k: (True, {"Content-Length": "123", "Last-Modified": "x"})
+        J.upload = lambda tag, path, title, notes: calls.append(("upload", tag, os.path.basename(path)))
+        J.interference = lambda day, no_upload, ua: calls.append(("interference", day)) or ("uploaded", None)
+        C2.fetch = fake_fetch
+        S.write.__defaults__ = (out_dir,)
+        assert J.run_day(DAY, A(), now=datetime(2026, 11, 14, 5, 0, tzinfo=timezone.utc)) == "done"
+    finally:
+        J.published, J.wait_for_ucar, J.upload, J.interference, C2.fetch, _ = old
+        S.write.__defaults__ = (S.OUT,)
+    assert calls == [("upload", "swx-data-2026-11", f"{DAY}.cosmic2-limb-s4.json"), ("interference", DAY)]
+    p = os.path.join(out_dir, f"{DAY}.cosmic2-limb-s4.json")
+    doc = json.load(open(p, encoding="utf-8"))
+    assert doc["counts"]["values"] > 0 and doc["source"]["bytes"] == 123
+    assert sum(len(h["cells"]) for h in doc["hours"]) == doc["counts"]["cell_hours"] > 0
+    os.remove(p)
+    os.rmdir(out_dir)
+
+
 def test_compare_rfi():
     a = {"judged_cells": 3, "cells": [["c1", 0.3, 40], ["c2", 0.25, 50]]}
     assert J.compare_rfi(a, json.loads(json.dumps(a)))["match"] is True
