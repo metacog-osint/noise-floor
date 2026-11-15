@@ -130,7 +130,9 @@ loaded automatically; read it when you need the background.
     wide-lane cycles, pierce points at 350 km. BKG lists the files 00:05-13:00 UTC on D+1; before 09:00 UTC a day is
     published only when all 17 are in, from 09:00 with what is in, and a later start up to D+3 remakes it when a
     missing station turns up. Compact RINEX 3.1 (RNX2CRX 4.2.0, e.g. MAL200KEN) is read as 3.0. Check:
-    `tools/ground_roti_check.py` (needs the eSWua cache, `--ground`). Map or feed use waits on Tom's OK.
+    `tools/ground_roti_check.py` (needs the eSWua cache, `--ground`). **Validated 15 Nov 2026** against eSWua on
+    the 25 held-out days (AUC 0.887; night-only 0.871; chance test p = 0.0005; Hanoi had no eSWua records, Dhaka /
+    Shillong weakest at 0.651; backfill run 43746680913). Map or feed use waits on Tom's OK.
 - **`watch.py` sources (31 Oct 2026):** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch
   (pages in `private/watch/pollers.json` `pagewatch`, each with a link pattern). FAA NOTAMs wait on API credentials
   (requested 30 Oct); the public NOTAM Search site refuses automated clients.
