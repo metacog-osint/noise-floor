@@ -7,12 +7,15 @@ name: cosmic2
 # UCAR posts day D at about 04:35 UTC on D+1. The limb S4 file is due by 14:00 UTC on D+1: a same-morning picture for the
 # board and COP.
 # Starts: tic-dispatch (The Intelligence Company's dispatch Worker) is to start this through workflow_dispatch hourly
-# from 05:05 to 13:05 UTC, because GitHub's own cron fires 4-9 hours late on this account (measured 5 Nov 2026). The
-# crons below are the fallback. The gate (the day's limb S4 file already in its release) makes extra starts end in about
-# a minute, so the day is made once. Runs that find UCAR late wait up to 45 minutes, then leave it to the next start;
-# from 13:00 UTC a missing archive fails the run, so GitHub mails the owner.
+# from 05:05 to 13:05 UTC, because GitHub's own cron fires 4-9 hours late on this account (measured 5 Nov 2026; the
+# 05:15 cron fired at 12:41 on 15 Nov). The crons below are the fallback, set early so that a late start still lands
+# between UCAR's posting and 14:00 UTC. The gate (the day's limb S4 file already in its release) makes extra starts end
+# in about a minute, so the day is made once. Runs that find UCAR late wait up to 45 minutes, then leave it to the next
+# start; from 13:00 UTC a missing archive fails the run, so GitHub mails the owner.
 on:
   schedule:
+    - cron: "15 1 * * *"
+    - cron: "15 3 * * *"
     - cron: "15 5 * * *"
     - cron: "15 8 * * *"
   workflow_dispatch:
