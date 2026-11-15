@@ -1,0 +1,55 @@
+name: cosmic2
+# COSMIC-2 day job (tools/cosmic2_job.py). One pass over UCAR's podTc2 day archive (about 450-650 MB, nothing kept) makes
+#   <day>.cosmic2-limb-s4.json -> release swx-data-YYYY-MM: limb S4 measured along radio-occultation paths, which reads
+#                                 higher than a ground receiver's S4 (tools/cosmic2_s4.py, docs/validation/cosmic2-limb-s4.md)
+#   <day>.cosmic2.json         -> release cosmic2-data (the interference layer), only if that release lacks the day; this
+#                                 PC's own run (tools/cosmic2_daily.py) still makes it while this path is proven
+# UCAR posts day D at about 04:35 UTC on D+1. The limb S4 file is due by 14:00 UTC on D+1: a same-morning picture for the
+# board and COP.
+# Starts: tic-dispatch (The Intelligence Company's dispatch Worker) is to start this through workflow_dispatch hourly
+# from 05:05 to 13:05 UTC, because GitHub's own cron fires 4-9 hours late on this account (measured 5 Nov 2026). The
+# crons below are the fallback. The gate (the day's limb S4 file already in its release) makes extra starts end in about
+# a minute, so the day is made once. Runs that find UCAR late wait up to 45 minutes, then leave it to the next start;
+# from 13:00 UTC a missing archive fails the run, so GitHub mails the owner.
+on:
+  schedule:
+    - cron: "15 5 * * *"
+    - cron: "15 8 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days: YYYY-MM-DD or START:END, space-separated. Empty = yesterday (UTC)."
+        required: false
+        default: ""
+      force:
+        description: "Redo days whose limb S4 file is already published"
+        type: boolean
+        default: false
+      s4_only:
+        description: "Only the limb S4 file (skip the interference day file)"
+        type: boolean
+        default: false
+permissions:
+  contents: write    # create the monthly swx-data release and upload assets
+concurrency:
+  group: cosmic2
+  cancel-in-progress: false
+jobs:
+  day:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      # scipy reads the netCDF link files; shapely and pyproj name places in the interference file (nisar_rfi.places)
+      - run: pip install -r requirements.txt scipy shapely pyproj
+      - name: COSMIC-2 day files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ inputs.days }}
+          FORCE: ${{ inputs.force && '--force' || '' }}
+          S4_ONLY: ${{ inputs.s4_only && '--s4-only' || '' }}
+        run: python tools/cosmic2_job.py $DAYS $FORCE $S4_ONLY --wait-minutes 45 --deadline-hour 13

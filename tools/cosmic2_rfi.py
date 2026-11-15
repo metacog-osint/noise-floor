@@ -72,12 +72,20 @@ def link_frame(leo, gps):
     return np.stack([(u * a).sum(1), (u * c).sum(1), (u * r).sum(1)], axis=1)
 
 
-def read_link(buf):
-    """One podTc2 file -> dict of arrays (valid RFI samples only) and its antenna id; None if unreadable."""
+def open_link(buf):
+    """One podTc2 file's bytes -> an open scipy netcdf_file, or None if unreadable."""
     from scipy.io import netcdf_file
     try:
-        f = netcdf_file(io.BytesIO(buf), "r", mmap=False)
+        return netcdf_file(io.BytesIO(buf), "r", mmap=False)
     except Exception:
+        return None
+
+
+def read_link(buf):
+    """One podTc2 file (bytes, or a file from open_link) -> dict of arrays (valid RFI samples only) and its antenna id;
+    None if unreadable."""
+    f = open_link(buf) if isinstance(buf, (bytes, bytearray)) else buf
+    if f is None:
         return None
     V, A = f.variables, f._attributes
     if "RFI" not in V:
@@ -92,8 +100,10 @@ def read_link(buf):
             "leo": leo[ok], "frame": frame[ok]}
 
 
-def reduce_stream(fobj):
-    """Read a podTc2 tar.gz stream. Returns (table dict, pointing dict, counts)."""
+def reduce_stream(fobj, on_link=None):
+    """Read a podTc2 tar.gz stream. Returns (table dict, pointing dict, counts).
+    `on_link(name, f)`, if given, also sees every readable link file (f from open_link), so another product can be
+    made in the same pass (tools/cosmic2_s4.py). It does not change this reduction."""
     cols = {k: [] for k in ("sat", "ant", "t", "rfi", "x", "y", "z")}
     point = {}
     files = bad = 0
@@ -103,7 +113,10 @@ def reduce_stream(fobj):
             if not m.isfile() or not name.startswith("podTc2_"):
                 continue
             files += 1
-            d = read_link(tf.extractfile(m).read())
+            f = open_link(tf.extractfile(m).read())
+            if f is not None and on_link is not None:
+                on_link(name, f)
+            d = read_link(f) if f is not None else None
             if d is None:
                 bad += 1
                 continue
@@ -144,7 +157,9 @@ def url_for(day, stream="nrt"):
     return URL.format(stream=stream, y=d.year, doy=d.timetuple().tm_yday)
 
 
-def fetch(day, force=False, stream="nrt"):
+def fetch(day, force=False, stream="nrt", on_link=None, on_retry=None):
+    """Stream the day's archive once and write the RFI day table. `on_link` sees every link file in the same pass
+    (reduce_stream); `on_retry()` is called before a retried download, so a caller can drop what it collected."""
     import pyarrow as pa
     import pyarrow.parquet as pq
     os.makedirs(DAYS_DIR, exist_ok=True)
@@ -156,10 +171,12 @@ def fetch(day, force=False, stream="nrt"):
     t0 = time.time()
     for attempt in range(4):
         try:
+            if attempt and on_retry is not None:
+                on_retry()
             req = urllib.request.Request(url, headers={"User-Agent": UA})
             with urllib.request.urlopen(req, timeout=120) as resp:
                 size = int(resp.headers.get("Content-Length") or 0)
-                c, pointing, n = reduce_stream(resp)
+                c, pointing, n = reduce_stream(resp, on_link)
             break
         except (OSError, tarfile.TarError, EOFError) as e:
             if attempt == 3:

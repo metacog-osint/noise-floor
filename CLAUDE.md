@@ -100,6 +100,20 @@ loaded automatically; read it when you need the background.
     overhead; validation section 2.5);
     the E2.1 correction (`tools/sentinel_e21.py`, `docs/validation/sentinel-gnss-e21.md` section 2) passed all five
     checks on 4 Nov. Products keep E2 until Tom agrees. SAT-JAM: no contact (Tom, 31 Oct); replicate and improve.
+- **Space weather files (from 15 Nov 2026; Tom decided Noisefloor is the suite's source for PNT and space weather
+  data, read from its published files):** COSMIC-2 limb S4 now, ground ROTI later (a separate step). Always label it
+  "limb S4 measured along radio-occultation paths, which reads higher than a ground receiver's S4", and never compare
+  it with the ground S4 alert levels, on the site, in files or in docs.
+  - `.github/workflows/cosmic2.yml` runs `tools/cosmic2_job.py` on GitHub: one pass over UCAR's podTc2 day archive
+    makes `<day>.cosmic2-limb-s4.json` (`tools/cosmic2_s4.py`; release `swx-data-YYYY-MM`) and the interference file
+    `<day>.cosmic2.json` (uploaded to `cosmic2-data` only if the PC's `cosmic2_daily.py` hasn't, and compared if it
+    has). UCAR posts about 04:35 UTC; the limb file is due by 14:00 UTC. The gate (the day's file already in the
+    release) makes extra starts cheap; GitHub's cron runs hours late, so tic-dispatch is to start it hourly
+    05:05-13:05 UTC (needs Tom's yes and noise-floor in `DISPATCH_TOKEN`'s access). Keep the PC path until the GitHub
+    one is proven.
+  - Method facts (`docs/validation/cosmic2-limb-s4.md`): UCAR's on-board S4 is one value per 10 s, repeated at 1 Hz;
+    link files overlap and must be made unique per second; the first 60 s of a track are dropped; GPS links only;
+    tangent points 150-500 km; H3 res 1. Map or feed use waits on Tom's OK after validation.
 - **`watch.py` sources (31 Oct 2026):** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch
   (pages in `private/watch/pollers.json` `pagewatch`, each with a link pattern). FAA NOTAMs wait on API credentials
   (requested 30 Oct); the public NOTAM Search site refuses automated clients.
