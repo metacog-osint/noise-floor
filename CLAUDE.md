@@ -159,7 +159,9 @@ loaded automatically; read it when you need the background.
   the charts page's daily trend reads `site/data/trend.json` (both built at deploy for daily days). The home page status board
   reads `site/data/board.json`, built at deploy by `tools/board.py` (day maps, trend, events, position loss, FAA tests,
   `site_src/official_notices.json`, and live EASA FIR and ESA scintillation snapshots; a failing source is listed in
-  `problems`, never fatal). The daily run also uploads `<day>.spoof.json` (`daily_job.py --spoofing`, from late Oct 2026).
+  `problems`, never fatal). The daily run also uploads `<day>.spoof.json` (`daily_job.py --spoofing`, from late Oct 2026) and, from 14 Nov 2026,
+  `<day>.spoof-targets.json` (every spoofed-to cluster, `tools/spoof_summary.py`; `docs/validation/spoofing-lima.md`); redo
+  them on published days with backfill.yml `spoofing_only` (`daily_job.py --spoof-only`, downloads the raw archive).
   `tools/cygnss_daily.py` makes CYGNSS day summaries on this PC (needs `EARTHDATA_TOKEN`) from the 06:30 collectors task
   (`collectors/run_daily.cmd`) and uploads them to the `cygnss-data` release (Tom approved 26 Oct 2026); the newest
   complete day runs about six days behind. **Map layers (27 Oct 2026):** the map page's Spoofing and CYGNSS checkboxes read

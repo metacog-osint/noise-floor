@@ -6,6 +6,9 @@ name: backfill
 #   2. analyse: the analyses in date order, so each day's baselines include the days before it (two jobs, one
 #      after the other, to stay inside the 6-hour job limit). The 20 validated days keep their published results.
 # Then the site is redeployed. Uploads are throttled to stay under GitHub's content-creation limits.
+# spoofing_only: redo only the spoofing files (<day>.spoof.json, <day>.spoof-targets.json) of published days, after
+# tools/spoof_day.py or tools/spoof_summary.py changes. The detector reads raw traces, so this downloads each day's
+# archive again (the analyse phase can't: it never downloads). No analyses; the site is redeployed.
 on:
   workflow_dispatch:
     inputs:
@@ -19,6 +22,10 @@ on:
         default: "2026-10-06"
       skip_process:
         description: "Only rerun the analysis phase"
+        type: boolean
+        default: false
+      spoofing_only:
+        description: "Only redo the spoofing files of published days (downloads the raw archives again)"
         type: boolean
         default: false
 permissions:
@@ -75,14 +82,20 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Process and publish ${{ matrix.chunk.days }} (no analyses)
-        if: ${{ inputs.skip_process != true }}
+        if: ${{ inputs.skip_process != true && inputs.spoofing_only != true }}
         env:
           GH_TOKEN: ${{ github.token }}
           DAYS: ${{ matrix.chunk.days }}
         run: python pipeline/daily_job.py "$DAYS" --skip-analysis
+      - name: Redo the spoofing files, ${{ matrix.chunk.days }}
+        if: ${{ inputs.spoofing_only == true }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ matrix.chunk.days }}
+        run: python pipeline/daily_job.py "$DAYS" --spoof-only --min-seconds 30
   analyse-a:
     needs: [plan, process]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && inputs.spoofing_only != true }}
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
@@ -99,7 +112,7 @@ jobs:
         run: python pipeline/daily_job.py "$DAYS" --reanalyse --min-seconds 30
   analyse-b:
     needs: [plan, analyse-a]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && inputs.spoofing_only != true }}
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
