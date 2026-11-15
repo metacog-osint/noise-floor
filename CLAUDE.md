@@ -24,6 +24,10 @@ loaded automatically; read it when you need the background.
   with the credit they ask for. Only sources whose terms forbid republishing stay out. Rows still marked `visual-only`
   under the old rule are reviewed one at a time before they change; the ODbL rule below still applies to the hex data.
 - adsb.lol-derived downloadable data is published under ODbL, with attribution on every map.
+- **The main checkout stays on `main` (15 Nov 2026).** The PC's scheduled tasks (daily collectors, NISAR, AIS, the ESA
+  capture) run the main checkout's own files, so a branch checked out there is what runs: from 5 to 15 Nov a docs
+  branch did. Work in a worktree and never switch the main checkout's branch. `collectors/run_daily.cmd` fast-forwards
+  main from GitHub when it has no tracked changes, and logs a warning in `data/logs/collectors.log` on any other branch.
 - Free tier only. Ask before anything billable. **Commits and pushes:** commit finished steps, and push any commit that passes
   the pre-commit checks (standing permission, Tom, 14 Oct 2026). Creating repos or services, changing deploy settings, and
   publishing anything outside this repo (posts, products, the subdomain) still need Tom's OK each time.

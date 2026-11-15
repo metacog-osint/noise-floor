@@ -6,6 +6,16 @@ cd /d "%~dp0.."
 set PYTHONUTF8=1
 if not exist data\logs mkdir data\logs
 echo === %DATE% %TIME% >> data\logs\collectors.log
+rem The PC's scheduled tasks run this checkout's files, so it has to stay on main (15 Nov 2026: it sat on a docs
+rem branch from 5 to 15 Nov and the tasks ran that branch's code). On main with no tracked changes, fast-forward
+rem from GitHub so merged fixes reach this PC; on any other branch, log a warning and run as is.
+set "NF_BRANCH="
+for /f "delims=" %%b in ('git branch --show-current 2^>nul') do set "NF_BRANCH=%%b"
+if /i "%NF_BRANCH%"=="main" (
+  git diff --quiet HEAD -- 2>nul && git pull --ff-only --quiet origin main >> data\logs\collectors.log 2>&1
+) else (
+  echo WARNING: this checkout is on branch "%NF_BRANCH%", not main, so the scheduled tasks run that branch's code >> data\logs\collectors.log
+)
 .venv\Scripts\python.exe collectors\bluesky.py >> data\logs\collectors.log 2>&1
 .venv\Scripts\python.exe collectors\feeds.py >> data\logs\collectors.log 2>&1
 .venv\Scripts\python.exe collectors\watch.py >> data\logs\collectors.log 2>&1
