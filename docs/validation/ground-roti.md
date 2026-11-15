@@ -154,3 +154,76 @@ a day file, or a receiver-day with no eSWua records is skipped and reported, not
 **ROTI files:** the published `swx-data-2026-10` and `swx-data-2026-11` assets, made by the frozen method with
 `ground-roti.yml` after this document is committed. Command:
 `python tools/ground_roti_check.py check 2026-10-16:2026-11-06 2026-11-08 2026-11-11:2026-11-12 --ground <cache>`.
+
+## 6. Results on the held-out days (run 15 Nov 2026, 19:29 UTC)
+
+Sections 1–5 were committed in 366c39e (15 Nov 2026, 18:20 UTC) before any held-out day was made, and reached `main`
+unchanged in 7d28456 (`tools/ground_roti.py`, `tools/ground_roti_check.py` and this document are byte for byte the
+same in both). The 30 day files for 16 Oct – 14 Nov came from workflow run 43746680913 (`ground-roti.yml`,
+`workflow_dispatch`, commit 7d28456; started 18:25 UTC, finished 19:18 UTC; the files' `as_of` runs from 18:27 to
+19:18 UTC). The check ran at commit e906fb1, which changed only the collectors. Command:
+`python tools/ground_roti_check.py check 2026-10-16:2026-11-06 2026-11-08 2026-11-11:2026-11-12 --ground data/eswua`.
+
+**All three checks hold, so the layer is validated.**
+
+| # | Check | Result | Verdict |
+|---|---|---|---|
+| R1 | Pooled AUC of R, disturbed against quiet receiver-hours | 0.887 (312 disturbed, 4,686 quiet) | holds |
+| R2 | The same, at receiver local solar time 19:00–02:00 | 0.871 (294 disturbed, 1,134 quiet) | holds |
+| R3 | Chance test, labels shuffled within receiver × local-solar-hour | p = 0.0005 (none of 2,000 shuffles reached 0.887) | holds |
+
+**Counts.** 5,005 judged receiver-hours; 4,998 paired with the partner station's `p95` in the same hour; 7 unpaired.
+Skipped receiver-days, 33 in all: no eSWua records for Hanoi on all 25 days, Lagos 24–27 Oct, and Nairobi 30–31 Oct and
+8 Nov; one partner station missing from its day file, Shillong `SHLG00IND` on 26 Oct (so Dhaka that day). No day file
+was missing. Stations missing from the held-out day files (not posted at BKG when the file was made): Seychelles
+`SEY200SYC` 16–24 Oct, Shillong 26 Oct; every other day file has all 17 stations. No station failed to read. Malindi
+`MAL200KEN` was read as compact RINEX 3.1 from 20 Oct on, and each of those files says so. On the days outside the test,
+Shillong is missing on 9 Nov and Djibouti on 13 Nov.
+
+**Reported without marks:**
+- Median R: disturbed 0.893 TECU/min (95% interval 0.732–1.103), quiet 0.083 (0.079–0.088). These are ROTI values;
+  they say nothing about S4 levels.
+- AUC with the station-hour `max` in place of `p95`: 0.911.
+- AUC of `breaks` (arc breaks above 30 deg): 0.749. Arc breaks rise in disturbed hours too, so slips and loss of lock
+  carry part of the same signal.
+- R1 for the pairs within 250 km only: 0.914 (3,406 pairs).
+- Far pairs (Gabon–Lagos, Djibouti–Nairobi, Djibouti–Malindi): AUC 0.919 (1,526 pairs, 71 disturbed, none unpaired).
+- Each pair's own AUC (5 or more disturbed pairs):
+
+| eSWua receiver / IGS station | Distance | AUC | Disturbed | Quiet |
+|---|---|---|---|---|
+| Lagos / Accra `ACRG00GHA` | 418 km | 0.925 | 11 | 465 |
+| Malindi / Malindi `MAL200KEN` | 0 km | 0.968 | 31 | 560 |
+| Nairobi / Eldoret `MOIU00KEN` | 243 km | 0.946 | 29 | 423 |
+| Tucumán / Salta `UNSA00ARG` | 113 km | 0.987 | 62 | 517 |
+| São Paulo / Cachoeira Paulista `CHPG00BRA` | 196 km | 0.929 | 69 | 530 |
+| Saba / Saba `SABY00BES` | 4 km | 0.873 | 42 | 551 |
+| KL University / Gadanki `GDKG00IND` | 366 km | 0.845 | 36 | 504 |
+| Dhaka / Shillong `SHLG00IND` | 258 km | 0.651 | 14 | 562 |
+| Kenting / Tainan `NCKU00TWN` | 137 km | 0.887 | 18 | 574 |
+
+Hanoi / Hanoi `HUMG00VNM` (11 km) had no eSWua records, so that pair was not tested. Dhaka / Shillong is the weakest
+pair; Shillong sits about 2 deg north of Dhaka, and section 3 notes that magnetic latitude was not computed. Why that
+pair is weaker was not tested.
+
+**First day, for reference** (16 Oct 2026, 16 stations, 384 station-hours, all with a `p95`; median `p95` 0.086
+TECU/min, median `n` 118.5): the largest hourly `p95` per station was Gabon 3.91 TECU/min at 19 UTC, Salta 3.13 at
+03 UTC, Malindi 3.04 at 19 UTC, Eldoret 2.76 at 19 UTC, Djibouti 1.91 at 18 UTC, Accra 1.59 at 19 UTC, Cape Verde 1.23
+at 21 UTC and Gadanki 1.01 at 17 UTC; Diego Garcia, Madagascar, Ascension, Hanoi, Tainan and Shillong stayed at or
+below 0.16.
+
+**What this shows and what it does not.** On 25 days in Oct–Nov 2026, a station's hourly ROTI `p95` is higher in the
+hours when a scintillation receiver within 418 km sees L1 S4 of 0.5 or more, beyond what place and time of day explain
+(R2, R3), and more so for the closer pairs. ROTI is a proxy for irregularities measured at fixed stations: it ranks
+disturbed hours well, but it is not an estimate of the S4 a receiver there would measure, it is never read against S4
+alert levels, and this test sets no ROTI level that means scintillation. The belt stations with no receiver nearby
+(Cape Verde, Ascension, Seychelles, Madagascar, Diego Garcia) are covered by the method, not by this test; the far
+pairs suggest that station ROTI tracks receivers 1,000–1,600 km away in the same longitudes, but they test the sky,
+not the measure. One season (Oct–Nov 2026), nine tested pairs, low latitudes only (about 27°S to 26°N); no mid- or
+high-latitude test, and no test of L-band scintillation other than L1.
+
+## 7. What waits on Tom
+
+- Adding the layer to the public map or to the `tic-feed/2` feed, after this validation, as for every earlier layer.
+- The tic-dispatch schedule for `ground-roti.yml` (starts at :30 past 09–13, 16 and 22 UTC), prepared in the hub but not
+  pushed, and the Worker deploy that would carry it. Until then the job runs on GitHub's own cron only.
