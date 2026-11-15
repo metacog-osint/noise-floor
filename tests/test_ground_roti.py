@@ -249,6 +249,8 @@ def test_job_decide():
     assert GJ.decide(None, some, 17, True, 9, a, 0) == "wait"
     assert GJ.decide(None, some, 17, False, 2, a, 5) == "publish"
     assert GJ.decide({"missing": []}, full, 17, True, 10, args(force=True), 0) == "publish"
+    from datetime import date
+    assert GJ.default_days(date(2026, 11, 15), 2) == ["2026-11-12", "2026-11-13", "2026-11-14"]
 
 
 def test_job_run_day():

@@ -6,8 +6,8 @@ name: ground-roti
 # BKG lists day D's station files between about 00:05 and 13:00 UTC on D+1. The day file is due by 14:00 UTC on D+1.
 # Before 09:00 UTC the day is published only once every station is in; from 09:00 a run waits up to 30 minutes for
 # missing stations and then publishes what is in; until the end of D+3 a later start remakes the day when a missing
-# station turns up. The gate makes other extra starts end in about a minute. From 13:00 UTC, nothing posted at all
-# fails the run, so GitHub mails the owner.
+# station turns up (a start with no days given looks at the last three days). The gate makes other extra starts end
+# in about a minute. From 13:00 UTC, nothing posted at all fails the run, so GitHub mails the owner.
 # Starts: GitHub's own cron fires 4-9 hours late on this account (measured 5 Nov 2026), so the crons below are set
 # early: they land between about 06:30 and 18:30 UTC. Starts from tic-dispatch (The Intelligence Company's dispatch
 # Worker), if added, would come through workflow_dispatch.
@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       days:
-        description: "Days: YYYY-MM-DD or START:END, space-separated. Empty = yesterday (UTC)."
+        description: "Days: YYYY-MM-DD or START:END, space-separated. Empty = the last three days (UTC)."
         required: false
         default: ""
       force:

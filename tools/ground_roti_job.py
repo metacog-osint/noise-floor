@@ -7,7 +7,7 @@ this PC is off. BKG lists each IGS station's day-D file between about 00:05 and 
 the stations used, 16 Oct-14 Nov 2026: most by 09:10 UTC; on 14 Nov one batch came at 12:45 UTC). The day file is due
 by 14:00 UTC on D+1.
 
-For each day (default: yesterday, UTC):
+For each day (default: yesterday and the --refresh-days days before it, UTC, oldest first):
   1. Gate. If the day file is already in its release: skip it when it lists no missing station, or when the day is
      more than --refresh-days old; otherwise look at BKG again and, if a station it lists as missing is now posted,
      remake the whole day and replace the file. So extra starts of the workflow cost about a minute.
@@ -35,6 +35,12 @@ import ground_roti as R  # noqa: E402
 
 POLL_S = 600
 log, summary = J.log, J.summary
+
+
+def default_days(today, refresh_days):
+    """Yesterday and the refresh_days days before it, oldest first: a published day that is complete costs one
+    request, and one with missing stations is remade when they turn up."""
+    return [(today - timedelta(days=k)).isoformat() for k in range(refresh_days + 1, 0, -1)]
 
 
 def published_doc(tag, name):
@@ -123,7 +129,7 @@ def main(argv=None):
                     help="days after D+1 during which a file with missing stations is remade when they turn up")
     a = ap.parse_args(argv)
     now = datetime.now(timezone.utc)
-    days = J.days_from(a.days, now.date())
+    days = J.days_from(a.days, now.date()) if a.days else default_days(now.date(), a.refresh_days)
     log(f"ground_roti_job: {len(days)} day(s): {days[0]}{'' if len(days) == 1 else ' .. ' + days[-1]}")
     failed = []
     for day in days:
