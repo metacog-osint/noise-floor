@@ -30,7 +30,7 @@ from collections import Counter, defaultdict
 
 TARGET_KM = 5.0          # cluster radius around the seed (see targets())
 TARGET_RES = 5           # H3 resolution of the neighbour search (cells far wider than TARGET_KM)
-TARGETS_VERSION = "1"
+TARGETS_VERSION = "2"           # 2 (v0.6, Nov 2026): adds unplaced
 
 
 def km(lat1, lon1, lat2, lon2):
@@ -100,21 +100,14 @@ def target_summary(day, events, s=None, radius_km=TARGET_KM):
     import h3
     usable = [e for e in events if e.get("class") != "replay" and e.get("false_lat") is not None
               and e.get("false_lon") is not None]
-    clusters = []
-    for members in targets(usable, radius_km):
-        eps = [usable[j] for j in members]
-        lat = statistics.median(e["false_lat"] for e in eps)
-        lon = statistics.median(e["false_lon"] for e in eps)
-        d = sorted(km(lat, lon, e["false_lat"], e["false_lon"]) for e in eps)
+    def common(eps):
         cells = defaultdict(lambda: [0, set()])
         for e in eps:
             for c in set(e.get("victim_cells") or []):
                 cells[c][0] += 1
                 cells[c][1].add(e.get("icao"))
         alts = [e["alt"] for e in eps if isinstance(e.get("alt"), (int, float))]
-        clusters.append({
-            "lat": round(lat, 4), "lon": round(lon, 4),
-            "r50_km": round(d[len(d) // 2], 2), "r90_km": round(d[min(len(d) - 1, int(0.9 * len(d)))], 2),
+        return {
             "episodes": len(eps), "aircraft": len({e.get("icao") for e in eps}),
             "classes": dict(sorted(Counter(e.get("class") for e in eps).items())),
             "kinds": dict(sorted(Counter(k for e in eps for k in e.get("kinds") or []).items())),
@@ -124,7 +117,24 @@ def target_summary(day, events, s=None, radius_km=TARGET_KM):
             "mlat_confirmed": sum(1 for e in eps if e.get("mlat_dis")),
             "located": sum(1 for e in eps if e.get("victim_cells")),
             "victim_cells": sorted(([c, n, len(a)] for c, (n, a) in cells.items()), key=lambda x: (-x[1], x[0])),
-        })
+        }
+
+    clusters = []
+    for members in targets(usable, radius_km):
+        eps = [usable[j] for j in members]
+        lat = statistics.median(e["false_lat"] for e in eps)
+        lon = statistics.median(e["false_lon"] for e in eps)
+        d = sorted(km(lat, lon, e["false_lat"], e["false_lon"]) for e in eps)
+        clusters.append({"lat": round(lat, 4), "lon": round(lon, 4),
+                         "r50_km": round(d[len(d) // 2], 2), "r90_km": round(d[min(len(d) - 1, int(0.9 * len(d)))], 2),
+                         **common(eps)})
+    bands = defaultdict(list)
+    for e in events:
+        if e.get("class") != "replay" and (e.get("false_lat") is None or e.get("false_lon") is None):
+            g = e.get("reported_gs")
+            bands[int(round(g / 10.0)) * 10 if isinstance(g, (int, float)) else None].append(e)
+    unplaced = [{"reported_gs_kt": b, **common(eps)}
+                for b, eps in sorted(bands.items(), key=lambda x: (-len(x[1]), x[0] is None, x[0] or 0))]
     return {
         "day": day, "version": (s or {}).get("version"), "targets_version": TARGETS_VERSION,
         "licence": "ODbL 1.0; derived from adsb.lol",
@@ -145,8 +155,13 @@ def target_summary(day, events, s=None, radius_km=TARGET_KM):
             "located": "episodes with a victim location (where the aircraft really was)",
             "victim_cells": "[H3 res-4 cell, episodes, distinct aircraft]: where the aircraft really were during these "
                             "episodes (interpolated between trusted positions; good at res 2, rough at res 4)",
+            "unplaced": "episodes with no spoofed-to point (v0.6 speed episodes: the aircraft reported a slow ground "
+                        "speed while MLAT showed it moving at normal speed; its false positions aren't in the archive), "
+                        "grouped by the median reported ground speed rounded to 10 kt (reported_gs_kt), with the same "
+                        "fields as a cluster; victim_cells are the MLAT positions",
         },
         "clusters": clusters,
+        "unplaced": unplaced,
         "method": "tools/spoof_day.py and tools/spoof_summary.py targets(); docs/validation/spoofing.md. Spoofed-to points "
                   "are where receivers were shown, not where a transmitter is.",
     }
