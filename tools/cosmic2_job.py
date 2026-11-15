@@ -185,7 +185,7 @@ def run_day(day, a, now=None):
     doc = S.build(day, limb, source)
     path = S.write(doc)
     c = doc["counts"]
-    log(f"{day}: limb S4: {c['links']} links, {c['samples']} samples, {c['cell_hours']} cell-hours "
+    log(f"{day}: limb S4: {c['links']} links, {c['values']} 10 s values, {c['cell_hours']} cell-hours "
         f"({c['with_p95']} with p95), {c['hours_with_data']} hours with data, {len(doc['problems'])} problem(s)")
     if not a.no_upload:
         upload(tag, path, S4_TITLE.format(month=day[:7]), S4_NOTES.format(month=day[:7]))
