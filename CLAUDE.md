@@ -101,9 +101,10 @@ loaded automatically; read it when you need the background.
     the E2.1 correction (`tools/sentinel_e21.py`, `docs/validation/sentinel-gnss-e21.md` section 2) passed all five
     checks on 4 Nov. Products keep E2 until Tom agrees. SAT-JAM: no contact (Tom, 31 Oct); replicate and improve.
 - **Space weather files (from 15 Nov 2026; Tom decided Noisefloor is the suite's source for PNT and space weather
-  data, read from its published files):** COSMIC-2 limb S4 now, ground ROTI later (a separate step). Always label it
-  "limb S4 measured along radio-occultation paths, which reads higher than a ground receiver's S4", and never compare
-  it with the ground S4 alert levels, on the site, in files or in docs.
+  data, read from its published files):** COSMIC-2 limb S4 and ground ROTI. Always label the first "limb S4 measured
+  along radio-occultation paths, which reads higher than a ground receiver's S4", and never compare it with the ground
+  S4 alert levels, on the site, in files or in docs. Label the second "ROTI, a measured TEC fluctuation index at fixed
+  stations": a proxy for irregularities, never an S4 value, never read against S4 alert levels.
   - `.github/workflows/cosmic2.yml` runs `tools/cosmic2_job.py` on GitHub: one pass over UCAR's podTc2 day archive
     makes `<day>.cosmic2-limb-s4.json` (`tools/cosmic2_s4.py`; release `swx-data-YYYY-MM`) and the interference file
     `<day>.cosmic2.json` (uploaded to `cosmic2-data` only if the PC's `cosmic2_daily.py` hasn't, and compared if it
@@ -117,6 +118,15 @@ loaded automatically; read it when you need the background.
     tangent points 150-500 km; H3 res 1. **Validated 15 Nov 2026** against INGV eSWua ground receivers on 25 held-out
     days (AUC 0.834; night-only 0.763; chance test p = 0.0005). Map or feed use waits on Tom's OK. Only C2E2, C2E5
     and C2E6 deliver podTc2 data in Oct-Nov 2026.
+  - Ground ROTI (built 15 Nov 2026; `docs/validation/ground-roti.md`): `.github/workflows/ground-roti.yml` runs
+    `tools/ground_roti_job.py`, which reads 17 IGS stations' daily 30 s files from BKG (anonymous; the belt from Cape
+    Verde to Diego Garcia where no scintillation receiver sits, plus the station nearest each eSWua receiver) and
+    writes `<day>.ground-roti.json` (`tools/ground_roti.py`) to `swx-data-YYYY-MM`: per station and UTC hour, n, p95
+    and max of 5-minute ROTI (TECU/min), GPS L1/L2 and Galileo E1/E5a, 30 deg mask, Melbourne-Wubbena slips over 2
+    wide-lane cycles, pierce points at 350 km. BKG lists the files 00:05-13:00 UTC on D+1; before 09:00 UTC a day is
+    published only when all 17 are in, from 09:00 with what is in, and a later start up to D+3 remakes it when a
+    missing station turns up. Compact RINEX 3.1 (RNX2CRX 4.2.0, e.g. MAL200KEN) is read as 3.0. Check:
+    `tools/ground_roti_check.py` (needs the eSWua cache, `--ground`). Map or feed use waits on Tom's OK.
 - **`watch.py` sources (31 Oct 2026):** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch
   (pages in `private/watch/pollers.json` `pagewatch`, each with a link pattern). FAA NOTAMs wait on API credentials
   (requested 30 Oct); the public NOTAM Search site refuses automated clients.

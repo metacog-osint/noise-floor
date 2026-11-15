@@ -1,0 +1,52 @@
+name: ground-roti
+# Ground ROTI day job (tools/ground_roti_job.py): ROTI, a measured TEC fluctuation index at fixed stations, per IGS
+# station and UTC hour, from the stations' daily 30 s RINEX files at the BKG GNSS Data Center (about 5 MB each, nothing
+# kept) -> <day>.ground-roti.json on the release swx-data-YYYY-MM, beside the COSMIC-2 limb S4 files. Method and
+# validation: docs/validation/ground-roti.md. A proxy for irregularities, never an S4 value.
+# BKG lists day D's station files between about 00:05 and 13:00 UTC on D+1. The day file is due by 14:00 UTC on D+1.
+# Before 09:00 UTC the day is published only once every station is in; from 09:00 a run waits up to 30 minutes for
+# missing stations and then publishes what is in; until the end of D+3 a later start remakes the day when a missing
+# station turns up (a start with no days given looks at the last three days). The gate makes other extra starts end
+# in about a minute. From 13:00 UTC, nothing posted at all fails the run, so GitHub mails the owner.
+# Starts: GitHub's own cron fires 4-9 hours late on this account (measured 5 Nov 2026), so the crons below are set
+# early: they land between about 06:30 and 18:30 UTC. Starts from tic-dispatch (The Intelligence Company's dispatch
+# Worker), if added, would come through workflow_dispatch.
+on:
+  schedule:
+    - cron: "25 2 * * *"
+    - cron: "25 4 * * *"
+    - cron: "25 6 * * *"
+    - cron: "25 9 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days: YYYY-MM-DD or START:END, space-separated. Empty = the last three days (UTC)."
+        required: false
+        default: ""
+      force:
+        description: "Remake days whose ROTI file is already published"
+        type: boolean
+        default: false
+permissions:
+  contents: write    # create the monthly swx-data release and upload assets
+concurrency:
+  group: ground-roti
+  cancel-in-progress: false
+jobs:
+  day:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      # hatanaka decompresses the compact (Hatanaka) RINEX files
+      - run: pip install -r requirements.txt "hatanaka>=2.8"
+      - name: Ground ROTI day files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ inputs.days }}
+          FORCE: ${{ inputs.force && '--force' || '' }}
+        run: python tools/ground_roti_job.py $DAYS $FORCE --wait-minutes 30 --publish-hour 9 --deadline-hour 13 --refresh-days 2
