@@ -363,6 +363,13 @@ From 14 Nov 2026 each day also gets `<day>.spoof-targets.json`: every spoofed-to
 cluster) with episodes, aircraft, classes, first and last time, and the H3 res-4 cells where its aircraft really were. A
 pre-registered comparison with GPSWise's flights spoofed to Lima, Peru (7–12 Nov 2026) is in `spoofing-lima.md`.
 
+## v0.6 (the default from 15 Nov 2026)
+
+Three rules from the Lima test: slow under 150 kt at or above 25,000 ft, short far excursions keep the excursion
+test, and MLAT speed episodes (the aircraft reports a slow speed while MLAT shows it moving normally). All six held-out
+checks passed (controls 0.0023%) and 12 of 14 placeable Lima flights were placed: `spoofing-v06.md`. Caveat: slow-at-cruise
+false alarms from category A2 turboprops near 25,000 ft.
+
 ## 6. Next
 
 1. **Held-out test, rules fixed first:** v0.3 frozen, on days not used here (for example from the Oct 2025 – Oct 2026 backfill period), scored on the same checks.

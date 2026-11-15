@@ -33,7 +33,8 @@ Per aircraft (ADS-B airborne positions, type adsb_icao, any ADS-B version, every
   within an hour: spoofing points are shared, replays retrace one aircraft's own track. Found on
   6 Mar 2024 over northern Florida (34 of 37 flagged positions were the aircraft's own positions ~20 min earlier).
   Replay episodes are left out of every map and peer count.
-v0.6 (--v06; docs/validation/spoofing-v06.md) adds three rules found with the Lima test:
+v0.6 (the default from 15 Nov 2026, adopted on its pre-registered checks; --no-v06 gives v0.5;
+docs/validation/spoofing-v06.md) adds three rules found with the Lima test:
   slow       also ground speed < 150 kt at or above 25,000 ft baro (fast aircraft only)
   far excursions  a segment off the main track of <= 15 min, main track either side (within 2 h), entered and left by
              jumps of > 2,000 km: its two jumps don't count towards the duplicate-address rule (at most 2 per
@@ -1105,8 +1106,9 @@ def main():
     ap.add_argument("--airspeed-fast", action=argparse.BooleanOptionalAction, default=True,
                     help="v0.5 (default): indicated airspeed (air data) can also qualify an aircraft as fast; "
                          "--no-airspeed-fast gives v0.4")
-    ap.add_argument("--v06", action=argparse.BooleanOptionalAction, default=False,
-                    help="v0.6: slow at cruise, short far excursions, MLAT speed (docs/validation/spoofing-v06.md)")
+    ap.add_argument("--v06", action=argparse.BooleanOptionalAction, default=True,
+                    help="v0.6 (default from 15 Nov 2026): slow at cruise, short far excursions, MLAT speed "
+                         "(docs/validation/spoofing-v06.md); --no-v06 gives v0.5")
     a = ap.parse_args()
     if a.cmd == "run":
         for day in a.days:
