@@ -6,8 +6,8 @@ name: cosmic2
 #                                 PC's own run (tools/cosmic2_daily.py) still makes it while this path is proven
 # UCAR posts day D at about 04:35 UTC on D+1. The limb S4 file is due by 14:00 UTC on D+1: a same-morning picture for the
 # board and COP.
-# Starts: tic-dispatch (The Intelligence Company's dispatch Worker) is to start this through workflow_dispatch hourly
-# from 05:05 to 13:05 UTC, because GitHub's own cron fires 4-9 hours late on this account (measured 5 Nov 2026; the
+# Starts: tic-dispatch (The Intelligence Company's dispatch Worker) starts this through workflow_dispatch at :50 past
+# 04-08 and 10-13 UTC (from 15 Nov 2026), because GitHub's own cron fires 4-9 hours late on this account (measured 5 Nov 2026; the
 # 05:15 cron fired at 12:41 on 15 Nov). The crons below are the fallback, set early so that a late start still lands
 # between UCAR's posting and 14:00 UTC. The gate (the day's limb S4 file already in its release) makes extra starts end
 # in about a minute, so the day is made once. Runs that find UCAR late wait up to 45 minutes, then leave it to the next
