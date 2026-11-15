@@ -9,10 +9,11 @@ GeoJSON FeatureCollections, one per UTC day, named spoof_<YYYY-MM-DD>.json, whos
   python tools/spoof_compare.py score 2026-11-07:2026-11-12 --outside DIR --events data/spoofing_nov \
       --at -12.043,-77.050 [--km 100] [--raw-root data/raw/trace_box] [--json out.json]
 
-For each outside flight shown within --km of --at: matched if spoof_day has an episode for the same ICAO address whose
+For each outside flight shown within --km of --at: matched (placed) if spoof_day has an episode for the same ICAO address whose
 spoofed-to point (false_lat, false_lon) is within --km of --at and whose time overlaps the outside "during" window
-widened by --slack-min minutes on each side (default 30). Events of the day before and after are searched too, where
-present. With --raw-root, each unmatched flight is explained from the raw adsb.lol trace: whether the archive holds
+widened by --slack-min minutes on each side (default 30). Counted if spoof_day has any episode for that aircraft in
+the same window, anywhere. Events of the day before and after are searched too, where present. With --raw-root, a
+flight is placeable if the archive holds ADS-B positions within --km of --at in its window (widened 5 min). With --raw-root, each unmatched flight is explained from the raw adsb.lol trace: whether the archive holds
 ADS-B positions near the place in the window, only MLAT positions, or nothing, and if positions are there, which test
 let them through. Prints per-day counts; the per-flight table holds ICAO addresses and stays local (--json).
 """
@@ -83,7 +84,15 @@ def load_events(events_dir, day):
     return ev.get("events", ev) if isinstance(ev, dict) else ev
 
 
-def explain(trace, fl, at, radius, airspeed=True):
+def placeable(trace, fl, at, radius):
+    """The archive holds ADS-B positions within radius of at in the flight's window (widened 5 min each side)."""
+    base = float(trace.get("timestamp") or 0)
+    lo_t, hi_t = fl["t0"] - 300, fl["t1"] + 300
+    return any(len(p) > 9 and p[9] == "adsb_icao" and p[1] is not None and lo_t <= base + p[0] <= hi_t
+               and km(p[1], p[2], *at) <= radius for p in trace.get("trace", []))
+
+
+def explain(trace, fl, at, radius, airspeed=True, v06=False):
     """Why spoof_day didn't place an outside flight at the place, from the aircraft's raw trace."""
     import spoof_day as S
     base = float(trace.get("timestamp") or 0)
@@ -98,7 +107,7 @@ def explain(trace, fl, at, radius, airspeed=True):
     if not any(len(p) > 9 and p[9] == "adsb_icao" for p in near):
         return "positions near the place, none ADS-B", ""
     A, M, cat = S.parse_trace(trace)
-    r = S.analyse(A, M, cat, airspeed)
+    r = S.analyse(A, M, cat, airspeed, v06)
     idx = [i for i, p in enumerate(A) if lo_t <= p[S.T] <= hi_t and km(p[S.LAT], p[S.LON], *at) <= radius]
     if not idx:
         return "ADS-B positions near the place, below 1,000 ft or on the ground", ""
@@ -139,7 +148,7 @@ def traces_for(raw_root, day, icaos):
     return out
 
 
-def score(days, outside_dir, events_dir, at, radius, slack_min=30, raw_root=None):
+def score(days, outside_dir, events_dir, at, radius, slack_min=30, raw_root=None, v06=False):
     per_day, flights = [], []
     cache = {}
 
@@ -168,15 +177,18 @@ def score(days, outside_dir, events_dir, at, radius, slack_min=30, raw_root=None
             f["nf_any_episode"] = any(e["icao"].lower() == f["icao"] and iso(e["start"]) <= hi_t and iso(e["end"]) >= lo_t
                                       for e in pool)
         if raw_root:
-            need = {f["icao"] for f in fl if not f["matched"]}
-            tr = traces_for(raw_root, day, need)
+            tr = traces_for(raw_root, day, {f["icao"] for f in fl})
             for f in fl:
+                f["placeable"] = f["icao"] in tr and placeable(tr[f["icao"]], f, at, radius)
                 if not f["matched"]:
-                    f["why"], f["detail"] = (explain(tr[f["icao"]], f, at, radius) if f["icao"] in tr
+                    f["why"], f["detail"] = (explain(tr[f["icao"]], f, at, radius, v06=v06) if f["icao"] in tr
                                              else ("aircraft not in the archive", ""))
         own_day = {i for i, es in nf_here.items() if any(e["start"][:10] == day for e in es)}
         per_day.append({"day": day, "outside_flights": len(fl), "outside_aircraft": len({f["icao"] for f in fl}),
                         "matched": sum(f["matched"] for f in fl),
+                        "counted": sum(f["nf_any_episode"] for f in fl),
+                        **({"placeable": sum(f["placeable"] for f in fl),
+                            "placeable_matched": sum(f["placeable"] and f["matched"] for f in fl)} if raw_root else {}),
                         "noisefloor_aircraft_here": len(own_day),
                         "noisefloor_only": len(own_day - {f["icao"] for f in fl})})
         flights += fl
@@ -193,15 +205,22 @@ def main():
     ap.add_argument("--km", type=float, default=100.0)
     ap.add_argument("--slack-min", type=float, default=30.0)
     ap.add_argument("--raw-root", help="folder holding <day>/ adsb.lol archive parts, to explain misses")
+    ap.add_argument("--v06", action="store_true", help="explain misses with the v0.6 rules")
     ap.add_argument("--json", help="write the per-flight table here (holds ICAO addresses: keep it local)")
     a = ap.parse_args()
     at = tuple(float(x) for x in a.at.split(","))
-    per_day, flights = score(days_of(a.days), a.outside, a.events, at, a.km, a.slack_min, a.raw_root)
+    per_day, flights = score(days_of(a.days), a.outside, a.events, at, a.km, a.slack_min, a.raw_root, a.v06)
     for r in per_day:
         print(json.dumps(r))
     n, m = sum(r.get("outside_flights", 0) for r in per_day), sum(r.get("matched", 0) for r in per_day)
-    print(json.dumps({"outside_flights": n, "matched": m, "share": round(m / n, 3) if n else None,
-                      "days_with_a_match": sum(1 for r in per_day if r.get("matched"))}))
+    c = sum(r.get("counted", 0) for r in per_day)
+    tot = {"outside_flights": n, "matched": m, "share": round(m / n, 3) if n else None, "counted": c,
+           "counted_share": round(c / n, 3) if n else None,
+           "days_with_a_match": sum(1 for r in per_day if r.get("matched"))}
+    if a.raw_root:
+        pl, pm = sum(r.get("placeable", 0) for r in per_day), sum(r.get("placeable_matched", 0) for r in per_day)
+        tot.update(placeable=pl, placeable_matched=pm, placeable_share=round(pm / pl, 3) if pl else None)
+    print(json.dumps(tot))
     if a.raw_root:
         from collections import Counter
         for why, k in Counter(f.get("why", "matched") for f in flights).most_common():

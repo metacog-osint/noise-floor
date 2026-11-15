@@ -231,6 +231,141 @@ def test_airspeed_fast():
     assert not S.analyse(A2, M2, c2, airspeed=True)["fast"]
 
 
+LIMA = (-12.040, -77.050)
+
+
+def ring_points(t0, seconds, lat, lon, gs=109.0, alt=36000, step=2):
+    """A receiver shown circling a ~1 km ring at a reported ground speed gs."""
+    out = []
+    for k in range(int(seconds // step) + 1):
+        la, lo = S.destination(lat, lon, (k * 12) % 360, 1.0)
+        out.append((t0 + k * step, la, lo, alt, gs, 0.0, alt + 1000))
+    return out
+
+
+def lima_flight(t0, seconds=60, gs=109.0, exc_gs=None):
+    """30 min over Hungary, `seconds` shown at Lima (on a ring at gs, or moving at exc_gs), then on track again."""
+    a = fly(t0, 30, 47.5, 19.0)
+    t1 = t0 + 30 * 60 + 10
+    if exc_gs:
+        mid = [(t, la, lo, alt, exc_gs, trk, geo) for t, la, lo, alt, _, trk, geo in fly(t1, seconds / 60, *LIMA, gs=exc_gs)]
+    else:
+        mid = ring_points(t1, seconds, *LIMA, gs=gs)
+    t2 = mid[-1][0] + 10
+    c = fly(t2, 30, *S.destination(47.5, 19.0, 90.0, 450 / S.KT_PER_KMS * (t2 - t0)))
+    return a + mid + c
+
+
+def test_v06_slow_at_cruise():
+    """v0.6 rule A: 109 kt at FL360 is slow; v0.5 lets it through and, after the jump there and back, calls the
+    aircraft a duplicate address."""
+    d = trace("bbb001", lima_flight(DAY0 + 3600))
+    A, M, cat = S.parse_trace(d)
+    old = S.analyse(A, M, cat, airspeed=True)
+    assert not old["episodes"] and old["dup"], (old["episodes"], old["far"])
+    new = S.analyse(A, M, cat, airspeed=True, v06=True)
+    assert len(new["episodes"]) == 1 and not new["dup"]
+    ep = new["episodes"][0]
+    assert all(new["flags"]["slow"][i] for i in ep)
+    assert all(S.km(A[i][S.LAT], A[i][S.LON], *LIMA) < 2 for i in ep)
+    # a real jet at 160 kt is not slow at cruise; 140 kt at 20,000 ft isn't either (below the cruise floor)
+    ok = fly(DAY0, 30, 47.5, 19.0) + fly(DAY0 + 1810, 10, 47.5, 21.0, gs=160) + fly(DAY0 + 2420, 10, 47.6, 21.5, gs=140, alt=20000)
+    A2, M2, c2 = S.parse_trace(trace("bbb002", ok))
+    assert not S.analyse(A2, M2, c2, airspeed=True, v06=True)["episodes"]
+
+
+def test_v06_short_far_excursion():
+    """v0.6 rule B: a 2-minute jump to Lima and back at normal speed is an excursion, not a duplicate address."""
+    d = trace("bbb003", lima_flight(DAY0 + 3600, seconds=120, exc_gs=450))
+    A, M, cat = S.parse_trace(d)
+    old = S.analyse(A, M, cat, airspeed=True)
+    assert old["dup"] and not old["episodes"]
+    new = S.analyse(A, M, cat, airspeed=True, v06=True)
+    assert new["far_excursions"] == 1 and not new["dup"]
+    assert len(new["episodes"]) == 1 and all(new["flags"]["excursion"][i] for i in new["episodes"][0])
+    # longer than 15 minutes: the rule doesn't apply
+    d = trace("bbb004", lima_flight(DAY0 + 3600, seconds=20 * 60, exc_gs=450))
+    A, M, cat = S.parse_trace(d)
+    assert S.analyse(A, M, cat, airspeed=True, v06=True)["dup"]
+    # two aircraft sharing an address, alternating all day: still a duplicate suspect
+    a = fly(DAY0, 30, 50.0, 0.0, step=20)
+    b = fly(DAY0 + 10, 30, 30.0, 30.0, step=20)
+    A, M, cat = S.parse_trace(trace("bbb005", sorted(a + b)))
+    r = S.analyse(A, M, cat, airspeed=True, v06=True)
+    assert r["dup"] and not r["episodes"]
+
+
+def mlat_rows(t0, minutes, lat, lon, gs_reported, gs_true=450.0, alt=36000, step=10):
+    rows = []
+    for k in range(int(minutes * 60 // step) + 1):
+        la, lo = S.destination(lat, lon, 90.0, gs_true / S.KT_PER_KMS * k * step)
+        rows.append([t0 + k * step - DAY0, la, lo, alt, gs_reported, 90.0, 0, 0, None, "mlat", None, None, None, None])
+    return rows
+
+
+def test_v06_mlat_speed():
+    """v0.6 rule C: the false positions never reached the archive, only MLAT (moving at 450 kt) while the aircraft
+    reported 109 kt: a speed episode located at the MLAT positions, with no spoofed-to point."""
+    t0 = DAY0 + 3600
+    a = fly(t0, 30, 47.5, 19.0)
+    gap0 = t0 + 30 * 60 + 10
+    c = fly(gap0 + 5 * 60, 30, *S.destination(47.5, 19.0, 90.0, 450 / S.KT_PER_KMS * (35 * 60 + 10)))
+    d = trace("bbb006", a + c)
+    lat0, lon0 = S.destination(47.5, 19.0, 90.0, 450 / S.KT_PER_KMS * (30 * 60 + 10))
+    d["trace"] = sorted(d["trace"] + mlat_rows(gap0, 5, lat0, lon0, 109.0), key=lambda r: r[0])
+    A, M, cat = S.parse_trace(d)
+    assert len(M[0]) == 5 and M[0][4] == 109.0
+    assert not S.analyse(A, M, cat, airspeed=True)["speed_episodes"]
+    r = S.analyse(A, M, cat, airspeed=True, v06=True)
+    assert len(r["speed_episodes"]) == 1 and not r["episodes"]
+    rec = S.score_trace(json.dumps(d).encode(), DAY0, True, True)
+    ep = [e for e in rec["episodes"] if e["kinds"] == ["speed"]]
+    assert len(ep) == 1 and ep[0]["false_lat"] is None and ep[0]["reported_gs"] == 109.0 and ep[0]["vcells"]
+    # MLAT agreeing with the reported speed: nothing
+    d2 = trace("bbb007", a + c)
+    d2["trace"] = sorted(d2["trace"] + mlat_rows(gap0, 5, lat0, lon0, 450.0), key=lambda r: r[0])
+    A, M, cat = S.parse_trace(d2)
+    assert not S.analyse(A, M, cat, airspeed=True, v06=True)["speed_episodes"]
+    # a light aircraft is never tested
+    d3 = trace("bbb008", a + c, det=dict(DET, category="A1"))
+    d3["trace"] = sorted(d3["trace"] + mlat_rows(gap0, 5, lat0, lon0, 109.0), key=lambda r: r[0])
+    A, M, cat = S.parse_trace(d3)
+    assert not S.analyse(A, M, cat, airspeed=True, v06=True)["speed_episodes"]
+
+
+def test_v06_day():
+    """A whole day under --v06: the Lima ring becomes a slow episode shown at Lima, the MLAT-only one a speed episode
+    with no spoofed-to point; tables and summary carry the new kind; the targets file puts the speed one in unplaced."""
+    import pyarrow.parquet as pq
+    import spoof_summary as SS
+    tmp = tempfile.mkdtemp()
+    try:
+        raw, out = os.path.join(tmp, "raw"), os.path.join(tmp, "out")
+        os.makedirs(raw)
+        t0 = DAY0 + 3600
+        a, gap0 = fly(t0, 30, 47.5, 19.0), t0 + 30 * 60 + 10
+        c = fly(gap0 + 5 * 60, 30, *S.destination(47.5, 19.0, 90.0, 450 / S.KT_PER_KMS * (35 * 60 + 10)))
+        sp = trace("bbb010", a + c)
+        sp["trace"] = sorted(sp["trace"] + mlat_rows(gap0, 5, *S.destination(47.5, 19.0, 90.0, 450 / S.KT_PER_KMS * 1810), 109.0),
+                             key=lambda r: r[0])
+        traces = [trace("bbb009", lima_flight(t0)), sp] + [trace(f"bbb2{k:02d}", fly(t0 + k * 30, 50, 48.0 + 0.05 * k, 19.0)) for k in range(3)]
+        build_day(raw, "2024-10-14", traces)
+        s = S.run("2024-10-14", raw, out, 1, airspeed=True, v06=True)
+        assert s["version"] == "0.6" and s["episodes"] == 2 and s["episodes_by_kind"].get("speed") == 1, s["episodes_by_kind"]
+        t4 = pq.read_table(os.path.join(out, "2024-10-14.hex4.parquet")).to_pylist()
+        assert sum(r["spoofed_speed"] for r in t4) >= 1
+        p, d, pt = SS.write(out, "2024-10-14", os.path.join(out, "pub"))
+        t = json.load(open(pt, encoding="utf-8"))
+        assert len(t["clusters"]) == 1 and S.km(t["clusters"][0]["lat"], t["clusters"][0]["lon"], *LIMA) < 2
+        assert t["left_out"]["no_false_position"] == 1
+        assert [(u["reported_gs_kt"], u["episodes"], u["aircraft"]) for u in t["unplaced"]] == [(110, 1, 1)], t["unplaced"]
+        assert t["unplaced"][0]["victim_cells"] and "bbb010" not in json.dumps(t)
+        s5 = S.run("2024-10-14", raw, os.path.join(tmp, "v05"), 1, airspeed=True)
+        assert s5["version"] == "0.5" and s5["episodes"] == 0, "v0.5 sees neither"
+    finally:
+        shutil.rmtree(tmp)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):
