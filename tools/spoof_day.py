@@ -109,6 +109,8 @@ NACP_BAD, NACP_CLEAN = 8, 8
 REPLAY_KM, REPLAY_ALT_FT, REPLAY_LAG_S = 3.0, 1000, (120.0, 10800.0)   # v0.4 stale-replay test (see replay_info)
 REPLAY_SHARE, REPLAY_IQR_S, REPLAY_MIN_GS_KT, REPLAY_SHARED_KM = 0.6, 180.0, 150.0, 5.0
 SLOW_HI_KT, SLOW_HI_FT = 150, 25000           # v0.6: slow at cruise
+SLOW_HI_A2_FT = 25000                         # ... its floor for category A2 (0: rule A off for A2). 25,000 is v0.6;
+                                              #     variants scored in docs/validation/spoofing-v061.md
 FAR_EXC_MAX_S, FAR_EXC_MAX_N = 900.0, 2         # v0.6: short far excursions exempt from the duplicate-address rule
 SPEED_GS_KT, SPEED_FT, SPEED_MLAT_KT, SPEED_DT_S = 150, 25000, 300.0, (60.0, 300.0)   # v0.6: MLAT speed check
 SPEED_OVERLAP_S = 60.0
@@ -192,9 +194,10 @@ def parse_trace(d):
     return A, M, cat
 
 
-def point_flags(A, cat, airspeed=False, v06=False):
+def point_flags(A, cat, airspeed=False, v06=False, a2_hi_ft=None):
     """slow and loiter flags per ADS-B point, and whether the aircraft counts as fast (airspeed: --airspeed-fast;
-    v06: also slow under SLOW_HI_KT at or above SLOW_HI_FT)."""
+    v06: also slow under SLOW_HI_KT at or above SLOW_HI_FT, or a2_hi_ft for category A2: default SLOW_HI_A2_FT,
+    0 turns that rule off for A2)."""
     n = len(A)
     slow, loiter = [False] * n, [False] * n
     hi = [p[ALT] is not None and p[ALT] >= HIGH_ALT_FT for p in A]
@@ -215,10 +218,11 @@ def point_flags(A, cat, airspeed=False, v06=False):
     if not fast:
         return slow, loiter, False
     hi = [p[ALT] is not None and p[ALT] >= floor for p in A]   # slow / loiter floor (higher for A2, see HIGH_ALT_A2_FT)
+    hi_floor = (SLOW_HI_A2_FT if a2_hi_ft is None else a2_hi_ft) if cat == "A2" else SLOW_HI_FT
     for i, p in enumerate(A):
         if hi[i] and p[GS] is not None and p[GS] < SLOW_KT:
             slow[i] = True
-        elif v06 and p[ALT] is not None and p[ALT] >= SLOW_HI_FT and p[GS] is not None and p[GS] < SLOW_HI_KT:
+        elif v06 and hi_floor and p[ALT] is not None and p[ALT] >= hi_floor and p[GS] is not None and p[GS] < SLOW_HI_KT:
             slow[i] = True
     if cat != "A6":
         i = 0
@@ -339,13 +343,13 @@ def speed_runs(M, cat, a_episodes):
                                        for t0, t1 in a_episodes)]
 
 
-def analyse(A, M, cat, airspeed=False, v06=False):
+def analyse(A, M, cat, airspeed=False, v06=False, a2_hi_ft=None):
     """Per-aircraft analysis on time-ordered ADS-B points A and MLAT points M.
 
     Returns dict: false (bool per point), trusted (bool per point), flags {name: [bool]}, episodes [...],
     mlat pairs, dup, jumps, far, unresolved [indexes of the first point after an unresolved jump]."""
     n = len(A)
-    slow, loiter, fast = point_flags(A, cat, airspeed, v06)
+    slow, loiter, fast = point_flags(A, cat, airspeed, v06, a2_hi_ft)
     bad = [a or b for a, b in zip(slow, loiter)]
     segs, track_of, primary, jumps, far, far_at = segments_and_tracks(A, bad)
     far_exc = short_far_excursions(A, segs, track_of, primary, far_at) if v06 else 0
@@ -491,8 +495,9 @@ def cell(lat, lon, res):
     return h3.str_to_int(h3.latlng_to_cell(lat, lon, res))
 
 
-def score_trace(raw, day0, airspeed=False, v06=False):
-    """One trace file -> aircraft record, or None. airspeed: --airspeed-fast (v0.5); v06: --v06."""
+def score_trace(raw, day0, airspeed=False, v06=False, a2_hi_ft=None):
+    """One trace file -> aircraft record, or None. airspeed: --airspeed-fast (v0.5); v06: --v06;
+    a2_hi_ft: --slow-hi-a2-ft."""
     if raw[:2] == b"\x1f\x8b":
         raw = gzip.decompress(raw)
     d = orjson.loads(raw)
@@ -502,7 +507,7 @@ def score_trace(raw, day0, airspeed=False, v06=False):
     A, M, cat = parse_trace(d)
     if not A:
         return None
-    r = analyse(A, M, cat, airspeed, v06)
+    r = analyse(A, M, cat, airspeed, v06, a2_hi_ft)
     trusted, false = r["trusted"], r["false"]
 
     def hour(t):
@@ -621,12 +626,12 @@ def score_trace(raw, day0, airspeed=False, v06=False):
 
 
 def work(args):
-    batch, day0, airspeed, v06 = (args + (False, False))[:4]
+    batch, day0, airspeed, v06, a2_hi_ft = (args + (False, False, None))[:5]
     recs, st = [], Counter()
     for raw in batch:
         st["files"] += 1
         try:
-            r = score_trace(raw, day0, airspeed, v06)
+            r = score_trace(raw, day0, airspeed, v06, a2_hi_ft)
         except Exception:
             st["parse_errors"] += 1
             continue
@@ -807,7 +812,8 @@ def aggregate(recs):
     return t4, t2, d4, events, {"geo_out_aircraft": geo_out_aircraft, "episodes_with_geo_out_aircraft": ep_geo_out}
 
 
-def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False):
+def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False, a2_hi_ft=None):
+    a2_hi_ft = SLOW_HI_A2_FT if a2_hi_ft is None else a2_hi_ft
     parts = P.day_parts(raw_dir, day)
     day0 = int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())
     t0 = time.time()
@@ -818,7 +824,7 @@ def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False):
         if limit:
             src = itertools.islice(src, limit)
         if airspeed or v06:
-            src = ((b, d0, airspeed, v06) for b, d0 in src)
+            src = ((b, d0, airspeed, v06, a2_hi_ft) for b, d0 in src)
         for r, s in pool.imap_unordered(work, src, chunksize=1):
             recs.extend(r); st.update(s)
     chain = stream.raw
@@ -858,7 +864,7 @@ def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False):
     ml_unflagged_dis = sum(1 for r in nd if not r["episodes"] and r["mlat"][1] >= 2)
     secs = time.time() - t0
     summary = {
-        "day": day, "version": "0.6" if v06 else "0.5" if airspeed else VERSION, "inputs": [os.path.basename(p) for p in parts],
+        "day": day, "version": ("0.6" if a2_hi_ft == 25000 else "0.6.1") if v06 else "0.5" if airspeed else VERSION, "inputs": [os.path.basename(p) for p in parts],
         "input_bytes": chain.nbytes, "input_sha256": chain.sha.hexdigest(),
         "seconds": round(secs, 1), "seconds_read": round(t_read, 1), "workers": workers,
         **{k: st.get(k, 0) for k in ("files", "skipped", "parse_errors")},
@@ -886,6 +892,7 @@ def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False):
         "source": "adsb.lol globe_history (ODbL 1.0)",
     }
     summary["method"]["FAST_CATS"] = sorted(FAST_CATS)
+    summary["method"]["SLOW_HI_A2_FT"] = a2_hi_ft
     json.dump(summary, open(os.path.join(out_dir, f"{day}.summary.json"), "w"), indent=1, default=list)
     return summary
 
@@ -1109,11 +1116,14 @@ def main():
     ap.add_argument("--v06", action=argparse.BooleanOptionalAction, default=True,
                     help="v0.6 (default from 15 Nov 2026): slow at cruise, short far excursions, MLAT speed "
                          "(docs/validation/spoofing-v06.md); --no-v06 gives v0.5")
+    ap.add_argument("--slow-hi-a2-ft", type=int, default=None,
+                    help="v0.6 rule A (slow at cruise) floor for category A2, ft; 0 turns it off for A2 "
+                         f"(default {SLOW_HI_A2_FT}; docs/validation/spoofing-v061.md)")
     a = ap.parse_args()
     if a.cmd == "run":
         for day in a.days:
             raw = a.raw or os.path.join(ROOT, "data", "raw", "trace_box", day)
-            s = run(day, raw, a.out, a.workers, a.limit, a.airspeed_fast, a.v06)
+            s = run(day, raw, a.out, a.workers, a.limit, a.airspeed_fast, a.v06, a.slow_hi_a2_ft)
             print(json.dumps({k: s[k] for k in ("day", "seconds", "files", "aircraft", "episodes", "aircraft_with_episodes",
                                                  "episodes_by_kind", "episodes_mlat_confirmed", "duplicate_suspects")}), flush=True)
     else:

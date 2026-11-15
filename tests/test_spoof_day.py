@@ -366,6 +366,29 @@ def test_v06_day():
         shutil.rmtree(tmp)
 
 
+def test_v061_rule_a_for_a2():
+    """v0.6.1 variants (docs/validation/spoofing-v061.md): rule A's floor for category A2. A turboprop at 25,500 ft
+    making 140 kt over the ground into a headwind is slow under v0.6 (floor 25,000 ft), not with rule A off for A2 (0)
+    or with the A2 floor at 36,000 ft; a light jet doing 140 kt at 37,000 ft is still slow with the 36,000 ft floor.
+    Other categories are unchanged."""
+    a2 = dict(DET, category="A2")
+
+    def flight(alt):
+        return fly(DAY0, 30, 47.5, 19.0, gs=280, alt=alt) + fly(DAY0 + 1810, 10, 47.5, 21.6, gs=140, alt=alt)
+
+    def eps(pts, det, **kw):
+        A, M, cat = S.parse_trace(trace("bbb020", pts, det=det, typ="B350"))
+        return S.analyse(A, M, cat, airspeed=True, v06=True, **kw)["episodes"]
+
+    assert len(eps(flight(25500), a2)) == 1, "v0.6: A2 at 25,500 ft, 140 kt, is slow"
+    assert len(eps(flight(25500), a2, a2_hi_ft=25000)) == 1
+    assert not eps(flight(25500), a2, a2_hi_ft=0), "rule A off for A2"
+    assert not eps(flight(25500), a2, a2_hi_ft=36000), "A2 below the 36,000 ft floor"
+    assert len(eps(flight(37000), a2, a2_hi_ft=36000)) == 1, "A2 above the 36,000 ft floor"
+    assert not eps(flight(37000), a2, a2_hi_ft=0)
+    assert len(eps(flight(25500), DET, a2_hi_ft=0)) == 1, "A3 keeps rule A whatever the A2 setting"
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):
