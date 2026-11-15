@@ -41,6 +41,10 @@ S4_NOTES = ("Noisefloor's space weather day files for {month}, one per UTC day, 
             "ground receiver's S4 (COSMIC-2 navigation-antenna links whose ray passes 150-500 km above the ground), per "
             "H3 res-1 cell and UTC hour. Made by tools/cosmic2_s4.py and tools/cosmic2_job.py; method and validation "
             "in docs/validation/cosmic2-limb-s4.md. COSMIC-2 data: UCAR COSMIC Program (CDAAC), CC BY 4.0. "
+            "<day>.ground-roti.json: ROTI, a measured TEC fluctuation index at fixed stations (a proxy for "
+            "ionospheric irregularities, not an S4 value), per IGS station and UTC hour. Made by tools/ground_roti.py "
+            "and tools/ground_roti_job.py; method and validation in docs/validation/ground-roti.md. Station data: "
+            "International GNSS Service (IGS) and the station operators, via the BKG GNSS Data Center. "
             "These files are CC BY 4.0.")
 POLL_S = 300
 
