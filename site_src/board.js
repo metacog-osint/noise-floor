@@ -110,8 +110,13 @@
     }
 
     // across the spectrum (the rows are in the page; dash.js fills sun outages, solar radio and at sea)
+    var np = s && s.new_places, nw = (np && np.new) || [];
     set("r-spoof", s && s.active != null ? n(s.active) + " active episodes" + ((s.victims || []).length ? "; aircraft mostly near " +
-      esc(s.victims.slice(0, 3).map(function (v) { return v.near; }).filter(Boolean).join(", ")) : "") : "Not available in the last build.");
+      esc(s.victims.slice(0, 3).map(function (v) { return v.near; }).filter(Boolean).join(", ")) : "") +
+      (nw.length ? ". New false position" + (nw.length > 1 ? "s" : "") + " " + dayShort(np.day) + ": " + esc(nw.slice(0, 3).map(function (x) {
+        return (x.near ? "near " + x.near : "unnamed") + " (" + n(x.aircraft) + " aircraft" + (x.km_from_aircraft >= 1000 ? ", " + n(x.km_from_aircraft) + " km from them" : "") + ")";
+      }).join("; ")) + (nw.length > 3 ? " and " + (nw.length - 3) + " more" : "") : "") : "Not available in the last build.");
+    if (s && s.day && $("r-spoof-link")) $("r-spoof-link").href = "/map#day=" + s.day + "&m=jam&sp=1";
     var s6 = b.sentinel6, places6 = s6 ? (s6.peaks || []).map(function (p) { return p.near; }).filter(Boolean) : [];
     set("r-s6", s6 ? dayShort(s6.day) + ": " + n(s6.raised_cells) + " cells raised" + (places6.length ? "; strongest: " + esc(places6.join("; ")) : "") +
       ". Regions, not transmitter sites." : "Not available in the last build.");

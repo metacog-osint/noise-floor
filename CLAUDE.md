@@ -196,6 +196,13 @@ loaded automatically; read it when you need the background.
   `problems`, never fatal). The daily run also uploads `<day>.spoof.json` (`daily_job.py --spoofing`, from late Oct 2026) and, from 14 Nov 2026,
   `<day>.spoof-targets.json` (every spoofed-to cluster, `tools/spoof_summary.py`; `docs/validation/spoofing-lima.md`); redo
   them on published days with backfill.yml `spoofing_only` (`daily_job.py --spoof-only`, downloads the raw archive).
+  **Spoofing on the site (Nov 2026):** `tools/spoof_site.py` runs at deploy after `site_layers.py`: it adds every spoofed-to
+  place (`targets`, `unplaced`) to `site/data/spoof/<day>.json` and writes `site/data/spoof/history.json` (Trends:
+  daily active episodes, victim cells by the validation's region groups, places followed day to day, new places).
+  `board.py` adds `new_places` to the spoofing card and `feed_v2.py` up to five feed items for them (observations,
+  placed where the aircraft really were). `<day>.spoof.json` gains `share2` (active share of aircraft-hours per H3
+  res-2 region, from spoof_day's hex2 table) for the map's "Spoofed share" layer; days published before it lack it
+  until redone.
   `tools/cygnss_daily.py` makes CYGNSS day summaries on this PC (needs `EARTHDATA_TOKEN`) from the 06:30 collectors task
   (`collectors/run_daily.cmd`) and uploads them to the `cygnss-data` release (Tom approved 26 Oct 2026); the newest
   complete day runs about six days behind. **Map layers (27 Oct 2026):** the map page's Spoofing and CYGNSS checkboxes read

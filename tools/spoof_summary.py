@@ -8,8 +8,9 @@ Used by pipeline/daily_job.py --spoofing. Both files hold aggregates only (ODbL 
 
 <day>.spoof.json (the home board and the map layer): episodes by class; active episodes and the aircraft behind them;
 for the map, the H3 res-4 hexes where aircraft really were during active episodes, with the number of active episodes
-in each (`cells`); the H3 res-2 regions with the most active episodes; and the places receivers were spoofed to (from
-spoof_day's summary, top 10). Victim locations are where the aircraft were, not where a transmitter is.
+in each (`cells`); the H3 res-2 regions with the most active episodes; the places receivers were spoofed to (from
+spoof_day's summary, top 10); and, from late Nov 2026, the active share of aircraft-hours in every H3 res-2 region with
+traffic (`share2`, from spoof_day's hex2 table). Victim locations are where the aircraft were, not where a transmitter is.
 
 <day>.spoof-targets.json (from Nov 2026): every place the detector saw receivers spoofed to that day, not only the top
 10, so that a reader can follow any one destination from day to day. Each episode's spoofed-to point is the median of
@@ -31,6 +32,7 @@ from collections import Counter, defaultdict
 TARGET_KM = 5.0          # cluster radius around the seed (see targets())
 TARGET_RES = 5           # H3 resolution of the neighbour search (cells far wider than TARGET_KM)
 TARGETS_VERSION = "2"           # 2 (v0.6, Nov 2026): adds unplaced
+SHARE_MIN_AH = 10               # share2: res-2 cells with at least this many aircraft-hours
 
 
 def km(lat1, lon1, lat2, lon2):
@@ -47,6 +49,21 @@ def load(spoof_dir, day):
     return s, (ev.get("events", ev) if isinstance(ev, dict) else ev)
 
 
+def share2(spoof_dir, day, min_aircraft_hours=SHARE_MIN_AH):
+    """[[H3 res-2 cell, aircraft-hours, active aircraft-hours]] from spoof_day's <day>.hex2.parquet (the measure of
+    the held-out checks H1 and H2: aircraft counted once per cell and UTC hour), for cells with at least
+    min_aircraft_hours; None when the table isn't there (summaries rebuilt from the published files alone)."""
+    path = os.path.join(spoof_dir, f"{day}.hex2.parquet")
+    if not os.path.exists(path):
+        return None
+    import pyarrow.parquet as pq
+    tot = defaultdict(lambda: [0, 0])
+    for r in pq.read_table(path, columns=["h3", "aircraft", "spoofed_active"]).to_pylist():
+        tot[r["h3"]][0] += r["aircraft"] or 0
+        tot[r["h3"]][1] += r["spoofed_active"] or 0
+    return sorted(([c, a, s] for c, (a, s) in tot.items() if a >= min_aircraft_hours), key=lambda x: x[0])
+
+
 def summarise(spoof_dir, day, loaded=None):
     import h3
     s, ev = loaded or load(spoof_dir, day)
@@ -61,8 +78,11 @@ def summarise(spoof_dir, day, loaded=None):
                                  "episodes": n} for c, n in regions.most_common(10)],
             "spoofed_to_top": [{"lat": la, "lon": lo, "episodes": n} for _, la, lo, n in (s.get("spoofed_to_res6_top") or [])[:10]],
             "targets_file": f"{day}.spoof-targets.json",
+            **({"share2": sh} if (sh := share2(spoof_dir, day)) is not None else {}),
             "method": "tools/spoof_day.py; docs/validation/spoofing.md. Cells and regions count active episodes (where the "
-                      "aircraft really were). Every spoofed-to cluster, not only the top 10: targets_file."}
+                      "aircraft really were). Every spoofed-to cluster, not only the top 10: targets_file. share2 (from late "
+                      "Nov 2026): [H3 res-2 cell, aircraft-hours, aircraft-hours in active episodes] for cells with "
+                      f"{SHARE_MIN_AH} or more aircraft-hours, the measure of the held-out checks."}
 
 
 def targets(events, radius_km=TARGET_KM):
