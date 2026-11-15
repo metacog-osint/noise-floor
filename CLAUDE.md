@@ -109,8 +109,8 @@ loaded automatically; read it when you need the background.
     `<day>.cosmic2.json` (uploaded to `cosmic2-data` only if the PC's `cosmic2_daily.py` hasn't, and compared if it
     has). UCAR posts about 04:35 UTC; the limb file is due by 14:00 UTC. The gate (the day's file already in the
     release) makes extra starts cheap. GitHub's cron runs hours late (crons at 01:15, 03:15, 05:15, 08:15 UTC are the
-    fallback), so tic-dispatch starts it at :50 past 04-08 and 10-13 UTC (Tom's yes 15 Nov 2026, hub 1739e03; it needs
-    noise-floor in the `tic-dispatch` token's repository access, which Tom sets). Keep the PC path until the GitHub
+    fallback), so tic-dispatch starts it at :50 past 04-08 and 10-13 UTC (Tom's yes 15 Nov 2026, hub 1739e03; noise-floor
+    was added to the `tic-dispatch` token's repository access the same day). Keep the PC path until the GitHub
     one is proven.
   - Method facts (`docs/validation/cosmic2-limb-s4.md`): UCAR's on-board S4 is one value per 10 s, repeated at 1 Hz;
     link files overlap and must be made unique per second; the first 60 s of a track are dropped; GPS links only;
