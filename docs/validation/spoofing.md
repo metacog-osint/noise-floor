@@ -357,6 +357,12 @@ day's summary records the version that made it (`version`).
 
 A check registered in `docs/validation/cygnss.md` (section 10) before download: v0.4 active share of aircraft-hours in the Gulf region on the 15th of July–October 2026 against the 15th of November 2025–January 2026. Before: 0.000% on all three days (98,056 aircraft-hours). After: 0.178% (135,862 aircraft-hours), present on all four days (0.05–0.36%). Aircraft spoofing persisted in the Gulf for months after the surge, while CYGNSS stayed raised and aircraft NACp read mostly clean.
 
+## Every spoofed-to cluster, and the Lima test (14 Nov 2026)
+
+From 14 Nov 2026 each day also gets `<day>.spoof-targets.json`: every spoofed-to cluster (5 km radius, a ~1 km ring stays one
+cluster) with episodes, aircraft, classes, first and last time, and the H3 res-4 cells where its aircraft really were. A
+pre-registered comparison with GPSWise's flights spoofed to Lima, Peru (7–12 Nov 2026) is in `spoofing-lima.md`.
+
 ## 6. Next
 
 1. **Held-out test, rules fixed first:** v0.3 frozen, on days not used here (for example from the Oct 2025 – Oct 2026 backfill period), scored on the same checks.

@@ -23,7 +23,10 @@ Usage
   python pipeline/daily_job.py 2026-10-20 --position-loss   # also make and upload <day>.loss.parquet and .loss_daily.parquet
   python pipeline/daily_job.py 2026-10-20 --spoofing        # also run tools/spoof_day.py on the raw archive and upload a
                                                            # small public summary, <day>.spoof.json (the home board's
-                                                           # spoofing card). Never fatal: the day publishes without it.
+                                                           # spoofing card), and every spoofed-to cluster,
+                                                           # <day>.spoof-targets.json. Never fatal: the day publishes without it.
+  python pipeline/daily_job.py 2026-11-07:2026-11-13 --spoof-only  # rerun only the spoofing files on published days
+                                                           # (downloads the raw archive again; nothing else changes)
 """
 import argparse, json, os, shutil, subprocess, sys, time, traceback, urllib.request
 from datetime import date, datetime, timedelta, timezone
@@ -199,24 +202,49 @@ def upload_local(day, a):
 
 
 def spoof_summary(day, raw, workers):
-    """Spoofing indicators for the day (tools/spoof_day.py, its default version) -> SITE/<day>.spoof.json, made by
-    tools/spoof_summary.py: counts by class, the H3 res-4 hexes (the map layer) and res-2 regions where aircraft really
-    were during active episodes, and the places receivers were spoofed to. Aggregates only (ODbL 1.0). Returns the file,
-    or None if the run failed (the day publishes anyway)."""
+    """Spoofing indicators for the day (tools/spoof_day.py, its default version) -> SITE/<day>.spoof.json and
+    SITE/<day>.spoof-targets.json, made by tools/spoof_summary.py: counts by class, the H3 res-4 hexes (the map layer) and
+    res-2 regions where aircraft really were during active episodes, the top places receivers were spoofed to, and every
+    spoofed-to cluster with where its aircraft really were. Aggregates only (ODbL 1.0). Returns the list of files, or []
+    if the run failed (the day publishes anyway)."""
     try:
         r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "spoof_day.py"), "run", day, "--raw", raw,
                             "--out", SPOOF, "--workers", str(workers)], capture_output=True, text=True, encoding="utf-8",
                            timeout=5400)
         if r.returncode:
             print(f"spoofing {day}: spoof_day failed: {r.stderr.strip()[-400:]}", file=sys.stderr)
-            return None
+            return []
         sys.path.insert(0, os.path.join(ROOT, "tools"))
         import spoof_summary
-        p, _ = spoof_summary.write(SPOOF, day, SITE)
-        return p
+        p, _, pt = spoof_summary.write(SPOOF, day, SITE)
+        return [p, pt]
     except Exception as e:                # never fatal
         print(f"spoofing {day}: skipped ({type(e).__name__}: {e})", file=sys.stderr)
-        return None
+        return []
+
+
+def spoof_only(day, a):
+    """--spoof-only: rerun the spoofing files of a published day (after spoof_day or spoof_summary changes). Downloads
+    the raw archive again, since the detector reads raw traces; the day's other files are left as they are."""
+    t0, tag = time.time(), data_tag(day)
+    if f"{day}.map.json" not in (assets(REPO, tag) or {}) and not a.no_upload:
+        return {"day": day, "status": "not published; nothing to redo"}
+    raw = a.raw_dir or download_raw(day)
+    if raw is None:
+        return {"day": day, "status": "no adsb.lol archive"}
+    try:
+        os.makedirs(SITE, exist_ok=True)
+        files = spoof_summary(day, raw, a.workers)
+    finally:
+        if not a.raw_dir and not a.keep_raw:
+            shutil.rmtree(raw, ignore_errors=True)
+    if not files:
+        return {"day": day, "status": "ERROR spoofing failed", "total_s": round(time.time() - t0)}
+    if not a.no_upload:
+        gh("release", "upload", tag, "-R", REPO, "--clobber", *files)
+        _ASSETS.pop((REPO, tag), None)
+    return {"day": day, "status": "spoofing republished" if not a.no_upload else "spoofing done (not uploaded)",
+            "files": [os.path.basename(f) for f in files], "total_s": round(time.time() - t0)}
 
 
 def process(day, a):
@@ -225,7 +253,7 @@ def process(day, a):
     if raw is None:
         return {"day": day, "status": "not published yet"}
     t_dl = time.time() - t0
-    spoof = None
+    spoof = []
     try:
         s = P.run(day, raw, DAILY, a.workers, position_loss=a.position_loss)
         if a.spoofing:
@@ -241,7 +269,7 @@ def process(day, a):
     E.hotspot_day(day, os.path.join(SITE, f"{day}.hotspots.json"))
     if not a.no_upload:
         upload(day, with_analysis=not a.skip_analysis,
-               extra=(loss_outputs(day) if a.position_loss else []) + ([spoof] if spoof else []))
+               extra=(loss_outputs(day) if a.position_loss else []) + spoof)
     return {"day": day, "status": "published" if not a.no_upload else "done (not uploaded)",
             "spoofing": "summary made" if spoof else ("failed or skipped" if a.spoofing else "off"),
             "aircraft": s["aircraft"], "hexes_5plus": hexes, "jam_hexes": jam, "history_files": hist,
@@ -267,25 +295,31 @@ def main():
     ap.add_argument("--position-loss", action="store_true",
                     help="also make and upload the position-loss tables (off by default; the daily workflow sets it)")
     ap.add_argument("--spoofing", action="store_true",
-                    help="also run tools/spoof_day.py and upload <day>.spoof.json (off by default; the daily workflow sets it)")
+                    help="also run tools/spoof_day.py and upload <day>.spoof.json and <day>.spoof-targets.json (off by "
+                         "default; the daily workflow sets it)")
+    ap.add_argument("--spoof-only", action="store_true",
+                    help="redo only the spoofing files of published days (downloads the raw archive; backfill.yml)")
     a = ap.parse_args()
     today = datetime.now(timezone.utc).date()
     days = sorted(set(expand(a.days))) if a.days else [(today - timedelta(days=k)).isoformat() for k in range(a.lookback, 0, -1)]
     results, failed = [], False
     for day in days:
-        if not a.force and not a.reanalyse and not a.no_upload and f"{day}.map.json" in (assets(REPO, data_tag(day)) or {}):
+        if not a.force and not a.reanalyse and not a.spoof_only and not a.no_upload and f"{day}.map.json" in (assets(REPO, data_tag(day)) or {}):
             continue
         t_day = time.time()
         try:
-            r = reanalyse(day, a) if a.reanalyse else upload_local(day, a) if a.upload_local else process(day, a)
+            r = (reanalyse(day, a) if a.reanalyse else spoof_only(day, a) if a.spoof_only
+                 else upload_local(day, a) if a.upload_local else process(day, a))
         except Exception as e:
             traceback.print_exc()
             r, failed = {"day": day, "status": f"ERROR {e.__class__.__name__}: {e}"[:300]}, True
         print(json.dumps(r), flush=True)
         results.append(r)
-        if r["status"] in ("published", "reanalysed"):
+        if r["status"].startswith("ERROR"):
+            failed = True
+        if r["status"] in ("published", "reanalysed", "spoofing republished"):
             time.sleep(max(0.0, a.min_seconds - (time.time() - t_day)))
-    done = [r["day"] for r in results if r["status"] in ("published", "reanalysed")]
+    done = [r["day"] for r in results if r["status"] in ("published", "reanalysed", "spoofing republished")]
     print(json.dumps({"published": done, "checked": len(days)}))
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
