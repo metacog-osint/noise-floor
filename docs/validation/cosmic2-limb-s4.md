@@ -104,6 +104,66 @@ largest `max` in place of `p95`; L1 at 600 km and 1,500 km; and the share of pai
 
 **Seeds:** L3 uses numpy's default generator with seed 1.
 
-## 6. What waits on Tom
+## 6. Results on the held-out days (run 15 Nov 2026, 03:50 UTC)
+
+Sections 1–5 were committed in 488706e before any held-out day was made. The 25 limb files came from the workflow run
+of 15 Nov 2026 at 03:29 UTC (`cosmic2.yml`, `s4_only`, commit 0735348, which only fixed a log line in the job). Command:
+`python tools/cosmic2_s4_check.py check 2026-10-16:2026-11-06 2026-11-08 2026-11-11:2026-11-12`.
+
+**All three checks hold, so the layer is validated.**
+
+| # | Check | Result | Verdict |
+|---|---|---|---|
+| L1 | Pooled AUC, disturbed against quiet receiver-hours | 0.834 (140 disturbed, 2,832 quiet) | holds |
+| L2 | The same, at station local solar time 19:00–02:00 | 0.763 (130 disturbed, 633 quiet) | holds |
+| L3 | Chance test, labels shuffled within station × local-solar-hour | p = 0.0005 (none of 2,000 shuffles reached 0.834) | holds |
+
+**Counts.** 5,029 judged receiver-hours; 2,972 paired with a limb cell within 1,000 km in the same hour; 2,057 had none.
+Skipped station-days (no eSWua records): Hanoi on all 25 days; Lagos 24–27 Oct; Nairobi 30–31 Oct and 8 Nov. No limb
+file was missing. Every limb file lists one problem: only C2E2, C2E5 and C2E6 delivered `podTc2` data (the interference
+layer's tables show the same three satellites).
+
+**Reported without marks:**
+- Median L: disturbed 0.516 (95% interval 0.444–0.609), quiet 0.131 (0.128–0.136). These are limb values; they say
+  nothing about ground S4 levels.
+- AUC with the largest `max` in place of `p95`: 0.833.
+- L1 at 600 km: 0.821 (1,413 pairs); at 1,500 km: 0.834 (3,735 pairs).
+- Averaged over paired receiver-hours, the share of their nearby cells with `rfi` above 0.5: 0.375.
+- Each station's own AUC (5 or more disturbed pairs):
+
+| Station | AUC | Disturbed | Quiet |
+|---|---|---|---|
+| Lagos | 0.951 | 6 | 339 |
+| Nairobi | 0.906 | 17 | 296 |
+| Malindi | 0.894 | 17 | 311 |
+| Tucumán | 0.910 | 28 | 317 |
+| São Paulo | 0.772 | 28 | 270 |
+| Saba | 0.811 | 16 | 289 |
+| KL University | 0.745 | 20 | 318 |
+| Dhaka | 0.838 | 5 | 341 |
+
+Kenting had fewer than 5 disturbed pairs; Hanoi had no records.
+
+**Exploratory, not pre-registered** (run after the results above, because UCAR's Cal/Val team found that interference
+can raise on-board S4): with only cells whose `rfi` is 0.5 or less, L1's AUC is 0.808 (2,087 pairs, 110 disturbed) and
+the night-only AUC 0.720; with only cells with no RFI-flagged value, 0.763 (1,317 pairs, 59 disturbed) and 0.694. The
+separation does not rest on RFI-flagged cells, though it is weaker without them; whether scintillation itself raises
+UCAR's RFI index was not tested.
+
+**Tuning days against the unfrozen scratch results** (not part of the test): the published files place the 7 Nov
+South American peak at 03:00–04:00 UTC (1.21 near 4°S 56°W, 1.00 near 8°S 63°W) and the 9 Nov Horn of Africa values
+at 16:00–17:00 UTC (0.47 near 12°N 46°E), one hour earlier than the scratch notes; the 10 Nov peaks over Africa are at
+20:00–22:00 UTC (up to 1.33 near 8°N 18°E), as in the scratch. The time conversion was checked against a file's own
+start time (GPS 00:01:31 = 00:01:13 UTC).
+
+**What this shows and what it does not.** Limb S4 is higher where and when low-latitude ground receivers see
+scintillation, beyond what the time of day explains (L2, L3), on 25 days in Oct–Nov 2026 with three satellites. It is a
+regional indicator placed at a nominal tangent point, not an estimate of the S4 a ground receiver would measure, and
+its values are not on the same scale. One season and eight stations; no mid- or high-latitude test.
+
+**Interference file from the same pass.** On 7, 9, 10 and 13 Nov the job's `<day>.cosmic2.json` matched the file this
+PC had published, cell for cell (score difference 0.0). The job filled 11 and 12 Nov, which the PC had missed.
+
+## 7. What waits on Tom
 
 Adding the layer to the public map or to the `tic-feed/2` feed, after this validation, as for every earlier layer.
