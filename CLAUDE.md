@@ -113,7 +113,9 @@ loaded automatically; read it when you need the background.
     one is proven.
   - Method facts (`docs/validation/cosmic2-limb-s4.md`): UCAR's on-board S4 is one value per 10 s, repeated at 1 Hz;
     link files overlap and must be made unique per second; the first 60 s of a track are dropped; GPS links only;
-    tangent points 150-500 km; H3 res 1. Map or feed use waits on Tom's OK after validation.
+    tangent points 150-500 km; H3 res 1. **Validated 15 Nov 2026** against INGV eSWua ground receivers on 25 held-out
+    days (AUC 0.834; night-only 0.763; chance test p = 0.0005). Map or feed use waits on Tom's OK. Only C2E2, C2E5
+    and C2E6 deliver podTc2 data in Oct-Nov 2026.
 - **`watch.py` sources (31 Oct 2026):** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch
   (pages in `private/watch/pollers.json` `pagewatch`, each with a link pattern). FAA NOTAMs wait on API credentials
   (requested 30 Oct); the public NOTAM Search site refuses automated clients.
