@@ -102,6 +102,60 @@ def test_paths_and_tags():
     assert G.tags_for("2027-01-02.geo-region.json") == ["pnt-data-2027-01", "pnt-data-2026-12"]
 
 
+def test_orbit_busy():
+    from datetime import datetime, timezone
+    at = lambda s: datetime.fromisoformat(s).replace(tzinfo=timezone.utc)  # noqa: E731
+    snap = lambda read_at: (lambda: {"maneuvers": {"read_at": read_at}})  # noqa: E731
+    calls = []
+
+    def never():
+        calls.append(1)
+        raise AssertionError("the snapshot is not read inside the window")
+    # Orbit's start window, HH:38 to (HH+1):05 around 00, 06, 12 and 18 UTC, without reading the snapshot
+    for t in ("2026-11-16T00:38", "2026-11-16T00:55", "2026-11-16T01:05", "2026-11-16T12:40", "2026-11-16T18:59",
+              "2026-11-16T07:05"):
+        assert "start window" in G.orbit_busy(at(t), never), t
+    assert not calls
+    # outside it: Orbit's last gp query decides
+    assert G.orbit_busy(at("2026-11-16T05:40"), snap("2026-11-16T01:56:25Z")) is None
+    assert G.orbit_busy(at("2026-11-16T01:06"), snap("2026-11-16T00:56:25Z")) is not None   # 10 minutes after
+    assert G.orbit_busy(at("2026-11-16T01:57"), snap("2026-11-16T00:56:25Z")) is None      # just over the hour
+    assert G.orbit_busy(at("2026-11-16T00:37"), snap("2026-11-15T22:18:03Z")) is None
+    assert G.orbit_busy(at("2026-11-16T05:40"), lambda: {"maneuvers": {}}) is None           # lane off: no read_at
+    assert G.orbit_busy(at("2026-11-16T05:40"), lambda: {}) is None
+
+    def down():
+        raise OSError("unreachable")
+    assert "could not read" in G.orbit_busy(at("2026-11-16T05:40"), down)                 # unreadable counts as busy
+
+
+def test_gp_skips_for_orbit():
+    tmp = tempfile.mkdtemp()
+    try:
+        class NoQuery:
+            def query(self, path):
+                raise AssertionError("no gp query while Orbit's may fall within the hour")
+        try:
+            G.gp_near_geo(tmp, NoQuery(), busy=lambda now: "Orbit's gp query was under an hour ago")
+            raise AssertionError("OrbitBusy expected")
+        except G.OrbitBusy as e:
+            assert "under an hour" in str(e)
+        held = [rec(1, "2026-11-15T00:00:00")]                     # a response from the last hour is reused, no check
+        with open(os.path.join(tmp, "gp_latest.json"), "w", encoding="utf-8") as f:
+            import json
+            json.dump(held, f)
+        assert G.gp_near_geo(tmp, NoQuery(), busy=lambda now: "busy") == held
+        real = G.orbit_busy
+        G.orbit_busy = lambda now, get=None: "inside Orbit's start window"   # pull's default path skips cleanly
+        os.remove(os.path.join(tmp, "gp_latest.json"))
+        try:
+            assert G.pull("2026-11-16", tmp, upload=False) == (None, None)
+        finally:
+            G.orbit_busy = real
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
