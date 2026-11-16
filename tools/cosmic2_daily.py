@@ -8,10 +8,15 @@ and `grid` with the method frozen and validated in docs/validation/space-receive
 2,500 km with the fore/aft split, H3 res 2), writes data/cosmic2/daily/<day>.cosmic2.json and uploads it to this repo's
 release `cosmic2-data`, which the site deploy reads (tools/site_layers.py).
 
+GitHub's tools/cosmic2_job.py makes the same file from the same archive, often before this PC runs. When the release
+already holds the day, this run keeps the release's copy, compares its own file with it (tools/cosmic2_job.py's
+compare_rfi, as that job does the other way round) and logs "Compared with it: {...}". A week of match lines is the
+case for retiring this PC run. --replace (and --resummarise, which exists to rewrite days) uploads over it.
+
 The file holds every cell whose score reaches the frozen threshold T (the 95th percentile of aircraft-clean cells on
 the tuning days) as [h3, score, bins], the strongest regions by name, counts, and the satellites that delivered data.
 
-  python tools/cosmic2_daily.py [--day 2026-10-30] [--no-upload]
+  python tools/cosmic2_daily.py [--day 2026-10-30] [--no-upload] [--replace]
   python tools/cosmic2_daily.py --resummarise [--no-upload]   # rewrite (and upload) every day already gridded
 """
 import argparse
@@ -77,7 +82,27 @@ def gh(*args, check=True):
     return r
 
 
-def write(day, no_upload):
+def keep_published(day, path):
+    """If cosmic2-data already holds the day, keep that copy: compare this run's file with it, log the result and
+    return the comparison. None when the release does not have the day."""
+    import cosmic2_job as J
+    import cosmic2_rfi as C2
+    name = os.path.basename(path)
+    if not J.published(TAG, name, C2.UA):
+        return None
+    try:
+        req = urllib.request.Request(J.asset_url(TAG, name), headers={"User-Agent": C2.UA})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            theirs = json.load(r)
+        with open(path, encoding="utf-8") as f:
+            cmp = J.compare_rfi(json.load(f), theirs)
+    except (OSError, ValueError) as e:
+        cmp = {"match": None, "error": str(e)[:200]}
+    print(f"{day}: {name} already in {TAG}; not replaced. Compared with it: {json.dumps(cmp)}")
+    return cmp
+
+
+def write(day, no_upload, replace=False):
     s = summarise(day)
     os.makedirs(OUT, exist_ok=True)
     out = os.path.join(OUT, f"{day}.cosmic2.json")
@@ -85,7 +110,7 @@ def write(day, no_upload):
         json.dump(s, f, separators=(",", ":"), ensure_ascii=False)
     print(f"{day}: {s['raised_cells']} of {s['judged_cells']} judged cells at or above {THRESHOLD} "
           f"({len(s['satellites'])} satellites)")
-    if not no_upload:
+    if not no_upload and (replace or keep_published(day, out) is None):
         if gh("release", "view", TAG, "-R", REPO, check=False).returncode:
             gh("release", "create", TAG, "-R", REPO, "--title", "COSMIC-2 receiver daily maps", "--notes", NOTES,
                "--latest=false")
@@ -110,13 +135,14 @@ def main(argv=None):
     ap.add_argument("--day")
     ap.add_argument("--no-upload", action="store_true")
     ap.add_argument("--resummarise", action="store_true")
+    ap.add_argument("--replace", action="store_true", help="upload over a copy already in the release")
     a = ap.parse_args(argv)
     print(f"=== cosmic2_daily {datetime.now(timezone.utc):%Y-%m-%dT%H:%MZ}")
     if a.resummarise:
         suffix = f".r2.k{int(RADIUS_KM)}{'h' if HALVES else ''}.parquet"
         for f in sorted(os.listdir(C2.GRID_DIR)):
             if f.endswith(suffix):
-                write(f[:10], a.no_upload)
+                write(f[:10], a.no_upload, replace=True)
         return 0
     today = datetime.now(timezone.utc).date()
     days = [a.day] if a.day else [(today - timedelta(days=k)).isoformat() for k in range(LOOKBACK, 0, -1)]
@@ -128,7 +154,7 @@ def main(argv=None):
             continue
         try:
             if run_day(day):
-                write(day, a.no_upload)
+                write(day, a.no_upload, a.replace)
         except Exception as e:                    # one bad day must not stop the others
             print(f"{day}: FAILED {e}")
     return 0
