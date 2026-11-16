@@ -48,13 +48,14 @@
       "text": "ESA's scintillation nowcast is current when it is read.",
       "test": {
         "type": "auto",
-        "rule": "nowcast valid time within 3 hours of the build (board.py already applies this)"
+        "rule": "nowcast valid time within 3 hours: board.py drops an older one from the summary line at build, and the home page gives the level only while it is under 3 hours old as the page is read, otherwise how old it is"
       },
-      "status": "holds",
-      "reviewed": "2026-10-30",
+      "status": "strained",
+      "reviewed": "2026-11-16",
       "linked": [
         "NF-WP-1"
-      ]
+      ],
+      "note": "Fails often: the nowcast is a snapshot taken at build, read for hours after, and ESA's feed sometimes stops updating (8 h 17 min old at the 15 Nov 2026 build). The home page printed its level whatever its age until 16 Nov 2026 (suite review, Mistake 7)."
     }
   ]
 }
