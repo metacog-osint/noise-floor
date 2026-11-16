@@ -69,7 +69,7 @@ PAGE = """<!doctype html>
 <link rel="stylesheet" href="/tic-time.css">
 <script defer src="/tic-time.js"></script>
 <link rel="stylesheet" href="/tic-nav.css">
-<script defer src="/tic-nav.js"></script>
+<script defer src="/tic-nav.js" data-health="on"></script>
 <script defer src="/site.js"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 {head}
