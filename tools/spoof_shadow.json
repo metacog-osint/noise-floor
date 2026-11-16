@@ -1,0 +1,13 @@
+{
+ "about": "Shadow variants of tools/spoof_day.py, run beside the default on every daily day from 'from' to 'until' (tools/spoof_shadow.py; docs/spoofing-light-plan.md). 'set' holds detector constants; only settings inside spoof_day.py's ENVELOPE are allowed. List a variant here before scoring it, with the document that registers it.",
+ "variants": [
+  {
+   "name": "v0.6",
+   "set": {"SLOW_HI_A2_FT": 25000},
+   "from": "2026-11-15",
+   "until": "2026-12-15",
+   "why": "Calibration: the version v0.6.1 replaced, so the daily files show the shadow mechanism working against a known difference (docs/validation/spoofing-v061.md).",
+   "registered": "docs/spoofing-light-plan.md"
+  }
+ ]
+}
