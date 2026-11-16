@@ -192,8 +192,8 @@ product-day result was seen. Code: `tools/sentinel_e21.py` (`product`; the froze
     read −0.85 to −1.20 dB in the five windows to April and −0.89 to −1.17 dB in the three from May, while the counted
     load fell by about a fifth (section 2.3).
 - **Per signal.** The products' GPS L2C files use the same correction, fitted on that signal's own index per unit-day
-  (outside the cells its own final E2 pass left out). Galileo E5a and paired L1 are fitted too. This was validated on
-  GPS L1 only.
+  (outside the cells its own final E2 pass left out). Galileo E5a is fitted too. This was validated on GPS L1
+  only.
 - The E2 epoch and band files are not changed. The product file (`data/sentinel_gnss/e21p/<day>.parquet`) holds the
   load and each signal's β and L̄; readers apply D″. `--index e2` keeps the uncorrected products, named `*_e2*`.
 
@@ -209,3 +209,51 @@ lower the signal, r is negative.
 
 Reported beside it: the quiet-band flatness (section 1.3 check 1's quantity) for D, D″ with the broadcast-only load,
 and D″ with the filled load.
+
+### 3.3 Results (16 Nov 2026)
+
+**Product days:** the 56 held days 15 Sep – 9 Nov 2026, every unit-day built. On every one, C59, C60 and C38–C40 were
+missing from the broadcast file and found in Space-Track at their slots.
+
+**The test of 3.2: r = +0.100** (62,991 epochs within place; the added satellites' median load there 3.0). No sign
+that they lower the signal, so **the products use the broadcast-only load**, as section 1.1 defines it. The code
+still positions the five satellites and records their load (`load_added` in the product file), so the test can be
+repeated; `FILL_LOAD` in `tools/sentinel_e21.py` would add them. Quiet-band flatness: D 0.99 dB, D″ broadcast-only
+0.37 dB, D″ filled 0.36 dB, so the choice barely moves the products. Why the uncorrected dip did not shrink when they
+left the files (section 3.1) is not established.
+
+**Reproduction.**
+- The frozen E2.1 checks rerun from the branch code (`checks`) give section 2.1's values exactly, descriptive results
+  included.
+- Four held-out days rebuilt with the branch code (`day`; 29 Oct 2025, 21 Jan, 15 Apr and 8 Jul 2026) match the held
+  day files in every column.
+- The frozen E2 checks of `docs/validation/sentinel-gnss.md` (`tools/sentinel_rfi.py checks`) give section 2.1 there
+  exactly: four hold, two fail, descriptive results identical.
+- `--index e2` products are identical to those of the code before the switch (daily and weekly CSVs byte for byte).
+
+**E2 against E2.1 in the products** (median of scored epochs over the 56 days, dB, with the share at ≤ −1 dB; the
+write-up's public boxes):
+
+| Box | GPS L1, E2 | GPS L1, E2.1 | GPS L2C, E2 | GPS L2C, E2.1 |
+|---|---|---|---|---|
+| Baltic | −5.82 (99%) | −5.92 (99%) | −11.91 (100%) | −11.94 (100%) |
+| Levant | −3.97 (97%) | −3.89 (96%) | −10.11 (97%) | −10.10 (97%) |
+| Iraq | −3.40 (93%) | −3.27 (90%) | −5.88 (99%) | −5.86 (99%) |
+| Persian Gulf | −2.38 (79%) | −2.17 (73%) | −6.28 (90%) | −6.24 (89%) |
+| Red Sea | −1.07 (52%) | −0.91 (48%) | −2.90 (89%) | −2.87 (88%) |
+| India–Pakistan border | −0.92 (46%) | −0.54 (31%) | −0.69 (40%) | −0.61 (37%) |
+| Myanmar | −0.88 (43%) | −0.25 (18%) | −0.22 (22%) | −0.07 (20%) |
+| South China Sea | −1.05 (53%) | −0.26 (20%) | −0.47 (25%) | −0.31 (20%) |
+| Australia interior | −1.04 (53%) | −0.44 (23%) | −0.22 (21%) | −0.10 (18%) |
+| Central Pacific | −0.09 (13%) | −0.10 (13%) | +0.07 (13%) | +0.07 (13%) |
+| Southern Africa interior | −0.21 (19%) | −0.18 (19%) | −0.09 (18%) | −0.08 (18%) |
+| East Asia, 30–65°N 100–150°E | −0.98 (49%) | −0.63 (35%) | −2.58 (88%) | −2.51 (87%) |
+
+- The dip over 60–160°E mostly goes on L1; jamming boxes keep their signal.
+- On L2C the correction is small, as expected with no BeiDou signal on 1227.60 MHz, and it leaves the East Asian
+  lower-band drift (`docs/validation/sentinel-gnss-x3.md` section 2.6) where it was.
+- Inland Australia still reads −0.44 dB on L1 over these weeks, inside the 0.4–0.8 dB weekly structure of section 2.3.
+
+**The switch.** From 16 Nov 2026 `tools/sentinel_daily.py` builds the day's product file and writes the area products
+in `private/sentinel/` (GPS L1 and L2C) with E2.1. `--index e2` writes the uncorrected products beside them as
+`<area>_e2*` and `<area>_l2c_e2*`.

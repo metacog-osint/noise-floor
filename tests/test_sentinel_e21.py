@@ -159,6 +159,8 @@ def test_bds3_table():
     assert M.norad_on(M.BDS3_REGIONAL["C59"][0], "2026-04-08") == 56564
     assert M.norad_on(M.BDS3_REGIONAL["C60"][0], "2026-11-05") == 45344
     assert M.bds3_norads() == [43683, 44204, 44337, 44709, 45344, 56564]
+    assert M.FIT_OF["l1p"] == "l1" and set(M.PRODUCT_SIGNALS) == {"l1", "l2c", "e5a"}
+    assert M.FILL_LOAD is False                  # section 3.3: the products keep the broadcast-only load
     assert {k: v[1] for k, v in M.BDS3_REGIONAL.items()} == {"C59": "bds_geo", "C60": "bds_geo", "C38": "bds_igso",
                                                              "C39": "bds_igso", "C40": "bds_igso"}
 

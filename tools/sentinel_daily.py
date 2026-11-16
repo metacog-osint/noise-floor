@@ -86,7 +86,8 @@ def build_product(day, fetch=True):
     import sentinel_e21 as E21
     try:
         path, info = E21.product_day(day, fetch=fetch)
-        log(f"{day}: E2.1 product built (from Space-Track: {', '.join(info['from_elements']) or 'none'})")
+        log(f"{day}: E2.1 product built (BeiDou-3 regional not in the broadcast file: "
+            f"{', '.join(info['missing_from_broadcast']) or 'none'})")
         return True
     except BaseException as e:      # product_day raises SystemExit when a table is missing
         if isinstance(e, KeyboardInterrupt):
