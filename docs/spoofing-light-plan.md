@@ -210,6 +210,26 @@ five regions above their usual level go to the COP feed (`noisefloor-spoof-regio
 14 Nov 2026, with 7 earlier days, 13 regions read above (largest rises near Tver, Doha and Tallinn), and all regions
 together read near usual (487 spoofed aircraft-hours against 442).
 
+**Region floor (pre-registered 16 Nov 2026, before any scoring).** On 15 Nov 2026 the three regions read above stood
+on 9, 6 and 3 spoofed aircraft-hours, against usual levels of 1, 2.5 and 0. Tom agreed (16 Nov 2026) that a region
+should read **above** only when it is at least twice its usual level **and 5 or more** spoofed aircraft-hours over it
+(was 3). The **below** rule, the places' rule (section 3 above) and the all-regions total keep 3. The test, written
+before it is run:
+
+- Data: every published `<day>.spoof.json` with `share2` that has at least 7 earlier such days. On 16 Nov 2026 that is
+  14 and 15 Nov only, so the first scoring is a description, not a verdict. The test is run again on the first day with
+  30 earlier days of `share2`, about 7 Dec 2026, and its result is written here.
+- Measures, for the old rule (3) and the new one (5): above readings per day; above readings whose region centre lies
+  in a quiet control box (`tools/spoof_day.py REGIONS`, kind "control"); above readings in the validation's spoofing
+  groups (Middle East, Baltic and W Russia, Black Sea); for each reading the new rule drops, its rise (spoofed
+  aircraft-hours minus usual) and whether the region reads above again (under the old rule) on the next day.
+- P1 (noise): the new rule gives no more control-box readings than the old one.
+- P2 (signal kept): the new rule keeps at least half of the old rule's readings in the spoofing groups.
+- P3 (persistence, at the 30-day run only): readings the new rule drops are above again the next day less often than
+  readings it keeps.
+- Decision: the new rule goes live now. If P2 or P3 fails at the 30-day run, the result goes to Tom with the old rule
+  as the alternative; nothing is changed back without his call.
+
 This needs no new processing: it reads the files the daily run already publishes. It answers the analyst's question
 (is spoofing happening, where, and more than usual?) in one line. The detector stays as the engine underneath. Like the
 new-places list, it compares a place with its own normal, and is not a warning.
