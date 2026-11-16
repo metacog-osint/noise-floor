@@ -11,8 +11,9 @@ Commands
   checks       the eight held-out windows: checks 1-5 for D' with their marks, the same quantities for D, and the
                descriptive results -> data/sentinel_gnss/e21_results.json
   product DAY...  the products' E2.1 (section 3 of the write-up; not the frozen run): per unit and grid epoch the load
-               L (broadcast regional set plus the BeiDou-3 regional satellites it lacks, from Space-Track), and per
-               signal (l1, l2c, e5a, l1p) the unit-day slope beta and Lbar, the mean load over the fit epochs, for
+               L (the broadcast regional set; the BeiDou-3 regional satellites it lacks are recorded from
+               Space-Track as load_added, not used), and per
+               signal (l1, l2c, e5a; l1p uses l1) the unit-day slope beta and Lbar, the mean load over the fit epochs, for
                D'' = D - beta * (L - Lbar) -> data/sentinel_gnss/e21p/<day>.parquet (needs the E1 table and E2 epoch
                file; the X3 band file for the band signals). [--no-fetch] [--force]
 
@@ -278,9 +279,13 @@ def build_day(day):
 # 1.1, neither touching the frozen code above:
 #   * no offset: D'' = D - beta * (L - Lbar), Lbar the mean load over the fit epochs, so the correction keeps each
 #     unit-day's mean over its baseline epochs (D' = D - beta * L read above zero wherever regional satellites are up);
-#   * the BeiDou-3 regional satellites the broadcast file lacks (from late May 2026 the IGS merged files and the
-#     MGEX orbits carry no C59-C62 or C38-C40 geosynchronous records) come from Space-Track element sets.
-# The fit is made per signal (L1 from the E2 epoch files; L2C, E5a and paired L1 from the X3 band files), each
+#   * the load is the broadcast file's regional set, as section 1.1. The BeiDou-3 regional satellites the file lacks
+#     (from late May 2026 no IGS merged file or MGEX orbit carries C59, C60 or C38-C40 as geosynchronous) are
+#     positioned from Space-Track element sets and recorded as load_added, but not used: the pre-stated test of
+#     section 3.2 found no sign that they lower the signal (r = +0.10 on 56 days, 16 Nov 2026). FILL_LOAD = True
+#     would add them.
+# The fit is made per signal (L1 from the E2 epoch files, also used for the PODRIX units' L1; L2C and E5a from the
+# X3 band files), each
 # outside the cells its own final E2 pass left out of its baseline. The E2 files are never changed: the product
 # file holds the load and each signal's beta and Lbar, and readers apply D'' = D - beta * (L - Lbar).
 
@@ -295,8 +300,10 @@ BDS3_REGIONAL = {   # PRN: ([(from day, NORAD)], kind, GEO slot longitude). The 
     "C39": ([("2025-01-01", 44337)], "bds_igso", None),
     "C40": ([("2025-01-01", 44709)], "bds_igso", None)}
 SLOT_TOL_DEG = 2.0
+FILL_LOAD = False   # section 3.2's test kept the broadcast-only load
 PRODUCT_DIR = os.path.join(SG.DATA, "e21p")
-PRODUCT_SIGNALS = ("l1", "l2c", "e5a", "l1p")
+PRODUCT_SIGNALS = ("l1", "l2c", "e5a")   # sentinel_trend's l1p (band d_l1 on the PODRIX units) equals E2 L1 there
+FIT_OF = {"l1": "l1", "l1p": "l1", "l2c": "l2c", "e5a": "e5a"}   # trend signal -> product fit
 ELSET_MAX_AGE_H = 72.0
 
 
@@ -374,17 +381,16 @@ def product_unit_day(day, unit, rows, ep, band, sets, kep, kinds, sbas, store):
     day_unix = dt.datetime.combine(day, dt.time(), dt.timezone.utc).timestamp()
     pos, vel, _ = SG.spacecraft_ecef(sets, day_unix + grid - SG.LEAP)
     up, fwd, right = SG.frames(pos, vel)
-    L_b, Li_b = load(pos, up, fwd, right, regional_positions(kep, sbas, SC.gps_seconds(day.isoformat()) + grid), kinds)
+    L_b, _ = load(pos, up, fwd, right, regional_positions(kep, sbas, SC.gps_seconds(day.isoformat()) + grid), kinds)
     add, add_kinds = added_positions(kinds, store, day_unix + grid - SG.LEAP)
-    L_a, Li_a = load(pos, up, fwd, right, add, add_kinds)
-    L, Li = L_b + L_a, Li_b + Li_a
+    L_a, _ = load(pos, up, fwd, right, add, add_kinds)
+    L = L_b + L_a if FILL_LOAD else L_b
     gi = np.round((t_rows - off) / SG.STEP).astype(int)
     keep = (gi >= 0) & (gi < n)
     r = {k: v[keep] for k, v in rows.items()}
     tt, gi = t_rows[keep], gi[keep]
     sat, el = r["sat"].astype(str), r["el"].astype(float)
-    out = {"unit": np.full(n, unit), "t": ep["t"], "load": L.astype(np.float32), "load_incl": Li.astype(np.float32),
-           "load_added": L_a.astype(np.float32)}
+    out = {"unit": np.full(n, unit), "t": ep["t"], "load": L.astype(np.float32), "load_added": L_a.astype(np.float32)}
     for name in PRODUCT_SIGNALS:
         ref = ep["d_l1"] if name == "l1" else (band.get(f"d_{name}") if band is not None else None)
         beta, lbar, nfit = np.nan, np.nan, 0
@@ -435,6 +441,8 @@ def product_day(day, fetch=True):
     T = pq.read_table(p)
     cols = {k: np.asarray(T.column(k).to_numpy(zero_copy_only=False)) for k in T.column_names}
     units = cols["unit"].astype(str)
+    if not os.path.exists(b) and set(units) & set(SR.PODRIX):
+        raise SystemExit(f"{day}: needs the X3 band file (tools/sentinel_bands.py bands) for the band fits")
     E = pq.read_table(e, columns=["unit", "t", "cell", "present", "d_l1"])
     ec = {k: np.asarray(E.column(k).to_numpy(zero_copy_only=False)) for k in E.column_names}
     ec["unit"], ec["cell"] = ec["unit"].astype(str), ec["cell"].astype(str)
@@ -470,7 +478,7 @@ def product_day(day, fetch=True):
     SG.replace(path + ".part", path)
     added = sorted(p for p, _ in BDS3_REGIONAL.items() if p not in kinds)
     betas = {u: round(float(out["beta_l1"][out["unit"] == u][0]), 4) for u in sorted(set(out["unit"]))}
-    return path, {"from_elements": added, "beta_l1": betas}
+    return path, {"missing_from_broadcast": added, "load_filled": FILL_LOAD, "beta_l1": betas}
 
 
 def load_product(day, columns=None):
@@ -489,7 +497,8 @@ def load_product(day, columns=None):
 def apply_product(day, ep, signal):
     """ep (unit, t and 'd' arrays from an E2 epoch or band file) with 'd' replaced by D''; None without a product
     file. Epochs the product file lacks get NaN."""
-    pr = load_product(day, ["unit", "t", "load", f"beta_{signal}", f"lbar_{signal}"])
+    fit = FIT_OF[signal]
+    pr = load_product(day, ["unit", "t", "load", f"beta_{fit}", f"lbar_{fit}"])
     if pr is None:
         return None
     key = {(u, int(t)): i for i, (u, t) in enumerate(zip(pr["unit"], pr["t"]))}
@@ -497,8 +506,8 @@ def apply_product(day, ep, signal):
     have = idx >= 0
     j = np.where(have, idx, 0)
     d = np.full(len(idx), np.nan)
-    d[have] = corrected(np.asarray(ep["d"], float)[have], pr["load"][j][have], pr[f"beta_{signal}"][j][have],
-                        pr[f"lbar_{signal}"][j][have])
+    d[have] = corrected(np.asarray(ep["d"], float)[have], pr["load"][j][have], pr[f"beta_{fit}"][j][have],
+                        pr[f"lbar_{fit}"][j][have])
     out = dict(ep)
     out["d"] = d
     return out
