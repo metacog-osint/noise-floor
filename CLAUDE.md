@@ -44,9 +44,15 @@ loaded automatically; read it when you need the background.
   extras (grades, independence groups, health probes) and method summary. Area-specific warning problems stay private.
 - `tools/feed_v2.py` writes `site/data/feed.geojson` (feed contract `tic-feed/2`) from the status board at deploy;
   `board.py` calls it, and a failure only skips the feed. Every item is a measurement (kind observation) for now.
-  Every item covers a whole UTC day, so it carries `data_as_of_precision: "day"` with `data_as_of` at `T00:00:00Z`
-  (kit 0.5.6 rule; was `T23:59:59Z`, which COP showed as "5:59 PM CST"; 16 Nov 2026). The feed header's own
+  Every item but an event covers a whole UTC day, so it carries `data_as_of_precision: "day"` with `data_as_of` at
+  `T00:00:00Z` (kit 0.5.6 rule; was `T23:59:59Z`, which COP showed as "5:59 PM CST"; 16 Nov 2026). The feed header's own
   `data_as_of` stays at `T23:59:59Z`. The vendored kit (0.3.3) doesn't know the field yet; it is not rejected.
+  **Events (16 Nov 2026, suite review Mistakes 3 and 5):** every major and notable jamming event goes in (no cap):
+  majors `tier: anomaly`, notables `routine` (Tom's choice; the summary says they are above their own baseline but
+  below the major grade). Each is a MultiPolygon of its H3 res-2 regions (`precision_class: area`), `data_as_of` is
+  the end of its last UTC hour with `period {start, end}`, and its measure is `peak_severe_share_pct` (with `unit`;
+  it was misnamed `peak_degraded_aircraft`). **Country tags** come from each cell's corners, centre and res-5 children
+  plus the named place's country (`place_country`, rings out to 25 km where the kit's outlines miss a coastal town).
   **Side effect on COP:** its freshness is the newest item's `data_as_of` (Noisefloor's windows: 36 h late, 72 h stale), so
   the day's items now read about a day older and may show "late" for part of each day until COP treats `day` items
   as end-of-day for freshness or widens the windows.

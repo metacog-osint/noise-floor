@@ -49,10 +49,15 @@ def main():
     # (kit 0.5.6 contract), so consumers print a date and never "5:59 PM".
     assert any(i.startswith("noisefloor-spoof-new-") for i in by), "the spoof item must be covered too"
     for i, p in by.items():
+        if i.startswith("noisefloor-event-"):     # an event has its own hours: stamped at its end, not date-only
+            assert "data_as_of_precision" not in p and p["data_as_of"] == "2026-10-29T22:00:00Z", p["data_as_of"]
+            assert p["period"] == {"start": "2026-10-29T19:00:00Z", "end": "2026-10-29T22:00:00Z"}, p["period"]
+            continue
         assert p["data_as_of_precision"] == "day", i
         assert p["data_as_of"] == "2026-10-29T00:00:00Z", (i, p["data_as_of"])
     country_tags()
     event_tiers()
+    event_place_unit_time()
     print("test_feed_v2: all passed")
 
 
@@ -91,6 +96,28 @@ def country_tags():
     # Coastal and divided-city points the kit's thinned outlines miss fall back to the commonest country nearby.
     assert feed_v2.place_country([26.24, 50.58]) == "BH" and feed_v2.place_country([35.17, 33.37]) == "CY"
     assert feed_v2.place_country([0.0, -30.0]) is None       # open ocean: nothing
+
+
+def event_place_unit_time():
+    """Suite review Mistake 5: an event is its res-2 regions (an area, not a point marked approximate), its measure is
+    named a share, and it carries its own start and end hours. The 15 Nov 2026 Nicosia event, 00-03 UTC."""
+    ev = {"tier": "notable", "peak": 18.1, "excess": 18.1, "h0": 0, "h1": 3, "lat": 34.34, "lon": 31.23,
+          "near": "Nicosia", "near_at": [35.17, 33.37], "test": False,
+          "cells": ["823f4ffffffffff", "823f5ffffffffff", "823f6ffffffffff"]}
+    late = {**ev, "tier": "major", "excess": 30.0, "h0": 22, "h1": 23}
+    board = {"freshness": {"aircraft_day": "2026-11-15"}, "top_events": {"day": "2026-11-15", "events": [ev, late]}}
+    feed = feed_v2.build(board, [], now=datetime(2026, 11, 16, 14, 0, tzinfo=timezone.utc))
+    assert not feed_v2.check(feed), feed_v2.check(feed)
+    g, p = feed["features"][1]["geometry"], feed["features"][1]["properties"]
+    assert g["type"] == "MultiPolygon" and len(g["coordinates"]) == 3 and p["precision_class"] == "area"
+    assert "CY" in p["countries"], p["countries"]
+    assert p["measure"]["name"] == "peak_severe_share_pct" and "percent" in p["measure"]["unit"]
+    assert p["data_as_of"] == "2026-11-15T04:00:00Z" and "data_as_of_precision" not in p
+    assert p["period"] == {"start": "2026-11-15T00:00:00Z", "end": "2026-11-15T04:00:00Z"}
+    assert "Between 00:00 and 03:59 UTC on 15 Nov 2026." in p["summary"] and "3 regions" in p["summary"], p["summary"]
+    q = feed["features"][2]["properties"]                    # an event in the day's last hour ends at midnight
+    assert q["data_as_of"] == "2026-11-16T00:00:00Z" and q["period"]["start"] == "2026-11-15T22:00:00Z"
+    assert feed["features"][0]["properties"]["data_as_of_precision"] == "day"   # the summary stays date-only
 
 
 if __name__ == "__main__":
