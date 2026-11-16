@@ -6,10 +6,15 @@
 - SITE/data/spoof/<day>.json (written by site_layers.py) gains `targets`, every spoofed-to cluster of the day in a
   compact form, and `unplaced`, for the map layer. Row: [lat, lon, aircraft, episodes, active episodes, first, last,
   near, r90_km, victims], victims = [[H3 res-2 region, episodes, near], ...] up to 3, where the aircraft really were.
+  It also gains `sent2` {res-2 region: [[targets row, aircraft], ...]} and `unplaced2` {region: aircraft}: where each
+  region's spoofed aircraft were shown (sent()); and, on days with `share2`, `level2` {region: [usual, level]} with
+  `level_days` (region_levels(): active aircraft-hours against the region's own median) and `share2_7` with
+  `share2_7_days` (share2 pooled over the days with one in the 7 days to the day, pooled()).
 - SITE/data/spoof/history.json: the Trends page's spoofing section. `days`: per published day, active episodes,
   aircraft and the res-4 cells where spoofed aircraft really were, by region group (the validation's region boxes,
   tools/spoof_day.py REGIONS and GROUPS; everything else is "Elsewhere"). `targets`: spoofed-to places followed from
-  day to day. `new`: places with a new cluster on the newest day (new_targets()).
+  day to day. `new`: places with a new cluster on the newest day (new_targets()). `regions`: on the newest day with
+  share2, the regions above their usual level and all regions together (regions_now()).
 
 Everything is aggregates of the published files: no aircraft identifiers (ODbL 1.0, derived from adsb.lol). Spoofed-to
 points are where receivers were shown, not where a transmitter is. Needs h3.
@@ -230,6 +235,109 @@ def track(tdays, places=None):
                     f"listed with {TABLE_MIN_AIRCRAFT_DAYS} or more aircraft-days or seen on {TABLE_MIN_DAYS} or more days"}
 
 
+# ---------------------------------------------------------------- regions: where aircraft really were (share2)
+POOL_DAYS = 7                    # the map's pooled view: share2 summed over the days with one in the 7 days to a day
+REGION_ROWS = 10
+
+
+def share_days(files):
+    """{day: {res-2 region: (aircraft-hours, active aircraft-hours)}} from <day>.spoof.json files that carry share2."""
+    out = {}
+    for f in files:
+        s = load(f)
+        if s and isinstance(s.get("share2"), list) and s.get("day"):
+            out[s["day"]] = {r: (a, n) for r, a, n in s["share2"]}
+    return out
+
+
+def region_levels(sdays, day):
+    """Each region's active aircraft-hours on `day` against its median on up to USUAL_DAYS earlier days with share2
+    (0 on days it had no active hours or too little traffic to be listed), with level()'s rule. Returns
+    (earlier days used, {region: [usual, level]}) for regions with active hours on the day or a usual above 0, or
+    (n, {}) with fewer than USUAL_MIN_DAYS earlier days. An observation against the region's own normal, not a warning."""
+    earlier = [d for d in sorted(sdays) if d < day][-USUAL_DAYS:]
+    if len(earlier) < USUAL_MIN_DAYS:
+        return len(earlier), {}
+    today = sdays[day]
+    regs = {r for r, (_, n) in today.items() if n} | {r for d in earlier for r, (_, n) in sdays[d].items() if n}
+    out = {}
+    for r in sorted(regs):
+        usual, lev = level(today.get(r, (0, 0))[1], [sdays[d].get(r, (0, 0))[1] for d in earlier])
+        if usual or today.get(r, (0, 0))[1]:
+            out[r] = [usual, lev]
+    return len(earlier), out
+
+
+def pooled(sdays, day, n=POOL_DAYS):
+    """share2 summed over the days with one in the n calendar days ending on `day`: (rows, days used)."""
+    from datetime import date, timedelta
+    d1 = date.fromisoformat(day)
+    use = [d for d in sorted(sdays) if d1 - timedelta(days=n - 1) <= date.fromisoformat(d) <= d1]
+    tot = defaultdict(lambda: [0, 0])
+    for d in use:
+        for r, (a, k) in sdays[d].items():
+            tot[r][0] += a
+            tot[r][1] += k
+    return sorted([r, a, k] for r, (a, k) in tot.items()), use
+
+
+def sent(targets):
+    """Where each res-2 region's spoofed aircraft were shown that day: ({region: [[cluster index, aircraft], ...]},
+    {region: aircraft not placeable}). Aircraft per region is the most in any one of its res-4 cells, a lower bound
+    (an aircraft crosses several cells, so cells can't be added up). Cluster index is the row in compact()."""
+    import h3
+    to = defaultdict(dict)
+    for i, c in enumerate(targets.get("clusters") or []):
+        for cell, _n, a in c.get("victim_cells") or []:
+            r = h3.cell_to_parent(cell, 2)
+            to[r][i] = max(to[r].get(i, 0), a)
+    un = defaultdict(int)
+    for u in targets.get("unplaced") or []:
+        best = Counter()
+        for cell, _n, a in u.get("victim_cells") or []:
+            r = h3.cell_to_parent(cell, 2)
+            best[r] = max(best[r], a)
+        for r, a in best.items():
+            un[r] += a
+    return ({r: sorted(([i, a] for i, a in m.items()), key=lambda x: (-x[1], x[0])) for r, m in sorted(to.items())},
+            dict(sorted(un.items())))
+
+
+def regions_now(sdays, places=None):
+    """The newest day with share2: regions above their usual level (largest rise first) and all regions together.
+    None without a share2 day."""
+    import h3
+    if not sdays:
+        return None
+    day = max(sdays)
+    n_earlier, lv = region_levels(sdays, day)
+    above = []
+    for r, (usual, lev) in lv.items():
+        if lev != "above":
+            continue
+        a, k = sdays[day][r]
+        la, lo = h3.cell_to_latlng(r)
+        above.append({"region": r, "lat": round(la, 2), "lon": round(lo, 2), "near": _near(places, la, lo, 350),
+                      "active_ah": k, "aircraft_hours": a, "usual": usual})
+    above.sort(key=lambda x: (-(x["active_ah"] - x["usual"]), x["region"]))
+    days = sorted(sdays)
+    totals = [sum(n for _, n in sdays[d].values()) for d in days]
+    t_usual, t_level = level(totals[-1], totals[-1 - USUAL_DAYS:-1])
+    return {"day": day, "earlier_days": n_earlier, "above": above[:REGION_ROWS], "above_count": len(above),
+            "spoofed_regions": sum(1 for _, n in sdays[day].values() if n), "regions": len(sdays[day]),
+            "total": {"latest": totals[-1], "usual": t_usual, "level": t_level,
+                      "aircraft_hours": sum(a for a, _ in sdays[day].values())},
+            "rule": region_rule()}
+
+
+def region_rule():
+    return ("regions about 300 km across (H3 res 2) with 10 or more aircraft-hours; measure: aircraft-hours in active "
+            f"spoofing episodes, counted where the aircraft really were; usual level: median on up to {USUAL_DAYS} "
+            f"earlier days with regional shares (0 when none; at least {USUAL_MIN_DAYS} needed); above: "
+            f"{LEVEL_RATIO:g}x usual or more and {LEVEL_MIN_DIFF} or more over it; below: half or less and "
+            f"{LEVEL_MIN_DIFF} or more under it")
+
+
 def day_series(release):
     """Per published day: active episodes, aircraft, and res-4 victim cells by region group."""
     import h3
@@ -249,15 +357,31 @@ def day_series(release):
     return out, names
 
 
-def history(release, places=None, tdays=None):
+def history(release, places=None, tdays=None, sdays=None):
     tdays = tdays if tdays is not None else target_days(release)
+    sdays = sdays if sdays is not None else share_days(sorted(glob.glob(os.path.join(release, "*.spoof.json"))))
     days, names = day_series(release)
     return {"licence": LICENCE, "groups": names, "days": days, "targets": track(tdays, places),
-            "new": new_targets(release, places, tdays),
+            "new": new_targets(release, places, tdays), "regions": regions_now(sdays, places),
             "method": "tools/spoof_site.py from the published <day>.spoof.json and <day>.spoof-targets.json "
                       "(tools/spoof_summary.py; docs/validation/spoofing.md). cells: H3 res-4 cells where aircraft "
                       "really were during active episodes, by the validation's region boxes. Spoofed-to places are "
                       "where receivers were shown, not where a transmitter is."}
+
+
+def add_regions(d, targets, sdays, places=None):
+    """A site day file gains, with a targets file: targets, unplaced (compact()), sent2 and unplaced2 (sent()); and
+    with share2: level2 {region: [usual, level]} with level_days (region_levels()), and share2_7 with share2_7_days
+    (pooled())."""
+    if targets:
+        d["targets"], d["unplaced"] = compact(targets, places)
+        d["sent2"], d["unplaced2"] = sent(targets)
+    day = d.get("day")
+    if day in sdays:
+        d["level_days"], d["level2"] = region_levels(sdays, day)
+        rows, use = pooled(sdays, day)
+        d["share2_7"], d["share2_7_days"] = rows, use
+    return d
 
 
 def main():
@@ -274,17 +398,18 @@ def main():
     tdays = target_days(release)
     out = os.path.join(site, "data", "spoof")
     os.makedirs(out, exist_ok=True)
+    sdays = share_days(sorted(glob.glob(os.path.join(release, "*.spoof.json"))))
     n = 0
-    for day, t in tdays.items():
+    for day in sorted(set(tdays) | set(sdays)):
         p = os.path.join(out, f"{day}.json")
         d = load(p)
         if not d:
             continue
-        d["targets"], d["unplaced"] = compact(t, places)
+        add_regions(d, tdays.get(day), sdays, places)
         with open(p, "w", encoding="utf-8", newline="\n") as g:
             json.dump(d, g, ensure_ascii=False, separators=(",", ":"))
         n += 1
-    h = history(release, places, tdays)
+    h = history(release, places, tdays, sdays)
     with open(os.path.join(out, "history.json"), "w", encoding="utf-8", newline="\n") as g:
         json.dump(h, g, ensure_ascii=False, separators=(",", ":"))
     print(f"spoof_site: targets added to {n} day files; history {len(h['days'])} days, "

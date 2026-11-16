@@ -12,7 +12,8 @@
     chg: { label: "Change from usual (93 m)", unit: "percentage points above the cell's usual share",
            breaks: [5, 10, 25, 50], classes: ["Under 5 points above usual", "5–10 points", "10–25 points", "25–50 points", "50 points or more"] },
     miss: { label: "Fewer aircraft than usual", unit: "fewer aircraft than the cell's usual count",
-            breaks: [30, 50, 70, 90], classes: ["Under 30% fewer, or more", "30–50% fewer", "50–70% fewer", "70–90% fewer", "90% or more fewer"] }
+            breaks: [30, 50, 70, 90], classes: ["Under 30% fewer, or more", "30–50% fewer", "50–70% fewer", "70–90% fewer", "90% or more fewer"] },
+    spf: { label: "Spoofing (regions)", unit: "of aircraft-hours in active spoofing episodes", breaks: [], classes: [] }   // no cell colours: the share layer
   };
   var MISS_MIN = 10;                                  // the "fewer aircraft" view needs a usual count of 10 or more
   // SBAS areas flagged on most days in the first year (GAGAN 162 of 344 days, SouthPAN 229): most aircraft there don't
@@ -51,6 +52,7 @@
   // value and class for a cell under the current measure; null = not drawn
   function evaluate(c) {
     var n, bad;
+    if (state.measure === "spf") return null;          // the spoofing view draws regions, not GPS-error cells
     if (state.measure === "miss") {                  // today's aircraft against the hex's usual count
       var u = state.iun >= 0 ? c[state.iun] : null;
       if (u === null || u === undefined || u < MISS_MIN) return null;
@@ -314,16 +316,37 @@
         }
         g.restore();
       }
-      if (state.spsShow && state.sps && state.sps.share2) {         // spoofed share of aircraft-hours, H3 res-2 regions
+      var spRows = state.spsShow ? spsRows() : null;
+      if (spRows) {                                                  // spoofed share of aircraft-hours, H3 res-2 regions
         g.save(); g.strokeStyle = colors.spoof; g.fillStyle = colors.spoof;
-        state.sps.share2.forEach(function (c) {
+        var lv2 = spsLevels(), aboveSh = [];
+        spRows.forEach(function (c) {
           var sh = shapeOf(c[0]);
           if (sh.wrap || !onScreen(sh.mb)) return;
+          if (lv2 && lv2[c[0]] && lv2[c[0]][1] === "above") aboveSh.push(sh);
           var k = spsClass(c[2] / c[1]);
           if (k < 0) { g.globalAlpha = 0.3; g.lineWidth = 0.5; g.beginPath(); trace(g, sh.m, true); g.stroke(); return; }
-          g.globalAlpha = [0.12, 0.26, 0.42, 0.62][k]; g.beginPath(); trace(g, sh.m, true); g.fill();
+          g.globalAlpha = SPS_ALPHA[k]; g.beginPath(); trace(g, sh.m, true); g.fill();
           g.globalAlpha = 0.9; g.lineWidth = k >= 2 ? 1.6 : 1; g.stroke();
         });
+        if (aboveSh.length) {                                        // above the region's own usual level: bold dashed outline
+          g.globalAlpha = 1; g.strokeStyle = colors.focus; g.lineWidth = 2.2; g.setLineDash([6, 3]);
+          aboveSh.forEach(function (sh) { g.beginPath(); trace(g, sh.m, true); g.stroke(); });
+          g.setLineDash([]); g.strokeStyle = colors.spoof;
+        }
+        if (state.spsFocus && state.sps.targets) {                   // a chosen region: lines to where its aircraft were shown
+          var fsh = shapeOf(state.spsFocus), fc = h3.cellToLatLng(state.spsFocus), a0 = cp(fc[0], fc[1]);
+          var to = sentFrom(state.spsFocus).slice(0, SENT_DRAW);
+          g.globalAlpha = 1; g.strokeStyle = colors.focus; g.lineWidth = 2.6; g.beginPath(); trace(g, fsh.m, true); g.stroke();
+          g.strokeStyle = colors.spoof; g.lineWidth = 1.6; g.setLineDash([5, 4]);
+          to.forEach(function (s) { var t = state.sps.targets[s[0]], b = cp(t[0], t[1]); g.beginPath(); g.moveTo(a0.x, a0.y); g.lineTo(b.x, b.y); g.stroke(); });
+          g.setLineDash([]); g.lineWidth = 2.2;
+          to.forEach(function (s, k) {
+            var t = state.sps.targets[s[0]], q = cp(t[0], t[1]), r = 5.5;
+            g.beginPath(); g.moveTo(q.x - r, q.y - r); g.lineTo(q.x + r, q.y + r); g.moveTo(q.x + r, q.y - r); g.lineTo(q.x - r, q.y + r); g.stroke();
+            if (k < SENT_LABELS) labels.unshift({ text: "Shown " + (t[7] ? "near " + t[7] : "at " + ll2(t[0], t[1])), x: q.x + 8, y: q.y + 4, kind: "spoof" });
+          });
+        }
         g.restore();
       }
       if (state.nisShow && state.nis) {                              // NISAR: repeat L-band emitter sites (leads)
@@ -387,7 +410,7 @@
         var taken = [], font = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
         g.save(); g.lineJoin = "round"; g.textBaseline = "alphabetic";
         labels.forEach(function (l) {
-          g.font = (l.kind === "area" ? "italic 11px " : l.cap ? "600 11.5px " : "11px ") + font;
+          g.font = (l.kind === "area" ? "italic 11px " : l.kind === "spoof" ? "600 11.5px " : l.cap ? "600 11.5px " : "11px ") + font;
           var w = g.measureText(l.text).width, r = [l.x - 2, l.y - 11, l.x + w + 2, l.y + 3];
           if (taken.some(function (t) { return r[0] < t[2] && r[2] > t[0] && r[1] < t[3] && r[3] > t[1]; })) return;
           taken.push(r);
@@ -397,7 +420,7 @@
             else { g.beginPath(); g.arc(l.dot.x, l.dot.y, 2, 0, 2 * Math.PI); g.fill(); }
           }
           g.strokeStyle = colors.halo; g.lineWidth = 3; g.strokeText(l.text, l.x, l.y);
-          g.fillStyle = l.kind === "area" ? colors.area : colors.label; g.fillText(l.text, l.x, l.y);
+          g.fillStyle = l.kind === "area" ? colors.area : l.kind === "spoof" ? colors.spoof : colors.label; g.fillText(l.text, l.x, l.y);
         });
         g.restore();
       }
@@ -435,10 +458,7 @@
       var sc = state.spoof.cells.filter(function (c) { return c[0] === h; })[0];
       if (sc) lines.push(["Spoofing", sc[1] + " active episode" + (sc[1] === 1 ? "" : "s") + " (aircraft really here)"]);
     }
-    if (state.spsShow && state.sps && state.sps.share2) {
-      var p2sp = h3.cellToParent(h, 2), ss = state.sps.share2.filter(function (c) { return c[0] === p2sp; })[0];
-      if (ss) lines.push(["Spoofed share (region)", fmtShare(ss[2] / ss[1]) + " of " + ss[1].toLocaleString() + " aircraft-hours"]);
-    }
+    if (state.spsShow) lines = lines.concat(regionLines(h3.cellToParent(h, 2), true));
     if (state.cygShow && state.cyg && state.cyg.cells) {
       var p3 = h3.cellToParent(h, 3), cc = state.cyg.cells.filter(function (c) { return c[0] === p3; })[0];
       if (cc) lines.push(["CYGNSS", "+" + cc[1].toFixed(1) + " dB noise floor" + (state.cyg.day !== state.day ? " (" + state.cyg.day + ")" : "")]);
@@ -500,6 +520,11 @@
     if (v) { renderTip(describeSite(v), ev.containerPoint); return; }
     var st = spoofAt(ev.containerPoint);               // then a spoofed-to place
     if (st !== null) { renderTip(describeTarget(st), ev.containerPoint); return; }
+    if (state.measure === "spf") {                     // the spoofing view: the region under the pointer
+      var rg = regionAt(ev.latlng);
+      if (rg) renderTip(describeRegion(rg), ev.containerPoint); else tip.hidden = true;
+      return;
+    }
     var h = h3.latLngToCell(ev.latlng.lat, ev.latlng.lng, 4);
     if (cells[h]) showTip(h, ev.containerPoint); else tip.hidden = true;
   });
@@ -509,16 +534,50 @@
     if (v) { state.pinned = true; state.focus = null; state.nisFocus = v.s.id; renderTip(describeSite(v), ev.containerPoint); layer.redraw(); return; }
     state.nisFocus = null;
     var st = spoofAt(ev.containerPoint);
-    if (st !== null) { state.pinned = true; state.focus = null; state.spoofFocus = st; renderTip(describeTarget(st), ev.containerPoint); layer.redraw(); return; }
+    if (st !== null) { state.pinned = true; state.focus = null; state.spsFocus = null; state.spoofFocus = st; renderTip(describeTarget(st), ev.containerPoint); layer.redraw(); return; }
     state.spoofFocus = null;
+    if (state.measure === "spf") {
+      var rg = regionAt(ev.latlng);
+      if (rg) { state.pinned = true; state.focus = null; state.spsFocus = rg; renderTip(describeRegion(rg), ev.containerPoint); }
+      else { state.pinned = false; state.spsFocus = null; tip.hidden = true; }
+      layer.redraw(); return;
+    }
     var h = h3.latLngToCell(ev.latlng.lat, ev.latlng.lng, 4);
+    var r2c = h3.cellToParent(h, 2);
+    state.spsFocus = state.spsShow && sentFrom(r2c).length ? r2c : null;   // with the share layer on, its aircraft's false positions too
     if (cells[h]) { state.pinned = true; state.focus = h; showTip(h, ev.containerPoint); layer.redraw(); openHistory(h); }
-    else { state.pinned = false; state.focus = null; tip.hidden = true; layer.redraw(); }
+    else { state.pinned = false; state.focus = null; state.spsFocus = null; tip.hidden = true; layer.redraw(); }
   });
 
   // ---------- table twin: worst hexes for the selected day and measure
+  var CELL_HEAD = null;
+  function renderRegionTable(body) {                   // the spoofing view: regions with the most spoofed aircraft-hours
+    var sm = spsMap(), lv = spsLevels();
+    var rows = sm ? Object.keys(sm).map(function (r) { return sm[r]; }).filter(function (c) { return c[2] > 0; })
+      .sort(function (a, b) { return b[2] - a[2] || b[2] / b[1] - a[2] / a[1]; }).slice(0, 25) : [];
+    rows.forEach(function (c) {
+      var ll = h3.cellToLatLng(c[0]), tr = document.createElement("tr"), l = lv && lv[c[0]];
+      [where(ll[0], ll[1]), c[1].toLocaleString(), c[2].toLocaleString(), fmtShare(c[2] / c[1]),
+       l ? LEVEL_TXT[l[1]] + " (usual " + fmtNum(l[0]) + ")" : "–"].forEach(function (v, i) {
+        var td = document.createElement("td"); td.textContent = v; if (i && i < 4) td.className = "num"; else if (!i) td.title = ll2(ll[0], ll[1]); tr.appendChild(td);
+      });
+      var td = document.createElement("td"), btn = document.createElement("button");
+      btn.type = "button"; btn.className = "linkish"; btn.textContent = "Show";
+      btn.addEventListener("click", function () { state.spsFocus = c[0]; state.pinned = false; map.setView(ll, 4.5); layer.redraw(); mapEl.scrollIntoView({ behavior: "smooth", block: "center" }); });
+      td.appendChild(btn); tr.appendChild(td); body.appendChild(tr);
+    });
+    document.getElementById("map-table-note").textContent = rows.length ? "Ranked by aircraft-hours in active spoofing episodes" +
+      (spsPooled() ? " over the 7 days to " + fmtDay(state.day) : "") + ". \"Show\" draws where the region's aircraft were shown." :
+      sm ? "No spoofing in any region on this day." : "No regional spoofed share for this day.";
+  }
   function renderTable() {
     var body = document.querySelector("#map-table tbody"); if (!body) return;
+    var head = document.querySelector("#map-table thead tr"), th = document.getElementById("map-table-h");
+    if (CELL_HEAD === null) CELL_HEAD = { row: head.innerHTML, h: th ? th.textContent : "" };
+    var spf = state.measure === "spf";
+    head.innerHTML = spf ? "<th>Region</th><th>Aircraft-hours</th><th>Spoofed</th><th>Share</th><th>Against usual</th><th></th>" : CELL_HEAD.row;
+    if (th) th.textContent = spf ? "Regions with the most spoofing" + (spsPooled() ? ", 7 days" : " on this day") : CELL_HEAD.h;
+    if (spf) { body.textContent = ""; renderRegionTable(body); return; }
     var rows = cellList.map(function (c) { return { c: c, e: evaluate(c.d) }; })
       .filter(function (x) { return x.e && x.e.share !== null && x.e.share > 0; })
       .sort(function (a, b) { return b.e.share - a.e.share || b.e.n - a.e.n; }).slice(0, 25);
@@ -701,9 +760,35 @@
   }
 
   // ---------- legend, stats, controls
+  function spsLegend(el, label) {                      // the spoofed share key: its own row under the GPS-error key
+    if (label) {
+      var br = document.createElement("span"); br.className = "lg-break"; el.appendChild(br);
+      var hd = document.createElement("span"); hd.className = "lg-h"; hd.textContent = label; el.appendChild(hd);
+    }
+    [[-1, "None seen"], [0, "Under 0.1%"], [1, "0.1–1%"], [2, "1–5%"], [3, "5% or more"]].forEach(function (it) {
+      var s = document.createElement("span"), sw = document.createElement("i");
+      sw.className = "sps-sw"; sw.style.borderColor = colors.spoof;
+      if (it[0] >= 0) sw.style.background = "color-mix(in srgb, " + colors.spoof + " " + Math.round(100 * SPS_ALPHA[it[0]]) + "%, transparent)";
+      s.appendChild(sw); s.appendChild(document.createTextNode(it[1])); el.appendChild(s);
+    });
+    if (spsLevels()) {
+      var s2 = document.createElement("span"), sw2 = document.createElement("i");
+      sw2.className = "sps-sw sps-above"; sw2.style.borderColor = colors.focus;
+      s2.appendChild(sw2); s2.appendChild(document.createTextNode("Above its usual level")); el.appendChild(s2);
+    }
+  }
   function renderLegend() {
     var m = MEASURES[state.measure], el = document.getElementById("map-legend");
     el.textContent = "";
+    if (state.measure === "spf") {
+      spsLegend(el, null);
+      document.getElementById("map-measure-note").textContent = "Spoofing view: the GPS-error colours are off. Each region about 300 km " +
+        "across is shaded by the share of its aircraft-hours spent in active spoofing episodes" + (spsPooled() ? " over the 7 days to the day shown" : "") +
+        ", counted where the aircraft really were. A bold dashed outline marks a region above its own usual level (at least twice its median " +
+        "over up to 30 earlier days, and 3 or more spoofed aircraft-hours over it). Crosses mark where receivers were told they were. Hover a " +
+        "region for its numbers; click it to draw lines to where its aircraft were shown. The timeline below still counts GPS-error cells.";
+      return;
+    }
     var items = (state.measure === "miss" ? [] : [["low", "Low coverage (3–4 aircraft)"]])
       .concat([["quiet", m.classes[0]]]).concat(m.classes.slice(1).map(function (t, i) { return [i, t]; }));
     items.forEach(function (it) {
@@ -711,6 +796,7 @@
       sw.style.background = it[0] === "low" ? colors.low : it[0] === "quiet" ? colors.quiet : colors.ramp[it[0]];
       s.appendChild(sw); s.appendChild(document.createTextNode(it[1])); el.appendChild(s);
     });
+    if (state.spsShow && spsRows()) spsLegend(el, "Spoofed share of aircraft-hours" + (spsPooled() ? ", 7 days" : "") + ":");
     var cap = document.getElementById("map-measure-note");
     cap.textContent = state.measure === "miss"
       ? "Aircraft in the cell today against its median over its previous 14 days (days without traffic count as zero; shown where that median is 10 or more). Strong jamming can stop aircraft sending a position at all, so they vanish instead of showing as degraded. Weekends, holidays, airspace closures and receiver outages also lower counts."
@@ -792,6 +878,20 @@
   function renderStats() {
     var d = days.filter(function (x) { return x.day === state.day; })[0];
     var el = document.getElementById("map-stats");
+    if (state.measure === "spf") {
+      var sm = spsMap(), lv = spsLevels(), a = document.getElementById("map-download");
+      if (!sm) el.textContent = state.sps === null ? "Loading spoofing…" : "No regional spoofed share for this day.";
+      else {
+        var ks = Object.keys(sm), sp = ks.filter(function (r) { return sm[r][2] > 0; }).length;
+        var ab = lv ? Object.keys(lv).filter(function (r) { return lv[r][1] === "above"; }).length : null;
+        el.textContent = ks.length.toLocaleString() + " regions with 10 or more aircraft-hours · " + sp + " with spoofing" +
+          (ab !== null ? " · " + ab + " above their usual level" : "") + (spsPooled() ? " (7 days to " + fmtDay(state.day) + "; data on " + state.sps.share2_7_days.length + " of them)" : "");
+      }
+      a.href = "/data/spoof/" + state.day + ".json"; a.textContent = "Download spoofing " + state.day + " (JSON, ODbL)";
+      var nt = document.getElementById("map-day-note");
+      nt.textContent = d && d.daily ? "Automatic daily run, not reviewed by a person" : "";
+      return;
+    }
     var drawn = cellList.filter(function (c) { var e = evaluate(c.d); return e && e.share !== null; }).length;
     var hot = cellList.filter(function (c) { var e = evaluate(c.d); return e && typeof e.cls === "number" && e.cls >= 2; }).length;
     el.textContent = drawn.toLocaleString() + (state.measure === "miss" ? " cells with a usual count of " + MISS_MIN + " or more" : " cells with 5 or more aircraft") +
@@ -803,7 +903,7 @@
   function hashFor() {
     var c = map.getCenter();
     return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") + (imagery.on ? "&img=esri" : "") +
-           (state.spoofShow ? "&sp=1" : "") + (state.spsShow ? "&ss=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") + (state.s6Show ? "&s6=1" : "") + (state.smapShow ? "&sm=1" : "") + (state.c2Show ? "&c2=1" : "") + (state.s1Show ? "&s1=1" : "") +
+           (state.spoofShow ? "&sp=1" : "") + (state.spsShow ? "&ss=1" : "") + (state.sps7 ? "&s7=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") + (state.s6Show ? "&s6=1" : "") + (state.smapShow ? "&sm=1" : "") + (state.c2Show ? "&c2=1" : "") + (state.s1Show ? "&s1=1" : "") +
            "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
   }
   function writeHash() { if (state.day) history.replaceState(null, "", hashFor()); }
@@ -910,6 +1010,57 @@
     return lines;
   }
   function spsClass(s) { return s <= 0 ? -1 : s >= 0.05 ? 3 : s >= 0.01 ? 2 : s >= 0.001 ? 1 : 0; }
+  // ---------- spoofed share by region (H3 res 2): the day's rows or 7 days pooled, usual levels, where aircraft were shown
+  var SPS_ALPHA = [0.12, 0.26, 0.42, 0.62], SENT_DRAW = 12, SENT_LABELS = 5;
+  var LEVEL_TXT = { above: "Above usual", near: "Near usual", below: "Below usual" };
+  var spsIdx = { doc: null, pooled: null, m: null };
+  function spsPooled() { return !!(state.sps7 && state.sps && state.sps.share2_7); }
+  function spsRows() { return state.sps ? (spsPooled() ? state.sps.share2_7 : state.sps.share2) || null : null; }
+  function spsMap() {                                  // region -> [region, aircraft-hours, active aircraft-hours]
+    var rows = spsRows(); if (!rows) return null;
+    if (spsIdx.doc !== state.sps || spsIdx.pooled !== spsPooled()) {
+      var m = {}; rows.forEach(function (c) { m[c[0]] = c; });
+      spsIdx = { doc: state.sps, pooled: spsPooled(), m: m };
+    }
+    return spsIdx.m;
+  }
+  function spsLevels() { return !spsPooled() && state.sps && state.sps.level2 && Object.keys(state.sps.level2).length ? state.sps.level2 : null; }
+  function sentFrom(r2) { return (state.sps && state.sps.sent2 && state.sps.sent2[r2]) || []; }
+  function regionAt(ll) { var m = spsMap(), r = h3.latLngToCell(ll.lat, ll.lng, 2); return m && m[r] ? r : null; }
+  function fmtNum(x) { return x % 1 ? x.toFixed(1) : String(x); }
+  function regionLines(r2, short) {                    // tooltip lines for a region: share, against usual, where shown
+    var m = spsMap(), c = m && m[r2], out = [], pooled = spsPooled();
+    if (!c) return out;
+    out.push(["Spoofed share" + (short ? " (region)" : "") + (pooled ? ", 7 days" : ""), fmtShare(c[2] / c[1]) + " of " + c[1].toLocaleString() + " aircraft-hours"]);
+    var lv = spsLevels();
+    if (lv && lv[r2]) out.push(["Against usual", LEVEL_TXT[lv[r2][1]] + ": " + c[2] + " spoofed aircraft-hours, usual " + fmtNum(lv[r2][0]) +
+                                " (median of " + state.sps.level_days + " earlier days)"]);
+    else if (lv && !c[2]) out.push(["Against usual", "none, as usual"]);
+    else if (!pooled && !short && state.sps.share2) out.push(["Against usual", "not yet: needs 7 earlier days with regional shares"]);
+    var to = sentFrom(r2);
+    if (to.length && state.sps.targets) {               // grouped by name: two clusters near one city read as one line
+      var grp = [], byName = {};
+      to.forEach(function (s) {
+        var t = state.sps.targets[s[0]], nm = t[7] ? "near " + t[7] : ll2(t[0], t[1]), gp = byName[nm];
+        if (!gp) { gp = byName[nm] = { nm: nm, from: 0, all: 0, n: 0 }; grp.push(gp); }
+        gp.from = Math.max(gp.from, s[1]); gp.all += t[2]; gp.n++;
+      });
+      out.push(["Shown" + (pooled ? " on " + fmtDay(state.sps.day) : ""), grp.slice(0, 3).map(function (gp) {
+        return gp.nm + (gp.n > 1 ? ", " + gp.n + " places" : "") + " (" + (gp.from >= gp.all ? gp.all + " aircraft" :
+          "at least " + gp.from + " of the " + gp.all + " aircraft shown there") + ")";
+      }).join("; ") + (grp.length > 3 ? "; " + (grp.length - 3) + " more" : "")]);
+    }
+    var un = state.sps.unplaced2 && state.sps.unplaced2[r2];
+    if (un) out.push(["Not placeable", "at least " + un + " aircraft reported a spoofed speed with no false position"]);
+    return out;
+  }
+  function describeRegion(r2) {
+    var ll = h3.cellToLatLng(r2), w = where(ll[0], ll[1]);
+    var lines = [["", "Region about 300 km across · " + w]].concat(regionLines(r2, false));
+    lines.push(["", "Counted where the aircraft really were"]);
+    if (sentFrom(r2).length) lines.push(["", state.spsFocus === r2 ? "Dashed lines: where these aircraft were shown" : "Click to draw where its aircraft were shown"]);
+    return lines;
+  }
   function fmtShare(s) { var p = 100 * s; return (p === 0 ? "0" : p < 0.1 ? p.toFixed(3) : p < 10 ? p.toFixed(1) : p.toFixed(0)) + "%"; }
   function nisAt(pt) {                                 // the visible site within 9 px of a container point
     if (!state.nisShow || !state.nis) return null;
@@ -1014,12 +1165,16 @@
     if (!note) return;
     if (state.spoofShow) parts.push(state.spoof ? spoofNote(state.spoof)
       : "No spoofing layer for this day (daily from 27 Oct 2026, plus 17 earlier days)." + nearest("spoof", state.day));
-    if (state.spsShow) parts.push(state.sps && state.sps.share2 ? "Spoofed share " + fmtDay(state.sps.day) + ": the share of aircraft-hours " +
-      "(each aircraft counted once an hour in each region) spent in active spoofing episodes, in regions about 300 km across with 10 or more " +
-      "aircraft-hours. Darker: 0.1%, 1% and 5% or more; outlined only: none seen. It counts where aircraft really were, not where they were " +
-      "shown. On 12 held-out days, six quiet control regions stayed at 0.0023%, against 0.397% in the Middle East and 0.904% in the Baltic and " +
+    if (state.spsShow) parts.push(state.sps && state.sps.share2 ? "Spoofed share " + (spsPooled() ? "over the 7 days to " + fmtDay(state.sps.day) +
+      " (" + state.sps.share2_7_days.length + " day" + (state.sps.share2_7_days.length === 1 ? "" : "s") + " with data)" : fmtDay(state.sps.day)) +
+      ": the share of aircraft-hours (each aircraft counted once an hour in each region) spent in active spoofing episodes, in regions about " +
+      "300 km across with 10 or more aircraft-hours. Darker: 0.1%, 1% and 5% or more; outlined only: none seen. It counts where aircraft really " +
+      "were, not where they were shown." + (spsLevels() ? " A bold dashed outline marks a region above its own usual level (at least twice its " +
+      "median over the " + state.sps.level_days + " earlier days with regional shares, and 3 or more spoofed aircraft-hours over it); an " +
+      "observation against the region's own normal, not a warning." : "") + " Hover a region for where its aircraft were shown; click to draw " +
+      "lines there. On 12 held-out days, six quiet control regions stayed at 0.0023%, against 0.397% in the Middle East and 0.904% in the Baltic and " +
       "western Russia (detector v0.6; see Validation). Separate from jamming: a spoofed receiver can report good accuracy."
-      : state.sps ? "No regional spoofed share in this day's file: it is published from late Nov 2026, and earlier days only once they are redone." + nearest("spoof", state.day)
+      : state.sps ? "No regional spoofed share in this day's file: it is published from 7 Nov 2026." + nearest("spoof", state.day)
       : "No spoofing file for this day." + nearest("spoof", state.day));
     if (state.cygShow) parts.push(state.cyg ? "CYGNSS " + state.cyg.day + ": " + state.cyg.raised_cells + " cells raised 1 dB or more (exposure within a beam a few hundred km wide, not a transmitter site; about 38°N to 38°S). Source: NASA CYGNSS L1 V3.2 (PO.DAAC), NASA open data."
       : "No CYGNSS file within 3 days of this day (CYGNSS runs about six days behind)." + nearest("cygnss", state.day));
@@ -1070,7 +1225,11 @@
   }
   function loadLayers(day) {
     if (state.spoofShow) layerFor("spoof", day).then(function (j) { if (state.day !== day) return; state.spoof = j; layerNote(); layer.redraw(); });
-    if (state.spsShow) layerFor("spoof", day).then(function (j) { if (state.day !== day) return; state.sps = j || false; layerNote(); layer.redraw(); });
+    if (state.spsShow) layerFor("spoof", day).then(function (j) {
+      if (state.day !== day) return;
+      state.sps = j || false; layerNote(); renderLegend(); layer.redraw();
+      if (state.measure === "spf") { renderStats(); renderTable(); }
+    });
     if (state.cygShow) layerFor("cygnss", day).then(function (j) { if (state.day !== day) return; state.cyg = j; layerNote(); layer.redraw(); });
     if (state.nisShow) layerFor("nisar", day).then(function (j) { if (state.day !== day) return; state.nis = j; layerNote(); layer.redraw(); });
     if (state.s6Show) layerFor("s6", day).then(function (j) { if (state.day !== day) return; state.s6 = j; layerNote(); layer.redraw(); });
@@ -1082,7 +1241,7 @@
 
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true; state.nisFocus = null;
-    state.spoof = null; state.sps = null; state.spoofFocus = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; state.s1 = null; loadLayers(day);
+    state.spoof = null; state.sps = null; state.spoofFocus = null; state.spsFocus = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; state.s1 = null; loadLayers(day);
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
     syncTimeline();
     fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
@@ -1280,7 +1439,7 @@
       var v = (hp.v || "").split(",").map(Number);
       state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
       imagery.want = hp.img === "esri";
-      state.spoofShow = hp.sp === "1"; state.spsShow = hp.ss === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1"; state.s6Show = hp.s6 === "1"; state.smapShow = hp.sm === "1"; state.c2Show = hp.c2 === "1"; state.s1Show = hp.s1 === "1";
+      state.spoofShow = hp.sp === "1"; state.spsShow = hp.ss === "1" || state.measure === "spf"; state.sps7 = hp.s7 === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1"; state.s6Show = hp.s6 === "1"; state.smapShow = hp.sm === "1"; state.c2Show = hp.c2 === "1"; state.s1Show = hp.s1 === "1";
       return d;
     }
     var day = fromHash();
@@ -1294,7 +1453,15 @@
     sel.addEventListener("change", function () { loadDay(sel.value); });
     document.querySelectorAll('input[name="measure"]').forEach(function (r) {
       r.addEventListener("change", function () {
-        state.measure = r.value; document.getElementById("map-raw-wrap").hidden = state.measure !== "jam"; refresh(); if (state.hist) drawHistory();
+        state.measure = r.value; document.getElementById("map-raw-wrap").hidden = state.measure !== "jam";
+        if (state.measure === "spf") {                 // the spoofing view turns on the regions and the false positions
+          var load = !state.spsShow || !state.spoofShow;
+          state.spsShow = state.spoofShow = true;
+          document.getElementById("lyr-sps").checked = document.getElementById("lyr-spoof").checked = true;
+          state.focus = null; state.pinned = false; tip.hidden = true;
+          if (load) loadLayers(state.day);
+        }
+        refresh(); if (state.hist) drawHistory();
       });
     });
     document.getElementById("map-raw").addEventListener("change", function (e) { state.raw = e.target.checked; refresh(); });
@@ -1373,9 +1540,28 @@
       box.addEventListener("change", function () {
         state[k[0] + "Show"] = box.checked;
         if (!box.checked) state[k[1]] = null;
+        if (k[0] === "sps") {
+          state.spsFocus = null;
+          if (!box.checked && state.measure === "spf") {   // no regions: back to the GPS-error view
+            state.measure = "jam";
+            document.querySelectorAll('input[name="measure"]').forEach(function (r) { r.checked = r.value === "jam"; });
+            document.getElementById("map-raw-wrap").hidden = false;
+            refresh();
+          }
+          renderLegend();
+        }
         loadLayers(state.day); layer.redraw(); writeHash();
       });
     });
+    var s7 = document.getElementById("lyr-sps7");
+    if (s7) {
+      s7.checked = !!state.sps7;
+      s7.addEventListener("change", function () {
+        state.sps7 = s7.checked; state.spsFocus = null;
+        if (s7.checked && !state.spsShow) { state.spsShow = true; document.getElementById("lyr-sps").checked = true; loadLayers(state.day); }
+        layerNote(); refresh();
+      });
+    }
     var evBox = document.getElementById("lyr-events"), evBox2 = document.getElementById("ev-show");
     function setEvents(on) { state.evShow = on; evBox.checked = evBox2.checked = on; layer.redraw(); }
     evBox.addEventListener("change", function () { setEvents(evBox.checked); });
