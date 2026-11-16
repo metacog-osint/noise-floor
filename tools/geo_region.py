@@ -263,8 +263,9 @@ class SpaceTrack:
 
 # Orbit (orbit.theintelligence.company, The Intelligence Company's space layer) logs in with the same Space-Track
 # account (Tom, 15 Nov 2026), so the gp class's once-an-hour limit is shared. Orbit checks Noisefloor's runs before
-# its own gp query; Noisefloor can't see Orbit's runs (a private repo), so it reads Orbit's last gp time from the
-# public snapshot (`maneuvers.read_at`, written just after the query) and also stays clear of Orbit's start times:
+# its own gp query. Noisefloor reads Orbit's last gp time from the public snapshot (`maneuvers.read_at`, written
+# just after the query); Orbit's repo has been public since 15 Nov 2026, so its runs could be read too, but the
+# snapshot is enough and needs no GitHub token. Noisefloor also stays clear of Orbit's start times:
 # tic-dispatch at :55 and Orbit's own cron at :41 past 00, 06, 12 and 18 UTC. A run publishes its snapshot about a
 # minute after its query, so the window runs from :38 to :05 of the next hour.
 ORBIT_SNAPSHOT = "https://orbit.theintelligence.company/data/snapshot.json"
