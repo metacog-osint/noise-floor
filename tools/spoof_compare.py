@@ -148,7 +148,14 @@ def traces_for(raw_root, day, icaos):
     return out
 
 
-def score(days, outside_dir, events_dir, at, radius, slack_min=30, raw_root=None, v06=False):
+def traces_cached(cache_root, day, icaos):
+    """{icao: trace dict} from the day cache (tools/spoof_day.py run --cache): candidate aircraft only."""
+    import spoof_day as S
+    d = os.path.join(cache_root, day)
+    return S.cached_traces(d, icaos) if icaos and os.path.isdir(d) else {}
+
+
+def score(days, outside_dir, events_dir, at, radius, slack_min=30, raw_root=None, v06=False, cache_root=None):
     per_day, flights = [], []
     cache = {}
 
@@ -176,19 +183,21 @@ def score(days, outside_dir, events_dir, at, radius, slack_min=30, raw_root=None
             f["matched"] = any(iso(e["start"]) <= hi_t and iso(e["end"]) >= lo_t for e in nf_here.get(f["icao"], []))
             f["nf_any_episode"] = any(e["icao"].lower() == f["icao"] and iso(e["start"]) <= hi_t and iso(e["end"]) >= lo_t
                                       for e in pool)
-        if raw_root:
-            tr = traces_for(raw_root, day, {f["icao"] for f in fl})
+        if raw_root or cache_root:
+            tr = (traces_cached(cache_root, day, {f["icao"] for f in fl}) if cache_root
+                  else traces_for(raw_root, day, {f["icao"] for f in fl}))
             for f in fl:
                 f["placeable"] = f["icao"] in tr and placeable(tr[f["icao"]], f, at, radius)
                 if not f["matched"]:
                     f["why"], f["detail"] = (explain(tr[f["icao"]], f, at, radius, v06=v06) if f["icao"] in tr
-                                             else ("aircraft not in the archive", ""))
+                                             else ("aircraft not in the archive" + (" (or not a cache candidate)"
+                                                                                    if cache_root else ""), ""))
         own_day = {i for i, es in nf_here.items() if any(e["start"][:10] == day for e in es)}
         per_day.append({"day": day, "outside_flights": len(fl), "outside_aircraft": len({f["icao"] for f in fl}),
                         "matched": sum(f["matched"] for f in fl),
                         "counted": sum(f["nf_any_episode"] for f in fl),
                         **({"placeable": sum(f["placeable"] for f in fl),
-                            "placeable_matched": sum(f["placeable"] and f["matched"] for f in fl)} if raw_root else {}),
+                            "placeable_matched": sum(f["placeable"] and f["matched"] for f in fl)} if raw_root or cache_root else {}),
                         "noisefloor_aircraft_here": len(own_day),
                         "noisefloor_only": len(own_day - {f["icao"] for f in fl})})
         flights += fl
@@ -205,11 +214,14 @@ def main():
     ap.add_argument("--km", type=float, default=100.0)
     ap.add_argument("--slack-min", type=float, default=30.0)
     ap.add_argument("--raw-root", help="folder holding <day>/ adsb.lol archive parts, to explain misses")
+    ap.add_argument("--cache-root", help="folder of day caches (tools/spoof_day.py run --cache): use instead of "
+                    "--raw-root; holds candidate aircraft only (docs/spoofing-light-plan.md)")
     ap.add_argument("--v06", action="store_true", help="explain misses with the v0.6 rules")
     ap.add_argument("--json", help="write the per-flight table here (holds ICAO addresses: keep it local)")
     a = ap.parse_args()
     at = tuple(float(x) for x in a.at.split(","))
-    per_day, flights = score(days_of(a.days), a.outside, a.events, at, a.km, a.slack_min, a.raw_root, a.v06)
+    per_day, flights = score(days_of(a.days), a.outside, a.events, at, a.km, a.slack_min, a.raw_root, a.v06, a.cache_root)
+    a.raw_root = a.raw_root or a.cache_root
     for r in per_day:
         print(json.dumps(r))
     n, m = sum(r.get("outside_flights", 0) for r in per_day), sum(r.get("matched", 0) for r in per_day)

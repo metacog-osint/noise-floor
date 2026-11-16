@@ -71,7 +71,9 @@ Output (in --out, default data/spoofing/):
   YYYY-MM-DD.summary.json   inputs, hashes, counts, timings, parameters, top spoofed-to points, overlap statistics
 
 Usage
-  python tools/spoof_day.py run 2024-10-14 [--raw data/raw/trace_box/2024-10-14]
+  python tools/spoof_day.py run 2024-10-14 [--raw data/raw/trace_box/2024-10-14] [--cache data/spoof_cache]
+  python tools/spoof_day.py rerun 2024-10-14 --cache data/spoof_cache --out DIR [--set SLOW_HI_A2_FT=25000 ...]
+      # a variant from the day cache in minutes, without the raw archive (exact inside ENVELOPE; docs/spoofing-light-plan.md)
   python tools/spoof_day.py report 2024-10-14 2024-10-15 ...      # region tables (known areas and quiet controls)
 """
 import argparse, bisect, gzip, io, json, itertools, math, os, statistics, sys, time
@@ -98,6 +100,18 @@ FAST_CATS = {"A2", "A3", "A4", "A5"}         # emitter categories tested for slo
 SLOW_KT = 100
 LOITER_KM, LOITER_S, LOITER_MIN_PTS, LOITER_GAP_S = 3.0, 180, 4, 120   # gap: longest break in coverage inside a run
 JUMP_KM, JUMP_KT, FAR_KM = 20.0, 1200.0, 2000.0
+# Day cache (run --cache, then rerun): aircraft that can't hold a flagged position under any setting inside this
+# envelope keep their finished record; the rest keep their raw trace and are scored again on each rerun. A rerun with
+# a setting outside the envelope, or of a constant that changes every aircraft's record, is refused (needs a fresh run).
+CAND_ALT_FT, CAND_SLOW_KT = 10000, 200          # any ADS-B or MLAT position at or above 10,000 ft under 200 kt
+CAND_LOITER_KM, CAND_LOITER_S = 6.0, 90         # any 90 s at or above 10,000 ft within 6 km
+CAND_JUMP_KM, CAND_JUMP_KT = 10.0, 800.0        # any jump of 10 km or more at an implied 800 kt or more
+ENVELOPE = {"SLOW_KT": (None, CAND_SLOW_KT), "SLOW_HI_KT": (None, CAND_SLOW_KT), "SPEED_GS_KT": (None, CAND_SLOW_KT),
+            "HIGH_ALT_FT": (CAND_ALT_FT, None), "HIGH_ALT_A2_FT": (CAND_ALT_FT, None), "SLOW_HI_FT": (CAND_ALT_FT, None),
+            "SLOW_HI_A2_FT": (0, None), "SPEED_FT": (CAND_ALT_FT, None),
+            "LOITER_KM": (None, CAND_LOITER_KM), "LOITER_S": (CAND_LOITER_S, None), "LOITER_GAP_S": (None, None),
+            "LOITER_MIN_PTS": (None, None), "JUMP_KM": (CAND_JUMP_KM, None), "JUMP_KT": (CAND_JUMP_KT, None)}
+RERUN_REFUSED = ("RES", "RES2", "RES_PT", "MIN_ALT_FT", "SAMPLE_S", "FAST_", "NACP_", "KIN_", "GEO_", "CAND_")
 VMAX_KT, SLACK_KM = 700.0, 5.0
 OBS_GAP_S, EXC_MAX_S = 120.0, 7200.0          # observed-time gap cap; longest excursion (true track resumes within)
 EPISODE_GAP_S, EPISODE_MIN_PTS, EPISODE_MIN_S = 900, 2, 20.0
@@ -243,6 +257,33 @@ def point_flags(A, cat, airspeed=False, v06=False, a2_hi_ft=None):
             else:
                 i += 1
     return slow, loiter, True
+
+
+def candidate(A, M, cat):
+    """True if the aircraft could hold a flagged position under some setting inside ENVELOPE (the day cache keeps its
+    raw trace): a category that can be fast, and any slow, near-stationary or jumping position at altitude, or an MLAT
+    position reporting a slow ground speed at altitude."""
+    if not (cat in FAST_CATS or cat in (None, "", "A0")):
+        return False
+    hi = [p[ALT] is not None and p[ALT] >= CAND_ALT_FT for p in A]
+    if any(h and p[GS] is not None and p[GS] < CAND_SLOW_KT for p, h in zip(A, hi)):
+        return True
+    if any(m[3] >= CAND_ALT_FT and m[4] is not None and m[4] < CAND_SLOW_KT for m in M):
+        return True
+    for i in range(1, len(A)):
+        d = fkm(A[i - 1][LAT], A[i - 1][LON], A[i][LAT], A[i][LON])
+        if d >= CAND_JUMP_KM and d / max(A[i][T] - A[i - 1][T], 1.0) * 3600 / 1.852 >= CAND_JUMP_KT:
+            return True
+    j = 0
+    for i in range(len(A)):                 # any CAND_LOITER_S at altitude within CAND_LOITER_KM of its first position
+        if not hi[i]:
+            continue
+        j = max(j, i)
+        while j + 1 < len(A) and hi[j + 1] and fkm(A[i][LAT], A[i][LON], A[j + 1][LAT], A[j + 1][LON]) <= CAND_LOITER_KM:
+            j += 1
+        if A[j][T] - A[i][T] >= CAND_LOITER_S:
+            return True
+    return False
 
 
 def residual(p, q):
@@ -498,9 +539,9 @@ def cell(lat, lon, res):
     return h3.str_to_int(h3.latlng_to_cell(lat, lon, res))
 
 
-def score_trace(raw, day0, airspeed=False, v06=False, a2_hi_ft=None):
+def score_trace(raw, day0, airspeed=False, v06=False, a2_hi_ft=None, cache=False):
     """One trace file -> aircraft record, or None. airspeed: --airspeed-fast (v0.5); v06: --v06;
-    a2_hi_ft: --slow-hi-a2-ft."""
+    a2_hi_ft: --slow-hi-a2-ft; cache: also mark whether the aircraft is a cache candidate (candidate())."""
     if raw[:2] == b"\x1f\x8b":
         raw = gzip.decompress(raw)
     d = orjson.loads(raw)
@@ -620,6 +661,7 @@ def score_trace(raw, day0, airspeed=False, v06=False, a2_hi_ft=None):
         "jumps": r["jumps"], "far": r["far"], "cells": dict(cells), "geo": geo_med, "episodes": episodes,
         "mlat": [len(ml_tr), sum(1 for x in ml_tr if x[1] >= MLAT_KM), len(ml_fa), sum(1 for x in ml_fa if x[1] >= MLAT_KM)],
         "mlat_cells": dict(mlat_cells), "unresolved": unres, "geo_flag": dict(geo_flag),
+        "cand": candidate(A, M, cat) if cache else None,
         "points": len(A), "false_points": sum(false),
         "flag_points": {k: sum(v) for k, v in fl.items()},
         "geo_false": sum(1 for i in range(len(A)) if false[i] and (fl["geo_step"][i] or fl["geo_sat"][i])),
@@ -629,20 +671,67 @@ def score_trace(raw, day0, airspeed=False, v06=False, a2_hi_ft=None):
 
 
 def work(args):
-    batch, day0, airspeed, v06, a2_hi_ft = (args + (False, False, None))[:5]
-    recs, st = [], Counter()
+    """One batch of raw trace files -> (records, counts). With a cache folder, the raw file of every candidate aircraft
+    is appended to this worker's shard there (4-byte length, then the bytes as read from the archive)."""
+    batch, day0, airspeed, v06, a2_hi_ft, cache_dir = (args + (False, False, None, None))[:6]
+    recs, st, keep = [], Counter(), []
     for raw in batch:
         st["files"] += 1
         try:
-            r = score_trace(raw, day0, airspeed, v06, a2_hi_ft)
+            r = score_trace(raw, day0, airspeed, v06, a2_hi_ft, cache=bool(cache_dir))
         except Exception:
             st["parse_errors"] += 1
             continue
         if r is None:
             st["skipped"] += 1
             continue
+        if r["cand"]:
+            keep.append(raw)
         recs.append(r)
+    if cache_dir and keep:
+        with open(os.path.join(cache_dir, f"cand-{os.getpid()}.bin"), "ab") as f:
+            for raw in keep:
+                f.write(len(raw).to_bytes(4, "little")); f.write(raw)
     return recs, dict(st)
+
+
+def _set_overrides(over):
+    """Pool initializer and main process: set module constants for a rerun variant."""
+    globals().update(over or {})
+
+
+def check_overrides(over):
+    """Refuse a rerun setting the day cache can't reproduce exactly (see ENVELOPE)."""
+    for k, v in (over or {}).items():
+        if k not in globals() or not k.isupper():
+            raise ValueError(f"{k}: not a detector constant")
+        if k.startswith(RERUN_REFUSED) or k in RERUN_REFUSED:
+            raise ValueError(f"{k}: changes records the cache keeps; needs a fresh run from the raw archive")
+        lo, hi = ENVELOPE.get(k, (None, None))
+        if (lo is not None and v < lo and not (k == "SLOW_HI_A2_FT" and v == 0)) or (hi is not None and v > hi):
+            raise ValueError(f"{k}={v}: outside the cache envelope ({lo}, {hi}); needs a fresh run from the raw archive")
+
+
+def cache_shards(cache_dir):
+    """Raw trace files of the candidate aircraft held in a day cache."""
+    for name in sorted(os.listdir(cache_dir)):
+        if name.startswith("cand-") and name.endswith(".bin"):
+            with open(os.path.join(cache_dir, name), "rb") as f:
+                while True:
+                    n = f.read(4)
+                    if len(n) < 4:
+                        break
+                    yield f.read(int.from_bytes(n, "little"))
+
+
+def cached_traces(cache_dir, icaos):
+    """{icao: trace dict} for the given addresses from a day cache's candidates (tools/spoof_compare.py)."""
+    out = {}
+    for raw in cache_shards(cache_dir):
+        d = orjson.loads(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw)
+        if d.get("icao", "").lower() in icaos:
+            out[d["icao"].lower()] = d
+    return out
 
 
 # ---------- day aggregation ----------
@@ -815,23 +904,78 @@ def aggregate(recs):
     return t4, t2, d4, events, {"geo_out_aircraft": geo_out_aircraft, "episodes_with_geo_out_aircraft": ep_geo_out}
 
 
-def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False, a2_hi_ft=None):
+def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False, a2_hi_ft=None, cache_dir=None):
+    """One day from the raw archive. cache_dir: also write the day cache there (rerun() reads it): the records of
+    aircraft that aren't candidates (records.pkl.gz), the raw traces of those that are (cand-*.bin), and meta.json."""
     a2_hi_ft = SLOW_HI_A2_FT if a2_hi_ft is None else a2_hi_ft
     parts = P.day_parts(raw_dir, day)
     day0 = int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())
     t0 = time.time()
+    if cache_dir:
+        os.makedirs(cache_dir, exist_ok=True)
+        for name in os.listdir(cache_dir):
+            if name.startswith("cand-") or name in ("records.pkl.gz", "meta.json"):
+                os.remove(os.path.join(cache_dir, name))
     stream = io.BufferedReader(P.Chain(parts), buffer_size=8 << 20)
     recs, st = [], Counter()
     with Pool(workers) as pool:
         src = P.batches(stream, day0)
         if limit:
             src = itertools.islice(src, limit)
-        if airspeed or v06:
-            src = ((b, d0, airspeed, v06, a2_hi_ft) for b, d0 in src)
+        if airspeed or v06 or cache_dir:
+            src = ((b, d0, airspeed, v06, a2_hi_ft, cache_dir) for b, d0 in src)
         for r, s in pool.imap_unordered(work, src, chunksize=1):
             recs.extend(r); st.update(s)
     chain = stream.raw
     t_read = time.time() - t0
+    info = {"inputs": [os.path.basename(p) for p in parts], "input_bytes": chain.nbytes,
+            "input_sha256": chain.sha.hexdigest(), **{k: st.get(k, 0) for k in ("files", "skipped", "parse_errors")}}
+    if cache_dir:
+        import pickle
+        keep = [r for r in recs if not r["cand"]]
+        with gzip.open(os.path.join(cache_dir, "records.pkl.gz"), "wb", compresslevel=5) as f:
+            pickle.dump(keep, f, protocol=pickle.HIGHEST_PROTOCOL)
+        json.dump({"day": day, "airspeed": airspeed, "v06": v06, "info": info, "aircraft": len(recs),
+                   "candidates": len(recs) - len(keep), "envelope": {k: v for k, v in globals().items() if k.startswith("CAND_")}},
+                  open(os.path.join(cache_dir, "meta.json"), "w"), indent=1)
+    return write_day(day, out_dir, recs, info, t0, t_read, workers, airspeed, v06, a2_hi_ft)
+
+
+def rerun(day, cache_dir, out_dir, workers, over=None, label=None):
+    """One day again from its cache (run --cache), with module constants set from over (a variant). Same outputs as
+    run() with those settings: candidates are scored again from their raw traces, every other record is reused."""
+    import pickle
+    check_overrides(over)
+    _set_overrides(over)
+    meta = json.load(open(os.path.join(cache_dir, "meta.json")))
+    day0 = int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())
+    airspeed, v06, a2_hi_ft = meta["airspeed"], meta["v06"], SLOW_HI_A2_FT
+    t0 = time.time()
+    with gzip.open(os.path.join(cache_dir, "records.pkl.gz"), "rb") as f:
+        recs = pickle.load(f)
+
+    def batches():
+        cur = []
+        for raw in cache_shards(cache_dir):
+            cur.append(raw)
+            if len(cur) >= P.BATCH:
+                yield (cur, day0, airspeed, v06, a2_hi_ft, None); cur = []
+        if cur:
+            yield (cur, day0, airspeed, v06, a2_hi_ft, None)
+    with Pool(workers, initializer=_set_overrides, initargs=(over,)) as pool:
+        for r, _s in pool.imap_unordered(work, batches(), chunksize=1):
+            recs.extend(r)
+    s = write_day(day, out_dir, recs, meta["info"], t0, time.time() - t0, workers, airspeed, v06, a2_hi_ft)
+    if over or label:
+        s["version"] = f"{s['version']}+{label or 'custom'}"
+        s["rerun"] = {"cache": True, "label": label, "overrides": over or {}, "candidates": meta["candidates"]}
+        json.dump(s, open(os.path.join(out_dir, f"{day}.summary.json"), "w"), indent=1, default=list)
+    return s
+
+
+def write_day(day, out_dir, recs, info, t0, t_read, workers, airspeed, v06, a2_hi_ft):
+    """Records -> the day's tables, events and summary in out_dir (shared by run() and rerun())."""
+    recs.sort(key=lambda r: r["icao"])     # same order whatever the worker order (run and rerun give equal outputs)
     t4, t2, d4, events, diag = aggregate(recs)
 
     import pyarrow as pa, pyarrow.parquet as pq
@@ -867,10 +1011,10 @@ def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False, a2_h
     ml_unflagged_dis = sum(1 for r in nd if not r["episodes"] and r["mlat"][1] >= 2)
     secs = time.time() - t0
     summary = {
-        "day": day, "version": ({25000: "0.6", 36000: "0.6.1"}.get(a2_hi_ft, f"0.6.1-a2-{a2_hi_ft}")) if v06 else "0.5" if airspeed else VERSION, "inputs": [os.path.basename(p) for p in parts],
-        "input_bytes": chain.nbytes, "input_sha256": chain.sha.hexdigest(),
+        "day": day, "version": ({25000: "0.6", 36000: "0.6.1"}.get(a2_hi_ft, f"0.6.1-a2-{a2_hi_ft}")) if v06 else "0.5" if airspeed else VERSION,
+        "inputs": info["inputs"], "input_bytes": info["input_bytes"], "input_sha256": info["input_sha256"],
         "seconds": round(secs, 1), "seconds_read": round(t_read, 1), "workers": workers,
-        **{k: st.get(k, 0) for k in ("files", "skipped", "parse_errors")},
+        **{k: info.get(k, 0) for k in ("files", "skipped", "parse_errors")},
         "aircraft": len(recs), "fast_aircraft": sum(r["fast"] for r in recs), "duplicate_suspects": len(recs) - len(nd),
         "aircraft_with_episodes": len(with_ep), "episodes": len(events),
         "episodes_by_kind": dict(Counter(k for e in events for k in e["kinds"])),
@@ -1107,7 +1251,7 @@ def report(days, out_dir, metric="spoofed_active"):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["run", "report"])
+    ap.add_argument("cmd", choices=["run", "rerun", "report"])
     ap.add_argument("days", nargs="+")
     ap.add_argument("--raw", help="folder with the day's tar or split parts (default data/raw/trace_box/<day>)")
     ap.add_argument("--out", default=os.path.join(ROOT, "data", "spoofing"))
@@ -1122,11 +1266,25 @@ def main():
     ap.add_argument("--slow-hi-a2-ft", type=int, default=None,
                     help="v0.6 rule A (slow at cruise) floor for category A2, ft; 0 turns it off for A2 "
                          f"(default {SLOW_HI_A2_FT}, v0.6.1; 25000 gives v0.6; docs/validation/spoofing-v061.md)")
+    ap.add_argument("--cache", help="run: also write the day cache here (<CACHE>/<day>/); rerun: read it from here")
+    ap.add_argument("--set", action="append", default=[], metavar="NAME=VALUE",
+                    help="rerun: set a detector constant for this variant (repeatable), e.g. SLOW_HI_A2_FT=25000")
+    ap.add_argument("--label", help="rerun: variant name, added to the summary's version")
     a = ap.parse_args()
-    if a.cmd == "run":
+    if a.cmd in ("run", "rerun"):
+        over = {}
+        for kv in a.set:
+            k, v = kv.split("=", 1)
+            over[k.strip()] = json.loads(v)
         for day in a.days:
-            raw = a.raw or os.path.join(ROOT, "data", "raw", "trace_box", day)
-            s = run(day, raw, a.out, a.workers, a.limit, a.airspeed_fast, a.v06, a.slow_hi_a2_ft)
+            if a.cmd == "run":
+                raw = a.raw or os.path.join(ROOT, "data", "raw", "trace_box", day)
+                s = run(day, raw, a.out, a.workers, a.limit, a.airspeed_fast, a.v06, a.slow_hi_a2_ft,
+                        cache_dir=os.path.join(a.cache, day) if a.cache else None)
+            else:
+                if not a.cache:
+                    sys.exit("rerun needs --cache")
+                s = rerun(day, os.path.join(a.cache, day), a.out, a.workers, over, a.label)
             print(json.dumps({k: s[k] for k in ("day", "seconds", "files", "aircraft", "episodes", "aircraft_with_episodes",
                                                  "episodes_by_kind", "episodes_mlat_confirmed", "duplicate_suspects")}), flush=True)
     else:

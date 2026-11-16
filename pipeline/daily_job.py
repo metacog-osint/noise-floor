@@ -207,20 +207,51 @@ def spoof_summary(day, raw, workers):
     res-2 regions where aircraft really were during active episodes, the top places receivers were spoofed to, and every
     spoofed-to cluster with where its aircraft really were. Aggregates only (ODbL 1.0). Returns the list of files, or []
     if the run failed (the day publishes anyway)."""
+    import tempfile
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    tmp = tempfile.mkdtemp(prefix="spoof-cache-")
     try:
-        r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "spoof_day.py"), "run", day, "--raw", raw,
-                            "--out", SPOOF, "--workers", str(workers)], capture_output=True, text=True, encoding="utf-8",
-                           timeout=5400)
+        import spoof_shadow
+        due = spoof_shadow.variants(day)
+        cmd = [sys.executable, os.path.join(ROOT, "tools", "spoof_day.py"), "run", day, "--raw", raw, "--out", SPOOF,
+               "--workers", str(workers)] + (["--cache", tmp] if due else [])
+        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=5400)
         if r.returncode:
             print(f"spoofing {day}: spoof_day failed: {r.stderr.strip()[-400:]}", file=sys.stderr)
             return []
-        sys.path.insert(0, os.path.join(ROOT, "tools"))
         import spoof_summary
         p, _, pt = spoof_summary.write(SPOOF, day, SITE)
-        return [p, pt]
+        files = [p, pt]
+        if due:
+            files += shadow(day, tmp, due, workers)
+        return files
     except Exception as e:                # never fatal
         print(f"spoofing {day}: skipped ({type(e).__name__}: {e})", file=sys.stderr)
         return []
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def shadow(day, cache_root, due, workers):
+    """Shadow variants (tools/spoof_shadow.json) rerun from the day cache and compared with the default ->
+    SITE/<day>.spoof-shadow.json (aggregates only). Returns [path] or [] (never fatal)."""
+    import spoof_shadow
+    results = []
+    for v in due:
+        out = os.path.join(cache_root, "shadow-" + "".join(c if c.isalnum() else "_" for c in v["name"]))
+        cmd = [sys.executable, os.path.join(ROOT, "tools", "spoof_day.py"), "rerun", day, "--cache", cache_root,
+               "--out", out, "--workers", str(workers), "--label", v["name"]]
+        for k, val in (v.get("set") or {}).items():
+            cmd += ["--set", f"{k}={json.dumps(val)}"]
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=3600)
+            if r.returncode:
+                print(f"shadow {v['name']} {day}: failed: {r.stderr.strip()[-300:]}", file=sys.stderr)
+                continue
+            results.append(spoof_shadow.diff(day, SPOOF, out, v["name"], v.get("set")))
+        except Exception as e:
+            print(f"shadow {v['name']} {day}: skipped ({type(e).__name__}: {e})", file=sys.stderr)
+    return [spoof_shadow.write(day, SPOOF, results, SITE)] if results else []
 
 
 def spoof_only(day, a):
