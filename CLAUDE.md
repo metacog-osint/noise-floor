@@ -209,6 +209,11 @@ loaded automatically; read it when you need the background.
   `problems`, never fatal). The daily run also uploads `<day>.spoof.json` (`daily_job.py --spoofing`, from late Oct 2026) and, from 14 Nov 2026,
   `<day>.spoof-targets.json` (every spoofed-to cluster, `tools/spoof_summary.py`; `docs/validation/spoofing-lima.md`); redo
   them on published days with backfill.yml `spoofing_only` (`daily_job.py --spoof-only`, downloads the raw archive).
+  **Scoring a detector variant on GitHub (16 Nov 2026):** `.github/workflows/spoof-variant.yml` (Run workflow: `set`,
+  `label`, `days`; each run is Tom's call) reruns the 12 held-out days from their caches and scores H1-H6. The caches
+  and the H6 baseline's events hold ICAO addresses, so they sit in a PRIVATE release (`spoof-cache` in
+  metacog-osint/noise-floor-archive; Tom, 16 Nov 2026), uploaded with `tools/spoof_cache_release.py upload` and read
+  with the read-only secret `SPOOF_CACHE_TOKEN`; only aggregate scores leave the job. The Lima check stays on the PC.
   **Spoofing on the site (Nov 2026):** `tools/spoof_site.py` runs at deploy after `site_layers.py`: it adds every spoofed-to
   place (`targets`, `unplaced`) to `site/data/spoof/<day>.json` and writes `site/data/spoof/history.json` (Trends:
   daily active episodes, victim cells by the validation's region groups, places followed day to day, new places).
