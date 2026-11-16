@@ -26,6 +26,7 @@ SITE_URL = "https://noisefloor.theintelligence.company"
 METHOD = "noisefloor-feed-1.0"
 NEW_SPOOF_ITEMS = 5                                   # new spoofed-to places per day, largest first
 ABOVE_SPOOF_ITEMS = 5                                 # spoofed-to places above their usual level, biggest rise first
+ABOVE_REGION_ITEMS = 5                                # regions (where aircraft were) above their usual level, biggest rise first
 NCF = ["provide_pnt", "transport_by_air"]           # doctrine/ncf_map.json, product gnss-aircraft
 ADSBLOL = {"id": "adsblol-archive", "publisher": "adsb.lol", "url": "https://github.com/adsblol/globe_history_2026",
            "licence": "ODbL 1.0", "grade": "B2", "independence_group": "adsb-feeders", "source_type": "dataset",
@@ -207,6 +208,27 @@ def build(board, days, now=None):
             "measure": {"name": "aircraft_shown_at_false_position", "value": t["latest"], "expected": t["usual"]},
             "baseline_ref": {"id": "noisefloor-spoof-place-level", "window": f"{lv['earlier_days']} earlier days with a "
                              "targets file (up to 30)", "type": "rolling", "version": "1", "rule": lv.get("rule", "")},
+            "requirement_ids": ["NF-EEI-3"], **tags(pts)})
+
+    rl = (board.get("spoofing") or {}).get("region_levels") or {}
+    for i, r in enumerate((rl.get("above") or [])[:ABOVE_REGION_ITEMS]):
+        geom, pts = h3_polygon(r["region"])
+        at = r.get("near") or f"{abs(r['lat']):.1f}°{'N' if r['lat'] >= 0 else 'S'}, {abs(r['lon']):.1f}°{'E' if r['lon'] >= 0 else 'W'}"
+        share = 100 * r["active_ah"] / r["aircraft_hours"] if r.get("aircraft_hours") else None
+        add(geom, {
+            "id": f"noisefloor-spoof-region-above-{rl['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
+            "product_category": "current", "precision_class": "area", "data_as_of": f"{rl['day']}T23:59:59Z",
+            "title": f"More GPS spoofing than usual near {at}",
+            "summary": (f"Aircraft in the region about 300 km across near {at} spent {r['active_ah']} aircraft-hours in "
+                        f"active spoofing episodes on "
+                        f"{datetime.strptime(rl['day'], '%Y-%m-%d').strftime('%d %b %Y').lstrip('0')}"
+                        + (f" ({share:.1f}% of {r['aircraft_hours']:,} aircraft-hours)" if share is not None else "")
+                        + f", against a usual {r['usual']:g} (median of the {rl['earlier_days']} earlier days with "
+                        "regional shares). Counted where the aircraft really were, not where they were shown; not a "
+                        "transmitter site."),
+            "measure": {"name": "spoofed_active_aircraft_hours", "value": r["active_ah"], "expected": r["usual"]},
+            "baseline_ref": {"id": "noisefloor-spoof-region-level", "window": f"{rl['earlier_days']} earlier days with "
+                             "regional shares (up to 30)", "type": "rolling", "version": "1", "rule": rl.get("rule", "")},
             "requirement_ids": ["NF-EEI-3"], **tags(pts)})
 
     return {

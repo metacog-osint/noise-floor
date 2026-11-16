@@ -9,14 +9,14 @@
 <meta property="og:description" content="Interactive world map of GNSS degradation from aircraft ADS-B reports, per H3 cell, updated daily.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=5265e6e3b4">
+<link rel="stylesheet" href="/style.css?v=a6f8706d68">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=4eba94d633"></script>
 <link rel="stylesheet" href="/tic-nav.css?v=3e2878e131">
 <script defer src="/tic-nav.js?v=081247fc9a" data-health="on"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=48bbd955d7"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=e00cc473ca"></script>
 <script defer src="/tic-init.js?v=d888070c79"></script>
 </head>
 <body>
@@ -61,6 +61,7 @@
         <label><input type="radio" name="measure" value="acc"> Accuracy (10 m)</label>
         <label id="mp-chg-wrap"><input type="radio" name="measure" value="chg"> Change from usual (93 m)</label>
         <label id="mp-miss-wrap"><input type="radio" name="measure" value="miss"> Fewer aircraft than usual</label>
+        <label><input type="radio" name="measure" value="spf"> Spoofing (regions)</label>
       </fieldset>
       <fieldset class="mp-group"><legend>Layers</legend>
         <label><input type="checkbox" id="lyr-borders" checked> Country borders</label>
@@ -70,6 +71,7 @@
         <label id="lyr-imagery-opt" hidden><input type="checkbox" id="lyr-imagery"> Satellite imagery (Esri)</label>
         <label><input type="checkbox" id="lyr-spoof"> Spoofing (aircraft) <span class="lyr-key lyr-key-spoof" aria-hidden="true"></span></label>
         <label><input type="checkbox" id="lyr-sps"> Spoofed share of aircraft (regions) <span class="lyr-key lyr-key-sps" aria-hidden="true"></span></label>
+        <label class="mp-sub"><input type="checkbox" id="lyr-sps7"> Pool the last 7 days</label>
         <label><input type="checkbox" id="lyr-cyg"> CYGNSS noise floor (from orbit) <span class="lyr-key lyr-key-cyg" aria-hidden="true"></span></label>
         <label><input type="checkbox" id="lyr-c2"> COSMIC-2 GPS receivers (from orbit) <span class="lyr-key lyr-key-c2" aria-hidden="true"></span></label>
         <label><input type="checkbox" id="lyr-s6"> Sentinel-6 GPS receiver (from orbit) <span class="lyr-key lyr-key-s6" aria-hidden="true"></span></label>
@@ -156,7 +158,7 @@
 </details>
 </section>
 
-<h2>Worst cells on this day</h2>
+<h2 id="map-table-h">Worst cells on this day</h2>
 <p class="small">Top 25 by share, cells with 5 or more aircraft. "Show" centres the map on the cell. <a id="map-download" href="#">Download</a></p>
 <div class="tw"><table id="map-table"><thead><tr><th>Where</th><th>Aircraft</th><th>Degraded</th><th>Share</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small" id="map-table-note"></p>
@@ -169,6 +171,7 @@
   <li><strong>Satellite imagery</strong> (Map options → Layers → Satellite imagery) puts Esri World Imagery under the cells: quiet cells turn faint, the coloured ones stay strong, and the map zooms closer (to zoom 10) to show what lies under a hotspot. It is offered only where Esri's terms allow (see the <a href="/terms#imagery">terms of use</a>) and stops if the site's free monthly allowance runs out.</li>
   <li><strong>Change from usual</strong> colours each cell by how far today's share sits above its own median over its previous 14 days with traffic. Persistent hotspots fade, so new or growing activity stands out. Cells with fewer than 5 such days show as low coverage.</li>
   <li><strong>Fewer aircraft than usual</strong> compares each cell's aircraft count with its median over the previous 14 days. Strong jamming can stop aircraft sending a position at all, and then they vanish from the map instead of showing as degraded: on 9 May 2026 three in four aircraft crossing the southern Baltic lost their ADS-B position (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">validation notes</a>, verdict 34). Weekends, holidays, airspace closures and receiver outages lower counts too, so read it alongside the other views. Try 2026-05-09.</li>
+  <li><strong>Spoofing</strong> (Map options → Measure → Spoofing) turns off the GPS-error colours and shades each region about 300 km across by the share of its aircraft-hours spent in active spoofing episodes, counted where the aircraft really were. A bold dashed outline marks a region above its own usual level: at least twice its median over up to 30 earlier days, and 3 or more spoofed aircraft-hours over it. That compares the region with its own normal; it is not a warning. Crosses mark where receivers were told they were. Hover a region to see where its aircraft were shown; click it to draw lines there. "Pool the last 7 days" adds up the week, which settles single-day noise in regions with little traffic. The table under the map then lists the regions with the most spoofing.</li>
   <li><strong>Play</strong> (▶ under the strip) steps through the days one by one; any other control stops it.</li>
   <li><strong>Cells</strong> are H3 resolution 4, about 1,770 km² each. A cell is coloured only when 5 or more aircraft were in it that day; 3–4 show as low coverage, and 1–2 are left out.</li>
   <li><strong>Share</strong> follows the formula GPSJam publishes: one bad aircraft is subtracted, so a single faulty receiver never colours a cell.</li>
