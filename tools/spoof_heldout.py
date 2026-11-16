@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """spoof_heldout.py: score tools/spoof_day.py outputs on the pre-registered held-out checks H1-H6.
 
-  python tools/spoof_heldout.py OUT_DIR [--baseline V05_DIR] [--days ...]
+  python tools/spoof_heldout.py OUT_DIR [--baseline BASE_DIR] [--days ...] [--new-controls F] [--dropped-controls F]
 
 H1-H5 are the checks of docs/validation/spoofing.md ("Held-out test"); H6 (docs/validation/spoofing-v06.md) compares the
 number of episodes located in a control box with a baseline output folder made from the same days.
@@ -120,13 +120,16 @@ def main():
     ap.add_argument("--baseline", help="output folder of the version compared against (H6)")
     ap.add_argument("--days", nargs="+", default=DAYS)
     ap.add_argument("--new-controls", help="write the control-box episodes new against the baseline here (local)")
+    ap.add_argument("--dropped-controls", help="write the baseline's control-box episodes that are gone here (local)")
     a = ap.parse_args()
     print(json.dumps(score(a.out_dir, a.days, a.baseline), indent=1))
-    if a.new_controls and a.baseline:
-        rows = new_control_episodes(a.out_dir, a.baseline, a.days)
-        with open(a.new_controls, "w", encoding="utf-8") as f:
-            json.dump(rows, f, indent=1)
-        print(f"{len(rows)} new control-box episodes -> {a.new_controls}")
+    for path, args, what in ((a.new_controls, (a.out_dir, a.baseline), "new"),
+                             (a.dropped_controls, (a.baseline, a.out_dir), "dropped")):
+        if path and a.baseline:
+            rows = new_control_episodes(*args, a.days)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(rows, f, indent=1)
+            print(f"{len(rows)} {what} control-box episodes -> {path}")
 
 
 if __name__ == "__main__":

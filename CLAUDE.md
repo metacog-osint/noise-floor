@@ -158,7 +158,8 @@ loaded automatically; read it when you need the background.
   builds the country stand-ins in `data/declared/fir_approx.json`), `collectors/digitraffic_ais.py` and
   `tools/ais_detect.py` (Finland's open AIS), `tools/station_cn0.py` (EPN station C/N0), `tools/trace_box.py types` (by aircraft family),
   `tools/horizon_fix.py --balance`, `tools/spoof_day.py` (ADS-B spoofing; reads the raw archives; v0.6 by default from 15 Nov 2026, `--no-v06` for v0.5,
-  `docs/validation/spoofing-v06.md`), `tools/year_trends.py`
+  `docs/validation/spoofing-v06.md`; v0.6.1 by default once its PR merges: rule A for category A2 only at or above
+  36,000 ft, `--slow-hi-a2-ft 25000` for v0.6, `docs/validation/spoofing-v061.md`), `tools/year_trends.py`
   (`docs/assessment/year-trends.md`), and position loss: aircraft heard by MLAT but sending no GNSS position
   (`tools/position_loss.py`, and `pipeline/pnt_daily.py --position-loss`, set in the daily workflow from late Oct 2026 (release files `<day>.loss*.parquet`); `docs/validation/position-loss.md`).
   The degraded share can't see those aircraft: check position loss before reading any share trend. CI runs each `tests/test_*.py` as a plain script with only `requirements.txt` and
