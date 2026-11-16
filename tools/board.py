@@ -369,6 +369,13 @@ def cygnss(release, places):
                     "exposure, not a transmitter site. About 38°N to 38°S."}
 
 
+def swx_card(release, places):
+    """Limb S4 and ground ROTI, the newest day of each (tools/swx_site.py card): measurements with no baseline."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import swx_site
+    return swx_site.card(release, places)
+
+
 def _latlng(cell):
     import h3
     return h3.cell_to_latlng(cell)
@@ -571,6 +578,7 @@ def build(release, site, now=None):
     section("cygnss", cygnss, release, places)
     section("sentinel6", sentinel6, release, places)
     section("smap", smap, release, places)
+    section("swx", swx_card, release, places)
     section("geo", geo_card, site)
     em = load(os.path.join(site, "data", "events-monthly.json"))
 
@@ -591,6 +599,8 @@ def build(release, site, now=None):
         "cygnss_day": (board.get("cygnss") or {}).get("day"),
         "s6_day": (board.get("sentinel6") or {}).get("day"),
         "smap_day": (board.get("smap") or {}).get("day"),
+        "limb_s4_day": ((board.get("swx") or {}).get("limb") or {}).get("day"),
+        "roti_day": ((board.get("swx") or {}).get("roti") or {}).get("day"),
         "geo_snapshot": (board.get("geo") or {}).get("snapshot_day"),
         "board_built": board["built_utc"],
     }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""site_layers.py: the map page's spoofing, CYGNSS, NISAR, Sentinel-6, SMAP, COSMIC-2 and Sentinel-1 layers, at deploy.
+"""site_layers.py: the map page's spoofing, CYGNSS, NISAR, Sentinel-6, SMAP, COSMIC-2, Sentinel-1, limb S4 and ROTI layers, at deploy.
 
   python3 tools/site_layers.py RELEASE_DIR [SITE]
 
@@ -19,6 +19,10 @@ Copies RELEASE_DIR/<day>.<kind>.json -> SITE/data/<folder>/<day>.json and writes
   (derived from UCAR CDAAC COSMIC-2, CC BY 4.0; region-scale scores, docs/validation/space-receivers.md).
 - s1 -> data/s1 (files with a "cells" list, even an empty one). tools/s1_daily.py, from the s1-data release (derived
   from Copernicus Sentinel-1 RFI annotations; C-band radar activity by region, docs/validation/s1-rfi.md).
+- cosmic2-limb-s4 -> data/limbs4 and ground-roti -> data/roti (files with "hours"), slimmed for the map by
+  tools/swx_site.py (limb_map, roti_map), from the swx-data releases (Tom approved 16 Nov 2026). Limb S4 is measured
+  along radio-occultation paths and reads higher than a ground receiver's S4; ROTI is a measured TEC fluctuation index
+  at fixed stations, never an S4 value. Neither is read against S4 alert levels.
 Standard library only.
 """
 import glob
@@ -36,7 +40,11 @@ KINDS = {"spoof": ("spoof", "ODbL 1.0; derived from adsb.lol", "cells", True),
          "smap": ("smap", "Derived from NASA SMAP L1C (NSIDC DAAC, doi:10.5067/DV7IX2DQ681Y), NASA open data", "sources", False),
          "cosmic2": ("cosmic2", "Derived from UCAR CDAAC COSMIC-2 data (CC BY 4.0)", "cells", True),
          "s1": ("s1", "Derived from Copernicus Sentinel-1 Level-1 annotations; contains modified Copernicus Sentinel data",
-                "cells", False)}
+                "cells", False),
+         "cosmic2-limb-s4": ("limbs4", "CC BY 4.0. Derived from UCAR CDAAC COSMIC-2 data", "hours", False),
+         "ground-roti": ("roti", "CC BY 4.0. Derived from IGS station data via BKG; credit the IGS and the station "
+                         "operators", "hours", False)}
+SLIM = {"cosmic2-limb-s4": "limb_map", "ground-roti": "roti_map"}    # swx_site.py: the map needs a day summary only
 
 
 def main():
@@ -56,6 +64,10 @@ def main():
                 continue
             if key not in d or (nonempty and not d[key]):
                 continue                       # spoof/CYGNSS summaries made before the map layer have no cells
+            if kind in SLIM:
+                sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+                import swx_site
+                d = getattr(swx_site, SLIM[kind])(d)
             d.setdefault("licence", licence)
             with open(os.path.join(out, f"{day}.json"), "w", encoding="utf-8", newline="\n") as g:
                 json.dump(d, g, ensure_ascii=False, separators=(",", ":"))

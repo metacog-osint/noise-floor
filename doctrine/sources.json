@@ -66,6 +66,28 @@
       "ease_of_faking": "low",
       "cadence_s": 604800,
       "descriptor": "NASA CYGNSS level-1 reflectometry; its noise floor is an independent sensing method for interference."
+    },
+    "cosmic2-ro": {
+      "grade": "A2",
+      "independence_group": "ucar-cosmic2",
+      "ease_of_faking": "low",
+      "cadence_s": 86400,
+      "descriptor": "UCAR CDAAC COSMIC-2 near-real-time level 1b podTc2 day archive (on-board S4 every 10 s, RFI index); posted about 04:35 UTC the next day.",
+      "probe": {
+        "url": "https://data.cosmic.ucar.edu/gnss-ro/cosmic2/nrt/level1b/",
+        "expect": "any"
+      }
+    },
+    "cors-igs": {
+      "grade": "A2",
+      "independence_group": "igs-stations",
+      "ease_of_faking": "low",
+      "cadence_s": 86400,
+      "descriptor": "IGS station daily 30 s RINEX observation files and merged broadcast orbits, via the BKG GNSS Data Center; posted the next day.",
+      "probe": {
+        "url": "https://igs.bkg.bund.de/root_ftp/IGS/obs/",
+        "expect": "any"
+      }
     }
   }
 }
