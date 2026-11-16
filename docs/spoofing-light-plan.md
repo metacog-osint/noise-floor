@@ -85,7 +85,34 @@ fresh run from the raw archive.
   way in every run.
 - `tests/test_spoof_day.py` (`test_cache_rerun_and_shadow`) checks the same on a synthetic day, including the refusals.
 
-**All 18 test days** (the 12 held-out days and 7–12 Nov 2026) are being cached from the raw archives (started 15 Nov 2026, 18:53 CST; `data/spoof_cache/build_all.sh`, local). Still to do once they are: check each day's full-run output against the 15 Nov v0.6.1 V2 output (`data/spoofing_v061b`), rerun V1 (`--set SLOW_HI_A2_FT=0`) from the caches and score it with `tools/spoof_heldout.py` and `tools/spoof_compare.py --cache-root` against the 15 Nov results, and record the time it takes.
+**All 18 test days (16 Nov 2026).** The 12 held-out days and 7–12 Nov 2026 are cached in `data/spoof_cache/`
+(local; 2.9 GB in all, 70–230 MB a day).
+- **Exactness.** Each day's full run with `--cache` reproduced the 15 Nov v0.6.1 run from the raw archive
+  (`data/spoofing_v061b`) on all 18 days: the same 8,844 episodes field for field, and identical res-4, res-2 and daily
+  tables. The summaries differed only in the order of tied entries in two top-20 lists (`geo_sat_trusted_res2_top` on
+  every day, `victim_res2_top` on three).
+- **V1 rescored from the caches** (`rerun --set SLOW_HI_A2_FT=0 --label V1` on all 18 days) reproduced the 15 Nov V1
+  run (`data/spoofing_v061a`): identical episodes and tables on every day, so H1–H8 are unchanged (H1 0.0023% of 15.2
+  million control aircraft-hours, H2 0.397% and 0.904%, H3 568 of 618, H4 22 of 67, H5 Beirut, Beirut, Amman, H6 122,
+  H7 0 of 12, H8 568). Lima (`tools/spoof_compare.py --cache-root`): P1 12 of 14 and P2 47 of 56, and all 56 flights
+  have the same placed, counted and placeable values. Five unmatched flights' reasons now read "aircraft not in the
+  archive (or not a cache candidate)", as expected.
+- **One cache was faulty, and was fixed.** 2025-05-10 first scored 783 episodes instead of 431. Its folder held a
+  second, partial set of candidate shards (1,666 traces, all duplicates of the 2,038 real ones), left by a second run
+  of the same day writing into the same folder when the build was restarted. A rerun reads every shard, so those
+  aircraft were scored twice. With the stale shards moved aside, the day reproduces exactly, under V1 and under the
+  default. Guards follow: a rerun will refuse a cache whose shards don't hold exactly the candidates in `meta.json`,
+  and a cache build will no longer share a folder with another run.
+- **Time.** End to end the V1 rescore took 2 h 46 min (18 reruns 9,433 s, held-out score 154 s, Lima 391 s), but the
+  PC was running other heavy jobs throughout, and the faulty day alone took 2,300 s. Reran on its own after the fix,
+  that day took 137 s against 1,038 s for its full run. Wall time on a shared PC is not a cost figure; CPU time per
+  rerun is being added to the summaries, and a clean measurement will follow.
+- **On GitHub.** A variant's held-out score now runs on GitHub Actions instead of the PC
+  (`.github/workflows/spoof-variant.yml`, Run workflow with `set` and `label`). The caches and the H6 baseline's
+  events hold ICAO addresses, so they are in a private release, uploaded with `tools/spoof_cache_release.py` and read
+  with a read-only token; only aggregate scores leave the job. The Lima check stays on the PC.
+- **Raw archives.** 102 of the 103 day archives in `data/raw/trace_box/` are still published by adsb.lol with the
+  same file names and sizes, so they could be downloaded again (the 103rd is an unfinished local download).
 
 **Held-out days:** each of the 12 held-out days and 7–12 Nov 2026 is cached once from the raw archive
 (`data/spoof_cache/`, local). After that, a variant's held-out score is 18 reruns and `tools/spoof_heldout.py` on their

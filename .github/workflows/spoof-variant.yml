@@ -1,0 +1,102 @@
+name: spoof-variant
+# Score a spoofing detector variant on the 12 held-out days (tools/spoof_heldout.py, H1-H6) from the day caches,
+# on GitHub instead of the PC. The caches and the H6 baseline's events are in a PRIVATE release
+# (tools/spoof_cache_release.py, repo metacog-osint/noise-floor-archive), read with the read-only token
+# SPOOF_CACHE_TOKEN. The reruns' outputs hold ICAO addresses, so they never leave the job: only aggregate scores and
+# per-day counts go to the job summary and the report artifact. The Lima check (tools/spoof_compare.py) needs local
+# outside files and stays on the PC. Run it from Actions -> spoof-variant -> Run workflow (each run is Tom's call).
+on:
+  workflow_dispatch:
+    inputs:
+      set:
+        description: "Variant constants, space-separated NAME=VALUE (e.g. SLOW_HI_A2_FT=0); empty = current method"
+        default: ""
+      label:
+        description: "Variant name (added to the summaries' version)"
+        default: "variant"
+      days:
+        description: "Days, space-separated; empty = the 12 held-out days"
+        default: ""
+permissions:
+  contents: read
+concurrency:
+  group: spoof-variant
+  cancel-in-progress: false
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: requirements.txt }
+      - run: pip install -r requirements.txt
+      - name: Fetch caches and baseline (private release)
+        env:
+          GH_TOKEN: ${{ secrets.SPOOF_CACHE_TOKEN }}
+          DAYS: ${{ inputs.days }}
+        run: |
+          if [ -z "$DAYS" ]; then sel=--heldout; else sel="$DAYS"; fi
+          python tools/spoof_cache_release.py fetch $sel --dest "$RUNNER_TEMP/cache" --baseline-dest "$RUNNER_TEMP/base"
+          ls "$RUNNER_TEMP/cache" > days.txt
+      - name: Rerun the variant from the caches
+        env:
+          SET: ${{ inputs.set }}
+          LABEL: ${{ inputs.label }}
+        run: |
+          args=()
+          for kv in $SET; do
+            [[ "$kv" =~ ^[A-Z0-9_]+=[-0-9.eE]+$ ]] || { echo "bad --set value: $kv"; exit 1; }
+            args+=(--set "$kv")
+          done
+          [[ "$LABEL" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "bad label"; exit 1; }
+          # CPU time of the rerun and all its pool workers (RUSAGE_CHILDREN counts waited-for descendants)
+          python - "$RUNNER_TEMP" "$LABEL" "${args[@]}" <<'EOF'
+          import json, os, resource, subprocess, sys
+          tmp, label, sets = sys.argv[1], sys.argv[2], sys.argv[3:]
+          days = open("days.txt").read().split()
+          with open("rerun.jsonl", "w") as out:
+              r = subprocess.run([sys.executable, "tools/spoof_day.py", "rerun", *days, "--cache", f"{tmp}/cache",
+                                  "--out", f"{tmp}/out", "--workers", str(len(os.sched_getaffinity(0))),
+                                  *sets, "--label", label], stdout=out)
+          u = resource.getrusage(resource.RUSAGE_CHILDREN)
+          json.dump({"cpu_seconds": round(u.ru_utime + u.ru_stime, 1), "max_rss_kb": u.ru_maxrss}, open("cpu.json", "w"))
+          sys.exit(r.returncode)
+          EOF
+          cat cpu.json
+      - name: Score (held-out checks)
+        run: |
+          python tools/spoof_heldout.py "$RUNNER_TEMP/out" --days $(cat days.txt) --baseline "$RUNNER_TEMP/base" \
+            > heldout.json
+      - name: Report (aggregates only, no ICAO addresses)
+        env:
+          SET: ${{ inputs.set }}
+          LABEL: ${{ inputs.label }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          per = [json.loads(l) for l in open("rerun.jsonl") if l.startswith("{")]
+          held = json.load(open("heldout.json"))
+          cpu = json.load(open("cpu.json"))["cpu_seconds"]
+          rep = {"set": os.environ["SET"], "label": os.environ["LABEL"], "commit": os.environ["GITHUB_SHA"],
+                 "cpus": os.cpu_count(), "cpu_seconds": round(cpu, 1),
+                 "days": [{k: p[k] for k in ("day", "seconds", "aircraft", "episodes", "aircraft_with_episodes")}
+                          for p in per],
+                 "heldout": held}
+          json.dump(rep, open("report.json", "w"), indent=1)
+          wall = sum(p["seconds"] for p in per)
+          lines = [f"## Spoofing variant `{rep['label']}` ({rep['set'] or 'current method'})", "",
+                   f"{len(per)} days, reruns {wall:.0f} s wall, {cpu:.0f} s CPU on {rep['cpus']} CPUs", "",
+                   "| Check | Result | Pass |", "|---|---|---|"]
+          for k in ("H1", "H2", "H3", "H4", "H5", "H6"):
+              if k in held:
+                  v = {x: y for x, y in held[k].items() if x != "pass"}
+                  lines.append(f"| {k} | `{json.dumps(v)[:180]}` | {held[k].get('pass')} |")
+          open(os.environ["GITHUB_STEP_SUMMARY"], "a").write("\n".join(lines) + "\n")
+          print("\n".join(lines))
+          EOF
+      - uses: actions/upload-artifact@v7    # report.json only: aggregates, no ICAO addresses
+        with:
+          name: spoof-variant-report
+          path: report.json
+          retention-days: 90
