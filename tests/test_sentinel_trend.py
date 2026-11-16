@@ -37,7 +37,7 @@ def test_series_on_synthetic_epochs():
            "references": [{"id": "r", "name": "R", "box": [-10, 10, -150, -140]}], "comparisons": []}
     days = {dt.date(2026, 9, 14): -2.0, dt.date(2026, 9, 15): -1.0, dt.date(2026, 9, 21): 0.0}
 
-    def fake(day, signal="l1"):
+    def fake(day, signal="l1", index="e21"):
         if day not in days:
             return None
         lat = np.array([-35.0] * 5 + [0.0] * 5)
@@ -57,11 +57,17 @@ def test_series_on_synthetic_epochs():
     assert set(wk) == {"2026-09-14", "2026-09-21"}
     assert wk["2026-09-14"]["x"]["median"] == -1.5 and wk["2026-09-14"]["x"]["days"] == 2
     assert wk["2026-09-14"]["x"]["deg1"] == 1.0 and wk["2026-09-21"]["x"]["deg1"] == 0.0
-    assert res["signal"] == "l1"
+    assert res["signal"] == "l1" and res["index"] == "e21"
 
 
 def test_signals_and_stems():
     assert M.stem("far", "l1") == "far" and M.stem("far", "l2c") == "far_l2c"
+    assert M.stem("far", "l1", "e2") == "far_e2" and M.stem("far", "l2c", "e2") == "far_l2c_e2"
+    for sig in M.SIGNALS:
+        lab, cap = M.label_caption(sig, "e21")
+        assert lab.endswith("(E2.1)") and "E2.1" in cap and "{" not in cap.format(year=2026), sig
+        lab, cap = M.label_caption(sig, "e2")
+        assert lab.endswith("(E2)") and cap == M.SIGNALS[sig][4], sig
     assert M.SIGNALS["l1"][:2] == (M.EPOCH_DIR, "d_l1")
     assert M.SIGNALS["l2c"][:2] == (M.BANDS_DIR, "d_l2c") and M.SIGNALS["e5a"][1] == "d_e5a"
     for name, (_, _, label, floor, caption) in M.SIGNALS.items():

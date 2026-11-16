@@ -115,12 +115,17 @@ loaded automatically; read it when you need the background.
     `CDSE_S3_SECRET_KEY`; Sentinel-6A stays in step P (PO.DAAC). `tools/sentinel_trend.py` (box trends and maps from
     a private config) and `tools/sentinel_daily.py` (daily, from `collectors/run_daily.cmd`; private products in
     `private/sentinel/`, nothing uploaded; it also builds the X3 band files and GPS L2C products, `<area>_l2c*`).
-    **Caveat:** the index reads 0.5-1 dB low across about 60-160°E even over empty ocean (probably BeiDou/QZSS
-    overhead; validation section 2.5);
-    the E2.1 correction (`tools/sentinel_e21.py`, `docs/validation/sentinel-gnss-e21.md` section 2) passed all five
-    checks on 4 Nov. **Tom agreed 16 Nov 2026 that E2.1 replaces E2 in the products**; not switched yet (first the two
-    steps in the write-up's section 2.4: the offset as a stated new definition, and the load from a merged file with
-    every BeiDou-3 satellite). SAT-JAM: no contact (Tom, 31 Oct); replicate and improve.
+    **E2.1 in the products (from 16 Nov 2026, Tom's yes):** E2 reads 0.5-1 dB low across about 60-160°E even over
+    empty ocean (BeiDou/QZSS/SBAS overhead); the E2.1 correction (`tools/sentinel_e21.py`,
+    `docs/validation/sentinel-gnss-e21.md`) passed all five checks on 4 Nov. The products use its section-3
+    definition: D″ = D − β·(L − L̄), no offset, fitted per unit-day and signal (L1, L2C, E5a), with the
+    broadcast file's regional load. `sentinel_e21.py product` writes `data/sentinel_gnss/e21p/<day>.parquet` (load
+    and fits; E2 epoch and band files are unchanged), `sentinel_daily.py` builds missing ones in the window (at most
+    14 a run, about 5 min each), and `sentinel_trend.py` reads E2.1 by default; `--index e2` on either writes the
+    uncorrected products as `*_e2*` for comparison. From late May 2026 no IGS merged file or MGEX orbit carries the
+    BeiDou-3 regional satellites C59, C60 or C38-C40; the product code positions them from Space-Track (dated
+    PRN table; C59's slot changed satellite in April 2026) and records their load, but a pre-stated test found no sign
+    they lower the signal, so they stay out (`FILL_LOAD`). SAT-JAM: no contact (Tom, 31 Oct); replicate and improve.
 - **Space weather files (from 15 Nov 2026; Tom decided Noisefloor is the suite's source for PNT and space weather
   data, read from its published files):** COSMIC-2 limb S4 and ground ROTI. Always label the first "limb S4 measured
   along radio-occultation paths, which reads higher than a ground receiver's S4", and never compare it with the ground
