@@ -39,6 +39,8 @@ USUAL_DAYS, USUAL_MIN_DAYS = 30, 7    # a place's usual level: median of its dai
                                       # a targets file (0 on days it wasn't shown), from at least 7 of them
 LEVEL_RATIO, LEVEL_MIN_DIFF = 2.0, 3  # above: at least 2x usual and 3 or more aircraft over it; below: at most half
                                       # and 3 or more under it; otherwise near
+REGION_MIN_OVER = 5      # regions read above only 5 or more spoofed aircraft-hours over usual (Tom, 16 Nov 2026;
+                         # pre-registered test in docs/spoofing-light-plan.md); below keeps LEVEL_MIN_DIFF
 ABOVE_ROWS = 10
 NEAR_KM = 200            # a spoofed-to place is named after the nearest listed place within this
 
@@ -158,15 +160,16 @@ def new_targets(release, places=None, tdays=None):
     return out
 
 
-def level(latest, earlier):
+def level(latest, earlier, min_over=LEVEL_MIN_DIFF):
     """Newest day's count against the median of earlier days -> (usual, "above" | "near" | "below"), or (None, None)
-    with fewer than USUAL_MIN_DAYS earlier days. An observation against the place's own normal, not a warning."""
+    with fewer than USUAL_MIN_DAYS earlier days. Above needs min_over or more over usual. An observation against the
+    place's own normal, not a warning."""
     if len(earlier) < USUAL_MIN_DAYS:
         return None, None
     e = sorted(earlier)
     n = len(e)
     usual = e[n // 2] if n % 2 else (e[n // 2 - 1] + e[n // 2]) / 2
-    if latest >= LEVEL_RATIO * usual and latest - usual >= LEVEL_MIN_DIFF:
+    if latest >= LEVEL_RATIO * usual and latest - usual >= min_over:
         return usual, "above"
     if latest <= usual / LEVEL_RATIO and usual - latest >= LEVEL_MIN_DIFF:
         return usual, "below"
@@ -250,9 +253,10 @@ def share_days(files):
     return out
 
 
-def region_levels(sdays, day):
+def region_levels(sdays, day, min_over=REGION_MIN_OVER):
     """Each region's active aircraft-hours on `day` against its median on up to USUAL_DAYS earlier days with share2
-    (0 on days it had no active hours or too little traffic to be listed), with level()'s rule. Returns
+    (0 on days it had no active hours or too little traffic to be listed), with level()'s rule and min_over
+    (REGION_MIN_OVER) spoofed aircraft-hours over usual to read above. Returns
     (earlier days used, {region: [usual, level]}) for regions with active hours on the day or a usual above 0, or
     (n, {}) with fewer than USUAL_MIN_DAYS earlier days. An observation against the region's own normal, not a warning."""
     earlier = [d for d in sorted(sdays) if d < day][-USUAL_DAYS:]
@@ -262,7 +266,7 @@ def region_levels(sdays, day):
     regs = {r for r, (_, n) in today.items() if n} | {r for d in earlier for r, (_, n) in sdays[d].items() if n}
     out = {}
     for r in sorted(regs):
-        usual, lev = level(today.get(r, (0, 0))[1], [sdays[d].get(r, (0, 0))[1] for d in earlier])
+        usual, lev = level(today.get(r, (0, 0))[1], [sdays[d].get(r, (0, 0))[1] for d in earlier], min_over)
         if usual or today.get(r, (0, 0))[1]:
             out[r] = [usual, lev]
     return len(earlier), out
@@ -334,8 +338,8 @@ def region_rule():
     return ("regions about 300 km across (H3 res 2) with 10 or more aircraft-hours; measure: aircraft-hours in active "
             f"spoofing episodes, counted where the aircraft really were; usual level: median on up to {USUAL_DAYS} "
             f"earlier days with regional shares (0 when none; at least {USUAL_MIN_DAYS} needed); above: "
-            f"{LEVEL_RATIO:g}x usual or more and {LEVEL_MIN_DIFF} or more over it; below: half or less and "
-            f"{LEVEL_MIN_DIFF} or more under it")
+            f"{LEVEL_RATIO:g}x usual or more and {REGION_MIN_OVER} or more over it; below: half or less and "
+            f"{LEVEL_MIN_DIFF} or more under it; all regions together: {LEVEL_MIN_DIFF} or more over or under")
 
 
 def day_series(release):

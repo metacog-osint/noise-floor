@@ -202,7 +202,8 @@ left to the new-places list.
 
 **Regions (16 Nov 2026).** The same reading for the regions where aircraft really were: each H3 res-2 region's
 aircraft-hours in active spoofing episodes (`share2`) against its median on up to 30 earlier days with regional shares
-(0 when it had none), with the same above and below rule (`tools/spoof_site.py region_levels()`). On the map it is a
+(0 when it had none), with the same above and below rule (`tools/spoof_site.py region_levels()`), except that from
+16 Nov 2026 above needs 5 or more spoofed aircraft-hours over usual (the region floor below). On the map it is a
 bold dashed outline, in the new Spoofing view (Measure → Spoofing, `m=spf`), which turns off the GPS-error colours,
 keys the regions, lists where each region's aircraft were shown (`sent2`), pools 7 days on request (`share2_7`) and
 ranks the regions in the table under the map. The board's `region_levels` gives the Today page one sentence, and up to
@@ -229,6 +230,14 @@ before it is run:
   readings it keeps.
 - Decision: the new rule goes live now. If P2 or P3 fails at the 30-day run, the result goes to Tom with the old rule
   as the alternative; nothing is changed back without his call.
+
+First scoring (16 Nov 2026, after the commit above; 9 published days with `share2`, 7-15 Nov, so levels on 14 and 15
+Nov only). Above readings: 16 under the old rule, 7 under the new one (14 Nov 13 → 6; 15 Nov 3 → 1). Control boxes: 0
+and 0 (P1 holds). Spoofing groups: 5 and 5, none dropped (P2 holds). The 9 dropped readings all rose by 3 to 4
+spoofed aircraft-hours, all outside the validation's boxes: central Turkey (twice), the Syrian desert east of Damascus,
+Istanbul, east of Moscow, the Oman coast, the UAE interior and two regions of central India. Persistence, from the one
+pair of days: 1 of 7 dropped readings and 1 of 6 kept ones were above again the next day, so P3 can't be judged yet.
+Below and near readings were the same under both rules on both days, as they must be.
 
 This needs no new processing: it reads the files the daily run already publishes. It answers the analyst's question
 (is spoofing happening, where, and more than usual?) in one line. The detector stays as the engine underneath. Like the
