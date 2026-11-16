@@ -10,6 +10,11 @@ Commands
                -> data/sentinel_gnss/e21/<day>.parquet (needs the day's E1 table, E2 epoch file and broadcast file)
   checks       the eight held-out windows: checks 1-5 for D' with their marks, the same quantities for D, and the
                descriptive results -> data/sentinel_gnss/e21_results.json
+  product DAY...  the products' E2.1 (section 3 of the write-up; not the frozen run): per unit and grid epoch the load
+               L (broadcast regional set plus the BeiDou-3 regional satellites it lacks, from Space-Track), and per
+               signal (l1, l2c, e5a, l1p) the unit-day slope beta and Lbar, the mean load over the fit epochs, for
+               D'' = D - beta * (L - Lbar) -> data/sentinel_gnss/e21p/<day>.parquet (needs the E1 table and E2 epoch
+               file; the X3 band file for the band signals). [--no-fetch] [--force]
 
 Implementation choices for points section 1 leaves open, fixed before any held-out result was seen:
   * Regional satellites: BeiDou records with semi-major axis above 36,000 km and health 0; every QZSS record; every
@@ -268,6 +273,237 @@ def build_day(day):
     return path, regional, betas
 
 
+# ---------------------------------------------------------------------------------------------- products (section 3)
+# The products' E2.1 (docs/validation/sentinel-gnss-e21.md section 3, 16 Nov 2026). Two stated changes from section
+# 1.1, neither touching the frozen code above:
+#   * no offset: D'' = D - beta * (L - Lbar), Lbar the mean load over the fit epochs, so the correction keeps each
+#     unit-day's mean over its baseline epochs (D' = D - beta * L read above zero wherever regional satellites are up);
+#   * the BeiDou-3 regional satellites the broadcast file lacks (from late May 2026 the IGS merged files and the
+#     MGEX orbits carry no C59-C62 or C38-C40 geosynchronous records) come from Space-Track element sets.
+# The fit is made per signal (L1 from the E2 epoch files; L2C, E5a and paired L1 from the X3 band files), each
+# outside the cells its own final E2 pass left out of its baseline. The E2 files are never changed: the product
+# file holds the load and each signal's beta and Lbar, and readers apply D'' = D - beta * (L - Lbar).
+
+BDS3_REGIONAL = {   # PRN: ([(from day, NORAD)], kind, GEO slot longitude). The BeiDou-3 regional satellites the merged
+    # files carried before late May 2026 (the validated load), matched to Space-Track by position (write-up section
+    # 3.2). C59 is the 140 E slot: BEIDOU 3G1 held it to early April 2026, then BEIDOU 3 G4 took it and G1 moved to
+    # 159 E. C60 is BEIDOU 3 G2 at 80 E; C38-C40 are BEIDOU 3 IGSO-1 to -3. G1 at 159 E and G3 at 110.5 E were in no
+    # IGS file in the validated windows, so they stay out.
+    "C59": ([("2025-01-01", 43683), ("2026-04-08", 56564)], "bds_geo", 140.0),
+    "C60": ([("2025-01-01", 45344)], "bds_geo", 80.0),
+    "C38": ([("2025-01-01", 44204)], "bds_igso", None),
+    "C39": ([("2025-01-01", 44337)], "bds_igso", None),
+    "C40": ([("2025-01-01", 44709)], "bds_igso", None)}
+SLOT_TOL_DEG = 2.0
+PRODUCT_DIR = os.path.join(SG.DATA, "e21p")
+PRODUCT_SIGNALS = ("l1", "l2c", "e5a", "l1p")
+ELSET_MAX_AGE_H = 72.0
+
+
+def added_positions(kinds, store, t_unix, max_age_h=ELSET_MAX_AGE_H):
+    """({sat: Earth-fixed positions (N, 3)}, {sat: kind}) for the BeiDou-3 regional satellites missing from the
+    broadcast file's regional set, from Space-Track element sets; NaN where no set lies within max_age_h."""
+    pos, kk = {}, {}
+    day = dt.datetime.fromtimestamp(float(np.median(t_unix)), dt.timezone.utc).date().isoformat()
+    for prn, (by_day, kind, slot) in BDS3_REGIONAL.items():
+        if prn in kinds:
+            continue
+        norad = norad_on(by_day, day)
+        sets = (store.get(str(norad)) or {}).get("sets", [])
+        if not sets:
+            continue
+        xyz, _, _ = SG.spacecraft_ecef(sets, t_unix, max_age_h=max_age_h)
+        if not np.isfinite(xyz).any():
+            continue
+        if slot is not None:
+            lon = np.degrees(np.arctan2(np.nanmedian(xyz[:, 1]), np.nanmedian(xyz[:, 0])))
+            if abs((lon - slot + 180.0) % 360.0 - 180.0) > SLOT_TOL_DEG:
+                print(f"  {day}: {prn} ({norad}) is at {lon:.1f} E, not its {slot:.1f} E slot: left out; check the "
+                      f"table", file=sys.stderr)
+                continue
+        pos[prn + "e"], kk[prn + "e"] = xyz, kind
+    return pos, kk
+
+
+def norad_on(by_day, day):
+    """The NORAD number a dated list gives for an ISO day."""
+    return [n for d0, n in by_day if d0 <= day][-1]
+
+
+def bds3_norads():
+    return sorted({n for by_day, _, _ in BDS3_REGIONAL.values() for _, n in by_day})
+
+
+def fit_mask(D, L, ok):
+    """The rows fit_beta uses."""
+    return np.asarray(ok, bool) & np.isfinite(D) & np.isfinite(L)
+
+
+def product_fit(D, L, ok):
+    """(beta, Lbar, n) for D'' = D - beta * (L - Lbar): fit_beta's slope, Lbar the mean load over its fit rows."""
+    beta, _, n = fit_beta(D, L, ok)
+    m = fit_mask(D, L, ok)
+    return beta, (float(np.mean(L[m])) if m.any() else 0.0), n
+
+
+def corrected(d, load, beta, lbar):
+    """E2.1 as the products use it: D'' = D - beta * (L - Lbar)."""
+    return np.asarray(d, float) - np.asarray(beta, float) * (np.asarray(load, float) - np.asarray(lbar, float))
+
+
+def _signal_rows(rows, name):
+    """The rows sentinel_bands.unit_bands (or, for l1, sentinel_rfi) scores for one signal."""
+    import sentinel_bands as SB
+    sysc, col, partner = SB.SIGNALS[name]
+    sat = rows["sat"].astype(str)
+    v = rows[col].astype(float)
+    m = np.char.startswith(sat, sysc) & np.isfinite(v)
+    if partner:
+        m &= np.isfinite(rows[partner].astype(float))
+    return m, v
+
+
+def product_unit_day(day, unit, rows, ep, band, sets, kep, kinds, sbas, store):
+    import station_cn0 as SC
+    t_rows = rows["t"].astype(float)
+    off = SG.grid_offset(t_rows)
+    n = len(ep["t"])
+    grid = (off + np.arange(n) * SG.STEP).astype(float)
+    if not np.array_equal(ep["t"], grid.astype(np.int32)):
+        raise ValueError(f"{day} {unit}: the E2 epoch grid doesn't match this unit's rows")
+    day_unix = dt.datetime.combine(day, dt.time(), dt.timezone.utc).timestamp()
+    pos, vel, _ = SG.spacecraft_ecef(sets, day_unix + grid - SG.LEAP)
+    up, fwd, right = SG.frames(pos, vel)
+    L_b, Li_b = load(pos, up, fwd, right, regional_positions(kep, sbas, SC.gps_seconds(day.isoformat()) + grid), kinds)
+    add, add_kinds = added_positions(kinds, store, day_unix + grid - SG.LEAP)
+    L_a, Li_a = load(pos, up, fwd, right, add, add_kinds)
+    L, Li = L_b + L_a, Li_b + Li_a
+    gi = np.round((t_rows - off) / SG.STEP).astype(int)
+    keep = (gi >= 0) & (gi < n)
+    r = {k: v[keep] for k, v in rows.items()}
+    tt, gi = t_rows[keep], gi[keep]
+    sat, el = r["sat"].astype(str), r["el"].astype(float)
+    out = {"unit": np.full(n, unit), "t": ep["t"], "load": L.astype(np.float32), "load_incl": Li.astype(np.float32),
+           "load_added": L_a.astype(np.float32)}
+    for name in PRODUCT_SIGNALS:
+        ref = ep["d_l1"] if name == "l1" else (band.get(f"d_{name}") if band is not None else None)
+        beta, lbar, nfit = np.nan, np.nan, 0
+        fit = np.zeros(n, bool)
+        if ref is not None:
+            m, v = _signal_rows(r, name)
+            D = np.full(n, np.nan)
+            hot = set()
+            if m.any():
+                ei, hot = index_with_hot(f"{unit}|{day}|{name}", tt[m], sat[m], el[m], v[m], ep["cell"][gi[m]])
+                if ei is not None and len(ei["t"]):
+                    D[np.round((ei["t"] - off) / SG.STEP).astype(int)] = ei["idx"]
+            ref = np.asarray(ref, float)
+            if not ((np.isfinite(D) == np.isfinite(ref)).all()
+                    and np.allclose(D[np.isfinite(D)], ref[np.isfinite(ref)], atol=1e-5)):
+                raise ValueError(f"{day} {unit} {name}: recomputed D differs from the E2 file")
+            ok = ep["present"] & ~np.isin(ep["cell"], list(hot))
+            beta, lbar, nfit = product_fit(D, L, ok)
+            fit = fit_mask(D, L, ok)
+        out[f"beta_{name}"] = np.full(n, beta, np.float32)
+        out[f"lbar_{name}"] = np.full(n, lbar, np.float32)
+        out[f"nfit_{name}"] = np.full(n, nfit, np.int32)
+        out[f"fit_{name}"] = fit
+    return out
+
+
+def product_day(day, fetch=True):
+    """The day's product file data/sentinel_gnss/e21p/<day>.parquet (load and per-signal fit for every unit)."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    import sentinel_bands as SB
+    p = os.path.join(SG.DAYS_DIR, f"{day}.parquet")
+    e = os.path.join(SR.EPOCH_DIR, f"{day}.parquet")
+    b = os.path.join(SB.BANDS_DIR, f"{day}.parquet")
+    if not (os.path.exists(p) and os.path.exists(e)):
+        raise SystemExit(f"{day}: needs the E1 table and the E2 epoch file")
+    nav = SG.held_nav(day) or SG.fetch_nav(day)
+    with gzip.open(nav, "rt", encoding="ascii", errors="replace") as f:
+        kep, kinds, sbas = regional_records(f.read())
+    store = SG.load_elements()
+    if fetch:
+        try:
+            store = SG.ensure_elements(day, [], extra=bds3_norads())
+        except BaseException as ex:      # Space-Track unreachable: use the held sets, and say so
+            if isinstance(ex, KeyboardInterrupt):
+                raise
+            print(f"  {day}: BeiDou-3 element sets not refreshed: {ex}", file=sys.stderr)
+    T = pq.read_table(p)
+    cols = {k: np.asarray(T.column(k).to_numpy(zero_copy_only=False)) for k in T.column_names}
+    units = cols["unit"].astype(str)
+    E = pq.read_table(e, columns=["unit", "t", "cell", "present", "d_l1"])
+    ec = {k: np.asarray(E.column(k).to_numpy(zero_copy_only=False)) for k in E.column_names}
+    ec["unit"], ec["cell"] = ec["unit"].astype(str), ec["cell"].astype(str)
+    bc = None
+    if os.path.exists(b):
+        B = pq.read_table(b, columns=["unit", "t"] + [f"d_{s}" for s in PRODUCT_SIGNALS if s != "l1"])
+        bc = {k: np.asarray(B.column(k).to_numpy(zero_copy_only=False)) for k in B.column_names}
+        bc["unit"] = bc["unit"].astype(str)
+    elsets = store
+    parts = []
+    for u in sorted(set(units)):
+        em = ec["unit"] == u
+        if not em.any():
+            continue
+        order = np.argsort(ec["t"][em], kind="stable")
+        ep = {k: v[em][order] for k, v in ec.items()}
+        band = None
+        if bc is not None and (bc["unit"] == u).any():
+            bm = bc["unit"] == u
+            bo = np.argsort(bc["t"][bm], kind="stable")
+            band = {k: v[bm][bo] for k, v in bc.items()}
+            if not np.array_equal(band["t"], ep["t"]):
+                raise ValueError(f"{day} {u}: the band file's grid doesn't match the epoch file")
+        rows = {k: v[units == u] for k, v in cols.items() if k != "unit"}
+        sets = (elsets.get(str(SG.UNITS[u][1])) or {}).get("sets", [])
+        parts.append(product_unit_day(day, u, rows, ep, band, sets, kep, kinds, sbas, elsets))
+    out = {k: np.concatenate([q[k] for q in parts]) for k in parts[0]}
+    os.makedirs(PRODUCT_DIR, exist_ok=True)
+    tbl = pa.table({k: (pa.array(v.astype(str)).dictionary_encode() if k == "unit" else pa.array(v))
+                    for k, v in out.items()})
+    path = os.path.join(PRODUCT_DIR, f"{day}.parquet")
+    pq.write_table(tbl, path + ".part", compression="zstd")
+    SG.replace(path + ".part", path)
+    added = sorted(p for p, _ in BDS3_REGIONAL.items() if p not in kinds)
+    betas = {u: round(float(out["beta_l1"][out["unit"] == u][0]), 4) for u in sorted(set(out["unit"]))}
+    return path, {"from_elements": added, "beta_l1": betas}
+
+
+def load_product(day, columns=None):
+    """The day's product file as numpy arrays, or None."""
+    import pyarrow.parquet as pq
+    p = os.path.join(PRODUCT_DIR, f"{day}.parquet")
+    if not os.path.exists(p):
+        return None
+    T = pq.read_table(p, columns=columns)
+    out = {k: np.asarray(T.column(k).to_numpy(zero_copy_only=False)) for k in T.column_names}
+    if "unit" in out:
+        out["unit"] = out["unit"].astype(str)
+    return out
+
+
+def apply_product(day, ep, signal):
+    """ep (unit, t and 'd' arrays from an E2 epoch or band file) with 'd' replaced by D''; None without a product
+    file. Epochs the product file lacks get NaN."""
+    pr = load_product(day, ["unit", "t", "load", f"beta_{signal}", f"lbar_{signal}"])
+    if pr is None:
+        return None
+    key = {(u, int(t)): i for i, (u, t) in enumerate(zip(pr["unit"], pr["t"]))}
+    idx = np.array([key.get((u, int(t)), -1) for u, t in zip(ep["unit"], ep["t"])])
+    have = idx >= 0
+    j = np.where(have, idx, 0)
+    d = np.full(len(idx), np.nan)
+    d[have] = corrected(np.asarray(ep["d"], float)[have], pr["load"][j][have], pr[f"beta_{signal}"][j][have],
+                        pr[f"lbar_{signal}"][j][have])
+    out = dict(ep)
+    out["d"] = d
+    return out
+
+
 # ---------------------------------------------------------------------------------------------- checks
 
 def verdict_le(check, value):
@@ -442,7 +678,19 @@ def main(argv=None):
     p.add_argument("days", nargs="+")
     p.add_argument("--force", action="store_true")
     sub.add_parser("checks")
+    p = sub.add_parser("product")
+    p.add_argument("days", nargs="+")
+    p.add_argument("--force", action="store_true")
+    p.add_argument("--no-fetch", action="store_true", help="use the held BeiDou-3 element sets")
     a = ap.parse_args(argv)
+    if a.cmd == "product":
+        for d in SG.days_arg(a.days):
+            if os.path.exists(os.path.join(PRODUCT_DIR, f"{d}.parquet")) and not a.force:
+                print(f"{d} held")
+                continue
+            path, info = product_day(d, fetch=not a.no_fetch)
+            print(json.dumps({"day": str(d), **info}), flush=True)
+        return 0
     if a.cmd == "day":
         for d in SG.days_arg(a.days):
             out = os.path.join(E21_DIR, f"{d}.parquet")

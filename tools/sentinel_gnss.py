@@ -401,14 +401,14 @@ def spans_needed(held, day, today):
     return out
 
 
-def ensure_elements(day, units, today=None):
-    """Hold Space-Track element sets covering `day` for every unit; returns the store."""
+def ensure_elements(day, units, today=None, extra=()):
+    """Hold Space-Track element sets covering `day` for every unit, and for the NORAD numbers in `extra` (E2.1's
+    BeiDou-3 regional satellites); returns the store."""
     import geo_region as G
     today = today or dt.datetime.now(dt.timezone.utc).date()
     store = load_elements()
     plan = {}
-    for u in units:
-        n = str(UNITS[u][1])
+    for n in [str(UNITS[u][1]) for u in units] + [str(x) for x in extra]:
         for a, b in spans_needed(store.get(n), day, today):
             plan.setdefault((a, b), []).append(n)
     if not plan:
