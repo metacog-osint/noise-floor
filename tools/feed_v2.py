@@ -84,15 +84,20 @@ def tags(points, extra=None):
     return out
 
 
+# Every item covers one whole UTC day and the source gives no time (tic-feed/2, kit 0.5.6): `day` precision means
+# data_as_of is midnight UTC on that date, and consumers show a date, never a clock time.
+DAY_ONLY = {"data_as_of_precision": "day"}
+
+
 def build(board, days, now=None):
     now = now or datetime.now(timezone.utc)
     day = (board.get("freshness") or {}).get("aircraft_day")
     if not day:
         raise ValueError("board has no aircraft day")
-    as_of, published = f"{day}T23:59:59Z", utc(now)
+    as_of, published = f"{day}T23:59:59Z", utc(now)   # as_of: the feed header only; items are date-only (DAY_ONLY)
     cov = coverage(days, day)
     src = [{**ADSBLOL, "accessed_at": published}]
-    base = {**COMMON, "data_as_of": as_of, "published_at": published, "sources": src, "status_class": "assessed"}
+    base = {**COMMON, "data_as_of": f"{day}T00:00:00Z", **DAY_ONLY, "published_at": published, "sources": src, "status_class": "assessed"}
     if cov is not None:
         base["coverage_fraction"] = cov
     feats = []
@@ -176,7 +181,7 @@ def build(board, days, now=None):
         far = t.get("km_from_aircraft")
         add(geom, {
             "id": f"noisefloor-spoof-new-{sp['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
-            "product_category": "current", "precision_class": "area", "data_as_of": f"{sp['day']}T23:59:59Z",
+            "product_category": "current", "precision_class": "area", "data_as_of": f"{sp['day']}T00:00:00Z",
             "title": f"Aircraft shown at a new false position near {at}",
             "summary": (f"{t['aircraft']} aircraft over or near {over} had receivers showing them near {at} on "
                         f"{datetime.strptime(sp['day'], '%Y-%m-%d').strftime('%d %b %Y').lstrip('0')}"
@@ -199,7 +204,7 @@ def build(board, days, now=None):
         usual = f"{t['usual']:g}"
         add(geom, {
             "id": f"noisefloor-spoof-above-{lv['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
-            "product_category": "current", "precision_class": "area", "data_as_of": f"{lv['day']}T23:59:59Z",
+            "product_category": "current", "precision_class": "area", "data_as_of": f"{lv['day']}T00:00:00Z",
             "title": f"More aircraft than usual shown at the false position near {at}",
             "summary": (f"{t['latest']} aircraft, mostly over or near {over}, had receivers showing them near {at} on "
                         f"{datetime.strptime(lv['day'], '%Y-%m-%d').strftime('%d %b %Y').lstrip('0')}, against a usual "
@@ -217,7 +222,7 @@ def build(board, days, now=None):
         share = 100 * r["active_ah"] / r["aircraft_hours"] if r.get("aircraft_hours") else None
         add(geom, {
             "id": f"noisefloor-spoof-region-above-{rl['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
-            "product_category": "current", "precision_class": "area", "data_as_of": f"{rl['day']}T23:59:59Z",
+            "product_category": "current", "precision_class": "area", "data_as_of": f"{rl['day']}T00:00:00Z",
             "title": f"More GPS spoofing than usual near {at}",
             "summary": (f"Aircraft in the region about 300 km across near {at} spent {r['active_ah']} aircraft-hours in "
                         f"active spoofing episodes on "
