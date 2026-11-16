@@ -160,3 +160,52 @@ Check 4 by box: central Pacific 0.0% (D 0.08%), southern Africa interior 0.0% (D
 - By section 1.5, E2.1 may replace E2 in products once Tom agrees, since every check held.
 - Before it does: remove the offset (2.3) as a stated new definition, and take the load from a merged file that carries
   every BeiDou-3 satellite. Neither changes this result.
+
+## 3. E2.1 in the products (16 Nov 2026)
+
+Tom agreed on 16 Nov 2026 that E2.1 replaces E2 in the private Sentinel products (`private/sentinel/`, the GPS L1 and
+L2C area products). Sections 1 and 2 are unchanged; this section states the product definition, written before any
+product-day result was seen. Code: `tools/sentinel_e21.py` (`product`; the frozen `day` and `checks` are untouched).
+
+### 3.1 Two stated changes from section 1.1
+
+- **No offset.** D″ = D − β·(L − L̄), where L̄ is the mean load over the unit-day's fit epochs. β is the frozen fit's
+  slope. Because the fit has an intercept, D″ keeps D's mean over those epochs, so a unit-day's baseline still sits
+  at zero and D″ no longer reads above zero wherever regional satellites are up (section 2.3).
+- **The load carries every BeiDou-3 regional satellite.** No merged file does from late May 2026:
+  - on 27 Oct 2026, the four merged broadcast files at BKG (BRDC00IGS_R, BRDC00WRD_S, BRDM00DLR_S, and DLR's RINEX 4
+    file BRD400DLR_S, which also keeps BeiDou-3's CNAV messages) and the three multi-GNSS orbit centres at CDDIS
+    (WUM, GFZ, CODE) carried no C59, C60 or C40, and C38 and C39 carried medium-orbit elements (radius 27,900 km);
+  - on 10 Apr 2026 all four broadcast files carried C59, C60 and C38–C40 as geosynchronous satellites (the orbit
+    centres were not checked for that day).
+  - So the load keeps the broadcast file's regional set (section 1.1, unchanged) and adds each of the five BeiDou-3
+    regional satellites the validated load counted (C59, C60, C38, C39, C40) when the file lacks it, positioned from
+    Space-Track element sets (nearest set within 72 h, the same propagation as the Sentinel orbits). They count
+    whatever their health, as SBAS and QZSS do.
+  - **The match** (broadcast against Space-Track positions over a day): C60 = BEIDOU 3 G2 (2.2–3.1 km median), C38–C40
+    = BEIDOU 3 IGSO-1 to -3 (0.9–9.1 km), on 29 Oct 2025, 4 Mar and 15 Apr 2026. C59 is the 140°E slot: BEIDOU 3G1
+    held it to early April 2026 (0.0° apart on 29 Oct 2025 and 4 Mar 2026), then BEIDOU 3 G4 took it (2.4 km on
+    15 Apr) and G1 moved to 159°E. The table is dated, and a geostationary satellite more than 2° from its slot is
+    left out and logged. BEIDOU 3 G1 at 159°E and G3 at 110.5°E were in no IGS file in the validated windows and stay
+    out.
+  - **Why they probably still transmit:** the uncorrected dip did not shrink when they left the files. Inland Australia
+    read −0.85 to −1.20 dB in the five windows to April and −0.89 to −1.17 dB in the three from May, while the counted
+    load fell by about a fifth (section 2.3).
+- **Per signal.** The products' GPS L2C files use the same correction, fitted on that signal's own index per unit-day
+  (outside the cells its own final E2 pass left out). Galileo E5a and paired L1 are fitted too. This was validated on
+  GPS L1 only.
+- The E2 epoch and band files are not changed. The product file (`data/sentinel_gnss/e21p/<day>.parquet`) holds the
+  load and each signal's β and L̄; readers apply D″. `--index e2` keeps the uncorrected products, named `*_e2*`.
+
+### 3.2 Pre-stated test of the filled load
+
+On the product days (the 8 weeks of held days before the switch), within place (90–130°E, 45–10°S): the Pearson r
+between the added satellites' load and D″ computed with the broadcast-only load. If the added satellites still
+lower the signal, r is negative.
+
+- r ≤ −0.05: the filled load stays.
+- r > −0.02: no sign they transmit; the products use the broadcast-only load, and this section says so.
+- Between: the filled load stays, reported as weak.
+
+Reported beside it: the quiet-band flatness (section 1.3 check 1's quantity) for D, D″ with the broadcast-only load,
+and D″ with the filled load.
