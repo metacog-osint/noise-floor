@@ -58,7 +58,10 @@ loaded automatically; read it when you need the background.
 - **GEO globe (planned 27 Oct 2026, Tom approved every idea):** read `docs/geo-globe-plan.md` first (Space-Track data
   and credentials, the region and membership events, the 3D viewer, callouts C1–C8 to validate on history, footprints
   and their licence checks, build steps G1–G5, all built). `tools/geo_region.py` (Space-Track gp daily in `daily.yml`;
-  gp_history held once in `data/geo/region/history/`, never re-fetched; `replay` rebuilds the day files offline) writes
+  gp_history held once in `data/geo/region/history/`, never re-fetched; `replay` rebuilds the day files offline;
+  from 16 Nov 2026 its gp query skips when Orbit, on the same Space-Track account, queried under an hour ago (Orbit's
+  public snapshot, `maneuvers.read_at`), when that snapshot can't be read, or from :38 to :05 around 00, 06, 12 and
+  18 UTC, Orbit's start times: `orbit_busy`, Tom's yes 15 Nov; a skipped day is left to the next run) writes
   `<day>.geo-region.json` and `geo-elements-YYYY-MM.parquet` to the pnt-data releases; the /geo page's "Arrivals and
   departures" reads them through `geo.py build`. The globe at the top of /geo is `site_src/globe.js` (data from
   `tools/geo_globe.py` at deploy into `site/data/geo/`, gitignored). Callouts are pre-registered and scored
