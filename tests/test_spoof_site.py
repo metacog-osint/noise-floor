@@ -81,6 +81,42 @@ def test_track_and_compact():
     assert "icao" not in json.dumps([rows_c, un])
 
 
+def test_place_levels():
+    """Each followed place against its own usual level (median of earlier days, 0 when not shown), and all places
+    together; a place not used on any earlier day is "new", left to new_targets()."""
+    assert SP.level(12, [5] * 8) == (5, "above")
+    assert SP.level(7, [5] * 8) == (5, "near")                     # under 2x
+    assert SP.level(4, [1, 1, 1, 1, 1, 1, 1, 2]) == (1, "above")    # 4x and 3 over
+    assert SP.level(3, [1, 1, 1, 1, 1, 1, 1, 2]) == (1, "near")     # 3x but only 2 over
+    assert SP.level(1, [6] * 8) == (6, "below")
+    assert SP.level(9, [5] * 6) == (None, None)                     # fewer than 7 earlier days
+    ds = days(9)
+    td = {d: tfile(d, [cluster(*DUBAI_SEA, 5, day=d)] + ([cluster(*LIMA, 2, day=d)] if i in (2, 5) else []))
+          for i, d in enumerate(ds[:-1])}
+    td[ds[-1]] = tfile(ds[-1], [cluster(*DUBAI_SEA, 12), cluster(*LIMA, 6), cluster(30.0, 30.0, 9)])
+    t = SP.track(td, Places())
+    rows = {r["near"] or "other": r for r in t["rows"]}
+    assert rows["Dubai"]["usual"] == 5 and rows["Dubai"]["level"] == "above"
+    assert rows["Lima"]["usual"] == 0 and rows["Lima"]["level"] == "above"    # used on 2 earlier days: not new
+    assert rows["other"]["level"] == "new"
+    assert [r["near"] for r in t["above"]] == ["Dubai", "Lima"] and t["above_count"] == 2
+    assert t["above"][0]["regions"][0][0] == h3.cell_to_parent(HUNGARY, 2)
+    assert t["total"]["latest"] == 27 and t["total"]["usual"] == 5 and t["total"]["level"] == "above"
+    assert t["earlier_days"] == 8 and "median" in t["level_rule"]
+    # the feed item: placed where the newest day's aircraft really were, against the usual level
+    import feed_v2
+    lv = {"day": ds[-1], "earlier_days": 8, "rule": t["level_rule"], "total": t["total"], "above_count": 2,
+          "above": [{"lat": r["lat"], "lon": r["lon"], "near": r["near"], "latest": r["latest"], "usual": r["usual"],
+                     "regions": [{"region": g, "episodes": n, "near": "Budapest"} for g, n in r["regions"]]} for r in t["above"]]}
+    b = {"freshness": {"aircraft_day": ds[-1]}, "spoofing": {"day": ds[-1], "active": 5, "place_levels": lv},
+         "summary": "", "brief": ""}
+    f = feed_v2.build(b, [])
+    items = [x["properties"] for x in f["features"] if x["properties"]["id"].startswith("noisefloor-spoof-above-")]
+    assert len(items) == 2 and not feed_v2.check(f), feed_v2.check(f)
+    assert items[0]["tier"] == "anomaly" and "near Dubai" in items[0]["title"] and "usual 5 a day" in items[0]["summary"]
+    assert items[0]["measure"] == {"name": "aircraft_shown_at_false_position", "value": 12, "expected": 5}
+
+
 def test_regions_and_day_series():
     reg, groups = SP.regions()
     assert "east_med" in reg and "Middle East" in groups

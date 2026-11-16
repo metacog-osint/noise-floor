@@ -25,6 +25,7 @@ from tic_doctrine import CONTRACT, contract, geo, vocab  # noqa: E402
 SITE_URL = "https://noisefloor.theintelligence.company"
 METHOD = "noisefloor-feed-1.0"
 NEW_SPOOF_ITEMS = 5                                   # new spoofed-to places per day, largest first
+ABOVE_SPOOF_ITEMS = 5                                 # spoofed-to places above their usual level, biggest rise first
 NCF = ["provide_pnt", "transport_by_air"]           # doctrine/ncf_map.json, product gnss-aircraft
 ADSBLOL = {"id": "adsblol-archive", "publisher": "adsb.lol", "url": "https://github.com/adsblol/globe_history_2026",
            "licence": "ODbL 1.0", "grade": "B2", "independence_group": "adsb-feeders", "source_type": "dataset",
@@ -184,6 +185,28 @@ def build(board, days, now=None):
             "measure": {"name": "aircraft_shown_at_new_false_position", "value": t["aircraft"], "expected": 0},
             "baseline_ref": {"id": "noisefloor-spoof-targets", "window": f"{sp['history_days']} earlier days with a "
                              "targets file (up to 30)", "type": "rolling", "version": "1", "rule": sp.get("rule", "")},
+            "requirement_ids": ["NF-EEI-3"], **tags(pts)})
+
+    lv = (board.get("spoofing") or {}).get("place_levels") or {}
+    for i, t in enumerate((lv.get("above") or [])[:ABOVE_SPOOF_ITEMS]):
+        regs = [r for r in t.get("regions") or [] if r.get("region")]
+        if not regs:                    # placed where the aircraft really were; none known, no item
+            continue
+        geom, pts = h3_polygon(regs[0]["region"])
+        over = ", ".join(dict.fromkeys(r["near"] for r in regs if r.get("near"))) or "unnamed areas"
+        at = t.get("near") or f"{abs(t['lat']):.1f}°{'N' if t['lat'] >= 0 else 'S'}, {abs(t['lon']):.1f}°{'E' if t['lon'] >= 0 else 'W'}"
+        usual = f"{t['usual']:g}"
+        add(geom, {
+            "id": f"noisefloor-spoof-above-{lv['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
+            "product_category": "current", "precision_class": "area", "data_as_of": f"{lv['day']}T23:59:59Z",
+            "title": f"More aircraft than usual shown at the false position near {at}",
+            "summary": (f"{t['latest']} aircraft, mostly over or near {over}, had receivers showing them near {at} on "
+                        f"{datetime.strptime(lv['day'], '%Y-%m-%d').strftime('%d %b %Y').lstrip('0')}, against a usual "
+                        f"{usual} a day (median of the {lv['earlier_days']} earlier days with a spoofing targets file). "
+                        "The false position is where receivers were told they were, not a transmitter site."),
+            "measure": {"name": "aircraft_shown_at_false_position", "value": t["latest"], "expected": t["usual"]},
+            "baseline_ref": {"id": "noisefloor-spoof-place-level", "window": f"{lv['earlier_days']} earlier days with a "
+                             "targets file (up to 30)", "type": "rolling", "version": "1", "rule": lv.get("rule", "")},
             "requirement_ids": ["NF-EEI-3"], **tags(pts)})
 
     return {

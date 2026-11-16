@@ -269,6 +269,7 @@ def spoofing(release, places):
             "spoofed_to": (last.get("spoofed_to_top") or [])[:5],
             "series": [{"day": s["day"], "active": s.get("active")} for s in days],
             "new_places": _new_places(release, places),
+            "place_levels": _place_levels(release, places),
             "note": "Where receivers were, not where a transmitter is. Offset tracks with no jump are missed."}
 
 
@@ -278,6 +279,29 @@ def _new_places(release, places):
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import spoof_site
         return spoof_site.new_targets(release, places)
+    except Exception:                    # a nicety on the card: never stop the spoofing section
+        return None
+
+
+def _place_levels(release, places):
+    """Spoofed-to places above their own usual level on the newest targets day, and all places together
+    (tools/spoof_site.py track()); None without files."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import spoof_site
+        import h3
+        t = spoof_site.track(spoof_site.target_days(release), places)
+        if not t.get("to"):
+            return None
+        above = []
+        for r in t["above"]:
+            regs = []
+            for reg, n in r.get("regions") or []:
+                la, lo = h3.cell_to_latlng(reg)
+                regs.append({"region": reg, "episodes": n, "near": places.near(la, lo) if places else None})
+            above.append({k: r[k] for k in ("lat", "lon", "near", "latest", "usual", "first", "days")} | {"regions": regs})
+        return {"day": t["to"], "earlier_days": t["earlier_days"], "above": above, "above_count": t["above_count"],
+                "total": t["total"], "rule": t["level_rule"]}
     except Exception:                    # a nicety on the card: never stop the spoofing section
         return None
 

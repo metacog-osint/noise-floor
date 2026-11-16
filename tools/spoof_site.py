@@ -30,6 +30,11 @@ NEW_LOOKBACK = 30        # ... and no cluster within TRACK_KM on any earlier day
 NEW_MIN_HISTORY = 7      # ... of which there must be at least this many
 TABLE_MIN_AIRCRAFT_DAYS, TABLE_MIN_DAYS, TABLE_ROWS = 5, 2, 30
 SERIES_DAYS = 30
+USUAL_DAYS, USUAL_MIN_DAYS = 30, 7    # a place's usual level: median of its daily aircraft on up to 30 earlier days with
+                                      # a targets file (0 on days it wasn't shown), from at least 7 of them
+LEVEL_RATIO, LEVEL_MIN_DIFF = 2.0, 3  # above: at least 2x usual and 3 or more aircraft over it; below: at most half
+                                      # and 3 or more under it; otherwise near
+ABOVE_ROWS = 10
 NEAR_KM = 200            # a spoofed-to place is named after the nearest listed place within this
 
 
@@ -148,6 +153,27 @@ def new_targets(release, places=None, tdays=None):
     return out
 
 
+def level(latest, earlier):
+    """Newest day's count against the median of earlier days -> (usual, "above" | "near" | "below"), or (None, None)
+    with fewer than USUAL_MIN_DAYS earlier days. An observation against the place's own normal, not a warning."""
+    if len(earlier) < USUAL_MIN_DAYS:
+        return None, None
+    e = sorted(earlier)
+    n = len(e)
+    usual = e[n // 2] if n % 2 else (e[n // 2 - 1] + e[n // 2]) / 2
+    if latest >= LEVEL_RATIO * usual and latest - usual >= LEVEL_MIN_DIFF:
+        return usual, "above"
+    if latest <= usual / LEVEL_RATIO and usual - latest >= LEVEL_MIN_DIFF:
+        return usual, "below"
+    return usual, "near"
+
+
+def level_rule():
+    return (f"usual level: median aircraft a day on up to {USUAL_DAYS} earlier days with a targets file (0 when not "
+            f"shown; at least {USUAL_MIN_DAYS} needed); above: {LEVEL_RATIO:g}x usual or more and {LEVEL_MIN_DIFF} or "
+            f"more aircraft over it; below: half or less and {LEVEL_MIN_DIFF} or more under it")
+
+
 def track(tdays, places=None):
     """Follow spoofed-to places across days: each day's clusters, largest first, join the followed place whose centre
     is within TRACK_KM (the place keeps its first centre), else start a new one."""
@@ -164,8 +190,12 @@ def track(tdays, places=None):
             for cell, n, _ in c.get("victim_cells") or []:
                 best["victims"][h3.cell_to_parent(cell, 2)] += n
     recent = days[-SERIES_DAYS:]
-    rows = []
+    earlier = days[-1 - USUAL_DAYS:-1]
+    rows, above = [], []
     for t in tracked:
+        t["usual"], t["level"] = level(t["by_day"].get(days[-1], 0), [t["by_day"].get(d, 0) for d in earlier])
+        if t["level"] == "above" and not any(t["by_day"].get(d) for d in earlier):
+            t["level"] = "new"              # not used on any earlier day: new_targets() reports it, not this list
         seen = sorted(t["by_day"])
         total = sum(t["by_day"].values())
         if total < TABLE_MIN_AIRCRAFT_DAYS and len(seen) < TABLE_MIN_DAYS:
@@ -174,13 +204,28 @@ def track(tdays, places=None):
         for r, n in t["victims"].most_common(3):
             la, lo = h3.cell_to_latlng(r)
             vic.append(_near(places, la, lo, 350) or f"{la:.1f}, {lo:.1f}")
-        rows.append({"lat": t["lat"], "lon": t["lon"], "near": _near(places, t["lat"], t["lon"], NEAR_KM),
-                     "first": seen[0], "last": seen[-1], "days": len(seen), "aircraft_days": total,
-                     "latest": t["by_day"].get(days[-1], 0), "series": [t["by_day"].get(d, 0) for d in recent],
-                     "victims": list(dict.fromkeys(vic))})
+        row = {"lat": t["lat"], "lon": t["lon"], "near": _near(places, t["lat"], t["lon"], NEAR_KM),
+               "first": seen[0], "last": seen[-1], "days": len(seen), "aircraft_days": total,
+               "latest": t["by_day"].get(days[-1], 0), "series": [t["by_day"].get(d, 0) for d in recent],
+               "victims": list(dict.fromkeys(vic)), "usual": t["usual"], "level": t["level"]}
+        rows.append(row)
+        if t["level"] == "above":
+            today = Counter()               # where the newest day's aircraft at this place really were (res-2 regions)
+            for c in tdays[days[-1]]["clusters"]:
+                if km(c["lat"], c["lon"], t["lat"], t["lon"]) <= TRACK_KM:
+                    for cell, n, _ in c.get("victim_cells") or []:
+                        today[h3.cell_to_parent(cell, 2)] += n
+            above.append(dict(row, regions=[[r, n] for r, n in today.most_common(3)]))
     rows.sort(key=lambda r: (-r["aircraft_days"], r["first"]))
+    above.sort(key=lambda r: (-(r["latest"] - r["usual"]), r["first"]))
+    totals = [sum(c["aircraft"] for c in tdays[d]["clusters"]) for d in days]
+    t_usual, t_level = level(totals[-1], totals[-1 - USUAL_DAYS:-1]) if totals else (None, None)
     return {"from": days[0] if days else None, "to": days[-1] if days else None, "series_days": recent,
             "rows": rows[:TABLE_ROWS], "places": len(rows),
+            "above": above[:ABOVE_ROWS], "above_count": len(above), "earlier_days": len(earlier),
+            "total": {"series": totals[-SERIES_DAYS:], "latest": totals[-1] if totals else None, "usual": t_usual,
+                      "level": t_level},
+            "level_rule": level_rule(),
             "rule": f"clusters within {TRACK_KM:g} km of a place's first centre on any day count as the same place; "
                     f"listed with {TABLE_MIN_AIRCRAFT_DAYS} or more aircraft-days or seen on {TABLE_MIN_DAYS} or more days"}
 

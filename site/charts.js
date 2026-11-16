@@ -383,7 +383,8 @@
   function spoofSection() {
     var total = document.getElementById("spoof-total"); if (!total) return;
     var grid = document.getElementById("spoof-grid"), table = document.getElementById("spoof-table");
-    var places = document.getElementById("spoof-places"), note = document.getElementById("spoof-places-note"), nw = document.getElementById("spoof-new");
+    var places = document.getElementById("spoof-places"), note = document.getElementById("spoof-places-note"), nw = document.getElementById("spoof-new"),
+      lv = document.getElementById("spoof-levels");
     [grid, table, places].forEach(function (x) { x.textContent = ""; });
     total.querySelectorAll("svg, p").forEach(function (x) { x.remove(); });
     if (!SPOOF || !SPOOF.days || !SPOOF.days.length) {
@@ -437,9 +438,22 @@
         return (x.near ? "near " + x.near : coord(x.lat, x.lon)) + ", " + x.aircraft + " aircraft" +
           (x.km_from_aircraft ? ", about " + x.km_from_aircraft.toLocaleString() + " km from where most of them were" : "");
       }).join("; ") + (N.new.length > 5 ? "; and " + (N.new.length - 5) + " more" : "") + ".";
+    var TT = T.total || {}, AB = T.above || [];
+    function lvText(level, usual) {
+      return level ? (level === "above" ? "above" : level === "below" ? "below" : "near") + " its usual " + usual : "not judged yet";
+    }
+    if (lv) {
+      if (!T.to) lv.textContent = "";
+      else if (!TT.level) lv.textContent = "Usual levels: not judged yet (" + (T.earlier_days || 0) + " earlier days with these files; 7 needed).";
+      else lv.textContent = "On " + dayLabel(T.to, true) + ", " + TT.latest + " aircraft were shown at spoofed-to places, " +
+        (TT.level === "near" ? "near" : TT.level) + " the usual " + TT.usual + " a day. " +
+        (AB.length ? (T.above_count === 1 ? "One place was" : T.above_count + " places were") + " above their own usual level: " +
+          AB.slice(0, 5).map(function (x) { return (x.near ? "near " + x.near : coord(x.lat, x.lon)) + " (" + x.latest + " aircraft, usual " + x.usual + ")"; }).join("; ") + "."
+          : "No place was above its own usual level.");
+    }
     if (!rows.length) { note.textContent = "No spoofed-to places in this build yet."; return; }
     var th2 = document.createElement("thead"), h2 = document.createElement("tr");
-    ["Place shown", "First seen", "Last seen", "Days seen", "Aircraft-days", "On " + dayLabel(T.to), "Last " + (T.series_days || []).length + " days", "Aircraft really were", ""].forEach(function (t) {
+    ["Place shown", "First seen", "Last seen", "Days seen", "Aircraft-days", "On " + dayLabel(T.to), "Against usual", "Last " + (T.series_days || []).length + " days", "Aircraft really were", ""].forEach(function (t) {
       var th = document.createElement("th"); th.textContent = t; h2.appendChild(th);
     });
     th2.appendChild(h2); places.appendChild(th2);
@@ -450,6 +464,7 @@
       [dayLabel(r.first), dayLabel(r.last), r.days, r.aircraft_days, r.latest].forEach(function (v, i) {
         var td = document.createElement("td"); td.textContent = String(v); if (i >= 2) td.className = "num"; tr.appendChild(td);
       });
+      var tdu = document.createElement("td"); tdu.textContent = lvText(r.level, r.usual); tr.appendChild(tdu);
       var tds = document.createElement("td"); tds.appendChild(spark(r.series || [], cssVar("--series-1"))); tr.appendChild(tds);
       var tdv = document.createElement("td"); tdv.textContent = (r.victims || []).join("; ") || "not located"; tr.appendChild(tdv);
       var tdl = document.createElement("td"), a = document.createElement("a");
@@ -458,7 +473,7 @@
     });
     places.appendChild(tb2);
     note.textContent = "The " + rows.length + " most-used of " + T.places + " places followed from " + dayLabel(T.from, true) + " to " + dayLabel(T.to, true) +
-      " (" + T.rule + "). Data: /data/spoof/history.json (ODbL 1.0, derived from adsb.lol).";
+      " (" + T.rule + "; " + (T.level_rule || "") + "). Data: /data/spoof/history.json (ODbL 1.0, derived from adsb.lol).";
   }
 
   function drawAll() {
