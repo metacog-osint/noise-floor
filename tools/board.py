@@ -29,6 +29,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UA = {"User-Agent": "noise-floor board (github.com/metacog-osint/noise-floor)"}
 JAM_MIN_AIRCRAFT, JAM_SCORE, REGION_HEXES = 5, 10.0, 3        # the map's colouring rule and the events level check
 LOOKBACK = 60                                                 # days of day maps read for the changes section
+FAR_KM = 1000                                                 # a new spoofed-to place this far from its aircraft is named in the summary
 LOSS_BOXES = {"Suwałki–Ełk": (53.5, 54.35, 21.6, 23.0)}       # added to the trend's named areas (position-loss write-up)
 EASA_URL = "https://www.easa.europa.eu/en/domains/air-operations/global-navigation-satellite-system-outages-and-alterations"
 ESA_URL = "https://swe.ssa.esa.int/assets/ism/ism_nowcast/{}_nowcast_grid.xml"
@@ -267,7 +268,42 @@ def spoofing(release, places):
             "episodes": last.get("episodes"), "aircraft": last.get("aircraft_with_episodes"), "victims": vic,
             "spoofed_to": (last.get("spoofed_to_top") or [])[:5],
             "series": [{"day": s["day"], "active": s.get("active")} for s in days],
+            "new_places": _new_places(release, places),
+            "place_levels": _place_levels(release, places),
             "note": "Where receivers were, not where a transmitter is. Offset tracks with no jump are missed."}
+
+
+def _new_places(release, places):
+    """Spoofed-to places new on the newest targets day (tools/spoof_site.py new_targets()); None without files."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import spoof_site
+        return spoof_site.new_targets(release, places)
+    except Exception:                    # a nicety on the card: never stop the spoofing section
+        return None
+
+
+def _place_levels(release, places):
+    """Spoofed-to places above their own usual level on the newest targets day, and all places together
+    (tools/spoof_site.py track()); None without files."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import spoof_site
+        import h3
+        t = spoof_site.track(spoof_site.target_days(release), places)
+        if not t.get("to"):
+            return None
+        above = []
+        for r in t["above"]:
+            regs = []
+            for reg, n in r.get("regions") or []:
+                la, lo = h3.cell_to_latlng(reg)
+                regs.append({"region": reg, "episodes": n, "near": places.near(la, lo) if places else None})
+            above.append({k: r[k] for k in ("lat", "lon", "near", "latest", "usual", "first", "days")} | {"regions": regs})
+        return {"day": t["to"], "earlier_days": t["earlier_days"], "above": above, "above_count": t["above_count"],
+                "total": t["total"], "rule": t["level_rule"]}
+    except Exception:                    # a nicety on the card: never stop the spoofing section
+        return None
 
 
 def cygnss(release, places):
@@ -442,6 +478,10 @@ def summary_line(b):
     sp = b.get("spoofing")
     if sp and sp.get("active") is not None:
         parts.append(f"{sp['active']} active spoofing episodes ({_dayname(sp['day'])})")
+        far = [x for x in ((sp.get("new_places") or {}).get("new") or []) if (x.get("km_from_aircraft") or 0) >= FAR_KM]
+        if far:
+            parts.append(f"aircraft shown at a new far-off false position near {far[0]['near'] or 'an unnamed place'}"
+                         + (f" and {len(far) - 1} more" if len(far) > 1 else ""))
     sc = b.get("scintillation")
     if sc and sc.get("valid_utc"):
         try:

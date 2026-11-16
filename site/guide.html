@@ -9,7 +9,7 @@
 <meta property="og:description" content="What Noisefloor shows, in everyday words: satellite navigation, interference, how aircraft and ships reveal it, what each measure means and what the site can&#x27;t tell you.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=15ec2c3445">
+<link rel="stylesheet" href="/style.css?v=5265e6e3b4">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=4eba94d633"></script>
 <link rel="stylesheet" href="/tic-nav.css?v=37a3f5fa00">
@@ -68,6 +68,10 @@
 
 <h2 id="spoofing">How spoofing shows</h2>
 <p>A spoofed aircraft reports positions that can't be flown: it jumps tens of kilometres in a second, circles where it isn't, or sits still at cruising height. The map's spoofing layer shows where those aircraft really were, worked out from their real track, and marks the places their receivers were told they were.</p>
+<p><strong>Where they were, and where they were shown.</strong> These are two different places, often far apart. In November 2026, airliners over Hungary and Slovakia were shown in Lima, Peru, about 11,500 km away. On the map, a cross marks each place receivers were told they were; the bigger the cross, the more aircraft were shown there. A dashed line joins it to where most of those aircraft really were. The cross is not where the transmitter is: a spoofer can tell a receiver it is anywhere.</p>
+<p><strong>Spoofed share.</strong> A second map layer shades regions, each about 300 km across, by the share of the aircraft flying there that were being spoofed: each aircraft counts once for each hour it spends in a region. In quiet regions far from any conflict it stays near zero (about two hours in every 100,000); over the Middle East it was about 4 hours in every 1,000, and over the Baltic and western Russia about 9 (on the validation test days). This is separate from the jamming map, because a spoofed receiver often still reports good accuracy.</p>
+<p><strong>Speeds with nowhere to put them.</strong> Sometimes an aircraft reports a ground speed it can't be flying, such as 110 knots at 35,000 feet, while ground stations that time its signals show it moving normally, but none of its false positions made it into the archive. Those aircraft were spoofed, but there is no false place to draw. The map lists them in its note, grouped by the speed they reported.</p>
+<p><strong>New places.</strong> The home page and Trends say when receivers are first shown at a place where nothing was shown in the weeks before. In the Gulf the false points move often, so a new place there usually means a known point has moved. A new place thousands of kilometres from its aircraft is rarer and worth a look.</p>
 
 <h2 id="ships">Ships</h2>
 <p>Ships broadcast their position too (AIS). Finland's shore stations share what they hear openly. The Sea page shows vessels of interest in those waters: ships on official sanctions lists, military and law-enforcement ships, and ships under some state flags. It flags reports that fail simple spoofing tests, such as a ship placed far inland. A listing is a government designation, quoted as published; it is not a finding by this site.</p>

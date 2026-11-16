@@ -429,6 +429,7 @@ details.table-view .tw { max-height: 22rem; overflow: auto; }
 @media (max-width: 34rem) { .geo-man td:nth-child(2) { min-width: 6.5rem; } .geo-man td:last-child { min-width: 15rem; } }
 .lyr-key { display: inline-block; width: .8rem; height: .65rem; border-radius: 2px; vertical-align: -1px; margin-left: .2rem; }
 .lyr-key-spoof { border: 1.5px solid var(--map-spoof); background: color-mix(in srgb, var(--map-spoof) 30%, transparent); }
+.lyr-key-sps { border: 1px solid var(--map-spoof); background: color-mix(in srgb, var(--map-spoof) 55%, transparent); }
 .lyr-key-cyg { border: 1.5px solid var(--map-cyg); background: color-mix(in srgb, var(--map-cyg) 25%, transparent); }
 .lyr-key-s6 { border: 1.5px solid var(--map-s6); background: color-mix(in srgb, var(--map-s6) 25%, transparent); }
 .lyr-key-smap { border: 1.5px solid var(--map-smap); background: color-mix(in srgb, var(--map-smap) 25%, transparent); }
