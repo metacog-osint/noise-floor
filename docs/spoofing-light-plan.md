@@ -105,8 +105,9 @@ fresh run from the raw archive.
   and a cache build will no longer share a folder with another run.
 - **Time.** End to end the V1 rescore took 2 h 46 min (18 reruns 9,433 s, held-out score 154 s, Lima 391 s), but the
   PC was running other heavy jobs throughout, and the faulty day alone took 2,300 s. Reran on its own after the fix,
-  that day took 137 s against 1,038 s for its full run. Wall time on a shared PC is not a cost figure; CPU time per
-  rerun is being added to the summaries, and a clean measurement will follow.
+  that day took 137 s against 1,038 s for its full run. Wall time on a shared PC is not a cost figure. Measured again
+  the same day with CPU time and one command (`tools/spoof_variant.py`, "Proof and timing" below): 929 s for all 18
+  days from the format-2 caches, 1,489 s of CPU.
 - **On GitHub.** A variant's held-out score now runs on GitHub Actions instead of the PC
   (`.github/workflows/spoof-variant.yml`, Run workflow with `set` and `label`). The caches and the H6 baseline's
   events hold ICAO addresses, so they are in a private release, uploaded with `tools/spoof_cache_release.py` and read
