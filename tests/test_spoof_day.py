@@ -455,6 +455,62 @@ def test_cache_rerun_and_shadow():
         shutil.rmtree(tmp)
 
 
+def make_cached_day(tmp, day="2024-10-14"):
+    """A synthetic day with a Lima ring flight, a slow A2 and four clean aircraft: run with --cache. Returns
+    (raw folder, cache root, summary of the full run)."""
+    raw, cache = os.path.join(tmp, "raw"), os.path.join(tmp, "cache")
+    os.makedirs(raw, exist_ok=True)
+    t0, a2 = DAY0 + 3600, dict(DET, category="A2")
+    slow_a2 = fly(t0, 30, 47.5, 19.0, gs=280, alt=25500) + fly(t0 + 1810, 10, 47.5, 21.6, gs=140, alt=25500)
+    traces = [trace("bbb009", lima_flight(t0)), trace("bbb040", slow_a2, det=a2, typ="B350")] +              [trace(f"bbb2{k:02d}", fly(t0 + k * 30, 50, 48.0 + 0.05 * k, 19.0)) for k in range(4)]
+    build_day(raw, day, traces)
+    full = S.run(day, raw, os.path.join(tmp, "full"), 1, airspeed=True, v06=True, cache_dir=os.path.join(cache, day))
+    return raw, cache, full
+
+
+def test_cpu_time_and_cache_format_2():
+    """Summaries carry cpu_seconds (main process plus pool workers); `cache-convert` writes a format-2 cache into a new
+    root without touching the old one; rerun reads both formats and gives equal outputs (spoof_same)."""
+    import hashlib
+    import spoof_same
+    tmp = tempfile.mkdtemp()
+    try:
+        raw, cache, full = make_cached_day(tmp)
+        day = "2024-10-14"
+        assert full["cpu_seconds"] > 0 and full["seconds"] >= 0 and "seconds_read" in full, full
+        old_dir, new_root = os.path.join(cache, day), os.path.join(tmp, "cache2")
+        before = {n: hashlib.sha256(open(os.path.join(old_dir, n), "rb").read()).hexdigest() for n in os.listdir(old_dir)}
+        m = S.convert_cache(old_dir, os.path.join(new_root, day))
+        assert m["format"] == 2 and m["parsed_candidates"] == m["candidates"] == 2, m
+        names = sorted(os.listdir(os.path.join(new_root, day)))
+        assert "records.pkl.zst" in names and any(n.startswith("cand2-") for n in names) and "records.pkl.gz" not in names
+        assert any(n.startswith("cand-") for n in names), "raw shards kept for spoof_compare"
+        assert before == {n: hashlib.sha256(open(os.path.join(old_dir, n), "rb").read()).hexdigest()
+                          for n in os.listdir(old_dir)}, "the old cache is untouched"
+        for src, dst in ((old_dir, old_dir), (os.path.join(new_root, day), os.path.join(tmp, "elsewhere"))):
+            try:
+                S.convert_cache(src, dst)
+                raise AssertionError("conversion onto itself, or of a format-2 cache, should be refused")
+            except ValueError:
+                pass
+        r1 = S.rerun(day, old_dir, os.path.join(tmp, "re1"), 1)
+        r2 = S.rerun(day, os.path.join(new_root, day), os.path.join(tmp, "re2"), 1)
+        assert r1["cache_format"] == 1 and r2["cache_format"] == 2
+        for r in (r1, r2):
+            assert r["cpu_seconds"] > 0 and set(r["seconds_parts"]) == {"records_load", "scoring", "shard_file_read"}, r
+        rep = spoof_same.compare(os.path.join(tmp, "full"), os.path.join(tmp, "re2"), [day])
+        assert rep["same"], rep
+        assert spoof_same.compare(os.path.join(tmp, "re1"), os.path.join(tmp, "re2"), [day])["same"]
+        v = S.rerun(day, os.path.join(new_root, day), os.path.join(tmp, "v06"), 1, {"SLOW_HI_A2_FT": 25000}, "v0.6")
+        w = S.rerun(day, old_dir, os.path.join(tmp, "v06b"), 1, {"SLOW_HI_A2_FT": 25000}, "v0.6")
+        assert v["episodes"] == w["episodes"] == 2
+        assert spoof_same.compare(os.path.join(tmp, "v06"), os.path.join(tmp, "v06b"), [day])["same"]
+        assert not spoof_same.compare(os.path.join(tmp, "v06"), os.path.join(tmp, "re2"), [day])["same"]
+    finally:
+        S._set_overrides({"SLOW_HI_A2_FT": 36000})
+        shutil.rmtree(tmp)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):

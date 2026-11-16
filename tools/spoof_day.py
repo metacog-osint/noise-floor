@@ -74,7 +74,13 @@ Usage
   python tools/spoof_day.py run 2024-10-14 [--raw data/raw/trace_box/2024-10-14] [--cache data/spoof_cache]
   python tools/spoof_day.py rerun 2024-10-14 --cache data/spoof_cache --out DIR [--set SLOW_HI_A2_FT=25000 ...]
       # a variant from the day cache in minutes, without the raw archive (exact inside ENVELOPE; docs/spoofing-light-plan.md)
+  python tools/spoof_day.py cache-convert 2024-10-14 ... --cache data/spoof_cache --to data/spoof_cache2
+      # format 2 caches in a new root (rerun reads both formats; the old root is only read)
   python tools/spoof_day.py report 2024-10-14 2024-10-15 ...      # region tables (known areas and quiet controls)
+Several days in one run, rerun or cache-convert take the machine's heavy-job lock (tools/heavy_lock.py; --no-lock skips it).
+tools/spoof_variant.py scores a variant end to end; tools/spoof_same.py checks two output folders against each other.
+Summaries carry seconds (wall), seconds_read, cpu_seconds (this process plus all pool workers) and, for a rerun,
+seconds_parts (records_load, scoring, shard_file_read) and cache_format.
 """
 import argparse, bisect, gzip, io, json, itertools, math, os, statistics, sys, time
 from collections import Counter, defaultdict
@@ -542,13 +548,16 @@ def cell(lat, lon, res):
 def score_trace(raw, day0, airspeed=False, v06=False, a2_hi_ft=None, cache=False):
     """One trace file -> aircraft record, or None. airspeed: --airspeed-fast (v0.5); v06: --v06;
     a2_hi_ft: --slow-hi-a2-ft; cache: also mark whether the aircraft is a cache candidate (candidate())."""
-    if raw[:2] == b"\x1f\x8b":
-        raw = gzip.decompress(raw)
-    d = orjson.loads(raw)
-    icao = d.get("icao", "~")
-    if icao.startswith("~"):
-        return None
-    A, M, cat = parse_trace(d)
+    if raw[:4] == PARSED_MAGIC:                 # cache format 2: the trace already parsed (unpack_parsed)
+        icao, typ, A, M, cat = unpack_parsed(raw)
+    else:
+        if raw[:2] == b"\x1f\x8b":
+            raw = gzip.decompress(raw)
+        d = orjson.loads(raw)
+        icao, typ = d.get("icao", "~"), d.get("t") or ""
+        if icao.startswith("~"):
+            return None
+        A, M, cat = parse_trace(d)
     if not A:
         return None
     r = analyse(A, M, cat, airspeed, v06, a2_hi_ft)
@@ -657,7 +666,7 @@ def score_trace(raw, day0, airspeed=False, v06=False, a2_hi_ft=None, cache=False
         if h is not None:
             unres.append((cell(A[j][LAT], A[j][LON], RES), h))
     return {
-        "icao": icao, "type": d.get("t") or "", "cat": cat or "", "fast": r["fast"], "dup": r["dup"],
+        "icao": icao, "type": typ, "cat": cat or "", "fast": r["fast"], "dup": r["dup"],
         "jumps": r["jumps"], "far": r["far"], "cells": dict(cells), "geo": geo_med, "episodes": episodes,
         "mlat": [len(ml_tr), sum(1 for x in ml_tr if x[1] >= MLAT_KM), len(ml_fa), sum(1 for x in ml_fa if x[1] >= MLAT_KM)],
         "mlat_cells": dict(mlat_cells), "unresolved": unres, "geo_flag": dict(geo_flag),
@@ -670,9 +679,13 @@ def score_trace(raw, day0, airspeed=False, v06=False, a2_hi_ft=None, cache=False
     }
 
 
+_CPU_LAST = 0.0
+
+
 def work(args):
     """One batch of raw trace files -> (records, counts). With a cache folder, the raw file of every candidate aircraft
     is appended to this worker's shard there (4-byte length, then the bytes as read from the archive)."""
+    global _CPU_LAST
     batch, day0, airspeed, v06, a2_hi_ft, cache_dir = (args + (False, False, None, None))[:6]
     recs, st, keep = [], Counter(), []
     for raw in batch:
@@ -692,6 +705,9 @@ def work(args):
         with open(os.path.join(cache_dir, f"cand-{os.getpid()}.bin"), "ab") as f:
             for raw in keep:
                 f.write(len(raw).to_bytes(4, "little")); f.write(raw)
+    now = time.process_time()                 # this process's CPU since its last batch (the first includes start-up)
+    st["cpu"] = now - _CPU_LAST
+    _CPU_LAST = now
     return recs, dict(st)
 
 
@@ -732,6 +748,96 @@ def cached_traces(cache_dir, icaos):
         if d.get("icao", "").lower() in icaos:
             out[d["icao"].lower()] = d
     return out
+
+
+# ---------- day cache, format 2 (docs/spoofing-light-plan.md) ----------
+# Format 1 (what `run --cache` writes): records.pkl.gz and cand-*.bin (the candidates' raw traces, gzip as in the
+# archive, parsed again by every rerun). Format 2 (`cache-convert`) keeps the raw shards and adds what a rerun reads
+# instead: records.pkl.zst (the same pickle, zstd) and cand2-*.bin (each candidate already parsed by parse_trace and
+# pickled, zstd, so the workers skip gunzip, JSON parsing and parse_trace). The raw shards stay for spoof_compare.
+PARSED_MAGIC = b"SP2\x00"
+ZSTD_LEVEL = 3
+
+
+def _codec():
+    import pyarrow as pa
+    return pa.Codec("zstd", compression_level=ZSTD_LEVEL)
+
+
+def pack_parsed(icao, typ, A, M, cat):
+    """One parsed candidate -> bytes: magic, raw length (4 bytes), zstd(pickle)."""
+    import pickle
+    raw = pickle.dumps((icao, typ, A, M, cat), protocol=pickle.HIGHEST_PROTOCOL)
+    return PARSED_MAGIC + len(raw).to_bytes(4, "little") + _codec().compress(raw, asbytes=True)
+
+
+def unpack_parsed(b):
+    import pickle
+    n = int.from_bytes(b[4:8], "little")
+    return pickle.loads(_codec().decompress(b[8:], decompressed_size=n, asbytes=True))
+
+
+def parsed_shards(cache_dir):
+    """The packed parsed candidates of a format-2 day cache (bytes, unpacked by score_trace in the workers)."""
+    for name in sorted(os.listdir(cache_dir)):
+        if name.startswith("cand2-") and name.endswith(".bin"):
+            with open(os.path.join(cache_dir, name), "rb") as f:
+                while True:
+                    n = f.read(4)
+                    if len(n) < 4:
+                        break
+                    yield f.read(int.from_bytes(n, "little"))
+
+
+def load_records(cache_dir, fmt):
+    """The finished records of the non-candidate aircraft of a day cache (either format)."""
+    import pickle
+    if fmt >= 2:
+        with open(os.path.join(cache_dir, "records.pkl.zst"), "rb") as f:
+            b = f.read()
+        n = int.from_bytes(b[:8], "little")
+        return pickle.loads(_codec().decompress(b[8:], decompressed_size=n, asbytes=True))
+    with gzip.open(os.path.join(cache_dir, "records.pkl.gz"), "rb") as f:
+        return pickle.load(f)
+
+
+def convert_cache(old_dir, new_dir):
+    """Write a format-2 copy of one day cache into new_dir (never the folder it is read from: that one is only read).
+    Returns the new meta."""
+    import pickle
+    import shutil
+    if os.path.abspath(old_dir) == os.path.abspath(new_dir):
+        raise ValueError("convert into a new folder, never over the old cache")
+    meta = json.load(open(os.path.join(old_dir, "meta.json")))
+    if meta.get("format", 1) >= 2:
+        raise ValueError(f"{old_dir} is already format 2")
+    os.makedirs(new_dir, exist_ok=True)
+    raw = pickle.dumps(load_records(old_dir, 1), protocol=pickle.HIGHEST_PROTOCOL)
+    with open(os.path.join(new_dir, "records.pkl.zst"), "wb") as f:
+        f.write(len(raw).to_bytes(8, "little")); f.write(_codec().compress(raw, asbytes=True))
+    del raw
+    n_parsed = 0
+    for name in sorted(os.listdir(old_dir)):
+        if name.startswith("cand-") and name.endswith(".bin"):
+            shutil.copyfile(os.path.join(old_dir, name), os.path.join(new_dir, name))
+            with open(os.path.join(old_dir, name), "rb") as f, \
+                    open(os.path.join(new_dir, "cand2-" + name[len("cand-"):]), "wb") as g:
+                while True:
+                    n = f.read(4)
+                    if len(n) < 4:
+                        break
+                    b = f.read(int.from_bytes(n, "little"))
+                    d = orjson.loads(gzip.decompress(b) if b[:2] == b"\x1f\x8b" else b)
+                    icao = d.get("icao", "~")
+                    A, M, cat = parse_trace(d)
+                    if icao.startswith("~") or not A:
+                        continue                    # score_trace skips these too
+                    p = pack_parsed(icao, d.get("t") or "", A, M, cat)
+                    g.write(len(p).to_bytes(4, "little")); g.write(p)
+                    n_parsed += 1
+    meta = {**meta, "format": 2, "parsed_candidates": n_parsed}
+    json.dump(meta, open(os.path.join(new_dir, "meta.json"), "w"), indent=1)
+    return meta
 
 
 # ---------- day aggregation ----------
@@ -910,7 +1016,7 @@ def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False, a2_h
     a2_hi_ft = SLOW_HI_A2_FT if a2_hi_ft is None else a2_hi_ft
     parts = P.day_parts(raw_dir, day)
     day0 = int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())
-    t0 = time.time()
+    t0, cpu0 = time.time(), time.process_time()
     if cache_dir:
         os.makedirs(cache_dir, exist_ok=True)
         for name in os.listdir(cache_dir):
@@ -938,43 +1044,55 @@ def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False, a2_h
         json.dump({"day": day, "airspeed": airspeed, "v06": v06, "info": info, "aircraft": len(recs),
                    "candidates": len(recs) - len(keep), "envelope": {k: v for k, v in globals().items() if k.startswith("CAND_")}},
                   open(os.path.join(cache_dir, "meta.json"), "w"), indent=1)
-    return write_day(day, out_dir, recs, info, t0, t_read, workers, airspeed, v06, a2_hi_ft)
+    return write_day(day, out_dir, recs, info, t0, t_read, workers, airspeed, v06, a2_hi_ft, cpu=(cpu0, st.get("cpu", 0.0)))
 
 
 def rerun(day, cache_dir, out_dir, workers, over=None, label=None):
     """One day again from its cache (run --cache), with module constants set from over (a variant). Same outputs as
     run() with those settings: candidates are scored again from their raw traces, every other record is reused."""
-    import pickle
     check_overrides(over)
     _set_overrides(over)
     meta = json.load(open(os.path.join(cache_dir, "meta.json")))
+    fmt = meta.get("format", 1)
     day0 = int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())
     airspeed, v06, a2_hi_ft = meta["airspeed"], meta["v06"], SLOW_HI_A2_FT
-    t0 = time.time()
-    with gzip.open(os.path.join(cache_dir, "records.pkl.gz"), "rb") as f:
-        recs = pickle.load(f)
+    t0, cpu0 = time.time(), time.process_time()
+    recs = load_records(cache_dir, fmt)
+    t_records = time.time() - t0
+    shard_s, cpu_workers = [0.0], 0.0
 
     def batches():
-        cur = []
-        for raw in cache_shards(cache_dir):
+        cur, it = [], iter(parsed_shards(cache_dir) if fmt >= 2 else cache_shards(cache_dir))
+        while True:
+            t = time.perf_counter()
+            raw = next(it, None)                    # time spent reading the shard files in this process
+            shard_s[0] += time.perf_counter() - t
+            if raw is None:
+                break
             cur.append(raw)
             if len(cur) >= P.BATCH:
                 yield (cur, day0, airspeed, v06, a2_hi_ft, None); cur = []
         if cur:
             yield (cur, day0, airspeed, v06, a2_hi_ft, None)
     with Pool(workers, initializer=_set_overrides, initargs=(over,)) as pool:
-        for r, _s in pool.imap_unordered(work, batches(), chunksize=1):
-            recs.extend(r)
-    s = write_day(day, out_dir, recs, meta["info"], t0, time.time() - t0, workers, airspeed, v06, a2_hi_ft)
+        for r, st in pool.imap_unordered(work, batches(), chunksize=1):
+            recs.extend(r); cpu_workers += st.get("cpu", 0.0)
+    t_read = time.time() - t0
+    parts = {"records_load": round(t_records, 1), "scoring": round(t_read - t_records, 1),
+             "shard_file_read": round(shard_s[0], 1)}
+    s = write_day(day, out_dir, recs, meta["info"], t0, t_read, workers, airspeed, v06, a2_hi_ft,
+                  cpu=(cpu0, cpu_workers), parts=parts)
+    s["cache_format"] = fmt
     if over or label:
         s["version"] = f"{s['version']}+{label or 'custom'}"
         s["rerun"] = {"cache": True, "label": label, "overrides": over or {}, "candidates": meta["candidates"]}
-        json.dump(s, open(os.path.join(out_dir, f"{day}.summary.json"), "w"), indent=1, default=list)
+    json.dump(s, open(os.path.join(out_dir, f"{day}.summary.json"), "w"), indent=1, default=list)
     return s
 
 
-def write_day(day, out_dir, recs, info, t0, t_read, workers, airspeed, v06, a2_hi_ft):
-    """Records -> the day's tables, events and summary in out_dir (shared by run() and rerun())."""
+def write_day(day, out_dir, recs, info, t0, t_read, workers, airspeed, v06, a2_hi_ft, cpu=None, parts=None):
+    """Records -> the day's tables, events and summary in out_dir (shared by run() and rerun()). cpu: (this process's
+    process_time() at t0, the pool workers' CPU seconds) for the summary's cpu_seconds; parts: rerun's timing split."""
     recs.sort(key=lambda r: r["icao"])     # same order whatever the worker order (run and rerun give equal outputs)
     t4, t2, d4, events, diag = aggregate(recs)
 
@@ -1014,6 +1132,8 @@ def write_day(day, out_dir, recs, info, t0, t_read, workers, airspeed, v06, a2_h
         "day": day, "version": ({25000: "0.6", 36000: "0.6.1"}.get(a2_hi_ft, f"0.6.1-a2-{a2_hi_ft}")) if v06 else "0.5" if airspeed else VERSION,
         "inputs": info["inputs"], "input_bytes": info["input_bytes"], "input_sha256": info["input_sha256"],
         "seconds": round(secs, 1), "seconds_read": round(t_read, 1), "workers": workers,
+        **({"cpu_seconds": round(time.process_time() - cpu[0] + cpu[1], 1)} if cpu else {}),
+        **({"seconds_parts": parts} if parts else {}),
         **{k: info.get(k, 0) for k in ("files", "skipped", "parse_errors")},
         "aircraft": len(recs), "fast_aircraft": sum(r["fast"] for r in recs), "duplicate_suspects": len(recs) - len(nd),
         "aircraft_with_episodes": len(with_ep), "episodes": len(events),
@@ -1251,7 +1371,7 @@ def report(days, out_dir, metric="spoofed_active"):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["run", "rerun", "report"])
+    ap.add_argument("cmd", choices=["run", "rerun", "report", "cache-convert"])
     ap.add_argument("days", nargs="+")
     ap.add_argument("--raw", help="folder with the day's tar or split parts (default data/raw/trace_box/<day>)")
     ap.add_argument("--out", default=os.path.join(ROOT, "data", "spoofing"))
@@ -1270,12 +1390,36 @@ def main():
     ap.add_argument("--set", action="append", default=[], metavar="NAME=VALUE",
                     help="rerun: set a detector constant for this variant (repeatable), e.g. SLOW_HI_A2_FT=25000")
     ap.add_argument("--label", help="rerun: variant name, added to the summary's version")
+    ap.add_argument("--to", help="cache-convert: root of the new (format 2) caches; never the folder --cache reads")
+    ap.add_argument("--no-lock", action="store_true",
+                    help="don't take the machine's heavy-job lock (tools/heavy_lock.py), which run and rerun take "
+                         "for more than one day")
     a = ap.parse_args()
+    if a.cmd == "cache-convert":
+        if not (a.cache and a.to):
+            sys.exit("cache-convert needs --cache (the old root) and --to (a new root)")
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import heavy_lock
+        lock = None if a.no_lock else heavy_lock.hold(f"spoof_day cache-convert {a.days[0]}..{a.days[-1]}")
+        for day in a.days:
+            t0, c0 = time.time(), time.process_time()
+            m = convert_cache(os.path.join(a.cache, day), os.path.join(a.to, day))
+            print(json.dumps({"day": day, "candidates": m["candidates"], "parsed": m["parsed_candidates"],
+                              "seconds": round(time.time() - t0, 1), "cpu_seconds": round(time.process_time() - c0, 1)}),
+                  flush=True)
+        if lock:
+            lock.release()
+        return
     if a.cmd in ("run", "rerun"):
         over = {}
         for kv in a.set:
             k, v = kv.split("=", 1)
             over[k.strip()] = json.loads(v)
+        lock = None
+        if len(a.days) > 1 and not a.no_lock:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import heavy_lock
+            lock = heavy_lock.hold(f"spoof_day {a.cmd} {a.days[0]}..{a.days[-1]}")
         for day in a.days:
             if a.cmd == "run":
                 raw = a.raw or os.path.join(ROOT, "data", "raw", "trace_box", day)
@@ -1286,7 +1430,10 @@ def main():
                     sys.exit("rerun needs --cache")
                 s = rerun(day, os.path.join(a.cache, day), a.out, a.workers, over, a.label)
             print(json.dumps({k: s[k] for k in ("day", "seconds", "files", "aircraft", "episodes", "aircraft_with_episodes",
-                                                 "episodes_by_kind", "episodes_mlat_confirmed", "duplicate_suspects")}), flush=True)
+                                                 "episodes_by_kind", "episodes_mlat_confirmed", "duplicate_suspects")}
+                             | {k: s[k] for k in ("seconds_read", "cpu_seconds") if k in s}), flush=True)
+        if lock:
+            lock.release()
     else:
         report(a.days, a.out)
 
