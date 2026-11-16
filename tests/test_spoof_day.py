@@ -506,6 +506,17 @@ def test_cpu_time_and_cache_format_2():
         assert v["episodes"] == w["episodes"] == 2
         assert spoof_same.compare(os.path.join(tmp, "v06"), os.path.join(tmp, "v06b"), [day])["same"]
         assert not spoof_same.compare(os.path.join(tmp, "v06"), os.path.join(tmp, "re2"), [day])["same"]
+        stale = os.path.join(tmp, "stale")                       # a second build's shard left beside the first one's
+        shutil.copytree(old_dir, os.path.join(stale, day))
+        shard = sorted(n for n in os.listdir(old_dir) if n.startswith("cand-"))[0]
+        shutil.copyfile(os.path.join(old_dir, shard), os.path.join(stale, day, "cand-99999.bin"))
+        for fn in (lambda: S.rerun(day, os.path.join(stale, day), os.path.join(tmp, "o"), 1),
+                   lambda: S.convert_cache(os.path.join(stale, day), os.path.join(tmp, "c2", day))):
+            try:
+                fn()
+                raise AssertionError("a cache with stale shards must be refused")
+            except RuntimeError as e:
+                assert "stale or partial shards" in str(e), e
     finally:
         S._set_overrides({"SLOW_HI_A2_FT": 36000})
         shutil.rmtree(tmp)

@@ -816,7 +816,7 @@ def convert_cache(old_dir, new_dir):
     with open(os.path.join(new_dir, "records.pkl.zst"), "wb") as f:
         f.write(len(raw).to_bytes(8, "little")); f.write(_codec().compress(raw, asbytes=True))
     del raw
-    n_parsed = 0
+    n_parsed = n_raw = 0
     for name in sorted(os.listdir(old_dir)):
         if name.startswith("cand-") and name.endswith(".bin"):
             shutil.copyfile(os.path.join(old_dir, name), os.path.join(new_dir, name))
@@ -827,6 +827,7 @@ def convert_cache(old_dir, new_dir):
                     if len(n) < 4:
                         break
                     b = f.read(int.from_bytes(n, "little"))
+                    n_raw += 1
                     d = orjson.loads(gzip.decompress(b) if b[:2] == b"\x1f\x8b" else b)
                     icao = d.get("icao", "~")
                     A, M, cat = parse_trace(d)
@@ -835,6 +836,9 @@ def convert_cache(old_dir, new_dir):
                     p = pack_parsed(icao, d.get("t") or "", A, M, cat)
                     g.write(len(p).to_bytes(4, "little")); g.write(p)
                     n_parsed += 1
+    if n_raw != meta["candidates"]:
+        raise RuntimeError(f"{old_dir}: {n_raw} candidate traces in the shards, meta.json says {meta['candidates']}: "
+                           "stale or partial shards, rebuild this day's cache")
     meta = {**meta, "format": 2, "parsed_candidates": n_parsed}
     json.dump(meta, open(os.path.join(new_dir, "meta.json"), "w"), indent=1)
     return meta
@@ -1059,7 +1063,7 @@ def rerun(day, cache_dir, out_dir, workers, over=None, label=None):
     t0, cpu0 = time.time(), time.process_time()
     recs = load_records(cache_dir, fmt)
     t_records = time.time() - t0
-    shard_s, cpu_workers = [0.0], 0.0
+    shard_s, cpu_workers, seen = [0.0], 0.0, [0]
 
     def batches():
         cur, it = [], iter(parsed_shards(cache_dir) if fmt >= 2 else cache_shards(cache_dir))
@@ -1069,6 +1073,7 @@ def rerun(day, cache_dir, out_dir, workers, over=None, label=None):
             shard_s[0] += time.perf_counter() - t
             if raw is None:
                 break
+            seen[0] += 1
             cur.append(raw)
             if len(cur) >= P.BATCH:
                 yield (cur, day0, airspeed, v06, a2_hi_ft, None); cur = []
@@ -1078,6 +1083,10 @@ def rerun(day, cache_dir, out_dir, workers, over=None, label=None):
         for r, st in pool.imap_unordered(work, batches(), chunksize=1):
             recs.extend(r); cpu_workers += st.get("cpu", 0.0)
     t_read = time.time() - t0
+    want = meta.get("parsed_candidates", meta["candidates"]) if fmt >= 2 else meta["candidates"]
+    if seen[0] != want:                  # a build that overlapped another one leaves shards of both (2025-05-10, 16 Nov)
+        raise RuntimeError(f"{cache_dir}: {seen[0]} candidate traces in the shards, meta.json says {want}: "
+                           "stale or partial shards, rebuild this day's cache")
     parts = {"records_load": round(t_records, 1), "scoring": round(t_read - t_records, 1),
              "shard_file_read": round(shard_s[0], 1)}
     s = write_day(day, out_dir, recs, meta["info"], t0, t_read, workers, airspeed, v06, a2_hi_ft,
