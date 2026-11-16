@@ -178,6 +178,53 @@ def test_main_writes_site_files():
         shutil.rmtree(tmp)
 
 
+def test_region_levels_pool_and_sent():
+    """Regions against their own usual level (active aircraft-hours, median of earlier share2 days, 0 when absent),
+    the 7-day pool, where each region's aircraft were shown, the site day file, the Today line and the feed items."""
+    gulf, balt, quiet = (h3.latlng_to_cell(*p, 2) for p in ((26.0, 52.0), (59.0, 23.0), (47.5, 19.0)))
+    ds = days(10)
+    sd = {d: {gulf: (2000, 10), balt: (500, 4 if i % 3 else 0), quiet: (900, 0)} for i, d in enumerate(ds[:-1])}
+    sd[ds[-1]] = {gulf: (2100, 30), balt: (40, 0), quiet: (900, 0)}
+    n, lv = SP.region_levels(sd, ds[-1])
+    assert n == 9 and lv[gulf] == [10, "above"] and lv[balt] == [4, "below"] and quiet not in lv, lv
+    assert SP.region_levels(sd, ds[5]) == (5, {})                    # fewer than 7 earlier days: no levels
+    rows, use = SP.pooled(sd, ds[-1])
+    assert use == ds[-7:] and dict((r, (a, k)) for r, a, k in rows)[gulf] == (6 * 2000 + 2100, 6 * 10 + 30)
+    r = SP.regions_now(sd, Places())
+    assert r["day"] == ds[-1] and r["above_count"] == 1 and r["above"][0]["region"] == gulf
+    assert r["above"][0]["active_ah"] == 30 and r["above"][0]["usual"] == 10 and r["above"][0]["near"] is None
+    assert r["total"]["latest"] == 30 and r["total"]["level"] == "above" and r["spoofed_regions"] == 1
+    # where each region's aircraft were shown: per cluster, the most aircraft in any one res-4 cell of the region
+    hu2 = h3.cell_to_parent(HUNGARY, 2)
+    other4 = [c for c in h3.cell_to_children(hu2, 4) if c != HUNGARY][0]
+    t = tfile(ds[-1], [cluster(*LIMA, 7, cells=((HUNGARY, 5, 5), (other4, 3, 3))), cluster(*DUBAI_SEA, 2)],
+              unplaced=[{"reported_gs_kt": 110, "aircraft": 4, "episodes": 4, "victim_cells": [[HUNGARY, 4, 4]]}])
+    to, un = SP.sent(t)
+    assert to == {hu2: [[0, 5], [1, 3]]} and un == {hu2: 4}, (to, un)
+    d = SP.add_regions({"day": ds[-1]}, t, sd, Places())
+    assert d["sent2"] == to and d["level_days"] == 9 and d["level2"][gulf] == [10, "above"] and len(d["targets"]) == 2
+    assert d["share2_7_days"] == ds[-7:] and "icao" not in json.dumps(d)
+    # the Today line and the feed items from the board's spoofing section
+    import board
+    import feed_v2
+    sp = {"day": ds[-1], "active": 9, "region_levels": dict(r, above=[dict(r["above"][0], near="Doha")])}
+    line = board.spoof_line(sp)
+    assert line == "Spoofing on 10 Nov 2026 was above its usual level in one region, most near Doha; all regions " \
+                   "together were above their usual level.", line
+    assert board.spoof_line({"day": ds[-1], "active": 9}) .startswith("9 active spoofing episodes on 10 Nov 2026")
+    quiet_day = dict(r, above=[], above_count=0, total=dict(r["total"], level="near"))
+    assert "was not above its usual level in any region" in board.spoof_line({"region_levels": quiet_day})
+    b = {"freshness": {"aircraft_day": ds[-1]}, "spoofing": sp, "summary": "", "brief": ""}
+    f = feed_v2.build(b, [])
+    items = [x for x in f["features"] if x["properties"]["id"].startswith("noisefloor-spoof-region-above-")]
+    assert len(items) == 1 and not feed_v2.check(f), feed_v2.check(f)
+    p = items[0]["properties"]
+    assert p["tier"] == "anomaly" and p["title"] == "More GPS spoofing than usual near Doha"
+    assert "30 aircraft-hours" in p["summary"] and "usual 10" in p["summary"] and "1.4% of 2,100" in p["summary"]
+    assert p["measure"] == {"name": "spoofed_active_aircraft_hours", "value": 30, "expected": 10}
+    assert items[0]["geometry"]["type"] == "Polygon"
+
+
 def test_share2():
     import pyarrow as pa
     import pyarrow.parquet as pq

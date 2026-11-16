@@ -264,13 +264,53 @@ def spoofing(release, places):
     for r in (last.get("victim_res2_top") or [])[:6]:
         la, lo = r.get("lat"), r.get("lon")
         vic.append({**r, "near": places.near(la, lo) if la is not None else None})
-    return {"day": last["day"], "version": last.get("version"), "active": last.get("active"),
+    out = {"day": last["day"], "version": last.get("version"), "active": last.get("active"),
             "episodes": last.get("episodes"), "aircraft": last.get("aircraft_with_episodes"), "victims": vic,
             "spoofed_to": (last.get("spoofed_to_top") or [])[:5],
             "series": [{"day": s["day"], "active": s.get("active")} for s in days],
             "new_places": _new_places(release, places),
             "place_levels": _place_levels(release, places),
+            "region_levels": _region_levels(files, places),
             "note": "Where receivers were, not where a transmitter is. Offset tracks with no jump are missed."}
+    out["line"] = spoof_line(out)
+    return out
+
+
+def _region_levels(files, places):
+    """Regions (where aircraft really were) above their own usual level on the newest day with regional shares, and
+    all regions together (tools/spoof_site.py regions_now()); None without such a day."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import spoof_site
+        return spoof_site.regions_now(spoof_site.share_days(files), places)
+    except Exception:                    # a nicety on the card: never stop the spoofing section
+        return None
+
+
+LEVEL_WORD = {"above": "above", "near": "near", "below": "below"}
+
+
+def spoof_line(sp):
+    """One plain sentence for the Today page from the board's spoofing section: the newest day's regions against their
+    usual level, else the active episodes. Fixed rules, no forecast words."""
+    if not sp:
+        return None
+    rl = sp.get("region_levels") or {}
+    day = rl.get("day") or sp.get("day")
+    when = _dayname(day) if day else ""
+    tot = rl.get("total") or {}
+    if rl and tot.get("level"):
+        n = rl.get("above_count") or 0
+        names = list(dict.fromkeys(a["near"] for a in rl.get("above") or [] if a.get("near")))[:3]
+        if n:
+            head = (f"Spoofing on {when} was above its usual level in {_num(n)} region{'' if n == 1 else 's'}"
+                    + (f", most near {_and(names)}" if names else ""))
+        else:
+            head = f"Spoofing on {when} was not above its usual level in any region"
+        return head + f"; all regions together were {LEVEL_WORD[tot['level']]} their usual level."
+    if sp.get("active") is not None:
+        return f"{sp['active']} active spoofing episodes on {when}; no usual level yet (too few earlier days)."
+    return None
 
 
 def _new_places(release, places):

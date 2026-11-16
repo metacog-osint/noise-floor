@@ -109,6 +109,16 @@ left to the new-places list.
 - Board (`board.json` → spoofing → `place_levels`) and the COP feed: each place above its usual level is an
   observation, tier anomaly, placed where that day's aircraft really were (`noisefloor-spoof-above-<day>-<n>`).
 
+**Regions (16 Nov 2026).** The same reading for the regions where aircraft really were: each H3 res-2 region's
+aircraft-hours in active spoofing episodes (`share2`) against its median on up to 30 earlier days with regional shares
+(0 when it had none), with the same above and below rule (`tools/spoof_site.py region_levels()`). On the map it is a
+bold dashed outline, in the new Spoofing view (Measure → Spoofing, `m=spf`), which turns off the GPS-error colours,
+keys the regions, lists where each region's aircraft were shown (`sent2`), pools 7 days on request (`share2_7`) and
+ranks the regions in the table under the map. The board's `region_levels` gives the Today page one sentence, and up to
+five regions above their usual level go to the COP feed (`noisefloor-spoof-region-above-<day>-<n>`, tier anomaly). On
+14 Nov 2026, with 7 earlier days, 13 regions read above (largest rises near Tver, Doha and Tallinn), and all regions
+together read near usual (487 spoofed aircraft-hours against 442).
+
 This needs no new processing: it reads the files the daily run already publishes. It answers the analyst's question
 (is spoofing happening, where, and more than usual?) in one line. The detector stays as the engine underneath. Like the
 new-places list, it compares a place with its own normal, and is not a warning.
