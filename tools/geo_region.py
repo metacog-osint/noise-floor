@@ -261,12 +261,56 @@ class SpaceTrack:
         return data
 
 
-def gp_near_geo(out, st=None):
-    """The gp query, at most once an hour: a response fetched in the last hour is reused from `out`/gp_latest.json."""
+# Orbit (orbit.theintelligence.company, The Intelligence Company's space layer) logs in with the same Space-Track
+# account (Tom, 15 Nov 2026), so the gp class's once-an-hour limit is shared. Orbit checks Noisefloor's runs before
+# its own gp query; Noisefloor can't see Orbit's runs (a private repo), so it reads Orbit's last gp time from the
+# public snapshot (`maneuvers.read_at`, written just after the query) and also stays clear of Orbit's start times:
+# tic-dispatch at :55 and Orbit's own cron at :41 past 00, 06, 12 and 18 UTC. A run publishes its snapshot about a
+# minute after its query, so the window runs from :38 to :05 of the next hour.
+ORBIT_SNAPSHOT = "https://orbit.theintelligence.company/data/snapshot.json"
+ORBIT_HOURS = (0, 6, 12, 18)
+ORBIT_WINDOW = (38, 5)                       # minutes: from HH:38 to (HH+1):05 for each hour in ORBIT_HOURS
+GP_GAP_S = 3600
+
+
+class OrbitBusy(Exception):
+    """Orbit's gp query on the shared account may fall within the hour."""
+
+
+def _orbit_snapshot():
+    req = urllib.request.Request(ORBIT_SNAPSHOT, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def orbit_busy(now, get=_orbit_snapshot):
+    """Why Noisefloor must not make a gp query now because of Orbit's (None when clear). Any error reading Orbit's
+    snapshot counts as busy, as Orbit treats an error reading Noisefloor's runs: the limit is kept when it can't be
+    checked."""
+    start, end = ORBIT_WINDOW
+    if (now.hour in ORBIT_HOURS and now.minute >= start) or ((now.hour - 1) % 24 in ORBIT_HOURS and now.minute <= end):
+        return f"inside Orbit's start window ({now:%H:%M} UTC)"
+    try:
+        read_at = ((get() or {}).get("maneuvers") or {}).get("read_at")
+        if read_at:
+            last = datetime.fromisoformat(read_at.replace("Z", "+00:00"))
+            if (now - last).total_seconds() < GP_GAP_S:
+                return f"Orbit's gp query on the shared account was at {last:%H:%M} UTC, under an hour ago"
+    except Exception as exc:
+        return f"could not read Orbit's snapshot ({type(exc).__name__}); skipping keeps the hourly limit"
+    return None
+
+
+def gp_near_geo(out, st=None, busy=None):
+    """The gp query, at most once an hour: a response fetched in the last hour is reused from `out`/gp_latest.json.
+    Raises OrbitBusy, before any request, when Orbit's query on the shared account may fall within the hour."""
     p = os.path.join(out, "gp_latest.json")
-    if os.path.exists(p) and time.time() - os.path.getmtime(p) < 3600:
+    if os.path.exists(p) and time.time() - os.path.getmtime(p) < GP_GAP_S:
         with open(p, encoding="utf-8") as f:
             return json.load(f)
+    why = (busy or orbit_busy)(datetime.now(timezone.utc))
+    if why:
+        raise OrbitBusy(why)
     if st is None:
         with SpaceTrack() as s:
             data = s.query(GP_NEAR_GEO)
@@ -393,7 +437,11 @@ def pull(day, out, upload, records=None, geo_dir=os.path.join(ROOT, "data", "geo
                 print(f"{day}: pulled {int(since.total_seconds() // 60)} minutes ago; Space-Track allows one gp query an hour: skipped")
                 return None, None
     if records is None:
-        records = gp_near_geo(out)
+        try:
+            records = gp_near_geo(out)
+        except OrbitBusy as e:
+            print(f"{day}: {e}: skipped")
+            return None, None
     static = {s["norad"]: s for s in map(static_row, records) if s["norad"] is not None}
     rows = [r for r in map(elset_row, records) if r["norad"] is not None and r["epoch"]]
     yday = (datetime.strptime(day, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -432,6 +480,9 @@ def backfill(since, events_from, out, upload):
     until = end_of(today)
     mpath = os.path.join(cache, "fetched.json")          # {norad: [since, until]}: histories already held
     held = json.load(open(mpath, encoding="utf-8")) if os.path.exists(mpath) else {}
+    why = orbit_busy(datetime.now(timezone.utc))      # before the login, so a skip makes no request at all
+    if why:
+        raise SystemExit(f"backfill not started: {why}")
     with SpaceTrack() as st:
         records = gp_near_geo(out, st)
         ids = sorted({int(g["NORAD_CAT_ID"]) for g in records} - {int(k) for k in held})
