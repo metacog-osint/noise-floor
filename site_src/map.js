@@ -45,7 +45,8 @@
                low: css("--map-low"), ramp: [css("--ramp-1"), css("--ramp-2"), css("--ramp-3"), css("--ramp-4")],
                focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean"), test: css("--ink-2"),
                border: css("--map-border"), label: css("--map-label"), halo: css("--map-halo"), area: css("--map-area"),
-               spoof: css("--map-spoof"), cyg: css("--map-cyg"), nisar: css("--map-nisar"), s6: css("--map-s6"), smap: css("--map-smap"), c2: css("--map-c2"), s1: css("--map-s1") };
+               spoof: css("--map-spoof"), cyg: css("--map-cyg"), nisar: css("--map-nisar"), s6: css("--map-s6"), smap: css("--map-smap"), c2: css("--map-c2"), s1: css("--map-s1"),
+               ls4: css("--map-ls4"), roti: css("--map-roti") };
     mapEl.style.background = colors.ocean;
   }
 
@@ -252,6 +253,40 @@
         }
         g.globalAlpha = 0.9; g.lineWidth = 1.2;
         cstrong.forEach(function (sh) { g.beginPath(); trace(g, sh.m, true); g.stroke(); });
+        g.restore();
+      }
+      if (state.lsShow && state.ls && state.ls.cells) {             // limb S4 (COSMIC-2 radio occultation), H3 res 1
+        g.save(); g.strokeStyle = colors.ls4; g.fillStyle = colors.ls4;
+        var lsl = [[], [], [], [], [], []], lsr = [];
+        state.ls.cells.forEach(function (c) {                        // [cell, p95, hour, lst, rfi, ...]: the cell's highest hour
+          var sh = shapeOf(c[0]);
+          if (sh.wrap || !onScreen(sh.mb)) return;
+          lsl[lsLevel(c[1])].push(sh);
+          if (c[4] != null && c[4] > 0.5) lsr.push(sh);
+        });
+        for (var lk = 0; lk < 6; lk++) {                             // stacked like Sentinel-6: no seams between levels
+          g.globalAlpha = lk ? 0.11 : 0.05; g.beginPath();
+          for (var lj = lk; lj < 6; lj++) lsl[lj].forEach(function (sh) { trace(g, sh.m, true); });
+          g.fill();
+        }
+        g.globalAlpha = 0.85; g.lineWidth = 1.1; g.setLineDash([3, 3]);   // most values RFI-flagged: may be interference
+        lsr.forEach(function (sh) { g.beginPath(); trace(g, sh.m, true); g.stroke(); });
+        g.restore();
+      }
+      if (state.rtShow && state.rt && state.rt.stations) {          // ground ROTI at IGS stations
+        g.save(); g.strokeStyle = colors.roti; g.fillStyle = colors.roti;
+        state.rt.stations.forEach(function (st) {
+          if (st.max_p95 == null) return;
+          var q = cp(st.lat, st.lon), top = cp(st.lat + 550 / 111.32, st.lon), lv = rotiLevel(st.max_p95);
+          if (!inView(q)) return;
+          g.globalAlpha = 0.5; g.lineWidth = 1; g.setLineDash([2, 3]);   // where its 30-degree pierce points fall
+          g.beginPath(); g.arc(q.x, q.y, Math.abs(q.y - top.y), 0, 2 * Math.PI); g.stroke(); g.setLineDash([]);
+          g.globalAlpha = 1; g.beginPath(); g.arc(q.x, q.y, 3.5 + lv * 1.3, 0, 2 * Math.PI);
+          g.fillStyle = colors.halo; g.fill(); g.fillStyle = colors.roti;
+          g.globalAlpha = 0.25 + 0.15 * lv; g.fill(); g.globalAlpha = 1; g.lineWidth = 1.8; g.stroke();
+          if (state.rtFocus === st.id) { g.strokeStyle = colors.focus; g.lineWidth = 2; g.beginPath(); g.arc(q.x, q.y, 9 + lv * 1.3, 0, 2 * Math.PI); g.stroke(); g.strokeStyle = colors.roti; }
+          labels.push({ text: st.max_p95.toFixed(2), x: q.x + 7 + lv * 1.3, y: q.y + 4, kind: "area" });
+        });
         g.restore();
       }
       if (state.s6Show && state.s6 && state.s6.cells) {             // Sentinel-6: raised receiver-drop regions (H3 res 2)
@@ -478,6 +513,7 @@
       var q2 = h3.cellToParent(h, 2), c2c = state.c2.cells.filter(function (c) { return c[0] === q2; })[0];
       if (c2c) lines.push(["COSMIC-2", "receiver interference index raised, region score " + c2c[1].toFixed(2) + (state.c2.day !== state.day ? " (" + state.c2.day + ")" : "")]);
     }
+    if (state.lsShow && state.ls) lines = lines.concat(lsLines(h3.cellToParent(h, 1), false));
     if (state.s6Show && state.s6 && state.s6.cells) {
       var p2 = h3.cellToParent(h, 2), s6c = state.s6.cells.filter(function (c) { return c[0] === p2; })[0];
       if (s6c) lines.push(["Sentinel-6", "receiver signal drop, region score " + s6c[1].toFixed(2) + (state.s6.day !== state.day ? " (" + state.s6.day + ")" : "")]);
@@ -518,6 +554,8 @@
     if (state.pinned) return;
     var v = nisAt(ev.containerPoint);                  // a NISAR site under the pointer wins over the hex
     if (v) { renderTip(describeSite(v), ev.containerPoint); return; }
+    var rs = rotiAt(ev.containerPoint);                // then a ROTI station
+    if (rs) { renderTip(describeRoti(rs), ev.containerPoint); return; }
     var st = spoofAt(ev.containerPoint);               // then a spoofed-to place
     if (st !== null) { renderTip(describeTarget(st), ev.containerPoint); return; }
     if (state.measure === "spf") {                     // the spoofing view: the region under the pointer
@@ -526,13 +564,18 @@
       return;
     }
     var h = h3.latLngToCell(ev.latlng.lat, ev.latlng.lng, 4);
-    if (cells[h]) showTip(h, ev.containerPoint); else tip.hidden = true;
+    if (cells[h]) showTip(h, ev.containerPoint);
+    else if (lsCell(h3.cellToParent(h, 1))) renderTip(lsLines(h3.cellToParent(h, 1), true), ev.containerPoint);
+    else tip.hidden = true;
   });
   map.on("mouseout", function () { if (!state.pinned) tip.hidden = true; });
   map.on("click", function (ev) {
     var v = nisAt(ev.containerPoint);
     if (v) { state.pinned = true; state.focus = null; state.nisFocus = v.s.id; renderTip(describeSite(v), ev.containerPoint); layer.redraw(); return; }
     state.nisFocus = null;
+    var rs = rotiAt(ev.containerPoint);
+    if (rs) { state.pinned = true; state.focus = null; state.rtFocus = rs.id; renderTip(describeRoti(rs), ev.containerPoint); layer.redraw(); return; }
+    state.rtFocus = null;
     var st = spoofAt(ev.containerPoint);
     if (st !== null) { state.pinned = true; state.focus = null; state.spsFocus = null; state.spoofFocus = st; renderTip(describeTarget(st), ev.containerPoint); layer.redraw(); return; }
     state.spoofFocus = null;
@@ -904,7 +947,7 @@
     var c = map.getCenter();
     return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") + (imagery.on ? "&img=esri" : "") +
            (state.spoofShow ? "&sp=1" : "") + (state.spsShow ? "&ss=1" : "") + (state.sps7 ? "&s7=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") + (state.s6Show ? "&s6=1" : "") + (state.smapShow ? "&sm=1" : "") + (state.c2Show ? "&c2=1" : "") + (state.s1Show ? "&s1=1" : "") +
-           "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
+           (state.lsShow ? "&ls=1" : "") + (state.rtShow ? "&rt=1" : "") + "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
   }
   function writeHash() { if (state.day) history.replaceState(null, "", hashFor()); }
 
@@ -941,7 +984,7 @@
       var before = idx.filter(function (d) { return d <= day; });   // up to the day, else the oldest (it holds the history)
       pick = before.length ? before[before.length - 1] : idx[0];
     }
-    if (!pick && (kind === "cygnss" || kind === "s6" || kind === "smap" || kind === "cosmic2")) {   // they run days behind: the newest file up to 3 days before
+    if (!pick && (kind === "cygnss" || kind === "s6" || kind === "smap" || kind === "cosmic2" || kind === "limbs4" || kind === "roti")) {   // they run days behind: the newest file up to 3 days before
       for (var k = 1; k <= 3 && !pick; k++) {
         var d = new Date(Date.parse(day + "T00:00:00Z") - k * 86400000).toISOString().slice(0, 10);
         if (idx.indexOf(d) >= 0) pick = d;
@@ -1062,6 +1105,56 @@
     return lines;
   }
   function fmtShare(s) { var p = 100 * s; return (p === 0 ? "0" : p < 0.1 ? p.toFixed(3) : p < 10 ? p.toFixed(1) : p.toFixed(0)) + "%"; }
+  // ---------- space weather: limb S4 (COSMIC-2) and ground ROTI (IGS). Measurements with no usual level and no alert
+  // level: limb S4 reads higher than a ground receiver's S4 and is never compared with ground S4 alert levels; ROTI is
+  // a TEC fluctuation index, never an S4 value. The shading steps are display choices only.
+  var LS_STEPS = [0.2, 0.4, 0.6, 0.9, 1.3], ROTI_STEPS = [0.25, 0.5, 1, 2];
+  function lsLevel(v) { var k = 0; while (k < LS_STEPS.length && v >= LS_STEPS[k]) k++; return k; }
+  function rotiLevel(v) { var k = 0; while (k < ROTI_STEPS.length && v >= ROTI_STEPS[k]) k++; return k; }
+  function lsCell(r1) {
+    if (!state.lsShow || !state.ls || !state.ls.cells) return null;
+    if (state.ls.byCell === undefined || state.ls.byCellDay !== state.ls.day) {
+      state.ls.byCell = {}; state.ls.byCellDay = state.ls.day;
+      state.ls.cells.forEach(function (c) { state.ls.byCell[c[0]] = c; });
+    }
+    return state.ls.byCell[r1] || null;
+  }
+  function hourText(day, hr) { return when(day, hr * 60, hr * 60 + 59)[1]; }
+  function solarText(lst) { if (lst == null) return ""; var m = Math.round(lst * 60) % 1440; return pad(Math.floor(m / 60)) + ":" + pad(m % 60); }
+  function lsLines(r1, head) {
+    var c = lsCell(r1); if (!c) return head ? null : [];
+    var ll = h3.cellToLatLng(r1), out = [];
+    if (head) out.push(["", "Limb S4 cell about 840 km across · " + where(ll[0], ll[1])]);
+    out.push(["Limb S4 (95th pct)", c[1].toFixed(2) + ", highest hour" + (state.ls.day !== state.day ? " (" + fmtDay(state.ls.day) + ")" : "")]);
+    out.push(["Hour", hourText(state.ls.day, c[2])]);
+    if (c[3] != null) out.push(["Local solar time", "about " + solarText(c[3])]);
+    out.push(["Values", c[5] + " ten-second values, " + c[6] + " link" + (c[6] === 1 ? "" : "s") + "; " + c[8] + " hour" + (c[8] === 1 ? "" : "s") + " with a value"]);
+    if (c[4] != null && c[4] > 0) out.push(["Interference flag", Math.round(c[4] * 100) + "% of values" + (c[4] > 0.5 ? ": may be raised by interference" : "")]);
+    if (head) out.push(["", "Measured along radio-occultation paths; reads higher than a ground receiver's S4"]);
+    return out;
+  }
+  function rotiAt(pt) {                                // the ROTI station within 9 px of a container point
+    if (!state.rtShow || !state.rt || !state.rt.stations) return null;
+    var best = null, bd = 81;
+    state.rt.stations.forEach(function (st) {
+      if (st.max_p95 == null) return;
+      var q = map.latLngToContainerPoint([st.lat, st.lon]), d = (q.x - pt.x) * (q.x - pt.x) + (q.y - pt.y) * (q.y - pt.y);
+      if (d < bd) { bd = d; best = st; }
+    });
+    return best;
+  }
+  function describeRoti(st) {
+    var day = state.rt.day, out = [["", "IGS station " + st.id + (st.place ? " · " + st.place : "")]];
+    out.push(["ROTI (95th pct)", st.max_p95.toFixed(2) + " TECU/min, highest hour" + (day !== state.day ? " (" + fmtDay(day) + ")" : "")]);
+    out.push(["Hour", hourText(day, st.hour)]);
+    if (st.lst != null) out.push(["Local solar time", "about " + solarText(st.lst)]);
+    var hrs = st.p95.map(function (v, i) { return v == null ? null : [i, v]; }).filter(Boolean)
+      .sort(function (a, b) { return b[1] - a[1]; }).slice(0, 4).sort(function (a, b) { return a[0] - b[0]; });
+    out.push(["Highest hours (UTC)", hrs.map(function (x) { return pad(x[0]) + "h " + x[1].toFixed(2); }).join(", ")]);
+    out.push(["Hours with values", st.hours + " of 24"]);
+    out.push(["", "A TEC fluctuation index, not an S4 value; dashed ring: about 550 km"]);
+    return out;
+  }
   function nisAt(pt) {                                 // the visible site within 9 px of a container point
     if (!state.nisShow || !state.nis) return null;
     var best = null, bd = 81;
@@ -1193,6 +1286,21 @@
       "a region it doesn't track which days aircraft see interference (see Validation). " +
       "Source: UCAR COSMIC-2 (CDAAC), CC BY 4.0."
       : "No COSMIC-2 file within 3 days of this day (it runs about a day behind)." + nearest("cosmic2", state.day));
+    if (state.lsShow) parts.push(state.ls ? "Limb S4 " + fmtDay(state.ls.day) + ": limb S4 measured along radio-occultation paths, which reads higher than a " +
+      "ground receiver's S4. Each cell, about 840 km across, shows its highest hourly 95th percentile from the COSMIC-2 satellites' " +
+      "on-board S4 (" + (state.ls.satellites || []).join(", ") + " delivered data), placed at the ray's lowest point; along the ray the place is " +
+      "uncertain by up to about 2,000 km. Shading deepens at 0.2, 0.4, 0.6, 0.9 and 1.3: display steps, not alert levels, and never comparable " +
+      "with ground S4 alert levels. Dashed outlines: most of that hour's values came while UCAR's interference index was raised. " +
+      "Cells with no shading had too few values. About 45°S to 45°N. Checked against INGV eSWua ground receivers on 25 held-out days " +
+      "(AUC 0.834; see Validation). Source: UCAR COSMIC-2 (CDAAC), CC BY 4.0."
+      : "No limb S4 file within 3 days of this day (it runs about a day behind)." + nearest("limbs4", state.day));
+    if (state.rtShow) parts.push(state.rt ? "Ground ROTI " + fmtDay(state.rt.day) + ": ROTI, a measured TEC fluctuation index at fixed stations, " +
+      "in TECU/min: a proxy for ionospheric irregularities, not an S4 value and never read against S4 alert levels. Each dot is an IGS station " +
+      "with its highest hourly 95th percentile; larger, darker dots mark 0.25, 0.5, 1 and 2 TECU/min (display steps, not alert levels). " +
+      "The dashed ring is about where its GPS and Galileo paths above 30° cross 350 km. Checked against INGV eSWua ground receivers on " +
+      "25 held-out days (AUC 0.887; see Validation)." + ((state.rt.missing || []).length ? " Not posted in time: " + state.rt.missing.join(", ") + "." : "") +
+      " Source: International GNSS Service (IGS) and the station operators, via BKG."
+      : "No ROTI file within 3 days of this day (it runs about a day behind)." + nearest("roti", state.day));
     if (state.s1Show) parts.push(state.s1 ? "Sentinel-1, 28 days to " + fmtDay(state.s1.day) + ": shaded cells, about 110 km across, are where " +
       "the Copernicus Sentinel-1 radar satellites reported interference in their own band (C-band, 5.4 GHz) on at least a quarter of their passes; " +
       "darker means half or three quarters of passes. Cells passed over fewer than 4 times are left out. This band is not GPS: it shows radars " +
@@ -1235,13 +1343,15 @@
     if (state.s6Show) layerFor("s6", day).then(function (j) { if (state.day !== day) return; state.s6 = j; layerNote(); layer.redraw(); });
     if (state.c2Show) layerFor("cosmic2", day).then(function (j) { if (state.day !== day) return; state.c2 = j; layerNote(); layer.redraw(); });
     if (state.s1Show) layerFor("s1", day).then(function (j) { if (state.day !== day) return; state.s1 = j; layerNote(); layer.redraw(); });
+    if (state.lsShow) layerFor("limbs4", day).then(function (j) { if (state.day !== day) return; state.ls = j; layerNote(); layer.redraw(); });
+    if (state.rtShow) layerFor("roti", day).then(function (j) { if (state.day !== day) return; state.rt = j; layerNote(); layer.redraw(); });
     if (state.smapShow) layerFor("smap", day).then(function (j) { if (state.day !== day) return; state.smap = j; layerNote(); layer.redraw(); });
     layerNote();
   }
 
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true; state.nisFocus = null;
-    state.spoof = null; state.sps = null; state.spoofFocus = null; state.spsFocus = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; state.s1 = null; loadLayers(day);
+    state.spoof = null; state.sps = null; state.spoofFocus = null; state.spsFocus = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; state.s1 = null; state.ls = null; state.rt = null; state.rtFocus = null; loadLayers(day);
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
     syncTimeline();
     fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
@@ -1391,7 +1501,7 @@
     });
   }).catch(function () { /* the map works without labels */ });
 
-  ["spoof", "cygnss", "nisar", "s6", "smap", "cosmic2", "s1"].forEach(function (k) {
+  ["spoof", "cygnss", "nisar", "s6", "smap", "cosmic2", "s1", "limbs4", "roti"].forEach(function (k) {
     fetch("/data/" + k + "/index.json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (j) { layerIndex[k] = (j && j.days) || []; if (state.day) loadLayers(state.day); });
   });
@@ -1440,6 +1550,7 @@
       state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
       imagery.want = hp.img === "esri";
       state.spoofShow = hp.sp === "1"; state.spsShow = hp.ss === "1" || state.measure === "spf"; state.sps7 = hp.s7 === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1"; state.s6Show = hp.s6 === "1"; state.smapShow = hp.sm === "1"; state.c2Show = hp.c2 === "1"; state.s1Show = hp.s1 === "1";
+      state.lsShow = hp.ls === "1"; state.rtShow = hp.rt === "1";
       return d;
     }
     var day = fromHash();
@@ -1533,7 +1644,7 @@
     ["tl-prev", "tl-next", "tl-slider", "map-day"].forEach(function (id) {
       document.getElementById(id).addEventListener("pointerdown", function () { setPlaying(false); });
     });
-    [["spoof", "spoof"], ["sps", "sps"], ["cyg", "cyg"], ["nis", "nis"], ["s6", "s6"], ["smap", "smap"], ["c2", "c2"], ["s1", "s1"]].forEach(function (k) {
+    [["spoof", "spoof"], ["sps", "sps"], ["cyg", "cyg"], ["nis", "nis"], ["s6", "s6"], ["smap", "smap"], ["c2", "c2"], ["s1", "s1"], ["ls", "ls"], ["rt", "rt"]].forEach(function (k) {
       var box = document.getElementById("lyr-" + k[0]);
       if (!box) return;
       box.checked = !!state[k[0] + "Show"];
