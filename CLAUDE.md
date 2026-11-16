@@ -139,7 +139,7 @@ loaded automatically; read it when you need the background.
     link files overlap and must be made unique per second; the first 60 s of a track are dropped; GPS links only;
     tangent points 150-500 km; H3 res 1. **Validated 15 Nov 2026** against INGV eSWua ground receivers on 25 held-out
     days (AUC 0.834; night-only 0.763; chance test p = 0.0005). **Tom approved map and feed use on 16 Nov 2026**
-    (not built yet; the label rule above applies). Only C2E2, C2E5
+    (built the same day, see "On the site and in the feed" below; the label rule above applies). Only C2E2, C2E5
     and C2E6 deliver podTc2 data in Oct-Nov 2026.
   - Ground ROTI (built 15 Nov 2026; `docs/validation/ground-roti.md`): `.github/workflows/ground-roti.yml` runs
     `tools/ground_roti_job.py`, which reads 17 IGS stations' daily 30 s files from BKG (anonymous; the belt from Cape
@@ -151,8 +151,19 @@ loaded automatically; read it when you need the background.
     missing station turns up. Compact RINEX 3.1 (RNX2CRX 4.2.0, e.g. MAL200KEN) is read as 3.0. Check:
     `tools/ground_roti_check.py` (needs the eSWua cache, `--ground`). **Validated 15 Nov 2026** against eSWua on
     the 25 held-out days (AUC 0.887; night-only 0.871; chance test p = 0.0005; Hanoi had no eSWua records, Dhaka /
-    Shillong weakest at 0.651; backfill run 43746680913). **Tom approved map and feed use on 16 Nov 2026** (not built
-    yet; the label rule above applies).
+    Shillong weakest at 0.651; backfill run 43746680913). **Tom approved map and feed use on 16 Nov 2026** (built the
+    same day; the label rule above applies).
+  - **On the site and in the feed (16 Nov 2026):** `tools/swx_site.py` holds the labels and the summaries. At deploy
+    `fetch_release_files.py` reads the `swx-data-` releases and `site_layers.py` slims each day for the map
+    (`site/data/limbs4/`: each res-1 cell's highest hourly p95; `site/data/roti/`: each station's 24 hourly p95 values),
+    gitignored. Map → Layers: limb S4 (`ls=1`, emerald cells, dashed where most of that hour's values were RFI-flagged)
+    and ground ROTI (`rt=1`, station dots with a 550 km dashed ring); the shading steps are display choices, never alert
+    levels. `board.py` adds the `swx` card (newest day of each, read from the release folder), the home page's Space
+    weather row gives the highest place of each (no number for limb S4), and `feed_v2.py` adds up to five limb S4 items
+    (H3 res-1 polygons, RFI share 0.5 or less, 1,500 km apart) and one item per ROTI station (points), each stamped with
+    its highest UTC hour. **All are routine observations with no baseline_ref:** the day's highest values, not
+    departures from a usual level. Any tier above routine needs a stated baseline first (e.g. a station's own
+    same-local-time median over 30 days) and Tom's yes. Requirement `NF-EEI-5`; NCF product `space-weather`.
 - **`watch.py` sources (31 Oct 2026):** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch
   (pages in `private/watch/pollers.json` `pagewatch`, each with a link pattern). FAA NOTAMs wait on API credentials
   (requested 30 Oct); the public NOTAM Search site refuses automated clients.

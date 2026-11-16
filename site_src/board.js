@@ -139,6 +139,21 @@
       ? "Scintillation " + esc(sc.level) + " (ESA nowcast, " + esc(both(sc.valid_utc)) + ")."
       : "No current scintillation reading" + (scAge != null ? ": ESA's last nowcast here is " + Math.round(scAge) +
         " hours old (" + esc(both(sc.valid_utc)) + ")." : "."));
+    // Limb S4 and ground ROTI (tools/swx_site.py): measurements with no usual level. Limb S4 gets no number here, so
+    // nobody reads it against ground S4 alert levels; ROTI is a TEC fluctuation index, never an S4 value.
+    var sw = b.swx || {}, lm = sw.limb, rt = sw.roti, sx = [];
+    if (lm && lm.top && lm.top.length) {
+      var lt = lm.top[0];
+      sx.push("Limb S4 measured along radio-occultation paths, which reads higher than a ground receiver's S4, was highest " +
+        (lt.near ? "near " + lt.near : "at " + Math.abs(lt.lat).toFixed(0) + "°" + (lt.lat >= 0 ? "N" : "S") + " " + Math.abs(lt.lon).toFixed(0) + "°" + (lt.lon >= 0 ? "E" : "W")) +
+        " (hour from " + both(lm.day + "T" + pad(lt.hour) + ":00Z") + ").");
+    }
+    if (rt && rt.stations && rt.stations.length && rt.stations[0].max_p95 != null) {
+      var rs = rt.stations[0];
+      sx.push("ROTI, a measured TEC fluctuation index at fixed stations, was highest at " + (rs.place || rs.id) + ": " +
+        rs.max_p95.toFixed(2) + " TECU/min (hour from " + both(rt.day + "T" + pad(rs.hour) + ":00Z") + ").");
+    }
+    set("swx-text", esc(sx.join(" ")));
     var g = b.geo;
     set("r-geo", g ? n(g.counts.objects) + " objects; " + n(g.close_count) + " close pairs; " +
       (g.snapshots < 2 ? "orbit-change flags start with the second snapshot" : g.manoeuvre_counts ?
@@ -163,7 +178,8 @@
     var fr = [["Aircraft", f.aircraft_day && dayShort(f.aircraft_day)], ["Spoofing", f.spoofing_day && dayShort(f.spoofing_day)],
       ["Ships (Finnish AIS)", dtShort(f.ships_built)], ["Satellite orbits", f.geo_snapshot && dayShort(f.geo_snapshot)],
       ["Scintillation (ESA)", dtShort(f.scintillation_valid)], ["CYGNSS", f.cygnss_day && dayShort(f.cygnss_day)],
-      ["Sentinel-6", f.s6_day && dayShort(f.s6_day)], ["SMAP (7 days to)", f.smap_day && dayShort(f.smap_day)],
+      ["Sentinel-6", f.s6_day && dayShort(f.s6_day)], ["Limb S4 (COSMIC-2)", f.limb_s4_day && dayShort(f.limb_s4_day)],
+      ["ROTI (IGS stations)", f.roti_day && dayShort(f.roti_day)], ["SMAP (7 days to)", f.smap_day && dayShort(f.smap_day)],
       ["EASA table", f.easa_table && dayShort(f.easa_table)], ["This page", dtShort(f.board_built)]];
     set("fresh", fr.map(function (r) { return "<div><span>" + esc(r[0]) + "</span><span>" + (r[1] ? esc(r[1]) : "not yet") + "</span></div>"; }).join(""));
   }

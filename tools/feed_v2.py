@@ -8,7 +8,10 @@ measurement (kind observation): regions that newly reached jamming scale this we
 whose severe share rose 5 points or more above their 30-day median, the day's major and notable events (majors
 anomaly, notables routine; each drawn as its H3 res-2 regions, stamped with its own hours), and up to five
 places where aircraft were newly shown at a false position (spoofing; tools/spoof_site.py new_targets(), placed where
-the aircraft really were), plus one daily summary. Warnings (judged, with likelihood and confidence) come later through doctrine/indicators.json.
+the aircraft really were), plus one daily summary. From 16 Nov 2026 (Tom's yes) also the space weather files
+(tools/swx_site.py, board section "swx"): the day's highest limb S4 cells (H3 res-1 polygons) and every ground ROTI
+station (points), each at its highest UTC hour. Those are routine observations with no baseline: no tier above routine
+is used for them until a baseline is set and stated, and neither is read against S4 alert levels. Warnings (judged, with likelihood and confidence) come later through doctrine/indicators.json.
 
 The doctrine kit's tradecraft linter (doctrine/kit) checks the feed before it is written. A feed that fails is not
 written, the reason is printed, and the deploy carries on.
@@ -33,6 +36,21 @@ ADSBLOL = {"id": "adsblol-archive", "publisher": "adsb.lol", "url": "https://git
            "licence": "ODbL 1.0", "grade": "B2", "independence_group": "adsb-feeders", "source_type": "dataset",
            "descriptor": "Crowd-fed ADS-B receiver archive (readsb traces with navigation-accuracy fields); daily file "
                          "posted the next morning; evaluated by Noisefloor's validation days."}
+COSMIC2 = {"id": "cosmic2-ro", "publisher": "UCAR COSMIC Program (CDAAC)",
+           "url": "https://data.cosmic.ucar.edu/gnss-ro/cosmic2/nrt/level1b/", "licence": "CC BY 4.0 (UCAR data terms)",
+           "grade": "A2", "independence_group": "ucar-cosmic2", "source_type": "dataset",
+           "descriptor": "COSMIC-2 near-real-time level 1b podTc2 files: S4 computed on board each receiver every 10 s from "
+                         "GPS signal-to-noise ratio; daily archive posted about 04:35 UTC the next day; evaluated against "
+                         "INGV eSWua ground receivers (docs/validation/cosmic2-limb-s4.md)."}
+IGS = {"id": "cors-igs", "publisher": "International GNSS Service (IGS) and the station operators, via the BKG GNSS Data "
+       "Center", "url": "https://igs.bkg.bund.de/root_ftp/IGS/obs/",
+       "licence": "IGS terms of use: open, attribution required (derived day files CC BY 4.0)", "grade": "A2",
+       "independence_group": "igs-stations", "source_type": "dataset",
+       "descriptor": "Daily 30 s RINEX observation files of 17 IGS stations and the IGS merged broadcast orbits; posted "
+                     "the next day; evaluated against INGV eSWua ground receivers (docs/validation/ground-roti.md)."}
+SWX_NCF = ["provide_pnt"]                              # doctrine/ncf_map.json, product space-weather
+ROTI_STATIONS = 17                                     # stations in the frozen method (docs/validation/ground-roti.md)
+COSMIC2_SATELLITES = 6                                 # COSMIC-2 receivers; only some deliver podTc2 files
 COMMON = {"contract": CONTRACT, "program": "noisefloor", "status": "actual", "msg_type": "new", "human_review": "none",
           "us_person_data": "none", "method_version": METHOD, "ie_aspect": ["physical"], "pmesii_pt": ["infrastructure"],
           "ascope": ["capabilities"]}
@@ -331,14 +349,99 @@ def build(board, days, now=None):
                              "regional shares (up to 30)", "type": "rolling", "version": "1", "rule": rl.get("rule", "")},
             "requirement_ids": ["NF-EEI-3"], **tags(pts)})
 
+    swx_items(board.get("swx") or {}, add, published)
+
     return {
         "type": "FeatureCollection", "contract": CONTRACT, "program": "noisefloor", "generated_at": published,
         "data_as_of": as_of, "method_version": METHOD,
-        "licence": "ODbL 1.0 (derived from adsb.lol); text CC BY 4.0",
-        "attribution": "Noisefloor, The Intelligence Company. Aircraft data: adsb.lol contributors (ODbL).",
+        "licence": "ODbL 1.0 for items derived from adsb.lol; CC BY 4.0 for the space weather items (limb S4 from UCAR "
+                   "COSMIC-2, ROTI from IGS stations); text CC BY 4.0",
+        "attribution": "Noisefloor, The Intelligence Company. Aircraft data: adsb.lol contributors (ODbL). COSMIC-2 data: "
+                       "UCAR COSMIC Program (CDAAC). GNSS station data: International GNSS Service (IGS) and the station "
+                       "operators, via BKG.",
         "language_key": "https://github.com/metacog-osint/noise-floor/blob/main/doctrine/kit/docs/language-key.md",
         "features": feats,
     }
+
+
+def hour_span(day, hour):
+    d = datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc) + timedelta(hours=hour)
+    return {"start": utc(d), "end": utc(d + timedelta(hours=1))}
+
+
+def solar(lst):
+    """Local solar time as "21:30" (the files give hours as a decimal)."""
+    if lst is None:
+        return None
+    m = int(round(lst * 60)) % 1440
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+
+SWX_TAGS = {"ncf": SWX_NCF, "sector": vocab.derive_sectors(SWX_NCF), "pmesii_pt": ["physical_environment"],
+            "ascope": ["areas"], "requirement_ids": ["NF-PIR-3", "NF-EEI-5"], "kind": "observation", "tier": "routine",
+            "product_category": "current"}
+
+
+def swx_items(sw, add, published):
+    """Limb S4 and ground ROTI items (routine observations, no baseline): see the module docstring."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import swx_site
+    lm = sw.get("limb") or {}
+    sats = lm.get("satellites") or []
+    for i, c in enumerate(lm.get("top") or []):
+        geom, pts = h3_polygon(c["cell"])
+        span = hour_span(lm["day"], c["hour"])
+        near = c.get("near")
+        at = near or f"{abs(c['lat']):.0f}°{'N' if c['lat'] >= 0 else 'S'}, {abs(c['lon']):.0f}°{'E' if c['lon'] >= 0 else 'W'}"
+        lst = solar(c.get("lst"))
+        add(geom, {
+            **SWX_TAGS, "id": f"noisefloor-limb-s4-{lm['day']}-{i + 1}", "precision_class": "area",
+            "title": f"Among the day's highest limb S4 readings from COSMIC-2, {'near ' if near else 'at '}{at}",
+            "summary": (f"{swx_site.LIMB_LABEL}: 95th percentile {c['p95']:.2f} from {c['n']} ten-second values on "
+                        f"{c['links']} radio-occultation link{'s' if c['links'] != 1 else ''}, in the hour from "
+                        f"{span['start'][11:16]} UTC on {plain_day(lm['day'])}"
+                        + (f" (about {lst} local solar time)" if lst else "")
+                        + ", that cell's highest hour. The cell is about 840 km across, and the place along the ray "
+                        "is uncertain by up to about 2,000 km. One of the day's "
+                        f"{len(lm['top'])} highest cells at least 1,500 km apart, leaving out cell-hours where most "
+                        "values came while UCAR's interference index was raised"
+                        + (f" ({c['rfi'] * 100:.0f}% of this hour's values did)" if c.get("rfi") else "")
+                        + f". {swx_site.LIMB_NOT_GROUND} These are the day's highest values, not a departure from a "
+                        f"usual level. {len(sats)} of {COSMIC2_SATELLITES} COSMIC-2 satellites delivered data"
+                        + (f" ({', '.join(sats)})" if sats else "")
+                        + ". Checked against INGV eSWua ground scintillation receivers on 25 held-out days (AUC 0.834)."),
+            "measure": {"name": "limb_s4_p95", "value": c["p95"], "max": c["max"],
+                        "unit": swx_site.LIMB_LABEL + "; unitless 95th percentile of the cell-hour's 10 s values"},
+            "data_as_of": span["end"], "data_as_of_precision": None, "period": span,
+            "sources": [{**COSMIC2, "accessed_at": lm.get("as_of") or published}],
+            "coverage_fraction": round(len(sats) / COSMIC2_SATELLITES, 3),
+            "visual": {"type": "map", "url": f"{SITE_URL}/map#day={lm['day']}&ls=1"},
+            **tags(pts, near_at=c.get("near_at"))})
+    ro = sw.get("roti") or {}
+    n_st = len(ro.get("stations") or [])
+    for s in ro.get("stations") or []:
+        if s.get("max_p95") is None or s.get("hour") is None:
+            continue
+        span = hour_span(ro["day"], s["hour"])
+        lst = solar(s.get("lst"))
+        place = s.get("place") or s["id"]
+        add({"type": "Point", "coordinates": [s["lon"], s["lat"]]}, {
+            **SWX_TAGS, "id": f"noisefloor-roti-{ro['day']}-{s['id'].lower()}", "precision_class": "point",
+            "title": f"Ground ROTI at {place}: the highest hour of {plain_day(ro['day'])}",
+            "summary": (f"{swx_site.ROTI_LABEL}: at IGS station {s['id']} ({place}) the highest hourly 95th percentile on "
+                        f"{plain_day(ro['day'])} was {s['max_p95']:.2f} TECU/min, in the hour from "
+                        f"{span['start'][11:16]} UTC" + (f" (about {lst} local solar time)" if lst else "")
+                        + ", from GPS and Galileo paths above 30° whose 350 km pierce points lie within about 550 km "
+                        f"of the station; {s['hours']} of 24 hours had values. {swx_site.ROTI_NOT_S4} This is the "
+                        "day's highest hour, not a departure from a usual level. Checked against INGV eSWua ground "
+                        "scintillation receivers on 25 held-out days (AUC 0.887)."),
+            "measure": {"name": "roti_p95", "value": s["max_p95"],
+                        "unit": "TECU/min; " + swx_site.ROTI_LABEL + ", 95th percentile of the station-hour's 5-minute values"},
+            "data_as_of": span["end"], "data_as_of_precision": None, "period": span,
+            "sources": [{**IGS, "accessed_at": ro.get("as_of") or published}],
+            "coverage_fraction": round(min(1.0, n_st / ROTI_STATIONS), 3),
+            "visual": {"type": "map", "url": f"{SITE_URL}/map#day={ro['day']}&rt=1"},
+            **tags([(s["lat"], s["lon"])], near_at=[s["lat"], s["lon"]])})
 
 
 def check(feed):

@@ -48,7 +48,9 @@
         "NOAA SWPC indices",
         "spoofing episodes",
         "position loss",
-        "declared notices"
+        "declared notices",
+        "COSMIC-2 limb S4",
+        "ground ROTI"
       ],
       "warning_problems": [
         "NF-WP-1",
@@ -108,6 +110,16 @@
       "question": "Satellite reflectometry noise-floor anomalies (CYGNSS) over the same places.",
       "series": [
         "CYGNSS day summaries"
+      ]
+    },
+    {
+      "id": "NF-EEI-5",
+      "type": "eei",
+      "parent": "NF-PIR-3",
+      "question": "Ionospheric irregularity activity where no scintillation receiver sits: limb S4 measured along radio-occultation paths (COSMIC-2), which reads higher than a ground receiver's S4, and ROTI, a measured TEC fluctuation index at fixed stations (IGS). Neither is read against S4 alert levels.",
+      "series": [
+        "COSMIC-2 limb S4",
+        "ground ROTI"
       ]
     }
   ]
