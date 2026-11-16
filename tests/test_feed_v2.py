@@ -21,6 +21,9 @@ BOARD = {
         {"name": "Caucasus", "box": [40.0, 43.5, 41.0, 49.0], "today": 2.0, "median30": 1.0, "change": 1.0}]},
     "top_events": {"day": "2026-10-29", "events": [
         {"tier": "major", "peak": 36, "excess": 30, "h0": 19, "h1": 21, "lat": 54.7, "lon": 20.5, "near": "Kaliningrad", "test": False}]},
+    "spoofing": {"new_places": {"day": "2026-10-29", "history_days": 10, "rule": "test rule", "new": [
+        {"aircraft": 6, "lat": 33.0, "lon": 36.0, "near": "Damascus", "km_from_aircraft": 300,
+         "victims": [{"region": "821e07fffffffff", "near": "Bucharest"}]}]}},
 }
 DAYS = [{"day": f"2026-10-{d:02d}", "hexes": 20000} for d in range(1, 29)] + [{"day": "2026-10-29", "hexes": 15000}]
 
@@ -28,7 +31,7 @@ DAYS = [{"day": f"2026-10-{d:02d}", "hexes": 20000} for d in range(1, 29)] + [{"
 def main():
     feed = feed_v2.build(BOARD, DAYS, now=datetime(2026, 10, 30, 6, 12, tzinfo=timezone.utc))
     ids = [f["properties"]["id"] for f in feed["features"]]
-    assert len(ids) == 5, ids                      # summary, 1 new, 1 ended, 1 rise (Caucasus below threshold), 1 event
+    assert len(ids) == 6, ids                      # summary, 1 new, 1 ended, 1 rise (Caucasus below threshold), 1 event, 1 spoof
     assert len(set(ids)) == len(ids), "ids must be unique"
     problems = feed_v2.check(feed)
     assert not problems, problems
@@ -42,6 +45,12 @@ def main():
     assert all(p["us_person_data"] == "none" and p["kind"] == "observation" for p in by.values())
     ev = next(f for f in feed["features"] if f["properties"]["id"].startswith("noisefloor-event-"))
     assert ev["geometry"]["type"] == "Point" and ev["properties"]["countries"] == ["RU"]
+    # Every item covers a whole UTC day and the source gives no time: precision "day", data_as_of at midnight UTC
+    # (kit 0.5.6 contract), so consumers print a date and never "5:59 PM".
+    assert any(i.startswith("noisefloor-spoof-new-") for i in by), "the spoof item must be covered too"
+    for i, p in by.items():
+        assert p["data_as_of_precision"] == "day", i
+        assert p["data_as_of"] == "2026-10-29T00:00:00Z", (i, p["data_as_of"])
     print("test_feed_v2: all passed")
 
 

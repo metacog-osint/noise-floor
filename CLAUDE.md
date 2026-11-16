@@ -44,6 +44,12 @@ loaded automatically; read it when you need the background.
   extras (grades, independence groups, health probes) and method summary. Area-specific warning problems stay private.
 - `tools/feed_v2.py` writes `site/data/feed.geojson` (feed contract `tic-feed/2`) from the status board at deploy;
   `board.py` calls it, and a failure only skips the feed. Every item is a measurement (kind observation) for now.
+  Every item covers a whole UTC day, so it carries `data_as_of_precision: "day"` with `data_as_of` at `T00:00:00Z`
+  (kit 0.5.6 rule; was `T23:59:59Z`, which COP showed as "5:59 PM CST"; 16 Nov 2026). The feed header's own
+  `data_as_of` stays at `T23:59:59Z`. The vendored kit (0.3.3) doesn't know the field yet; it is not rejected.
+  **Side effect on COP:** its freshness is the newest item's `data_as_of` (Noisefloor's windows: 36 h late, 72 h stale), so
+  the day's items now read about a day older and may show "late" for part of each day until COP treats `day` items
+  as end-of-day for freshness or widens the windows.
 
 ## Products and tools
 - `products/`: written products, dated. First: `2026-10-07-sun-outage-season.md` (Weekly Topic draft, not yet published).
