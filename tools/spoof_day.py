@@ -1016,7 +1016,35 @@ def aggregate(recs):
 
 def run(day, raw_dir, out_dir, workers, limit=0, airspeed=False, v06=False, a2_hi_ft=None, cache_dir=None):
     """One day from the raw archive. cache_dir: also write the day cache there (rerun() reads it): the records of
-    aircraft that aren't candidates (records.pkl.gz), the raw traces of those that are (cand-*.bin), and meta.json."""
+    aircraft that aren't candidates (records.pkl.gz), the raw traces of those that are (cand-*.bin), and meta.json.
+    The cache is built in <cache_dir>.building (made exclusively: a second build of the same day stops instead of
+    mixing its shards with this one's; 2025-05-10, 16 Nov) and moved into place when it is complete."""
+    if not cache_dir:
+        return _run_day(day, raw_dir, out_dir, workers, limit, airspeed, v06, a2_hi_ft, None)
+    import shutil
+    build = cache_dir.rstrip("/\\") + ".building"
+    os.makedirs(os.path.dirname(os.path.abspath(build)), exist_ok=True)
+    try:
+        os.mkdir(build)
+    except FileExistsError:
+        raise RuntimeError(f"{build} exists: another build of this day is running, or one died "
+                           "(then delete that folder and start again)") from None
+    try:
+        s = _run_day(day, raw_dir, out_dir, workers, limit, airspeed, v06, a2_hi_ft, build)
+        old = None
+        if os.path.exists(cache_dir):
+            old = build[:-len(".building")] + f".replaced-{os.getpid()}"
+            os.rename(cache_dir, old)
+        os.rename(build, cache_dir)
+        if old:
+            shutil.rmtree(old, ignore_errors=True)
+        return s
+    except BaseException:
+        shutil.rmtree(build, ignore_errors=True)
+        raise
+
+
+def _run_day(day, raw_dir, out_dir, workers, limit, airspeed, v06, a2_hi_ft, cache_dir):
     a2_hi_ft = SLOW_HI_A2_FT if a2_hi_ft is None else a2_hi_ft
     parts = P.day_parts(raw_dir, day)
     day0 = int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())

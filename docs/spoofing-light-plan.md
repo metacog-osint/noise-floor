@@ -109,6 +109,8 @@ compare that, not wall time, on this shared PC. A rerun's summary adds `seconds_
 `shard_file_read`) and `cache_format`. `rerun` and `cache-convert` refuse a day whose shards hold a different number of
 candidate traces than `meta.json` says: the 2025-05-10 cache held shards of two overlapping builds, and its V1 rescore
 gave 783 episodes and 51,597 aircraft against 431 and 49,931 in the raw run (a difference `spoof_same.py` finds at once).
+`run --cache` now builds in `<cache>.building`, made exclusively (a second build of the same day stops with a message), and
+moves the finished folder into place whole.
 
 **Where a cached rerun spends its time, and the format-2 cache.** For 20 Feb 2024 (V1, 1,608 candidates, one pass, other
 jobs running): loading the 41,257 records from `records.pkl.gz` takes about 5 s (0.45 s gunzip, 4.2 s unpickle); scoring

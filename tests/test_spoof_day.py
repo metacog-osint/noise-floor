@@ -506,7 +506,20 @@ def test_cpu_time_and_cache_format_2():
         assert v["episodes"] == w["episodes"] == 2
         assert spoof_same.compare(os.path.join(tmp, "v06"), os.path.join(tmp, "v06b"), [day])["same"]
         assert not spoof_same.compare(os.path.join(tmp, "v06"), os.path.join(tmp, "re2"), [day])["same"]
-        stale = os.path.join(tmp, "stale")                       # a second build's shard left beside the first one's
+        # a build in progress blocks a second build of the same day, and a finished build replaces the folder whole
+        os.mkdir(old_dir + ".building")
+        try:
+            S.run(day, raw, os.path.join(tmp, "full2"), 1, airspeed=True, v06=True, cache_dir=old_dir)
+            raise AssertionError("a second build of the same day must stop")
+        except RuntimeError as e:
+            assert "another build" in str(e), e
+        os.rmdir(old_dir + ".building")
+        open(os.path.join(old_dir, "cand-12345.bin"), "wb").write(b"leftover")       # debris from an older build
+        S.run(day, raw, os.path.join(tmp, "full3"), 1, airspeed=True, v06=True, cache_dir=old_dir)
+        assert "cand-12345.bin" not in os.listdir(old_dir) and not [n for n in os.listdir(os.path.dirname(old_dir)) if "." in n]
+        S._set_overrides({"SLOW_HI_A2_FT": 36000})                       # the 25000 rerun above set it
+        assert S.rerun(day, old_dir, os.path.join(tmp, "re3"), 1)["episodes"] == 1
+        stale = os.path.join(tmp, "stale")                     # a second build's shard left beside the first one's
         shutil.copytree(old_dir, os.path.join(stale, day))
         shard = sorted(n for n in os.listdir(old_dir) if n.startswith("cand-"))[0]
         shutil.copyfile(os.path.join(old_dir, shard), os.path.join(stale, day, "cand-99999.bin"))
