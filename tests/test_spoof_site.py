@@ -187,6 +187,13 @@ def test_region_levels_pool_and_sent():
     sd[ds[-1]] = {gulf: (2100, 30), balt: (40, 0), quiet: (900, 0)}
     n, lv = SP.region_levels(sd, ds[-1])
     assert n == 9 and lv[gulf] == [10, "above"] and lv[balt] == [4, "below"] and quiet not in lv, lv
+    # the region floor (16 Nov 2026): above needs 5 or more over usual; 4 over a usual of 0 stays near, 5 reads above
+    for k, want in ((4, "near"), (5, "above")):
+        sk = dict(sd, **{ds[-1]: {gulf: (2100, 30), balt: (40, 0), quiet: (900, k)}})
+        assert SP.region_levels(sk, ds[-1])[1][quiet] == [0, want], (k, want)
+        assert SP.region_levels(sk, ds[-1], min_over=3)[1][quiet] == [0, "above"]       # the old rule
+    assert SP.level(4, [0] * 9) == (0, "above")                                         # places keep 3
+    assert "5 or more over it" in SP.region_rule() and "half or less and 3 or more under" in SP.region_rule()
     assert SP.region_levels(sd, ds[5]) == (5, {})                    # fewer than 7 earlier days: no levels
     rows, use = SP.pooled(sd, ds[-1])
     assert use == ds[-7:] and dict((r, (a, k)) for r, a, k in rows)[gulf] == (6 * 2000 + 2100, 6 * 10 + 30)

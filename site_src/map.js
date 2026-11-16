@@ -785,7 +785,7 @@
       document.getElementById("map-measure-note").textContent = "Spoofing view: the GPS-error colours are off. Each region about 300 km " +
         "across is shaded by the share of its aircraft-hours spent in active spoofing episodes" + (spsPooled() ? " over the 7 days to the day shown" : "") +
         ", counted where the aircraft really were. A bold dashed outline marks a region above its own usual level (at least twice its median " +
-        "over up to 30 earlier days, and 3 or more spoofed aircraft-hours over it). Crosses mark where receivers were told they were. Hover a " +
+        "over up to 30 earlier days, and 5 or more spoofed aircraft-hours over it). Crosses mark where receivers were told they were. Hover a " +
         "region for its numbers; click it to draw lines to where its aircraft were shown. The timeline below still counts GPS-error cells.";
       return;
     }
@@ -1170,7 +1170,7 @@
       ": the share of aircraft-hours (each aircraft counted once an hour in each region) spent in active spoofing episodes, in regions about " +
       "300 km across with 10 or more aircraft-hours. Darker: 0.1%, 1% and 5% or more; outlined only: none seen. It counts where aircraft really " +
       "were, not where they were shown." + (spsLevels() ? " A bold dashed outline marks a region above its own usual level (at least twice its " +
-      "median over the " + state.sps.level_days + " earlier days with regional shares, and 3 or more spoofed aircraft-hours over it); an " +
+      "median over the " + state.sps.level_days + " earlier days with regional shares, and 5 or more spoofed aircraft-hours over it); an " +
       "observation against the region's own normal, not a warning." : "") + " Hover a region for where its aircraft were shown; click to draw " +
       "lines there. On 12 held-out days, six quiet control regions stayed at 0.0023%, against 0.397% in the Middle East and 0.904% in the Baltic and " +
       "western Russia (detector v0.6; see Validation). Separate from jamming: a spoofed receiver can report good accuracy."
