@@ -95,7 +95,7 @@ altitude, so it can't be placed or counted anyway). Whether to delete the raw ar
 decision; the caches can't rebuild a day for settings outside the envelope.
 
 **Scoring a variant in one command (16 Nov 2026).** `python tools/spoof_variant.py --set NAME=VALUE ... --label L --out DIR
---baseline DIR [--reference DIR] [--outside DIR --at LAT,LON]` takes the heavy-job lock, reruns the days from the caches
+--baseline DIR [--reference DIR] [--outside DIR --at=LAT,LON]` takes the heavy-job lock, reruns the days from the caches
 (`--cache`, default `data/spoof_cache`; `--days`, default the 18 test days), then scores the held-out days (H1–H6 from
 `spoof_heldout.py`; H7, the A2 rule-A control-box episodes of v0.6's review still present, from
 `<baseline>/new_controls.json`; H8, MLAT-confirmed episodes at least 98% of the baseline's), the outside list at the place

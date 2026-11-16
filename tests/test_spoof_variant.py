@@ -64,7 +64,7 @@ def test_variant_end_to_end():
         S.rerun(DAY, os.path.join(cache, DAY), ref, 1, {"SLOW_HI_A2_FT": 0}, "V1")
         out = os.path.join(tmp, "out")
         args = ["--set", "SLOW_HI_A2_FT=0", "--label", "V1", "--cache", cache, "--out", out, "--days", DAY, "--workers", "1",
-                "--reference", ref, "--outside", outside, "--at", f"{T.LIMA[0]},{T.LIMA[1]}", "--lima-days", DAY]
+                "--reference", ref, "--outside", outside, f"--at={T.LIMA[0]},{T.LIMA[1]}", "--lima-days", DAY]
         assert run_main(args) == 0
         rep = json.load(open(os.path.join(out, "variant_report.json")))
         assert rep["label"] == "V1" and rep["overrides"] == {"SLOW_HI_A2_FT": 0} and rep["days"] == [DAY]

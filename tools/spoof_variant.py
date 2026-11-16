@@ -3,7 +3,7 @@
 
   python tools/spoof_variant.py --set SLOW_HI_A2_FT=0 --label V1 --out data/spoof_rerun_v1 \\
       --baseline data/spoofing_v06 --reference data/spoof_rerun_v1_earlier \\
-      --outside DIR --at LAT,LON [--cache data/spoof_cache] [--days ...] [--workers N] [--report FILE]
+      --outside DIR --at=LAT,LON [--cache data/spoof_cache] [--days ...] [--workers N] [--report FILE]
 
 It takes the machine's heavy-job lock (tools/heavy_lock.py) and then runs, in order:
   1. rerun (tools/spoof_day.py rerun) of every day from its cache with the --set constants into --out;
@@ -146,7 +146,7 @@ def main():
     ap.add_argument("--h7-list", help="H7's list of episodes (default <baseline>/new_controls.json; local)")
     ap.add_argument("--reference", help="an earlier output of the same variant: spoof_same.py checks --out against it")
     ap.add_argument("--outside", help="folder of the outside day files (read only), for P1 and P2")
-    ap.add_argument("--at", help="LAT,LON of the place for --outside")
+    ap.add_argument("--at", help="LAT,LON of the place for --outside; write --at=LAT,LON when LAT is negative")
     ap.add_argument("--km", type=float, default=100.0)
     ap.add_argument("--slack-min", type=float, default=30.0)
     ap.add_argument("--lima-days", nargs="+", default=["2026-11-07:2026-11-12"], help="days the outside score uses")
