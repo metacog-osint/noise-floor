@@ -391,6 +391,70 @@ def test_v061_rule_a_for_a2():
     assert len(eps(flight(25500), DET, a2_hi_ft=0)) == 1, "A3 keeps rule A whatever the A2 setting"
 
 
+def test_candidate():
+    """Day cache candidates (docs/spoofing-light-plan.md): a clean airliner isn't one; slow, stationary or jumping
+    positions at altitude make one; light aircraft never are."""
+    def cand(pts, det=DET, mlat=()):
+        A, M, cat = S.parse_trace(trace("bbb030", pts, det=det, mlat=mlat))
+        return S.candidate(A, M, cat)
+    assert not cand(fly(DAY0, 30, 47.5, 19.0))
+    assert cand(fly(DAY0, 30, 47.5, 19.0) + fly(DAY0 + 1810, 5, 47.5, 21.6, gs=190, alt=30000)), "slow at altitude"
+    assert cand(hold(DAY0, 3, 47.5, 19.0, gs=300)), "near-stationary at altitude"
+    assert cand(fly(DAY0, 10, 47.5, 19.0) + fly(DAY0 + 610, 10, 40.0, 19.0)), "a jump"
+    assert not cand(fly(DAY0, 30, 47.5, 19.0, gs=150, alt=8000)), "slow, but under 10,000 ft"
+    assert not cand(fly(DAY0, 30, 47.5, 19.0, gs=90), det=dict(DET, category="A1")), "light aircraft"
+
+
+def test_cache_rerun_and_shadow():
+    """run --cache then rerun: the same outputs as the full run; a variant inside the envelope reproduces a full run
+    with that setting; settings outside it are refused; the shadow file compares the two without identifiers."""
+    import pyarrow.parquet as pq
+    import spoof_shadow as SH
+    tmp = tempfile.mkdtemp()
+    try:
+        raw, cache = os.path.join(tmp, "raw"), os.path.join(tmp, "cache")
+        os.makedirs(raw)
+        t0, a2 = DAY0 + 3600, dict(DET, category="A2")
+        slow_a2 = fly(t0, 30, 47.5, 19.0, gs=280, alt=25500) + fly(t0 + 1810, 10, 47.5, 21.6, gs=140, alt=25500)
+        traces = [trace("bbb009", lima_flight(t0)), trace("bbb040", slow_a2, det=a2, typ="B350")] +                  [trace(f"bbb2{k:02d}", fly(t0 + k * 30, 50, 48.0 + 0.05 * k, 19.0)) for k in range(4)]
+        build_day(raw, "2024-10-14", traces)
+        full = S.run("2024-10-14", raw, os.path.join(tmp, "full"), 1, airspeed=True, v06=True,
+                     cache_dir=os.path.join(cache, "2024-10-14"))
+        meta = json.load(open(os.path.join(cache, "2024-10-14", "meta.json")))
+        assert meta["candidates"] == 2 and meta["aircraft"] == 6, meta     # the Lima flight and the slow A2
+        re = S.rerun("2024-10-14", os.path.join(cache, "2024-10-14"), os.path.join(tmp, "re"), 1)
+
+        def outs(d):
+            ev = json.load(gzip.open(os.path.join(tmp, d, "2024-10-14.events.json.gz"), "rt"))
+            t4 = pq.read_table(os.path.join(tmp, d, "2024-10-14.hex4.parquet")).to_pylist()
+            return sorted(json.dumps(e, sort_keys=True) for e in ev), t4
+        assert outs("full") == outs("re") and full["episodes"] == re["episodes"] == 1 and re["version"] == "0.6.1"
+        v = S.rerun("2024-10-14", os.path.join(cache, "2024-10-14"), os.path.join(tmp, "v06"), 1,
+                    {"SLOW_HI_A2_FT": 25000}, "v0.6")
+        assert v["episodes"] == 2 and v["version"] == "0.6+v0.6" and v["rerun"]["overrides"] == {"SLOW_HI_A2_FT": 25000}
+        S._set_overrides({"SLOW_HI_A2_FT": 36000})                       # rerun sets module constants: put back
+        f06 = S.run("2024-10-14", raw, os.path.join(tmp, "f06"), 1, airspeed=True, v06=True, a2_hi_ft=25000)
+        assert outs("v06") == outs("f06") and f06["episodes"] == 2
+        for bad in ({"SLOW_KT": 250}, {"JUMP_KM": 5.0}, {"SAMPLE_S": 10.0}, {"FAST_KT": 200}, {"NOPE": 1}):
+            try:
+                S.check_overrides(bad)
+                raise AssertionError(f"{bad} should be refused")
+            except ValueError:
+                pass
+        S.check_overrides({"SLOW_HI_A2_FT": 0, "SLOW_KT": 120, "LOITER_S": 120})
+        d = SH.diff("2024-10-14", os.path.join(tmp, "full"), os.path.join(tmp, "v06"), "v0.6", {"SLOW_HI_A2_FT": 25000})
+        assert d["new"]["episodes"] == 1 and d["new"]["by_category"] == {"A2": 1} and d["gone"]["episodes"] == 0
+        p = SH.write("2024-10-14", os.path.join(tmp, "full"), [d], os.path.join(tmp, "site"))
+        txt = open(p, encoding="utf-8").read()
+        assert "bbb0" not in txt and "bbb2" not in txt, "no aircraft identifiers"
+        sc = SH.score([os.path.join(tmp, "site")])["v0.6"]
+        assert sc["days"] == 1 and sc["episodes"] == {"default": 1, "variant": 2} and sc["new"]["episodes"] == 1
+        assert SH.variants("2026-11-20") and not SH.variants("2027-01-01")      # the listed calibration variant's dates
+    finally:
+        S._set_overrides({"SLOW_HI_A2_FT": 36000})
+        shutil.rmtree(tmp)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):
