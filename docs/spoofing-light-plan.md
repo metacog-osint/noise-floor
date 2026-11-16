@@ -85,7 +85,7 @@ fresh run from the raw archive.
   way in every run.
 - `tests/test_spoof_day.py` (`test_cache_rerun_and_shadow`) checks the same on a synthetic day, including the refusals.
 
-ALLDAYS_RESULT
+**All 18 test days** (the 12 held-out days and 7–12 Nov 2026) are being cached from the raw archives (started 15 Nov 2026, 18:53 CST; `data/spoof_cache/build_all.sh`, local). Still to do once they are: check each day's full-run output against the 15 Nov v0.6.1 V2 output (`data/spoofing_v061b`), rerun V1 (`--set SLOW_HI_A2_FT=0`) from the caches and score it with `tools/spoof_heldout.py` and `tools/spoof_compare.py --cache-root` against the 15 Nov results, and record the time it takes.
 
 **Held-out days:** each of the 12 held-out days and 7–12 Nov 2026 is cached once from the raw archive
 (`data/spoof_cache/`, local). After that, a variant's held-out score is 18 reruns and `tools/spoof_heldout.py` on their
