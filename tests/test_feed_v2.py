@@ -51,7 +51,32 @@ def main():
     for i, p in by.items():
         assert p["data_as_of_precision"] == "day", i
         assert p["data_as_of"] == "2026-10-29T00:00:00Z", (i, p["data_as_of"])
+    country_tags()
     print("test_feed_v2: all passed")
+
+
+def country_tags():
+    """Real res-2 regions and events from the live feed of 15-16 Nov 2026 (suite review Mistake 1): the cell's interior
+    is sampled, not just its six corners, and the named place's country is added."""
+    board = {"freshness": {"aircraft_day": "2026-11-15"}, "changes": {"day": "2026-11-15", "rule": "test rule",
+             "new": [{"region": "82534ffffffffff", "near": "Doha", "near_at": [25.29, 51.53], "days_in_last7": 2}],
+             "ended": [{"region": "825367fffffffff", "near": "Manama", "near_at": [26.24, 50.58], "days_in_prior30": 5},
+                       {"region": "822db7fffffffff", "near": "Tel Aviv", "near_at": [32.08, 34.77], "days_in_prior30": 9},
+                       {"region": "822db7fffffffff", "near": None, "near_at": None, "days_in_prior30": 9}]},
+             "top_events": {"day": "2026-11-15", "events": [
+                 {"tier": "notable", "peak": 18.1, "excess": 18.1, "h0": 0, "h1": 3, "lat": 34.34, "lon": 31.23,
+                  "near": "Nicosia", "near_at": [35.17, 33.37], "test": False}]}}
+    feed = feed_v2.build(board, [], now=datetime(2026, 11, 16, 14, 0, tzinfo=timezone.utc))
+    assert not feed_v2.check(feed)
+    cc = [f["properties"]["countries"] for f in feed["features"][1:]]
+    assert {"QA", "AE", "SA"} <= set(cc[0]), cc[0]          # was AE, SA: Qatar's south is in the cell, Doha just outside
+    assert "BH" in cc[1], cc[1]                              # was SA: Manama is outside the cell; its country is added
+    assert {"IL", "PS"} <= set(cc[2]), cc[2]                 # was EG, JO, LB: Israel fills the middle of the cell
+    assert {"IL", "PS"} <= set(cc[3]), cc[3]                 # the interior alone finds Israel, with no named place
+    assert cc[4] == ["CY"], cc[4]                            # was none: the event point is at sea off Cyprus
+    # Coastal and divided-city points the kit's thinned outlines miss fall back to the commonest country nearby.
+    assert feed_v2.place_country([26.24, 50.58]) == "BH" and feed_v2.place_country([35.17, 33.37]) == "CY"
+    assert feed_v2.place_country([0.0, -30.0]) is None       # open ocean: nothing
 
 
 if __name__ == "__main__":

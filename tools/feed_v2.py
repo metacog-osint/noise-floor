@@ -71,15 +71,69 @@ def box_points(box):
     return [(la0 + (la1 - la0) * a, lo0 + (lo1 - lo0) * b) for a in (0.1, 0.5, 0.9) for b in (0.1, 0.5, 0.9)]
 
 
+SAMPLE_RES = 5                                        # a res-2 cell is sampled at its 343 res-5 children's centres
+
+
+def cell_points(cell):
+    """Sample points over an H3 cell for country tags: its corners, its centre and its res-5 children's centres
+    (343 for a res-2 cell, about 9 km apart). Corners alone missed the country in the middle of the cell: the
+    "near Tel Aviv" region was tagged EG, JO, LB without IL (suite review, 15 Nov 2026)."""
+    import h3
+    pts = list(h3.cell_to_boundary(cell)) + [h3.cell_to_latlng(cell)]
+    if h3.get_resolution(cell) < SAMPLE_RES:
+        pts += [h3.cell_to_latlng(c) for c in h3.cell_to_children(cell, SAMPLE_RES)]
+    return pts
+
+
 def h3_polygon(cell):
     import h3
     ring = [[round(lo, 4), round(la, 4)] for la, lo in h3.cell_to_boundary(cell)]
-    return {"type": "Polygon", "coordinates": [ring + [ring[0]]]}, [(la, lo) for lo, la in ring]
+    return {"type": "Polygon", "coordinates": [ring + [ring[0]]]}, cell_points(cell)
 
 
-def tags(points, extra=None):
-    cc = geo.countries_in(points)
-    out = {"countries": cc, "ncf": NCF, "sector": vocab.derive_sectors(NCF)}
+def h3_area(cells):
+    """A MultiPolygon of H3 cells and their sample points: an event's res-2 regions, drawn as published."""
+    import h3
+    polys, pts = [], []
+    for c in cells:
+        ring = [[round(lo, 4), round(la, 4)] for la, lo in h3.cell_to_boundary(c)]
+        polys.append([ring + [ring[0]]])
+        pts += cell_points(c)
+    return {"type": "MultiPolygon", "coordinates": polys}, pts
+
+
+def place_country(at):
+    """Country of a named place [lat, lon]: the kit's country_at, or, for a coastal or border town that the kit's
+    thinned outlines miss (Manama, Nicosia), the commonest country on rings 5, 10 and 25 km around it."""
+    if not at:
+        return None
+    lat, lon = at
+    cc = geo.country_at(lat, lon)
+    if cc:
+        return cc
+    import math
+    seen = {}
+    for r_km in (5, 10, 25):
+        for k in range(12):
+            a = math.radians(30 * k)
+            la = lat + r_km / 111.2 * math.cos(a)
+            lo = lon + r_km / (111.2 * max(math.cos(math.radians(lat)), 0.01)) * math.sin(a)
+            c = geo.country_at(la, lo)
+            if c:
+                seen[c] = seen.get(c, 0) + 1
+        if seen:
+            return max(sorted(seen), key=seen.get)
+    return None
+
+
+def tags(points, extra=None, near_at=None):
+    """Countries any sample point falls in, plus the country of the named place the title uses ("near Doha" is
+    tagged QA even when Doha sits just outside the cell)."""
+    cc = set(geo.countries_in(points))
+    pc = place_country(near_at)
+    if pc:
+        cc.add(pc)
+    out = {"countries": sorted(cc), "ncf": NCF, "sector": vocab.derive_sectors(NCF)}
     out.update(extra or {})
     return out
 
@@ -127,7 +181,7 @@ def build(board, days, now=None):
                              "version": "1", "rule": rule},
             "requirement_ids": ["NF-PIR-2"], "warning_problem_id": "NF-WP-1", "indicator_id": "NF-IND-1",
             "hypothesis_id": "NF-WP-1-H1", "direction": "supports", "indicator_state": "present",
-            **tags(pts)})
+            **tags(pts, near_at=r.get("near_at"))})
     for r in ch.get("ended") or []:
         geom, pts = h3_polygon(r["region"])
         near = r.get("near")
@@ -137,7 +191,7 @@ def build(board, days, now=None):
             "title": f"GPS interference no longer seen{' near ' + near if near else ''}",
             "summary": f"At jamming scale on {r['days_in_prior30']} of the 30 days before last week, and on none of the "
                        "last 7. Check position loss before reading this as an easing (assumption NF-AS-3).",
-            "requirement_ids": ["NF-PIR-2"], **tags(pts)})
+            "requirement_ids": ["NF-PIR-2"], **tags(pts, near_at=r.get("near_at"))})
 
     hs = board.get("hotspots") or {}
     for a in hs.get("areas") or []:
@@ -168,7 +222,7 @@ def build(board, days, now=None):
             "measure": {"name": "peak_degraded_aircraft", "value": e.get("peak"), "excess": e.get("excess")},
             "baseline_ref": {"id": "noisefloor-events", "window": "same hour on up to 14 earlier days", "type": "rolling",
                              "version": "1"},
-            "requirement_ids": ["NF-PIR-1"], **tags([(e["lat"], e["lon"])])})
+            "requirement_ids": ["NF-PIR-1"], **tags([(e["lat"], e["lon"])], near_at=e.get("near_at"))})
 
     sp = (board.get("spoofing") or {}).get("new_places") or {}
     for i, t in enumerate((sp.get("new") or [])[:NEW_SPOOF_ITEMS]):

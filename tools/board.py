@@ -60,13 +60,17 @@ class Places:
         except Exception:
             self.pl = []
 
-    def near(self, lat, lon, limit=350):
-        best, name = limit, None
+    def nearest(self, lat, lon, limit=350):
+        """(name, [lat, lon]) of the nearest listed place within `limit` km, or (None, None)."""
+        best, hit = limit, (None, None)
         for p in self.pl:
             d = km((lat, lon), (p[1], p[2]))
             if d < best:
-                best, name = d, p[0]
-        return name
+                best, hit = d, (p[0], [p[1], p[2]])
+        return hit
+
+    def near(self, lat, lon, limit=350):
+        return self.nearest(lat, lon, limit)[0]
 
 
 def fetch(url, timeout=60):
@@ -125,7 +129,8 @@ def changes(site, days, places):
 
     def row(r, extra):
         la, lo = h3.cell_to_latlng(r)
-        return {"region": r, "lat": round(la, 2), "lon": round(lo, 2), "near": places.near(la, lo), **extra}
+        name, at = places.nearest(la, lo)
+        return {"region": r, "lat": round(la, 2), "lon": round(lo, 2), "near": name, "near_at": at, **extra}
 
     new = [row(r, {"days_in_last7": sum(1 for d in last7 if r in per_day[d])}) for r in seen7 if r not in seen_before]
     ended = [row(r, {"days_in_prior30": n}) for r, n in seen_before.items() if n >= 3 and r not in seen7]
@@ -148,8 +153,9 @@ def top_events(site, day, places):
     rows = []
     for e in ev.get("anomalies", []):
         if e.get("m") == "jam" and e.get("tier") in ("major", "notable"):
+            name, at = places.nearest(e["lat"], e["lon"])
             rows.append({"tier": e["tier"], "peak": e.get("peak"), "excess": e.get("excess"), "h0": e.get("h0"),
-                         "h1": e.get("h1"), "lat": e["lat"], "lon": e["lon"], "near": places.near(e["lat"], e["lon"]),
+                         "h1": e.get("h1"), "lat": e["lat"], "lon": e["lon"], "near": name, "near_at": at,
                          "heavy_share": e.get("hs"), "test": e.get("test")})
     return {"day": day, "events": rows[:6], "bursts": len(ev.get("bursts") or []), "tests": len(ev.get("tests") or [])}
 
