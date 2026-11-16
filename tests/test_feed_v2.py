@@ -52,7 +52,21 @@ def main():
         assert p["data_as_of_precision"] == "day", i
         assert p["data_as_of"] == "2026-10-29T00:00:00Z", (i, p["data_as_of"])
     country_tags()
+    event_tiers()
     print("test_feed_v2: all passed")
+
+
+def event_tiers():
+    """Majors are anomalies, notables routine, and none is cut (suite review Mistake 3: exactly six anomalies a day)."""
+    evs = [{"tier": "major" if k < 2 else "notable", "peak": 30 - k, "excess": 28 - k, "h0": k, "h1": k,
+            "lat": 57.0 + k * 0.1, "lon": 17.0, "near": None, "test": False} for k in range(9)]
+    board = {"freshness": {"aircraft_day": "2026-11-13"}, "top_events": {"day": "2026-11-13", "events": evs}}
+    feed = feed_v2.build(board, [], now=datetime(2026, 11, 14, 6, 0, tzinfo=timezone.utc))
+    assert not feed_v2.check(feed)
+    ev = [f["properties"] for f in feed["features"] if f["properties"]["id"].startswith("noisefloor-event-")]
+    assert len(ev) == 9, len(ev)
+    assert [p["tier"] for p in ev] == ["anomaly"] * 2 + ["routine"] * 7
+    assert "below the major grade" in ev[5]["summary"] and "below" not in ev[0]["summary"]
 
 
 def country_tags():

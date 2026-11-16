@@ -157,7 +157,11 @@ def top_events(site, day, places):
             rows.append({"tier": e["tier"], "peak": e.get("peak"), "excess": e.get("excess"), "h0": e.get("h0"),
                          "h1": e.get("h1"), "lat": e["lat"], "lon": e["lon"], "near": name, "near_at": at,
                          "heavy_share": e.get("hs"), "test": e.get("test")})
-    return {"day": day, "events": rows[:6], "bursts": len(ev.get("bursts") or []), "tests": len(ev.get("tests") or [])}
+    rows.sort(key=lambda r: r["tier"] != "major")    # majors first, each tier in the analysis's own order (stable)
+    # Every major and notable event, not the first six: a cap of six fired exactly six event items a day, 31 Oct to
+    # 13 Nov, and cut a Baltic event (suite review 15 Nov 2026, Mistake 3). The feed tiers them; the page shows six.
+    return {"day": day, "events": rows, "majors": sum(1 for r in rows if r["tier"] == "major"),
+            "bursts": len(ev.get("bursts") or []), "tests": len(ev.get("tests") or [])}
 
 
 # ---------------------------------------------------------------- declared and official

@@ -87,7 +87,8 @@
     if (te) {
       set("ev-day", ", " + esc(dayShort(te.day)));
       $("ev-link").href = "/map#day=" + te.day + "&m=jam";
-      var evs = (te.events || []).slice().sort(function (x, y) { return y.peak - x.peak; }).slice(0, 6);
+      var all = (te.events || []).slice().sort(function (x, y) { return (y.tier === "major") - (x.tier === "major") || y.peak - x.peak; });
+      var evs = all.slice(0, 6);           // majors first, then by peak; the rest are on the map
       set("ev-list", evs.length ? evs.map(function (e) {
         var tier = e.tier === "major" ? "Major" : e.tier === "notable" ? "Notable" : "Minor", k = e.tier === "major" ? 3 : 1;
         var where = e.near ? "Near " + e.near : Math.abs(e.lat).toFixed(1) + "°" + (e.lat >= 0 ? "N" : "S") + " " + Math.abs(e.lon).toFixed(1) + "°" + (e.lon >= 0 ? "E" : "W");
@@ -96,6 +97,7 @@
           '<span class="when">' + pad(e.h0) + ":00–" + pad(e.h1) + ":59 UTC</span>" + (e.test ? '<span class="note">Fits announced test ' + esc(e.test) + "</span>" : "") + "</li>";
       }).join("") : '<li class="loading">No major or notable event that day.</li>');
       var more = [];
+      if (all.length > 6) more.push(n(all.length - 6) + " more major or notable event" + (all.length === 7 ? "" : "s") + " on the map");
       if (te.bursts) more.push(n(te.bursts) + " minute-level burst" + (te.bursts === 1 ? "" : "s"));
       if (te.tests) more.push(n(te.tests) + " announced US test" + (te.tests === 1 ? "" : "s") + " in force");
       set("ev-more", more.length ? "Also that day: " + esc(more.join("; ")) + "." : "");

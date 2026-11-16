@@ -213,11 +213,17 @@ def build(board, days, now=None):
     for i, e in enumerate(te.get("events") or []):
         near = e.get("near")
         hours = f"{e['h0']}-{e['h1']} UTC" if e.get("h0") is not None and e.get("h1") is not None else ""
+        major = e["tier"] == "major"
         add({"type": "Point", "coordinates": [e["lon"], e["lat"]]}, {
-            "id": f"noisefloor-event-{te.get('day', day)}-{i + 1}", "kind": "observation", "tier": "anomaly",
+            "id": f"noisefloor-event-{te.get('day', day)}-{i + 1}", "kind": "observation",
+            "tier": "anomaly" if major else "routine",
             "product_category": "current", "precision_class": "approximate",
             "title": f"{e['tier'].capitalize()} GPS interference event{' near ' + near if near else ''}",
-            "summary": " ".join(x for x in [f"Graded {e['tier']} by Noisefloor's events rule.", hours,
+            "summary": " ".join(x for x in [f"Graded {e['tier']} by Noisefloor's events rule"
+                                            + (" (25 points or more over the same hour's usual share)." if major else
+                                               " (10 to 25 points over the same hour's usual share): above its own "
+                                               "baseline but below the major grade, so sent as routine. Noisefloor's "
+                                               "validation reads majors first."), hours,
                                             "Coincides with an announced test." if e.get("test") else ""] if x),
             "measure": {"name": "peak_degraded_aircraft", "value": e.get("peak"), "excess": e.get("excess")},
             "baseline_ref": {"id": "noisefloor-events", "window": "same hour on up to 14 earlier days", "type": "rolling",
