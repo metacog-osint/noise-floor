@@ -160,3 +160,100 @@ Check 4 by box: central Pacific 0.0% (D 0.08%), southern Africa interior 0.0% (D
 - By section 1.5, E2.1 may replace E2 in products once Tom agrees, since every check held.
 - Before it does: remove the offset (2.3) as a stated new definition, and take the load from a merged file that carries
   every BeiDou-3 satellite. Neither changes this result.
+
+## 3. E2.1 in the products (16 Nov 2026)
+
+Tom agreed on 16 Nov 2026 that E2.1 replaces E2 in the private Sentinel products (`private/sentinel/`, the GPS L1 and
+L2C area products). Sections 1 and 2 are unchanged; this section states the product definition, written before any
+product-day result was seen. Code: `tools/sentinel_e21.py` (`product`; the frozen `day` and `checks` are untouched).
+
+### 3.1 Two stated changes from section 1.1
+
+- **No offset.** D″ = D − β·(L − L̄), where L̄ is the mean load over the unit-day's fit epochs. β is the frozen fit's
+  slope. Because the fit has an intercept, D″ keeps D's mean over those epochs, so a unit-day's baseline still sits
+  at zero and D″ no longer reads above zero wherever regional satellites are up (section 2.3).
+- **The load carries every BeiDou-3 regional satellite.** No merged file does from late May 2026:
+  - on 27 Oct 2026, the four merged broadcast files at BKG (BRDC00IGS_R, BRDC00WRD_S, BRDM00DLR_S, and DLR's RINEX 4
+    file BRD400DLR_S, which also keeps BeiDou-3's CNAV messages) and the three multi-GNSS orbit centres at CDDIS
+    (WUM, GFZ, CODE) carried no C59, C60 or C40, and C38 and C39 carried medium-orbit elements (radius 27,900 km);
+  - on 10 Apr 2026 all four broadcast files carried C59, C60 and C38–C40 as geosynchronous satellites (the orbit
+    centres were not checked for that day).
+  - So the load keeps the broadcast file's regional set (section 1.1, unchanged) and adds each of the five BeiDou-3
+    regional satellites the validated load counted (C59, C60, C38, C39, C40) when the file lacks it, positioned from
+    Space-Track element sets (nearest set within 72 h, the same propagation as the Sentinel orbits). They count
+    whatever their health, as SBAS and QZSS do.
+  - **The match** (broadcast against Space-Track positions over a day): C60 = BEIDOU 3 G2 (2.2–3.1 km median), C38–C40
+    = BEIDOU 3 IGSO-1 to -3 (0.9–9.1 km), on 29 Oct 2025, 4 Mar and 15 Apr 2026. C59 is the 140°E slot: BEIDOU 3G1
+    held it to early April 2026 (0.0° apart on 29 Oct 2025 and 4 Mar 2026), then BEIDOU 3 G4 took it (2.4 km on
+    15 Apr) and G1 moved to 159°E. The table is dated, and a geostationary satellite more than 2° from its slot is
+    left out and logged. BEIDOU 3 G1 at 159°E and G3 at 110.5°E were in no IGS file in the validated windows and stay
+    out.
+  - **Why they probably still transmit:** the uncorrected dip did not shrink when they left the files. Inland Australia
+    read −0.85 to −1.20 dB in the five windows to April and −0.89 to −1.17 dB in the three from May, while the counted
+    load fell by about a fifth (section 2.3).
+- **Per signal.** The products' GPS L2C files use the same correction, fitted on that signal's own index per unit-day
+  (outside the cells its own final E2 pass left out). Galileo E5a is fitted too. This was validated on GPS L1
+  only.
+- The E2 epoch and band files are not changed. The product file (`data/sentinel_gnss/e21p/<day>.parquet`) holds the
+  load and each signal's β and L̄; readers apply D″. `--index e2` keeps the uncorrected products, named `*_e2*`.
+
+### 3.2 Pre-stated test of the filled load
+
+On the product days (the 8 weeks of held days before the switch), within place (90–130°E, 45–10°S): the Pearson r
+between the added satellites' load and D″ computed with the broadcast-only load. If the added satellites still
+lower the signal, r is negative.
+
+- r ≤ −0.05: the filled load stays.
+- r > −0.02: no sign they transmit; the products use the broadcast-only load, and this section says so.
+- Between: the filled load stays, reported as weak.
+
+Reported beside it: the quiet-band flatness (section 1.3 check 1's quantity) for D, D″ with the broadcast-only load,
+and D″ with the filled load.
+
+### 3.3 Results (16 Nov 2026)
+
+**Product days:** the 56 held days 15 Sep – 9 Nov 2026, every unit-day built. On every one, C59, C60 and C38–C40 were
+missing from the broadcast file and found in Space-Track at their slots.
+
+**The test of 3.2: r = +0.100** (62,991 epochs within place; the added satellites' median load there 3.0). No sign
+that they lower the signal, so **the products use the broadcast-only load**, as section 1.1 defines it. The code
+still positions the five satellites and records their load (`load_added` in the product file), so the test can be
+repeated; `FILL_LOAD` in `tools/sentinel_e21.py` would add them. Quiet-band flatness: D 0.99 dB, D″ broadcast-only
+0.37 dB, D″ filled 0.36 dB, so the choice barely moves the products. Why the uncorrected dip did not shrink when they
+left the files (section 3.1) is not established.
+
+**Reproduction.**
+- The frozen E2.1 checks rerun from the branch code (`checks`) give section 2.1's values exactly, descriptive results
+  included.
+- Four held-out days rebuilt with the branch code (`day`; 29 Oct 2025, 21 Jan, 15 Apr and 8 Jul 2026) match the held
+  day files in every column.
+- The frozen E2 checks of `docs/validation/sentinel-gnss.md` (`tools/sentinel_rfi.py checks`) give section 2.1 there
+  exactly: four hold, two fail, descriptive results identical.
+- `--index e2` products are identical to those of the code before the switch (daily and weekly CSVs byte for byte).
+
+**E2 against E2.1 in the products** (median of scored epochs over the 56 days, dB, with the share at ≤ −1 dB; the
+write-up's public boxes):
+
+| Box | GPS L1, E2 | GPS L1, E2.1 | GPS L2C, E2 | GPS L2C, E2.1 |
+|---|---|---|---|---|
+| Baltic | −5.82 (99%) | −5.92 (99%) | −11.91 (100%) | −11.94 (100%) |
+| Levant | −3.97 (97%) | −3.89 (96%) | −10.11 (97%) | −10.10 (97%) |
+| Iraq | −3.40 (93%) | −3.27 (90%) | −5.88 (99%) | −5.86 (99%) |
+| Persian Gulf | −2.38 (79%) | −2.17 (73%) | −6.28 (90%) | −6.24 (89%) |
+| Red Sea | −1.07 (52%) | −0.91 (48%) | −2.90 (89%) | −2.87 (88%) |
+| India–Pakistan border | −0.92 (46%) | −0.54 (31%) | −0.69 (40%) | −0.61 (37%) |
+| Myanmar | −0.88 (43%) | −0.25 (18%) | −0.22 (22%) | −0.07 (20%) |
+| South China Sea | −1.05 (53%) | −0.26 (20%) | −0.47 (25%) | −0.31 (20%) |
+| Australia interior | −1.04 (53%) | −0.44 (23%) | −0.22 (21%) | −0.10 (18%) |
+| Central Pacific | −0.09 (13%) | −0.10 (13%) | +0.07 (13%) | +0.07 (13%) |
+| Southern Africa interior | −0.21 (19%) | −0.18 (19%) | −0.09 (18%) | −0.08 (18%) |
+| East Asia, 30–65°N 100–150°E | −0.98 (49%) | −0.63 (35%) | −2.58 (88%) | −2.51 (87%) |
+
+- The dip over 60–160°E mostly goes on L1; jamming boxes keep their signal.
+- On L2C the correction is small, as expected with no BeiDou signal on 1227.60 MHz, and it leaves the East Asian
+  lower-band drift (`docs/validation/sentinel-gnss-x3.md` section 2.6) where it was.
+- Inland Australia still reads −0.44 dB on L1 over these weeks, inside the 0.4–0.8 dB weekly structure of section 2.3.
+
+**The switch.** From 16 Nov 2026 `tools/sentinel_daily.py` builds the day's product file and writes the area products
+in `private/sentinel/` (GPS L1 and L2C) with E2.1. `--index e2` writes the uncorrected products beside them as
+`<area>_e2*` and `<area>_l2c_e2*`.

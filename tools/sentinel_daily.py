@@ -2,16 +2,20 @@
 """sentinel_daily.py: the daily Sentinel navigation-receiver job (step E of docs/space-sensors-plan.md), run from the
 06:30 collectors task (collectors/run_daily.cmd). Private: nothing is uploaded or published (plan step E4 waits on Tom).
 
-  python tools/sentinel_daily.py [--max-days 4] [--weeks 8] [--map-days 28] [--no-fetch]
+  python tools/sentinel_daily.py [--max-days 4] [--weeks 8] [--map-days 28] [--no-fetch] [--index e21|e2]
 
 1. Asks the catalogue for the newest day every default unit has posted (tools/sentinel_gnss.py latest).
 2. Builds the E1 table, the E2 epoch indices and the X3 band indices (tools/sentinel_bands.py: GPS L2C and Galileo
    E5a on the PODRIX units) for each day after the newest held epoch file, up to that day (at most --max-days per
    run, oldest first; nothing older than --weeks is fetched). Then fills band files for up to --max-days held days in
    the --weeks window that lack one.
-3. For each focus area in the private config (private/watch/satgnss.json): the daily and weekly trend over the last
+3. Builds the E2.1 product file (tools/sentinel_e21.py product: the regional-satellite load and each signal's fit)
+   for every held epoch day in the --weeks window that lacks one, newest first, at most --max-product-days a run.
+4. For each focus area in the private config (private/watch/satgnss.json): the daily and weekly trend over the last
    --weeks weeks of held days, the cell map over the last --map-days days and the trend chart, written to
    private/sentinel/<area>/ (tools/sentinel_trend.py), on GPS L1 and again on GPS L2C (files named <area>_l2c*).
+   The index is E2.1 (Tom's yes 16 Nov 2026; docs/validation/sentinel-gnss-e21.md section 3); --index e2 writes the
+   uncorrected E2 products instead, named <area>_e2* and <area>_l2c_e2*, beside them for comparison.
 
 Raw product files are kept (about 27 GB a year); raw/index.jsonl holds each one's source and SHA-256. A failure in one
 step is logged and the rest still run. Exit status 1 only if nothing could be done.
@@ -70,7 +74,29 @@ def days_to_build(newest, held, max_days, weeks):
     return todo[:max_days]
 
 
-def products(cfg_path, weeks, map_days):
+def held_product_days():
+    import sentinel_e21 as E21
+    if not os.path.isdir(E21.PRODUCT_DIR):
+        return []
+    return sorted(dt.date.fromisoformat(f[:10]) for f in os.listdir(E21.PRODUCT_DIR) if f.endswith(".parquet"))
+
+
+def build_product(day, fetch=True):
+    """The E2.1 product file for one day; a failure is logged and never stops the run. True if built."""
+    import sentinel_e21 as E21
+    try:
+        path, info = E21.product_day(day, fetch=fetch)
+        log(f"{day}: E2.1 product built (BeiDou-3 regional not in the broadcast file: "
+            f"{', '.join(info['missing_from_broadcast']) or 'none'})")
+        return True
+    except BaseException as e:      # product_day raises SystemExit when a table is missing
+        if isinstance(e, KeyboardInterrupt):
+            raise
+        log(f"{day}: E2.1 product failed: {e.__class__.__name__}: {e}")
+        return False
+
+
+def products(cfg_path, weeks, map_days, index="e21"):
     import sentinel_trend as ST
     if not os.path.exists(cfg_path):
         log(f"no private config at {os.path.relpath(cfg_path, ROOT)}: area products skipped")
@@ -81,6 +107,12 @@ def products(cfg_path, weeks, map_days):
     if not held:
         log("no epoch files held: area products skipped")
         return
+    if index == "e21":       # a day without its product file can't be read as E2.1
+        have = set(held_product_days())
+        held = [d for d in held if d in have]
+        if not held:
+            log("no E2.1 product files held: area products skipped")
+            return
     last = held[-1]
     series_days = [d for d in held if d > last - dt.timedelta(weeks=weeks)]
     map_list = [d for d in held if d > last - dt.timedelta(days=map_days)]
@@ -94,15 +126,16 @@ def products(cfg_path, weeks, map_days):
                 log(f"{a['id']} {signal}: no days held")
                 continue
             try:
-                res = ST.series(cfg, a["id"], s_days, signal)
-                ST.write_series(res, ST.stem(a["id"], signal), out)
-                ST.main(["chart", "--config", cfg_path, "--area", a["id"], "--out", out, "--signal", signal])
+                res = ST.series(cfg, a["id"], s_days, signal, index)
+                ST.write_series(res, ST.stem(a["id"], signal, index), out)
+                flags = ["--signal", signal, "--index", index]
+                ST.main(["chart", "--config", cfg_path, "--area", a["id"], "--out", out] + flags)
                 if m_days:
-                    ST.main(["map", "--config", cfg_path, "--area", a["id"], "--out", out, "--signal", signal]
+                    ST.main(["map", "--config", cfg_path, "--area", a["id"], "--out", out] + flags
                             + [str(d) for d in m_days])
                 wk = res["weekly"][-1] if res["weekly"] else {}
                 s = wk.get(a["id"], {})
-                log(f"{a['id']} {signal}: {len(s_days)} days to {s_days[-1]}; latest week {wk.get('week')} median "
+                log(f"{a['id']} {signal} {index}: {len(s_days)} days to {s_days[-1]}; latest week {wk.get('week')} median "
                     f"{s.get('median')} dB, anomaly {wk.get('anomaly')} dB")
             except Exception as e:
                 log(f"{a['id']} {signal}: product failed: {e.__class__.__name__}: {e}")
@@ -128,6 +161,9 @@ def main(argv=None):
     ap.add_argument("--map-days", type=int, default=28)
     ap.add_argument("--no-fetch", action="store_true", help="only rebuild the area products from held days")
     ap.add_argument("--config", default=CONFIG)
+    ap.add_argument("--index", choices=("e21", "e2"), default="e21",
+                    help="E2.1 (default) or the uncorrected E2 index, written as <area>_e2* for comparison")
+    ap.add_argument("--max-product-days", type=int, default=14, help="E2.1 product files built per run at most")
     a = ap.parse_args(argv)
     did = 0
     if not a.no_fetch:
@@ -156,7 +192,10 @@ def main(argv=None):
                 break
         for day in bands_missing(held_epoch_days(), held_band_days(), a.weeks, a.max_days):
             build_bands(day)
-    products(a.config, a.weeks, a.map_days)
+    if a.index == "e21":
+        for day in bands_missing(held_epoch_days(), held_product_days(), a.weeks, a.max_product_days):
+            build_product(day, fetch=not a.no_fetch)
+    products(a.config, a.weeks, a.map_days, a.index)
     return 0 if (did or a.no_fetch or held_epoch_days()) else 1
 
 

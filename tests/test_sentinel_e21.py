@@ -138,6 +138,71 @@ def test_frozen_windows():
     assert M.PLACE == (-45.0, -10.0, 90.0, 130.0) and M.QUIET_BAND == (-45.0, -10.0)
 
 
+def test_product_fit_keeps_the_mean():
+    rng = np.random.default_rng(3)
+    L = rng.uniform(5, 20, 3000)
+    D = -0.05 * L + rng.normal(0, 0.3, 3000) + 0.4
+    ok = np.ones(3000, bool)
+    ok[:200] = False                   # outside the fit (hot cells)
+    beta, lbar, n = M.product_fit(D, L, ok)
+    assert n == 2800 and abs(beta + 0.05) < 0.01 and abs(lbar - L[200:].mean()) < 1e-9
+    d2 = M.corrected(D, L, beta, lbar)
+    assert abs(d2[200:].mean() - D[200:].mean()) < 1e-9          # no offset over the fit epochs
+    d1 = D - beta * L                                               # the frozen D', offset by -beta * Lbar
+    assert np.allclose(d1 - d2, -beta * lbar)
+    b0, l0, n0 = M.product_fit(D[:50], L[:50], np.ones(50, bool))   # under 100 epochs: no correction
+    assert b0 == 0.0 and np.allclose(M.corrected(D[:50], L[:50], b0, l0), D[:50])
+
+
+def test_bds3_table():
+    assert M.norad_on(M.BDS3_REGIONAL["C59"][0], "2026-03-04") == 43683
+    assert M.norad_on(M.BDS3_REGIONAL["C59"][0], "2026-04-08") == 56564
+    assert M.norad_on(M.BDS3_REGIONAL["C60"][0], "2026-11-05") == 45344
+    assert M.bds3_norads() == [43683, 44204, 44337, 44709, 45344, 56564]
+    assert M.FIT_OF["l1p"] == "l1" and set(M.PRODUCT_SIGNALS) == {"l1", "l2c", "e5a"}
+    assert M.FILL_LOAD is False                  # section 3.3: the products keep the broadcast-only load
+    assert {k: v[1] for k, v in M.BDS3_REGIONAL.items()} == {"C59": "bds_geo", "C60": "bds_geo", "C38": "bds_igso",
+                                                             "C39": "bds_igso", "C40": "bds_igso"}
+
+
+def test_added_positions_skip_present_and_off_slot():
+    calls = []
+
+    def fake_ecef(sets, t_unix, max_age_h=72.0):
+        calls.append(sets[0]["norad"])
+        lon = math.radians(sets[0]["lon"])
+        xyz = np.tile([4.2164e7 * math.cos(lon), 4.2164e7 * math.sin(lon), 0.0], (len(t_unix), 1))
+        return xyz, xyz * 0, np.zeros(len(t_unix))
+    store = {"56564": {"sets": [{"norad": 56564, "lon": 140.0}]}, "45344": {"sets": [{"norad": 45344, "lon": 90.0}]},
+             "44204": {"sets": [{"norad": 44204, "lon": 100.0}]}}
+    old = M.SG.spacecraft_ecef
+    M.SG.spacecraft_ecef = fake_ecef
+    try:
+        t = np.full(3, dt.datetime(2026, 11, 5, 12, tzinfo=dt.timezone.utc).timestamp())
+        pos, kinds = M.added_positions({"C39": "bds_igso"}, store, t)
+    finally:
+        M.SG.spacecraft_ecef = old
+    # C59 filled (at its slot), C60 left out (10 deg off its 80 E slot), C38 filled (no slot rule), C39 in the
+    # broadcast file, C40 without element sets
+    assert sorted(pos) == ["C38e", "C59e"] and kinds == {"C59e": "bds_geo", "C38e": "bds_igso"}
+    assert sorted(calls) == [44204, 45344, 56564]
+
+
+def test_apply_product():
+    pr = {"unit": np.array(["S1C", "S1C", "S2B"]), "t": np.array([10, 20, 10]), "load": np.array([10.0, 20.0, 5.0]),
+          "beta_l1": np.array([-0.05, -0.05, -0.04]), "lbar_l1": np.array([15.0, 15.0, 5.0])}
+    old = M.load_product
+    M.load_product = lambda day, columns=None: {k: pr[k] for k in columns}
+    try:
+        ep = {"unit": np.array(["S2B", "S1C", "S1C", "S3A"]), "t": np.array([10, 20, 10, 10]),
+              "d": np.array([-1.0, -1.0, -1.0, -1.0]), "lat": np.zeros(4)}
+        out = M.apply_product(dt.date(2026, 11, 5), ep, "l1")
+    finally:
+        M.load_product = old
+    assert np.allclose(out["d"][:3], [-1.0, -0.75, -1.25]) and np.isnan(out["d"][3])
+    assert out["lat"] is ep["lat"] and np.allclose(ep["d"], -1.0)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
