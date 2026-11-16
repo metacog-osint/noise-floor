@@ -5,8 +5,9 @@
 
 Built at deploy, right after board.py, from SITE/data/board.json and SITE/data/gnss/days.json. Every item here is a
 measurement (kind observation): regions that newly reached jamming scale this week, regions where it ended, named areas
-whose severe share rose 5 points or more above their 30-day median, and the day's major and notable events, plus one
-daily summary. Warnings (judged, with likelihood and confidence) come later through doctrine/indicators.json.
+whose severe share rose 5 points or more above their 30-day median, the day's major and notable events, and up to five
+places where aircraft were newly shown at a false position (spoofing; tools/spoof_site.py new_targets(), placed where
+the aircraft really were), plus one daily summary. Warnings (judged, with likelihood and confidence) come later through doctrine/indicators.json.
 
 The doctrine kit's tradecraft linter (doctrine/kit) checks the feed before it is written. A feed that fails is not
 written, the reason is printed, and the deploy carries on.
@@ -23,6 +24,8 @@ from tic_doctrine import CONTRACT, contract, geo, vocab  # noqa: E402
 
 SITE_URL = "https://noisefloor.theintelligence.company"
 METHOD = "noisefloor-feed-1.0"
+NEW_SPOOF_ITEMS = 5                                   # new spoofed-to places per day, largest first
+ABOVE_SPOOF_ITEMS = 5                                 # spoofed-to places above their usual level, biggest rise first
 NCF = ["provide_pnt", "transport_by_air"]           # doctrine/ncf_map.json, product gnss-aircraft
 ADSBLOL = {"id": "adsblol-archive", "publisher": "adsb.lol", "url": "https://github.com/adsblol/globe_history_2026",
            "licence": "ODbL 1.0", "grade": "B2", "independence_group": "adsb-feeders", "source_type": "dataset",
@@ -160,6 +163,51 @@ def build(board, days, now=None):
             "baseline_ref": {"id": "noisefloor-events", "window": "same hour on up to 14 earlier days", "type": "rolling",
                              "version": "1"},
             "requirement_ids": ["NF-PIR-1"], **tags([(e["lat"], e["lon"])])})
+
+    sp = (board.get("spoofing") or {}).get("new_places") or {}
+    for i, t in enumerate((sp.get("new") or [])[:NEW_SPOOF_ITEMS]):
+        vic = [v for v in t.get("victims") or [] if v.get("region")]
+        if not vic:                     # the item is placed where the aircraft really were; none known, no item
+            continue
+        geom, pts = h3_polygon(vic[0]["region"])
+        over = ", ".join(dict.fromkeys(v["near"] for v in vic if v.get("near"))) or "unnamed areas"
+        at = t.get("near") or f"{abs(t['lat']):.1f}°{'N' if t['lat'] >= 0 else 'S'}, {abs(t['lon']):.1f}°{'E' if t['lon'] >= 0 else 'W'}"
+        far = t.get("km_from_aircraft")
+        add(geom, {
+            "id": f"noisefloor-spoof-new-{sp['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
+            "product_category": "current", "precision_class": "area", "data_as_of": f"{sp['day']}T23:59:59Z",
+            "title": f"Aircraft shown at a new false position near {at}",
+            "summary": (f"{t['aircraft']} aircraft over or near {over} had receivers showing them near {at} on "
+                        f"{datetime.strptime(sp['day'], '%Y-%m-%d').strftime('%d %b %Y').lstrip('0')}"
+                        + (f", about {far:,} km from where most of them were" if far else "") + f"; no false position within "
+                        f"10 km in the {sp['history_days']} days before with a spoofing targets file. The false "
+                        "position is where receivers were told they were, not a transmitter site."),
+            "measure": {"name": "aircraft_shown_at_new_false_position", "value": t["aircraft"], "expected": 0},
+            "baseline_ref": {"id": "noisefloor-spoof-targets", "window": f"{sp['history_days']} earlier days with a "
+                             "targets file (up to 30)", "type": "rolling", "version": "1", "rule": sp.get("rule", "")},
+            "requirement_ids": ["NF-EEI-3"], **tags(pts)})
+
+    lv = (board.get("spoofing") or {}).get("place_levels") or {}
+    for i, t in enumerate((lv.get("above") or [])[:ABOVE_SPOOF_ITEMS]):
+        regs = [r for r in t.get("regions") or [] if r.get("region")]
+        if not regs:                    # placed where the aircraft really were; none known, no item
+            continue
+        geom, pts = h3_polygon(regs[0]["region"])
+        over = ", ".join(dict.fromkeys(r["near"] for r in regs if r.get("near"))) or "unnamed areas"
+        at = t.get("near") or f"{abs(t['lat']):.1f}°{'N' if t['lat'] >= 0 else 'S'}, {abs(t['lon']):.1f}°{'E' if t['lon'] >= 0 else 'W'}"
+        usual = f"{t['usual']:g}"
+        add(geom, {
+            "id": f"noisefloor-spoof-above-{lv['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
+            "product_category": "current", "precision_class": "area", "data_as_of": f"{lv['day']}T23:59:59Z",
+            "title": f"More aircraft than usual shown at the false position near {at}",
+            "summary": (f"{t['latest']} aircraft, mostly over or near {over}, had receivers showing them near {at} on "
+                        f"{datetime.strptime(lv['day'], '%Y-%m-%d').strftime('%d %b %Y').lstrip('0')}, against a usual "
+                        f"{usual} a day (median of the {lv['earlier_days']} earlier days with a spoofing targets file). "
+                        "The false position is where receivers were told they were, not a transmitter site."),
+            "measure": {"name": "aircraft_shown_at_false_position", "value": t["latest"], "expected": t["usual"]},
+            "baseline_ref": {"id": "noisefloor-spoof-place-level", "window": f"{lv['earlier_days']} earlier days with a "
+                             "targets file (up to 30)", "type": "rolling", "version": "1", "rule": lv.get("rule", "")},
+            "requirement_ids": ["NF-EEI-3"], **tags(pts)})
 
     return {
         "type": "FeatureCollection", "contract": CONTRACT, "program": "noisefloor", "generated_at": published,

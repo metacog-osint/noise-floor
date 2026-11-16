@@ -363,14 +363,129 @@
     table.appendChild(tbody);
   }
 
+  // ---------- spoofing: daily active episodes, victim area by region, followed spoofed-to places (/data/spoof/history.json)
+  var SPOOF = null;                  // null while loading, false when this build has no spoofing history
+  function contiguousTail(days) {    // the daily run: the newest unbroken run of days (the 17 earlier validation days are left out)
+    var i = days.length - 1;
+    while (i > 0 && Date.parse(days[i].day + "T00:00:00Z") - Date.parse(days[i - 1].day + "T00:00:00Z") === 86400000) i--;
+    return days.slice(i);
+  }
+  function coord(la, lo) { return Math.abs(la).toFixed(1) + "°" + (la >= 0 ? "N" : "S") + ", " + Math.abs(lo).toFixed(1) + "°" + (lo >= 0 ? "E" : "W"); }
+  function spark(values, color) {
+    var W = 90, H = 22, n = values.length, mx = Math.max.apply(null, values.concat([1]));
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, "aria-hidden": "true" });
+    values.forEach(function (v, i) {
+      var bw = W / n, h = v ? Math.max(1.5, (H - 2) * v / mx) : 0;
+      if (h) el("rect", { x: (i * bw + 0.5).toFixed(1), y: (H - h).toFixed(1), width: Math.max(1, bw - 1).toFixed(1), height: h.toFixed(1), fill: color }, svg);
+    });
+    return svg;
+  }
+  function spoofSection() {
+    var total = document.getElementById("spoof-total"); if (!total) return;
+    var grid = document.getElementById("spoof-grid"), table = document.getElementById("spoof-table");
+    var places = document.getElementById("spoof-places"), note = document.getElementById("spoof-places-note"), nw = document.getElementById("spoof-new"),
+      lv = document.getElementById("spoof-levels");
+    [grid, table, places].forEach(function (x) { x.textContent = ""; });
+    total.querySelectorAll("svg, p").forEach(function (x) { x.remove(); });
+    if (!SPOOF || !SPOOF.days || !SPOOF.days.length) {
+      var p = document.createElement("p"); p.className = "small";
+      p.textContent = SPOOF === false ? "No spoofing history in this build yet." : "Loading…"; total.appendChild(p); return;
+    }
+    var D = contiguousTail(SPOOF.days), days = D.map(function (d) { return d.day; }), n = days.length;
+    document.getElementById("spoof-range").textContent = ", " + dayLabel(days[0], true) + " to " + dayLabel(days[n - 1], true);
+    var ticks = n > 1 ? [{ i: 0, label: dayLabel(days[0]), anchor: "start" }, { i: n - 1, label: dayLabel(days[n - 1]), anchor: "end" }] : [{ i: 0, label: dayLabel(days[0]) }];
+    var v6 = -1; D.forEach(function (d, i) { if (v6 < 0 && d.version && d.version >= "0.6") v6 = i; });
+    var bands = v6 > 0 ? [{ from: v6, to: n - 1, label: "detector v0.6" }] : [];
+    lineChart(total, {
+      aria: "Active spoofing episodes per day", height: 180, x: days, bands: bands,
+      series: [{ name: "active episodes", values: D.map(function (d) { return d.active; }), color: cssVar("--series-1") },
+               { name: "aircraft", values: D.map(function (d) { return d.aircraft; }), color: cssVar("--series-base"), width: 1.5 }],
+      xTicks: ticks, xTitle: function (i) { return dayLabel(days[i], true) + " · detector v" + (D[i].version || "?"); }
+    });
+    var groups = SPOOF.groups || [], all = [];
+    D.forEach(function (d) { groups.forEach(function (g) { all.push((d.cells || {})[g] || 0); }); });
+    var ymax = niceMax(Math.max.apply(null, all.concat([1])));
+    groups.forEach(function (g) {
+      var cell = document.createElement("div"), h = document.createElement("h4"), box = document.createElement("div");
+      h.textContent = g; box.className = "chart"; cell.appendChild(h); cell.appendChild(box); grid.appendChild(cell);
+      lineChart(box, {
+        aria: "Cells where spoofed aircraft really were, " + g, height: 130, x: days, yMax: ymax,
+        series: [{ name: "cells", values: D.map(function (d) { return (d.cells || {})[g] || 0; }), color: cssVar("--series-1") }],
+        xTicks: ticks, xTitle: function (i) { return dayLabel(days[i], true) + " · " + g; }
+      });
+    });
+    var thead = document.createElement("thead"), hr = document.createElement("tr");
+    ["Day", "Active episodes", "Aircraft"].concat(groups.map(function (g) { return g + " (cells)"; })).forEach(function (t) {
+      var th = document.createElement("th"); th.textContent = t; hr.appendChild(th);
+    });
+    thead.appendChild(hr); table.appendChild(thead);
+    var tb = document.createElement("tbody");
+    D.slice().reverse().forEach(function (d) {
+      var tr = document.createElement("tr");
+      [d.day, d.active, d.aircraft].concat(groups.map(function (g) { return (d.cells || {})[g] || 0; })).forEach(function (v, i) {
+        var td = document.createElement("td"); td.textContent = v === null || v === undefined ? "–" : String(v); if (i) td.className = "num"; tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb);
+
+    var T = SPOOF.targets || {}, rows = T.rows || [], N = SPOOF.new || {};
+    if (!N.day) nw.textContent = "";
+    else if (N.note) nw.textContent = "New places: not judged yet (" + N.note + ").";
+    else if (!(N.new || []).length) nw.textContent = "No new place on " + dayLabel(N.day, true) + ".";
+    else nw.textContent = "New on " + dayLabel(N.day, true) + " (nothing within 10 km on the " + N.history_days + " earlier days with these files): " +
+      N.new.slice(0, 5).map(function (x) {
+        return (x.near ? "near " + x.near : coord(x.lat, x.lon)) + ", " + x.aircraft + " aircraft" +
+          (x.km_from_aircraft ? ", about " + x.km_from_aircraft.toLocaleString() + " km from where most of them were" : "");
+      }).join("; ") + (N.new.length > 5 ? "; and " + (N.new.length - 5) + " more" : "") + ".";
+    var TT = T.total || {}, AB = T.above || [];
+    function lvText(level, usual) {
+      return level ? (level === "above" ? "above" : level === "below" ? "below" : "near") + " its usual " + usual : "not judged yet";
+    }
+    if (lv) {
+      if (!T.to) lv.textContent = "";
+      else if (!TT.level) lv.textContent = "Usual levels: not judged yet (" + (T.earlier_days || 0) + " earlier days with these files; 7 needed).";
+      else lv.textContent = "On " + dayLabel(T.to, true) + ", " + TT.latest + " aircraft were shown at spoofed-to places, " +
+        (TT.level === "near" ? "near" : TT.level) + " the usual " + TT.usual + " a day. " +
+        (AB.length ? (T.above_count === 1 ? "One place was" : T.above_count + " places were") + " above their own usual level: " +
+          AB.slice(0, 5).map(function (x) { return (x.near ? "near " + x.near : coord(x.lat, x.lon)) + " (" + x.latest + " aircraft, usual " + x.usual + ")"; }).join("; ") + "."
+          : "No place was above its own usual level.");
+    }
+    if (!rows.length) { note.textContent = "No spoofed-to places in this build yet."; return; }
+    var th2 = document.createElement("thead"), h2 = document.createElement("tr");
+    ["Place shown", "First seen", "Last seen", "Days seen", "Aircraft-days", "On " + dayLabel(T.to), "Against usual", "Last " + (T.series_days || []).length + " days", "Aircraft really were", ""].forEach(function (t) {
+      var th = document.createElement("th"); th.textContent = t; h2.appendChild(th);
+    });
+    th2.appendChild(h2); places.appendChild(th2);
+    var tb2 = document.createElement("tbody");
+    rows.forEach(function (r) {
+      var tr = document.createElement("tr");
+      var td0 = document.createElement("td"); td0.textContent = r.near ? "Near " + r.near : coord(r.lat, r.lon); td0.title = coord(r.lat, r.lon); tr.appendChild(td0);
+      [dayLabel(r.first), dayLabel(r.last), r.days, r.aircraft_days, r.latest].forEach(function (v, i) {
+        var td = document.createElement("td"); td.textContent = String(v); if (i >= 2) td.className = "num"; tr.appendChild(td);
+      });
+      var tdu = document.createElement("td"); tdu.textContent = lvText(r.level, r.usual); tr.appendChild(tdu);
+      var tds = document.createElement("td"); tds.appendChild(spark(r.series || [], cssVar("--series-1"))); tr.appendChild(tds);
+      var tdv = document.createElement("td"); tdv.textContent = (r.victims || []).join("; ") || "not located"; tr.appendChild(tdv);
+      var tdl = document.createElement("td"), a = document.createElement("a");
+      a.href = "/map#day=" + r.last + "&m=jam&sp=1&v=" + r.lat.toFixed(2) + "," + r.lon.toFixed(2) + ",5"; a.textContent = "Map"; tdl.appendChild(a); tr.appendChild(tdl);
+      tb2.appendChild(tr);
+    });
+    places.appendChild(tb2);
+    note.textContent = "The " + rows.length + " most-used of " + T.places + " places followed from " + dayLabel(T.from, true) + " to " + dayLabel(T.to, true) +
+      " (" + T.rule + "; " + (T.level_rule || "") + "). Data: /data/spoof/history.json (ODbL 1.0, derived from adsb.lol).";
+  }
+
   function drawAll() {
     document.querySelectorAll(".chart[data-chart]").forEach(function (box) {
       var f = DRAW[box.getAttribute("data-chart")]; if (f) f(box);
     });
     var hm = document.getElementById("hotspot-grid"); if (hm) hotspots(hm);
-    trend();
+    trend(); spoofSection();
   }
-  trend();
+  trend(); spoofSection();
+  fetch("/data/spoof/history.json").then(function (r) { return r.ok ? r.json() : false; }).catch(function () { return false; })
+    .then(function (j) { SPOOF = j; spoofSection(); });
   var ownBox = document.getElementById("trend-own");
   if (ownBox) ownBox.addEventListener("change", function () { setTrendOwn(ownBox.checked); trend(); });
   fetch("/data/trend.json").then(function (r) { return r.ok ? r.json() : false; }).catch(function () { return false; })

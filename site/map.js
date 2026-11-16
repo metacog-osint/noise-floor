@@ -289,10 +289,40 @@
           g.globalAlpha = Math.min(0.55, 0.15 + 0.08 * c[1]); g.beginPath(); trace(g, sh.m, true); g.fill();
           g.globalAlpha = 1; g.lineWidth = 1.2; g.stroke();
         });
-        g.globalAlpha = 1; g.lineWidth = 2;                         // where their receivers were told they were
-        (state.spoof.spoofed_to_top || []).forEach(function (p) {
-          var q = cp(p.lat, p.lon), r = 6;
-          g.beginPath(); g.moveTo(q.x - r, q.y - r); g.lineTo(q.x + r, q.y + r); g.moveTo(q.x + r, q.y - r); g.lineTo(q.x - r, q.y + r); g.stroke();
+        var T = state.spoof.targets;                                 // every place receivers were told they were (from Nov 2026)
+        if (T) {
+          g.globalAlpha = 0.6; g.lineWidth = 1; g.setLineDash([3, 4]);   // false position -> where most of its aircraft really were
+          T.forEach(function (t) {
+            if (t[2] < SPOOF_LINK_MIN || !t[9] || !t[9].length) return;
+            var c = h3.cellToLatLng(t[9][0][0]), a = cp(t[0], t[1]), b = cp(c[0], c[1]);
+            if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < 14) return;
+            g.beginPath(); g.moveTo(b.x, b.y); g.lineTo(a.x, a.y); g.stroke();
+          });
+          g.setLineDash([]);
+          T.forEach(function (t, i) {
+            var q = cp(t[0], t[1]), r = Math.min(10, 2.5 + 1.5 * Math.sqrt(t[2]));
+            g.globalAlpha = t[2] >= 2 ? 1 : 0.55; g.lineWidth = t[2] >= SPOOF_LINK_MIN ? 2 : 1.2;
+            g.beginPath(); g.moveTo(q.x - r, q.y - r); g.lineTo(q.x + r, q.y + r); g.moveTo(q.x + r, q.y - r); g.lineTo(q.x - r, q.y + r); g.stroke();
+            if (state.spoofFocus === i) { g.save(); g.globalAlpha = 1; g.strokeStyle = colors.focus; g.lineWidth = 2; g.beginPath(); g.arc(q.x, q.y, r + 4, 0, 2 * Math.PI); g.stroke(); g.restore(); }
+          });
+        } else {
+          g.globalAlpha = 1; g.lineWidth = 2;                       // older days: the top 10 places only
+          (state.spoof.spoofed_to_top || []).forEach(function (p) {
+            var q = cp(p.lat, p.lon), r = 6;
+            g.beginPath(); g.moveTo(q.x - r, q.y - r); g.lineTo(q.x + r, q.y + r); g.moveTo(q.x + r, q.y - r); g.lineTo(q.x - r, q.y + r); g.stroke();
+          });
+        }
+        g.restore();
+      }
+      if (state.spsShow && state.sps && state.sps.share2) {         // spoofed share of aircraft-hours, H3 res-2 regions
+        g.save(); g.strokeStyle = colors.spoof; g.fillStyle = colors.spoof;
+        state.sps.share2.forEach(function (c) {
+          var sh = shapeOf(c[0]);
+          if (sh.wrap || !onScreen(sh.mb)) return;
+          var k = spsClass(c[2] / c[1]);
+          if (k < 0) { g.globalAlpha = 0.3; g.lineWidth = 0.5; g.beginPath(); trace(g, sh.m, true); g.stroke(); return; }
+          g.globalAlpha = [0.12, 0.26, 0.42, 0.62][k]; g.beginPath(); trace(g, sh.m, true); g.fill();
+          g.globalAlpha = 0.9; g.lineWidth = k >= 2 ? 1.6 : 1; g.stroke();
         });
         g.restore();
       }
@@ -405,6 +435,10 @@
       var sc = state.spoof.cells.filter(function (c) { return c[0] === h; })[0];
       if (sc) lines.push(["Spoofing", sc[1] + " active episode" + (sc[1] === 1 ? "" : "s") + " (aircraft really here)"]);
     }
+    if (state.spsShow && state.sps && state.sps.share2) {
+      var p2sp = h3.cellToParent(h, 2), ss = state.sps.share2.filter(function (c) { return c[0] === p2sp; })[0];
+      if (ss) lines.push(["Spoofed share (region)", fmtShare(ss[2] / ss[1]) + " of " + ss[1].toLocaleString() + " aircraft-hours"]);
+    }
     if (state.cygShow && state.cyg && state.cyg.cells) {
       var p3 = h3.cellToParent(h, 3), cc = state.cyg.cells.filter(function (c) { return c[0] === p3; })[0];
       if (cc) lines.push(["CYGNSS", "+" + cc[1].toFixed(1) + " dB noise floor" + (state.cyg.day !== state.day ? " (" + state.cyg.day + ")" : "")]);
@@ -464,6 +498,8 @@
     if (state.pinned) return;
     var v = nisAt(ev.containerPoint);                  // a NISAR site under the pointer wins over the hex
     if (v) { renderTip(describeSite(v), ev.containerPoint); return; }
+    var st = spoofAt(ev.containerPoint);               // then a spoofed-to place
+    if (st !== null) { renderTip(describeTarget(st), ev.containerPoint); return; }
     var h = h3.latLngToCell(ev.latlng.lat, ev.latlng.lng, 4);
     if (cells[h]) showTip(h, ev.containerPoint); else tip.hidden = true;
   });
@@ -472,6 +508,9 @@
     var v = nisAt(ev.containerPoint);
     if (v) { state.pinned = true; state.focus = null; state.nisFocus = v.s.id; renderTip(describeSite(v), ev.containerPoint); layer.redraw(); return; }
     state.nisFocus = null;
+    var st = spoofAt(ev.containerPoint);
+    if (st !== null) { state.pinned = true; state.focus = null; state.spoofFocus = st; renderTip(describeTarget(st), ev.containerPoint); layer.redraw(); return; }
+    state.spoofFocus = null;
     var h = h3.latLngToCell(ev.latlng.lat, ev.latlng.lng, 4);
     if (cells[h]) { state.pinned = true; state.focus = h; showTip(h, ev.containerPoint); layer.redraw(); openHistory(h); }
     else { state.pinned = false; state.focus = null; tip.hidden = true; layer.redraw(); }
@@ -764,7 +803,7 @@
   function hashFor() {
     var c = map.getCenter();
     return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") + (imagery.on ? "&img=esri" : "") +
-           (state.spoofShow ? "&sp=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") + (state.s6Show ? "&s6=1" : "") + (state.smapShow ? "&sm=1" : "") + (state.c2Show ? "&c2=1" : "") + (state.s1Show ? "&s1=1" : "") +
+           (state.spoofShow ? "&sp=1" : "") + (state.spsShow ? "&ss=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") + (state.s6Show ? "&s6=1" : "") + (state.smapShow ? "&sm=1" : "") + (state.c2Show ? "&c2=1" : "") + (state.s1Show ? "&s1=1" : "") +
            "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
   }
   function writeHash() { if (state.day) history.replaceState(null, "", hashFor()); }
@@ -847,6 +886,31 @@
     nisCache = { doc: state.nis, day: state.day, list: list };
     return list;
   }
+  var SPOOF_LINK_MIN = 3;                               // spoofed-to places with this many aircraft get a line to their aircraft
+  function spoofAt(pt) {                               // the spoofed-to place within 9 px of a container point, or null
+    if (!state.spoofShow || !state.spoof || !state.spoof.targets) return null;
+    var best = null, bd = 81;
+    state.spoof.targets.forEach(function (t, i) {
+      var q = map.latLngToContainerPoint([t[0], t[1]]), d = (q.x - pt.x) * (q.x - pt.x) + (q.y - pt.y) * (q.y - pt.y);
+      if (d < bd || (d === bd && best !== null && t[2] > state.spoof.targets[best][2])) { bd = d; best = i; }
+    });
+    return best;
+  }
+  function describeTarget(i) {                         // [lat, lon, aircraft, episodes, active, first, last, near, r90_km, victims]
+    var t = state.spoof.targets[i];
+    var lines = [["", "False position (spoofing) · " + (t[7] ? "near " + t[7] : ll2(t[0], t[1]))]];
+    lines.push(["Aircraft shown here", t[2] + " (" + t[3] + " episode" + (t[3] === 1 ? "" : "s") + ", " + t[4] + " active)"]);
+    if (t[5]) lines.push(["First", utcAndLocal(t[5])]);
+    if (t[6] && t[6] !== t[5]) lines.push(["Last", utcAndLocal(t[6])]);
+    var over = [];
+    (t[9] || []).forEach(function (v) { var c = h3.cellToLatLng(v[0]), nm = v[2] ? "near " + v[2] : ll2(c[0], c[1]); if (over.indexOf(nm) < 0) over.push(nm); });
+    lines.push(["Aircraft really were", over.length ? over.join("; ") : "not located"]);
+    if (t[2] > 1 && t[8] !== null && t[8] !== undefined) lines.push(["Spread", "90% of these positions within " + t[8] + " km of the centre"]);
+    lines.push(["", "Where receivers were told they were, not a transmitter site"]);
+    return lines;
+  }
+  function spsClass(s) { return s <= 0 ? -1 : s >= 0.05 ? 3 : s >= 0.01 ? 2 : s >= 0.001 ? 1 : 0; }
+  function fmtShare(s) { var p = 100 * s; return (p === 0 ? "0" : p < 0.1 ? p.toFixed(3) : p < 10 ? p.toFixed(1) : p.toFixed(0)) + "%"; }
   function nisAt(pt) {                                 // the visible site within 9 px of a container point
     if (!state.nisShow || !state.nis) return null;
     var best = null, bd = 81;
@@ -930,11 +994,33 @@
     });
     return best ? " Nearest day with one: " + best + "." : "";
   }
+  function spoofNote(s) {
+    var txt = "Spoofing " + fmtDay(s.day) + ": " + s.active + " active episodes. Shading shows where spoofed aircraft really were; ";
+    if (!s.targets) return txt + "crosses mark the 10 places their receivers were most often told they were.";
+    txt += "crosses mark all " + s.targets.length + " places their receivers were told they were (bigger for more aircraft), with a dashed line " +
+      "to where most of those aircraft were for places with " + SPOOF_LINK_MIN + " or more. Hover or click a cross for details. False positions are " +
+      "not transmitter sites.";
+    var un = s.unplaced || [], n = 0;
+    un.forEach(function (u) { n += u[1]; });
+    if (n) {
+      var top = un[0], over = (top[3] || []).map(function (v) { return v[2]; }).filter(Boolean).slice(0, 3);
+      txt += " A further " + n + " aircraft reported a spoofed speed but none of their false positions reached the archive, so they can't be " +
+        "placed; most reported about " + top[0] + " kt" + (over.length ? ", in regions near " + over.join(", ") : "") + ".";
+    }
+    return txt;
+  }
   function layerNote() {
     var note = document.getElementById("lyr-note"), parts = [];
     if (!note) return;
-    if (state.spoofShow) parts.push(state.spoof ? "Spoofing " + state.spoof.day + ": " + state.spoof.active + " active episodes; outlines show where spoofed aircraft really were, crosses where their receivers were told they were."
+    if (state.spoofShow) parts.push(state.spoof ? spoofNote(state.spoof)
       : "No spoofing layer for this day (daily from 27 Oct 2026, plus 17 earlier days)." + nearest("spoof", state.day));
+    if (state.spsShow) parts.push(state.sps && state.sps.share2 ? "Spoofed share " + fmtDay(state.sps.day) + ": the share of aircraft-hours " +
+      "(each aircraft counted once an hour in each region) spent in active spoofing episodes, in regions about 300 km across with 10 or more " +
+      "aircraft-hours. Darker: 0.1%, 1% and 5% or more; outlined only: none seen. It counts where aircraft really were, not where they were " +
+      "shown. On 12 held-out days, six quiet control regions stayed at 0.0023%, against 0.397% in the Middle East and 0.904% in the Baltic and " +
+      "western Russia (detector v0.6; see Validation). Separate from jamming: a spoofed receiver can report good accuracy."
+      : state.sps ? "No regional spoofed share in this day's file: it is published from late Nov 2026, and earlier days only once they are redone." + nearest("spoof", state.day)
+      : "No spoofing file for this day." + nearest("spoof", state.day));
     if (state.cygShow) parts.push(state.cyg ? "CYGNSS " + state.cyg.day + ": " + state.cyg.raised_cells + " cells raised 1 dB or more (exposure within a beam a few hundred km wide, not a transmitter site; about 38°N to 38°S). Source: NASA CYGNSS L1 V3.2 (PO.DAAC), NASA open data."
       : "No CYGNSS file within 3 days of this day (CYGNSS runs about six days behind)." + nearest("cygnss", state.day));
     if (state.s6Show) parts.push(state.s6 ? "Sentinel-6 " + fmtDay(state.s6.day) + ": " + state.s6.raised_cells + " cells raised (score " +
@@ -984,6 +1070,7 @@
   }
   function loadLayers(day) {
     if (state.spoofShow) layerFor("spoof", day).then(function (j) { if (state.day !== day) return; state.spoof = j; layerNote(); layer.redraw(); });
+    if (state.spsShow) layerFor("spoof", day).then(function (j) { if (state.day !== day) return; state.sps = j || false; layerNote(); layer.redraw(); });
     if (state.cygShow) layerFor("cygnss", day).then(function (j) { if (state.day !== day) return; state.cyg = j; layerNote(); layer.redraw(); });
     if (state.nisShow) layerFor("nisar", day).then(function (j) { if (state.day !== day) return; state.nis = j; layerNote(); layer.redraw(); });
     if (state.s6Show) layerFor("s6", day).then(function (j) { if (state.day !== day) return; state.s6 = j; layerNote(); layer.redraw(); });
@@ -995,7 +1082,7 @@
 
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true; state.nisFocus = null;
-    state.spoof = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; state.s1 = null; loadLayers(day);
+    state.spoof = null; state.sps = null; state.spoofFocus = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; state.s1 = null; loadLayers(day);
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
     syncTimeline();
     fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
@@ -1193,7 +1280,7 @@
       var v = (hp.v || "").split(",").map(Number);
       state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
       imagery.want = hp.img === "esri";
-      state.spoofShow = hp.sp === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1"; state.s6Show = hp.s6 === "1"; state.smapShow = hp.sm === "1"; state.c2Show = hp.c2 === "1"; state.s1Show = hp.s1 === "1";
+      state.spoofShow = hp.sp === "1"; state.spsShow = hp.ss === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1"; state.s6Show = hp.s6 === "1"; state.smapShow = hp.sm === "1"; state.c2Show = hp.c2 === "1"; state.s1Show = hp.s1 === "1";
       return d;
     }
     var day = fromHash();
@@ -1279,7 +1366,7 @@
     ["tl-prev", "tl-next", "tl-slider", "map-day"].forEach(function (id) {
       document.getElementById(id).addEventListener("pointerdown", function () { setPlaying(false); });
     });
-    [["spoof", "spoof"], ["cyg", "cyg"], ["nis", "nis"], ["s6", "s6"], ["smap", "smap"], ["c2", "c2"], ["s1", "s1"]].forEach(function (k) {
+    [["spoof", "spoof"], ["sps", "sps"], ["cyg", "cyg"], ["nis", "nis"], ["s6", "s6"], ["smap", "smap"], ["c2", "c2"], ["s1", "s1"]].forEach(function (k) {
       var box = document.getElementById("lyr-" + k[0]);
       if (!box) return;
       box.checked = !!state[k[0] + "Show"];

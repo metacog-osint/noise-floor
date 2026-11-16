@@ -158,11 +158,15 @@
       "data": [
         "adsb.lol daily archive"
       ],
-      "notes": "Validated 26 Oct 2026: a held-out test on 12 days fixed in advance passed all five pre-registered checks, first for version 0.4 and again for version 0.5, the default since late October. Version 0.4 adds a 'replay' class for feeds re-sending old positions (found over northern Florida, 6 Mar 2024). Version 0.5 lets indicated airspeed, from air data rather than GNSS, qualify an aircraft for the tests, so aircraft spoofed for their whole visible flight are tested: 13% more episodes over 41 days, controls unchanged at 0.002%. Two of the 12 held-out days were seen while designing 0.5, so that rerun is only partly independent. Spoofing and jamming are mostly separate signals. Maps show where receivers were told they were, not where a transmitter is. Offset tracks with no jump are missed; no coverage over Iraq and almost none over Iran. Not on the public map yet.",
+      "notes": "Validated 26 Oct 2026: a held-out test on 12 days fixed in advance passed all five pre-registered checks, first for version 0.4 and again for version 0.5, the default since late October. Version 0.4 adds a 'replay' class for feeds re-sending old positions (found over northern Florida, 6 Mar 2024). Version 0.5 lets indicated airspeed, from air data rather than GNSS, qualify an aircraft for the tests, so aircraft spoofed for their whole visible flight are tested: 13% more episodes over 41 days, controls unchanged at 0.002%. Two of the 12 held-out days were seen while designing 0.5, so that rerun is only partly independent. Spoofing and jamming are mostly separate signals. Maps show where receivers were told they were, not where a transmitter is. Offset tracks with no jump are missed; no coverage over Iraq and almost none over Iran. Version 0.6, the default from 15 Nov 2026, adds three rules found with the Lima test (slow at cruise, short far excursions, and MLAT speed for aircraft whose false positions the archive dropped), and passed the same held-out checks with controls at 0.0023%. On the public map since 27 Oct 2026: where spoofed aircraft really were, every place their receivers were told they were, and a regional spoofed share; the Trends page follows those places day to day.",
       "links": [
         [
           "Validation",
           "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/spoofing.md"
+        ],
+        [
+          "v0.6 validation",
+          "https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/spoofing-v06.md"
         ]
       ]
     },
