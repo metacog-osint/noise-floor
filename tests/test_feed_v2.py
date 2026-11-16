@@ -49,9 +49,75 @@ def main():
     # (kit 0.5.6 contract), so consumers print a date and never "5:59 PM".
     assert any(i.startswith("noisefloor-spoof-new-") for i in by), "the spoof item must be covered too"
     for i, p in by.items():
+        if i.startswith("noisefloor-event-"):     # an event has its own hours: stamped at its end, not date-only
+            assert "data_as_of_precision" not in p and p["data_as_of"] == "2026-10-29T22:00:00Z", p["data_as_of"]
+            assert p["period"] == {"start": "2026-10-29T19:00:00Z", "end": "2026-10-29T22:00:00Z"}, p["period"]
+            continue
         assert p["data_as_of_precision"] == "day", i
         assert p["data_as_of"] == "2026-10-29T00:00:00Z", (i, p["data_as_of"])
+    country_tags()
+    event_tiers()
+    event_place_unit_time()
     print("test_feed_v2: all passed")
+
+
+def event_tiers():
+    """Majors are anomalies, notables routine, and none is cut (suite review Mistake 3: exactly six anomalies a day)."""
+    evs = [{"tier": "major" if k < 2 else "notable", "peak": 30 - k, "excess": 28 - k, "h0": k, "h1": k,
+            "lat": 57.0 + k * 0.1, "lon": 17.0, "near": None, "test": False} for k in range(9)]
+    board = {"freshness": {"aircraft_day": "2026-11-13"}, "top_events": {"day": "2026-11-13", "events": evs}}
+    feed = feed_v2.build(board, [], now=datetime(2026, 11, 14, 6, 0, tzinfo=timezone.utc))
+    assert not feed_v2.check(feed)
+    ev = [f["properties"] for f in feed["features"] if f["properties"]["id"].startswith("noisefloor-event-")]
+    assert len(ev) == 9, len(ev)
+    assert [p["tier"] for p in ev] == ["anomaly"] * 2 + ["routine"] * 7
+    assert "below the major grade" in ev[5]["summary"] and "below" not in ev[0]["summary"]
+
+
+def country_tags():
+    """Real res-2 regions and events from the live feed of 15-16 Nov 2026 (suite review Mistake 1): the cell's interior
+    is sampled, not just its six corners, and the named place's country is added."""
+    board = {"freshness": {"aircraft_day": "2026-11-15"}, "changes": {"day": "2026-11-15", "rule": "test rule",
+             "new": [{"region": "82534ffffffffff", "near": "Doha", "near_at": [25.29, 51.53], "days_in_last7": 2}],
+             "ended": [{"region": "825367fffffffff", "near": "Manama", "near_at": [26.24, 50.58], "days_in_prior30": 5},
+                       {"region": "822db7fffffffff", "near": "Tel Aviv", "near_at": [32.08, 34.77], "days_in_prior30": 9},
+                       {"region": "822db7fffffffff", "near": None, "near_at": None, "days_in_prior30": 9}]},
+             "top_events": {"day": "2026-11-15", "events": [
+                 {"tier": "notable", "peak": 18.1, "excess": 18.1, "h0": 0, "h1": 3, "lat": 34.34, "lon": 31.23,
+                  "near": "Nicosia", "near_at": [35.17, 33.37], "test": False}]}}
+    feed = feed_v2.build(board, [], now=datetime(2026, 11, 16, 14, 0, tzinfo=timezone.utc))
+    assert not feed_v2.check(feed)
+    cc = [f["properties"]["countries"] for f in feed["features"][1:]]
+    assert {"QA", "AE", "SA"} <= set(cc[0]), cc[0]          # was AE, SA: Qatar's south is in the cell, Doha just outside
+    assert "BH" in cc[1], cc[1]                              # was SA: Manama is outside the cell; its country is added
+    assert {"IL", "PS"} <= set(cc[2]), cc[2]                 # was EG, JO, LB: Israel fills the middle of the cell
+    assert {"IL", "PS"} <= set(cc[3]), cc[3]                 # the interior alone finds Israel, with no named place
+    assert cc[4] == ["CY"], cc[4]                            # was none: the event point is at sea off Cyprus
+    # Coastal and divided-city points the kit's thinned outlines miss fall back to the commonest country nearby.
+    assert feed_v2.place_country([26.24, 50.58]) == "BH" and feed_v2.place_country([35.17, 33.37]) == "CY"
+    assert feed_v2.place_country([0.0, -30.0]) is None       # open ocean: nothing
+
+
+def event_place_unit_time():
+    """Suite review Mistake 5: an event is its res-2 regions (an area, not a point marked approximate), its measure is
+    named a share, and it carries its own start and end hours. The 15 Nov 2026 Nicosia event, 00-03 UTC."""
+    ev = {"tier": "notable", "peak": 18.1, "excess": 18.1, "h0": 0, "h1": 3, "lat": 34.34, "lon": 31.23,
+          "near": "Nicosia", "near_at": [35.17, 33.37], "test": False,
+          "cells": ["823f4ffffffffff", "823f5ffffffffff", "823f6ffffffffff"]}
+    late = {**ev, "tier": "major", "excess": 30.0, "h0": 22, "h1": 23}
+    board = {"freshness": {"aircraft_day": "2026-11-15"}, "top_events": {"day": "2026-11-15", "events": [ev, late]}}
+    feed = feed_v2.build(board, [], now=datetime(2026, 11, 16, 14, 0, tzinfo=timezone.utc))
+    assert not feed_v2.check(feed), feed_v2.check(feed)
+    g, p = feed["features"][1]["geometry"], feed["features"][1]["properties"]
+    assert g["type"] == "MultiPolygon" and len(g["coordinates"]) == 3 and p["precision_class"] == "area"
+    assert "CY" in p["countries"], p["countries"]
+    assert p["measure"]["name"] == "peak_severe_share_pct" and "percent" in p["measure"]["unit"]
+    assert p["data_as_of"] == "2026-11-15T04:00:00Z" and "data_as_of_precision" not in p
+    assert p["period"] == {"start": "2026-11-15T00:00:00Z", "end": "2026-11-15T04:00:00Z"}
+    assert "Between 00:00 and 03:59 UTC on 15 Nov 2026." in p["summary"] and "3 regions" in p["summary"], p["summary"]
+    q = feed["features"][2]["properties"]                    # an event in the day's last hour ends at midnight
+    assert q["data_as_of"] == "2026-11-16T00:00:00Z" and q["period"]["start"] == "2026-11-15T22:00:00Z"
+    assert feed["features"][0]["properties"]["data_as_of_precision"] == "day"   # the summary stays date-only
 
 
 if __name__ == "__main__":

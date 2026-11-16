@@ -117,6 +117,25 @@ def test_spoofing_and_cygnss_cards():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_top_events_all_majors_first():
+    """Every major and notable jamming event, majors first (no cap of six), with the named place's coordinates."""
+    tmp = tempfile.mkdtemp()
+    try:
+        os.makedirs(os.path.join(tmp, "data", "events"))
+        json.dump({"places": [["Visby", 57.64, 18.3, 3, 0]]}, open(os.path.join(tmp, "data", "places.json"), "w"))
+        an = [{"m": "jam", "tier": "notable" if k % 3 else "major", "h0": k, "h1": k, "peak": 20 + k, "excess": 15 + k,
+               "lat": 57.5, "lon": 17.5, "cells": ["821f2ffffffffff"], "hs": 0.1} for k in range(9)]
+        an += [{"m": "jam", "tier": "minor", "lat": 0, "lon": 0}, {"m": "acc", "tier": "major", "lat": 0, "lon": 0}]
+        json.dump({"anomalies": an, "bursts": [], "tests": []}, open(os.path.join(tmp, "data", "events", "2026-11-13.json"), "w"))
+        te = B.top_events(tmp, "2026-11-13", B.Places(tmp))
+        assert len(te["events"]) == 9 and te["majors"] == 3, te
+        assert [e["tier"] for e in te["events"]] == ["major"] * 3 + ["notable"] * 6
+        assert [e["h0"] for e in te["events"][:3]] == [0, 3, 6]          # each tier keeps the analysis's order
+        assert te["events"][0]["near"] == "Visby" and te["events"][0]["near_at"] == [57.64, 18.3]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_sentinel6_and_smap_cards():
     tmp = tempfile.mkdtemp()
     try:

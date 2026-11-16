@@ -5,7 +5,8 @@
 
 Built at deploy, right after board.py, from SITE/data/board.json and SITE/data/gnss/days.json. Every item here is a
 measurement (kind observation): regions that newly reached jamming scale this week, regions where it ended, named areas
-whose severe share rose 5 points or more above their 30-day median, the day's major and notable events, and up to five
+whose severe share rose 5 points or more above their 30-day median, the day's major and notable events (majors
+anomaly, notables routine; each drawn as its H3 res-2 regions, stamped with its own hours), and up to five
 places where aircraft were newly shown at a false position (spoofing; tools/spoof_site.py new_targets(), placed where
 the aircraft really were), plus one daily summary. Warnings (judged, with likelihood and confidence) come later through doctrine/indicators.json.
 
@@ -16,7 +17,7 @@ import json
 import os
 import statistics
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "doctrine", "kit", "python"))
@@ -71,15 +72,83 @@ def box_points(box):
     return [(la0 + (la1 - la0) * a, lo0 + (lo1 - lo0) * b) for a in (0.1, 0.5, 0.9) for b in (0.1, 0.5, 0.9)]
 
 
+SAMPLE_RES = 5                                        # a res-2 cell is sampled at its 343 res-5 children's centres
+
+
+def cell_points(cell):
+    """Sample points over an H3 cell for country tags: its corners, its centre and its res-5 children's centres
+    (343 for a res-2 cell, about 9 km apart). Corners alone missed the country in the middle of the cell: the
+    "near Tel Aviv" region was tagged EG, JO, LB without IL (suite review, 15 Nov 2026)."""
+    import h3
+    pts = list(h3.cell_to_boundary(cell)) + [h3.cell_to_latlng(cell)]
+    if h3.get_resolution(cell) < SAMPLE_RES:
+        pts += [h3.cell_to_latlng(c) for c in h3.cell_to_children(cell, SAMPLE_RES)]
+    return pts
+
+
 def h3_polygon(cell):
     import h3
     ring = [[round(lo, 4), round(la, 4)] for la, lo in h3.cell_to_boundary(cell)]
-    return {"type": "Polygon", "coordinates": [ring + [ring[0]]]}, [(la, lo) for lo, la in ring]
+    return {"type": "Polygon", "coordinates": [ring + [ring[0]]]}, cell_points(cell)
 
 
-def tags(points, extra=None):
-    cc = geo.countries_in(points)
-    out = {"countries": cc, "ncf": NCF, "sector": vocab.derive_sectors(NCF)}
+def h3_area(cells):
+    """A MultiPolygon of H3 cells and their sample points: an event's res-2 regions, drawn as published."""
+    import h3
+    polys, pts = [], []
+    for c in cells:
+        ring = [[round(lo, 4), round(la, 4)] for la, lo in h3.cell_to_boundary(c)]
+        polys.append([ring + [ring[0]]])
+        pts += cell_points(c)
+    return {"type": "MultiPolygon", "coordinates": polys}, pts
+
+
+def place_country(at):
+    """Country of a named place [lat, lon]: the kit's country_at, or, for a coastal or border town that the kit's
+    thinned outlines miss (Manama, Nicosia), the commonest country on rings 5, 10 and 25 km around it."""
+    if not at:
+        return None
+    lat, lon = at
+    cc = geo.country_at(lat, lon)
+    if cc:
+        return cc
+    import math
+    seen = {}
+    for r_km in (5, 10, 25):
+        for k in range(12):
+            a = math.radians(30 * k)
+            la = lat + r_km / 111.2 * math.cos(a)
+            lo = lon + r_km / (111.2 * max(math.cos(math.radians(lat)), 0.01)) * math.sin(a)
+            c = geo.country_at(la, lo)
+            if c:
+                seen[c] = seen.get(c, 0) + 1
+        if seen:
+            return max(sorted(seen), key=seen.get)
+    return None
+
+
+def event_span(day, h0, h1):
+    """An event's UTC hours as times: start of its first hour, start of its last hour, and end of its last hour (the
+    moment it was last true, used as data_as_of). None without hours."""
+    if h0 is None or h1 is None:
+        return None
+    d = datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    return {"start": utc(d + timedelta(hours=h0)), "last": utc(d + timedelta(hours=h1)),
+            "end": utc(d + timedelta(hours=h1 + 1))}
+
+
+def plain_day(day):
+    return datetime.strptime(day, "%Y-%m-%d").strftime("%d %b %Y").lstrip("0")
+
+
+def tags(points, extra=None, near_at=None):
+    """Countries any sample point falls in, plus the country of the named place the title uses ("near Doha" is
+    tagged QA even when Doha sits just outside the cell)."""
+    cc = set(geo.countries_in(points))
+    pc = place_country(near_at)
+    if pc:
+        cc.add(pc)
+    out = {"countries": sorted(cc), "ncf": NCF, "sector": vocab.derive_sectors(NCF)}
     out.update(extra or {})
     return out
 
@@ -103,7 +172,10 @@ def build(board, days, now=None):
     feats = []
 
     def add(geom, props):
-        feats.append({"type": "Feature", "geometry": geom, "properties": {**base, **props}})
+        merged = {**base, **props}
+        if merged.get("data_as_of_precision") is None:    # an item with a real time (an event) is not date-only
+            merged.pop("data_as_of_precision", None)
+        feats.append({"type": "Feature", "geometry": geom, "properties": merged})
 
     add(None, {
         "id": f"noisefloor-summary-{day}", "kind": "observation", "tier": "routine", "product_category": "current",
@@ -127,7 +199,7 @@ def build(board, days, now=None):
                              "version": "1", "rule": rule},
             "requirement_ids": ["NF-PIR-2"], "warning_problem_id": "NF-WP-1", "indicator_id": "NF-IND-1",
             "hypothesis_id": "NF-WP-1-H1", "direction": "supports", "indicator_state": "present",
-            **tags(pts)})
+            **tags(pts, near_at=r.get("near_at"))})
     for r in ch.get("ended") or []:
         geom, pts = h3_polygon(r["region"])
         near = r.get("near")
@@ -137,7 +209,7 @@ def build(board, days, now=None):
             "title": f"GPS interference no longer seen{' near ' + near if near else ''}",
             "summary": f"At jamming scale on {r['days_in_prior30']} of the 30 days before last week, and on none of the "
                        "last 7. Check position loss before reading this as an easing (assumption NF-AS-3).",
-            "requirement_ids": ["NF-PIR-2"], **tags(pts)})
+            "requirement_ids": ["NF-PIR-2"], **tags(pts, near_at=r.get("near_at"))})
 
     hs = board.get("hotspots") or {}
     for a in hs.get("areas") or []:
@@ -158,17 +230,40 @@ def build(board, days, now=None):
     te = board.get("top_events") or {}
     for i, e in enumerate(te.get("events") or []):
         near = e.get("near")
-        hours = f"{e['h0']}-{e['h1']} UTC" if e.get("h0") is not None and e.get("h1") is not None else ""
-        add({"type": "Point", "coordinates": [e["lon"], e["lat"]]}, {
-            "id": f"noisefloor-event-{te.get('day', day)}-{i + 1}", "kind": "observation", "tier": "anomaly",
-            "product_category": "current", "precision_class": "approximate",
+        eday = te.get("day", day)
+        span = event_span(eday, e.get("h0"), e.get("h1"))
+        major = e["tier"] == "major"
+        cells = [c for c in e.get("cells") or [] if c]
+        if cells:                       # the event's own H3 res-2 regions, as the analysis found them
+            geom, pts = h3_area(cells)
+            place = {"precision_class": "area"}
+        else:                           # an older event file without cells: the mean of its regions' centres
+            geom, pts = {"type": "Point", "coordinates": [e["lon"], e["lat"]]}, [(e["lat"], e["lon"])]
+            place = {"precision_class": "approximate"}
+        add(geom, {
+            "id": f"noisefloor-event-{eday}-{i + 1}", "kind": "observation",
+            "tier": "anomaly" if major else "routine", "product_category": "current", **place,
             "title": f"{e['tier'].capitalize()} GPS interference event{' near ' + near if near else ''}",
-            "summary": " ".join(x for x in [f"Graded {e['tier']} by Noisefloor's events rule.", hours,
-                                            "Coincides with an announced test." if e.get("test") else ""] if x),
-            "measure": {"name": "peak_degraded_aircraft", "value": e.get("peak"), "excess": e.get("excess")},
+            "summary": " ".join(x for x in [
+                f"Graded {e['tier']} by Noisefloor's events rule"
+                + (" (25 points or more over the same hour's usual share)." if major else
+                   " (10 to 25 points over the same hour's usual share): above its own baseline but below the major "
+                   "grade, so sent as routine. Noisefloor's validation reads majors first."),
+                f"Between {span['start'][11:16]} and {span['last'][11:13]}:59 UTC on {plain_day(eday)}." if span else "",
+                (f"Its highest region-hour had severe GPS error (worse than 93 m) in {e['peak']:g}% of "
+                 f"aircraft-cell-hours, and its largest rise over a region's usual share for that hour was "
+                 f"{e['excess']:g} points." if e.get("peak") is not None and e.get("excess") is not None else ""),
+                (f"Across {len(cells)} region{'s' if len(cells) != 1 else ''} about 300 km across." if cells else ""),
+                "Coincides with an announced test." if e.get("test") else ""] if x),
+            "measure": {"name": "peak_severe_share_pct", "value": e.get("peak"), "excess": e.get("excess"),
+                        "unit": "percent of aircraft-cell-hours with severe GPS error (NACp below 8, worse than 93 m) in "
+                                "the event's highest region-hour; excess is the largest rise in points over a region's "
+                                "same-hour usual share"},
             "baseline_ref": {"id": "noisefloor-events", "window": "same hour on up to 14 earlier days", "type": "rolling",
                              "version": "1"},
-            "requirement_ids": ["NF-PIR-1"], **tags([(e["lat"], e["lon"])])})
+            **({"data_as_of": span["end"], "data_as_of_precision": None, "period": {"start": span["start"],
+                "end": span["end"]}} if span else {}),
+            "requirement_ids": ["NF-PIR-1"], **tags(pts, near_at=e.get("near_at"))})
 
     sp = (board.get("spoofing") or {}).get("new_places") or {}
     for i, t in enumerate((sp.get("new") or [])[:NEW_SPOOF_ITEMS]):

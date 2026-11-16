@@ -87,7 +87,8 @@
     if (te) {
       set("ev-day", ", " + esc(dayShort(te.day)));
       $("ev-link").href = "/map#day=" + te.day + "&m=jam";
-      var evs = (te.events || []).slice().sort(function (x, y) { return y.peak - x.peak; }).slice(0, 6);
+      var all = (te.events || []).slice().sort(function (x, y) { return (y.tier === "major") - (x.tier === "major") || y.peak - x.peak; });
+      var evs = all.slice(0, 6);           // majors first, then by peak; the rest are on the map
       set("ev-list", evs.length ? evs.map(function (e) {
         var tier = e.tier === "major" ? "Major" : e.tier === "notable" ? "Notable" : "Minor", k = e.tier === "major" ? 3 : 1;
         var where = e.near ? "Near " + e.near : Math.abs(e.lat).toFixed(1) + "°" + (e.lat >= 0 ? "N" : "S") + " " + Math.abs(e.lon).toFixed(1) + "°" + (e.lon >= 0 ? "E" : "W");
@@ -96,6 +97,7 @@
           '<span class="when">' + pad(e.h0) + ":00–" + pad(e.h1) + ":59 UTC</span>" + (e.test ? '<span class="note">Fits announced test ' + esc(e.test) + "</span>" : "") + "</li>";
       }).join("") : '<li class="loading">No major or notable event that day.</li>');
       var more = [];
+      if (all.length > 6) more.push(n(all.length - 6) + " more major or notable event" + (all.length === 7 ? "" : "s") + " on the map");
       if (te.bursts) more.push(n(te.bursts) + " minute-level burst" + (te.bursts === 1 ? "" : "s"));
       if (te.tests) more.push(n(te.tests) + " announced US test" + (te.tests === 1 ? "" : "s") + " in force");
       set("ev-more", more.length ? "Also that day: " + esc(more.join("; ")) + "." : "");
@@ -130,8 +132,13 @@
       (placesM.length ? ", among them " + esc(placesM.join("; ")) : "") + ". Mostly radars; not GPS jammers." : "Not available in the last build.");
     if (sm && $("r-smap-link")) $("r-smap-link").href = "/map#day=" + sm.day + "&sm=1";
     set("r-loss", lo.length ? esc(lo.slice(0, 3).map(function (a) { return short(a.name) + " " + pct(a.share); }).join(", ")) : "Not available in the last build.");
-    var sc = b.scintillation;
-    set("scint-text", sc ? "Scintillation " + esc(sc.level) + "." : "");
+    // ESA's nowcast is a snapshot taken at build and sometimes stops updating: give its level only while it is under
+    // 3 hours old as the page is read (assumption NF-AS-4), and otherwise say how old the last one is.
+    var sc = b.scintillation, scAge = sc && sc.valid_utc ? (Date.now() - utc(sc.valid_utc).getTime()) / 36e5 : null;
+    set("scint-text", !sc ? "" : scAge != null && scAge >= -1 && scAge <= 3
+      ? "Scintillation " + esc(sc.level) + " (ESA nowcast, " + esc(both(sc.valid_utc)) + ")."
+      : "No current scintillation reading" + (scAge != null ? ": ESA's last nowcast here is " + Math.round(scAge) +
+        " hours old (" + esc(both(sc.valid_utc)) + ")." : "."));
     var g = b.geo;
     set("r-geo", g ? n(g.counts.objects) + " objects; " + n(g.close_count) + " close pairs; " +
       (g.snapshots < 2 ? "orbit-change flags start with the second snapshot" : g.manoeuvre_counts ?
