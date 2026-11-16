@@ -165,7 +165,13 @@ loaded automatically; read it when you need the background.
   36,000 ft, `--slow-hi-a2-ft 25000` for v0.6, `docs/validation/spoofing-v061.md`). **Testing detector changes (16 Nov
   2026):** read `docs/spoofing-light-plan.md` first: day caches (`spoof_day.py run --cache`, `rerun --set`), shadow
   variants in the daily run (`tools/spoof_shadow.json`, `tools/spoof_shadow.py`, `<day>.spoof-shadow.json`) and the
-  lighter procedure. Caches of the 18 test days are in `data/spoof_cache/` (local). `tools/year_trends.py`
+  lighter procedure. Caches of the 18 test days are in `data/spoof_cache/` (local). `spoof_day.py` summaries carry
+  `seconds` (wall), `seconds_read` and `cpu_seconds` (main process plus pool workers: compare this one, wall time is
+  unreliable on the shared PC); `spoof_day.py cache-convert` writes faster format-2 caches into a new root;
+  `tools/spoof_variant.py` scores a variant from the caches in one command (reruns, held-out H1–H8, outside-list
+  P1/P2, diff against a reference, one report JSON); `tools/spoof_same.py` compares two output folders day by day
+  (exit 1 on a real difference); `tools/heavy_lock.py` is the machine-wide lock that heavy local jobs (multi-day
+  `spoof_day.py` run/rerun/cache-convert, `spoof_variant.py`) take and wait on. `tools/year_trends.py`
   (`docs/assessment/year-trends.md`), and position loss: aircraft heard by MLAT but sending no GNSS position
   (`tools/position_loss.py`, and `pipeline/pnt_daily.py --position-loss`, set in the daily workflow from late Oct 2026 (release files `<day>.loss*.parquet`); `docs/validation/position-loss.md`).
   The degraded share can't see those aircraft: check position loss before reading any share trend. CI runs each `tests/test_*.py` as a plain script with only `requirements.txt` and

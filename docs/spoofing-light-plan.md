@@ -94,6 +94,69 @@ output, with no raw archive. `tools/spoof_compare.py --cache-root` reads the Lim
 altitude, so it can't be placed or counted anyway). Whether to delete the raw archives once the caches exist is Tom's
 decision; the caches can't rebuild a day for settings outside the envelope.
 
+**Scoring a variant in one command (16 Nov 2026).** `python tools/spoof_variant.py --set NAME=VALUE ... --label L --out DIR
+--baseline DIR [--reference DIR] [--outside DIR --at=LAT,LON]` takes the heavy-job lock, reruns the days from the caches
+(`--cache`, default `data/spoof_cache`; `--days`, default the 18 test days), then scores the held-out days (H1–H6 from
+`spoof_heldout.py`; H7, the A2 rule-A control-box episodes of v0.6's review still present, from
+`<baseline>/new_controls.json`; H8, MLAT-confirmed episodes at least 98% of the baseline's), the outside list at the place
+(P1, P2; `spoof_compare.py --cache-root --v06`) and, with `--reference`, checks the output against an earlier one with
+`tools/spoof_same.py` (events as sorted JSON, the three parquet tables sorted on every column, the summary minus timing
+and provenance keys, and the `*_top` lists classed same, tie-order, tie-at-cut or differs; exit 1 on a real difference).
+One report JSON (`<out>/variant_report.json`) holds, per day, wall, CPU and read seconds, candidates, aircraft and
+episodes, the totals, and every score; it has counts only, never an ICAO address or the outside folder's path, which is
+always an argument. Summaries of `run` and `rerun` now carry `cpu_seconds` (the main process plus every pool worker);
+compare that, not wall time, on this shared PC. A rerun's summary adds `seconds_parts` (`records_load`, `scoring`,
+`shard_file_read`) and `cache_format`. `rerun` and `cache-convert` refuse a day whose shards hold a different number of
+candidate traces than `meta.json` says: the 2025-05-10 cache held shards of two overlapping builds, and its V1 rescore
+gave 783 episodes and 51,597 aircraft against 431 and 49,931 in the raw run (a difference `spoof_same.py` finds at once).
+`run --cache` now builds in `<cache>.building`, made exclusively (a second build of the same day stops with a message), and
+moves the finished folder into place whole.
+
+**Where a cached rerun spends its time, and the format-2 cache.** For 20 Feb 2024 (V1, 1,608 candidates, one pass, other
+jobs running): loading the 41,257 records from `records.pkl.gz` takes about 5 s (0.45 s gunzip, 4.2 s unpickle); scoring
+the candidates takes about 31 s of CPU spread over the workers, of which gunzip, JSON parsing and `parse_trace` are 37%;
+`aggregate()` over all records takes about 22 s in the main process and writing the tables and summary more, which a cache
+can't shorten: after the reruns of 16 Nov it is about half of the 18-day rerun time (390–405 s of 790–910 s).
+`python tools/spoof_day.py cache-convert DAY... --cache OLD_ROOT --to NEW_ROOT` writes format-2 caches into a new root
+(the old one is only read; it refuses to write over it): `records.pkl.zst` (the same pickle, zstd) and `cand2-*.bin` (each
+candidate parsed once by `parse_trace` and pickled, zstd, so a worker skips gunzip, JSON parsing and `parse_trace`), plus
+a copy of the raw `cand-*.bin` shards that `spoof_compare.py --cache-root` still reads. `rerun` reads either format. Size:
+2.9 GB for the 18 old caches, 4.6 GB for the new root. Converting took 861 s. A one-day A/B on 20 Feb 2024 (warm files):
+CPU 69.4 and 70.0 s against 58.9 and 59.2 s, wall 47–48 s against 42–44 s.
+
+**Proof and timing, 18 days, V1** (`--set SLOW_HI_A2_FT=0 --label V1`, one command each, on the PC with other jobs
+running: a Norway AIS collector, two Cordon history jobs, an NSF measurement, a check run; the first run also had a
+COP event backfill). Reruns from the format-2 caches equal reruns from the format-1 caches on all 18 days: no real
+difference in events, tables or summaries; tie order in a `*_top` list differs on 3 days between formats (and on 2 to 18
+days between any two runs: `victim_res2_top` is built from sets of strings, whose order changes with the process's hash
+seed; `sorted()` there would make runs identical). Every run equals the raw V1 run (`data/spoofing_v061a`) on all 18 days.
+
+| 18 days, 7 workers | Format 1, run 1 | Format 1, run 2 | Format 2 |
+|---|---|---|---|
+| Reruns, wall | 1,469 s | 910 s | 792 s |
+| Reruns, CPU | 2,302 s | 1,966 s | 1,489 s |
+| Of it records load / scoring / shard reading (wall) | 212 / 661 / 435 s | 146 / 375 / 162 s | 59 / 329 / 181 s |
+| Aggregation and writing (wall) | 596 s | 389 s | 405 s |
+| Held-out score, outside score, reference check | 25 / 82 / 20 s | 23 / 77 / 16 s | 24 / 78 / 17 s |
+| Whole command | 1,625 s | 1,043 s | 929 s |
+
+Run 2 against the format-2 run is the like-for-like pair (the same load): CPU −24%, wall −13%, reading −25%. Scores of
+all three: H1 0.0023% of 15.2 million control aircraft-hours, H2 0.397% and 0.904%, H3 568 of 618, H4 22 of 67, H5 Beirut,
+Beirut, Amman, H6 122 (baseline 134), H7 0 of 12, H8 568 (at least 557); Lima P1 12 of 14, P2 47 of 56 — the 15 Nov V1
+scores. The next saving is not in the cache format but in `aggregate()`: a stored partial aggregate of the non-candidate
+records would remove most of the 400 s, but the geo-outlier columns depend on every aircraft in a hex-hour, so it needs
+its own exactness test.
+
+**Heavy-job lock** (`tools/heavy_lock.py`). Heavy local jobs take one machine-wide lock and wait, with a message every
+minute naming the holder, while another holds it: `spoof_variant.py`, and `spoof_day.py run`, `rerun` and `cache-convert`
+for more than one day (`--no-lock` skips it). The lock is a file made with O_EXCL in `$TIC_HEAVY_LOCK_DIR`, else
+`%LOCALAPPDATA%\tic-heavy` (`$XDG_STATE_HOME/tic-heavy` elsewhere); it holds the holder's PID and start time, and a waiter
+removes a lock whose process has gone or whose PID now belongs to another process; a live holder is never removed
+(`heavy_lock.py status`, `clear-stale`, `release --force`). A child of the holder sees `TIC_HEAVY_LOCK_TOKEN` and doesn't wait
+for its parent. Another project's heavy job adopts it by running under `python tools/heavy_lock.py run --label NAME -- COMMAND`
+or by copying that one file (standard library only) and wrapping its main in `with heavy_lock.hold("NAME"):`. A job that
+doesn't adopt it still competes: on 15–16 Nov the cached V1 rescore took 9,978 s while other jobs ran, 2025-05-10 alone 2,300 s.
+
 ## 3. A daily spoofing indicator by place
 
 The places that spoofers send aircraft to are stable from day to day: Beirut, Amman, Lima, the Romanian ring. The
