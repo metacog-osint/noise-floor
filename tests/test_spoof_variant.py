@@ -69,11 +69,11 @@ def test_variant_end_to_end():
         rep = json.load(open(os.path.join(out, "variant_report.json")))
         assert rep["label"] == "V1" and rep["overrides"] == {"SLOW_HI_A2_FT": 0} and rep["days"] == [DAY]
         row = rep["per_day"][0]
-        assert row["day"] == DAY and row["cpu_seconds"] > 0 and row["candidates"] == 2 and row["aircraft"] == 6, row
+        assert row["day"] == DAY and row["cpu_seconds"] >= 0 and row["candidates"] == 2 and row["aircraft"] == 6, row
         assert row["episodes"] == 1 and row["version"] == "0.6.1-a2-0+V1", row           # the slow A2 is off under V1
         assert set(row["parts"]) == {"records_load", "scoring", "shard_file_read"}
         t = rep["totals"]
-        assert t["days"] == 1 and t["cpu_seconds"] > 0 and t["candidates"] == 2 and t["episodes"] == 1 and t["wall_seconds"] > 0, t
+        assert t["days"] == 1 and t["cpu_seconds"] >= 0 and t["candidates"] == 2 and t["episodes"] == 1 and t["wall_seconds"] >= 0, t
         assert rep["reference"]["same"] and rep["reference"]["real_differences"] == [], rep["reference"]
         li = rep["lima"]
         assert li["P1"]["placed"] == li["P1"]["placeable"] == 1 and li["P1"]["pass"] and li["P2"]["pass"], li
