@@ -125,8 +125,8 @@ def draft(end):
         lines += ["", "Share of aircraft-hexes worse than 93 m (live counts), from `trend.json`. A fall can mean aircraft dropped out "
                   "of the count; read it beside position loss.", ""]
     if ch:
-        lines += [f"Regions at jamming scale on {ch.get('day')}: {ch.get('regions_today')}; new this week {ch.get('new_count')}, ended "
-                  f"{ch.get('ended_count')}, long-running {ch.get('long_running')} (`board.json`).", ""]
+        lines += [f"Regions at jamming scale on {ch.get('day')}: {ch.get('regions_today')}; new this week {ch.get('new_count')}, fell below "
+                  f"jamming scale {ch.get('below_count', 0)}, ended {ch.get('ended_count')}, long-running {ch.get('long_running')} (`board.json`).", ""]
     if major:
         places = Places()
         top = sorted(major, key=lambda x: -(x[1].get("excess") or 0))[:12]

@@ -57,7 +57,7 @@
 
     // four numbers
     var st = [];
-    if (c) st.push([n(c.regions_today), "areas with GPS interference", c.new_count + " started this week, " + c.ended_count + " stopped"]);
+    if (c) st.push([n(c.regions_today), "areas with GPS interference", c.new_count + " started this week, " + ((c.ended_count || 0) + (c.below_count || 0)) + " fell below jamming scale"]);
     var s = b.spoofing;
     if (s && s.active != null) st.push([n(s.active), "active spoofing episodes", n(s.aircraft) + " aircraft" + (s.victims && s.victims[0] && s.victims[0].near ? "; most near " + s.victims[0].near : "")]);
     var lo = ((b.loss && b.loss.areas) || []).filter(function (a) { return !a.hexes || a.hexes_with_mlat / a.hexes >= 0.5; });
@@ -107,7 +107,8 @@
     if (c) {
       var names = function (xs) { return xs.map(function (r) { return r.near; }).filter(Boolean).join(", "); };
       set("wk", "<dt>Started (" + n(c.new_count) + ")</dt><dd>" + (esc(names(c.new || [])) || "None") + "</dd>" +
-        "<dt>Stopped (" + n(c.ended_count) + ")</dt><dd>" + (esc(names(c.ended || [])) || "None") + "</dd>" +
+        "<dt>Fell below jamming scale (" + n(c.below_count || 0) + ")</dt><dd>" + (esc(names(c.below || [])) || "None") + "</dd>" +
+        "<dt>Ended (" + n(c.ended_count) + ")</dt><dd>" + (esc(names(c.ended || [])) || "None") + "</dd>" +
         "<dt>Running " + n(c.long_running_days) + " days or more</dt><dd>" + n(c.long_running) + " areas</dd>");
     }
 

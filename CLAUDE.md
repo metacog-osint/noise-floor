@@ -221,8 +221,11 @@ loaded automatically; read it when you need the background.
   `dash.js` fill the page, and `tools/map_thumb.py` draws the map thumbnail at deploy (`site/data/today-map*.svg`).
   The hub (theintelligence.company) quotes `brief` too, so it must make sense to someone who has never seen Noisefloor
   (Tom, 31 Oct 2026): it names the measure ("the share of aircraft with severe GPS error was above/near/below its usual
-  level", i.e. against the 30-day median, never "rose" or "fell") and says "GPS interference started in … / has stopped
-  in …"; the rules are in `brief()`'s docstring.
+  level", i.e. against the 30-day median, never "rose" or "fell") and says "GPS interference started in …". A region
+  that drops under the 3-cell mark "fell below jamming scale"; it "ended" only with 500+ aircraft-cells (and half its
+  usual number) on each of the last 7 days and a 7-day severe-error share of 1% or less, the background level
+  (`ended_check`; suite review Mistake 2, Tom 16 Nov 2026, replacing the 31 Oct "has stopped in …"). Board keys
+  `below`/`ended`, feed ids `noisefloor-below-`/`noisefloor-ended-`. The rules are in `brief()`'s docstring.
   Tool pages (Map, Sea, Trends, Sun, GEO) open with a `.page-head` (title, one-line subtitle, "How to read" link) and the tool; their
   explanations live in one `<section id="howto" class="howto">` at the end (site.js scrolls there without touching the hash,
   which holds map and filter state).
