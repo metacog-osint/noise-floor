@@ -324,11 +324,13 @@ def spoofing(release, places):
 
 def _region_levels(files, places):
     """Regions (where aircraft really were) above their own usual level on the newest day with regional shares, and
-    all regions together (tools/spoof_site.py regions_now()); None without such a day."""
+    all regions together (tools/spoof_site.py regions_now(), with the announced US GPS tests in the same release
+    folder); None without such a day."""
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import spoof_site
-        return spoof_site.regions_now(spoof_site.share_days(files), places)
+        tests = spoof_site.load_tests(os.path.dirname(files[-1])) if files else []
+        return spoof_site.regions_now(spoof_site.share_days(files), places, tests)
     except Exception:                    # a nicety on the card: never stop the spoofing section
         return None
 
@@ -351,6 +353,10 @@ def spoof_line(sp):
         if n:
             head = (f"Spoofing on {when} was above its usual level in {_num(n)} region{'' if n == 1 else 's'}"
                     + (f", most near {_and(names)}" if names else ""))
+            k = rl.get("above_in_tests") or 0
+            if k:
+                head += (" (inside an announced US GPS test area)" if k == n else
+                         f" ({_num(k)} of them inside an announced US GPS test area)")
         else:
             head = f"Spoofing on {when} was not above its usual level in any region"
         return head + f"; all regions together were {LEVEL_WORD[tot['level']]} their usual level."

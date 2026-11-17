@@ -261,7 +261,10 @@ loaded automatically; read it when you need the background.
   region against its own usual level; above needs 2x usual and, from 16 Nov 2026, 5 or more aircraft-hours over it,
   `REGION_MIN_OVER`, pre-registered in `docs/spoofing-light-plan.md`; P1-P3 all held at the 30-day run on 16 Nov 2026) and `share2_7` (7 days pooled) to each day file, and `regions` to history.json;
   board.py adds `region_levels` and `line` (the Today page's spoofing sentence); feed_v2 adds up to five
-  `noisefloor-spoof-region-above-<day>-<n>` items. The map's Measure → Spoofing (`m=spf`) shows only spoofing.
+  `noisefloor-spoof-region-above-<day>-<n>` items. A region above on a day inside an announced US GPS test (the FAA advisories in
+  `faa_gps_tests.json`, widest radius reaching the region's centre, day overlap) carries the test ids (`tests` in
+  `region_levels`, `tests2` in the day file); the Today line and the feed summary say so, tier unchanged (17 Nov 2026,
+  after the White Sands finding in `docs/spoofing-light-plan.md`). The map's Measure → Spoofing (`m=spf`) shows only spoofing.
   `tools/cygnss_daily.py` makes CYGNSS day summaries on this PC (needs `EARTHDATA_TOKEN`) from the 06:30 collectors task
   (`collectors/run_daily.cmd`) and uploads them to the `cygnss-data` release (Tom approved 26 Oct 2026); the newest
   complete day runs about six days behind. **Map layers (27 Oct 2026):** the map page's Spoofing and CYGNSS checkboxes read

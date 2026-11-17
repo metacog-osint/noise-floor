@@ -258,7 +258,10 @@ days, so the October days rest on fewer. Scored with the same code as above (`sp
   (H3 res 2 `8248dffffffffff`) over all 40 days: 29 were test days, and spoofed aircraft-hours were above 0 on 12 of
   them and on none of the other 11 (all 12 landing on test days by chance: hypergeometric p = 0.009). Reruns of 7, 9
   and 10 Nov from the day caches: all 23 active episodes over that region lie inside the test's 04:00-12:00 UTC window.
-  So the us_west control box is not quiet on test days. The c_europe readings are not checked (no matching notice
+  So the us_west control box is not quiet on test days. From 17 Nov 2026 a region above on a day inside an announced US GPS
+  test is tagged with the test (`spoof_site.region_tests()`: the advisory's widest radius reaches the region's centre
+  and one of its windows falls on that UTC day); the Today line and the feed item say so. On the 40 days, 11 of the
+  282 above readings are tagged, all with White Sands tests. The c_europe readings are not checked (no matching notice
   source is ingested yet).
 - **P2 (signal kept): holds.** Readings in the spoofing groups 160 → 122 (76% kept; the test needs 50%). Of the 169
   dropped: 89 elsewhere, 23 control, 19 South Asia, 14 Middle East, 13 Black Sea, 11 Baltic and W Russia.
