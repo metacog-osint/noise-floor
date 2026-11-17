@@ -42,7 +42,10 @@ def _cell_countries(cell):
     cell (about 26 km apart), 7 times fewer country lookups than feed_v2.cell_points' res-5 set, which the country tags
     still use."""
     import feed_v2
-    import h3
+    try:
+        import h3
+    except ImportError:      # the deploy runs site_days.py before it installs h3: name from the point alone
+        return {}
     pts = list(h3.cell_to_boundary(cell)) + [h3.cell_to_latlng(cell)]
     if h3.get_resolution(cell) < SAMPLE_RES:
         pts += [h3.cell_to_latlng(c) for c in h3.cell_to_children(cell, SAMPLE_RES)]
