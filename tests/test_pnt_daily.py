@@ -68,6 +68,9 @@ def build_day(folder, day):
         "rrrrr1": trace("rrrrr1", stay(0, 120, *rr, GOOD)),
         "rrrrr2": trace("rrrrr2", stay(0, 120, *rr, GOOD)),
         "rrrrr3": trace("rrrrr3", stay(0, 120, *rr, GOOD)),
+        # Edge of interference: 3 bad reports of 20 -> not in bad_nacp (under 50%), but in bad_nacp_any
+        "eeeee1": trace("eeeee1", stay(0, 3, 45.0, 15.0, BAD) + stay(180, 17, 45.0, 15.0, GOOD)),
+        "eeeee2": trace("eeeee2", stay(0, 20, 45.0, 15.0, GOOD)),
         # Lone faulty aircraft with no peers: kept, and the GPSJam formula keeps its hex at score 0
         "ddddd1": trace("ddddd1", stay(0, 300, 40.0, -100.0, BAD)),
     }
@@ -100,7 +103,7 @@ def test_day():
         out = os.path.join(tmp, "out")
         s = P.run("2025-10-16", tmp, out, workers=2)
         assert s["input_sha256"] == hashlib.sha256(raw).hexdigest() and s["input_bytes"] == len(raw), "hash of the joined parts"
-        assert s["files"] == 27 and s["non_icao"] == 1, s
+        assert s["files"] == 29 and s["non_icao"] == 1, s
         assert s["avionics_suspects"] == 1 and s["avionics_suspect_centroids"][0][3] == "C42", s["avionics_suspect_centroids"]
         d = pq.read_table(os.path.join(out, "2025-10-16.parquet")).to_pylist()
         (b,) = near(d, 55.0, 20.0)
@@ -118,6 +121,9 @@ def test_day():
         assert s["latching"]["latched_aircraft"] == 2 and s["latching"]["latch_onset_regions_res2"][0][3] == 2, s["latching"]
         assert s["latching"]["post_exposure_types"] == {"A320": 1, "A359": 1}, s["latching"]["post_exposure_types"]
         assert s["type_counts_all"]["A359"] == 1
+        (ed,) = near(d, 45.0, 15.0)
+        assert (ed["aircraft"], ed["bad_nacp"], ed["bad_nacp_any"]) == (2, 0, 1), ("any gross-bad report", ed)
+        assert (b["bad_nacp_any"], jm["bad_nacp_any"], q["bad_nacp_any"]) == (1, 6, 0), (b, jm, q)
         (lone,) = near(d, 40.0, -100.0)
         assert (lone["aircraft"], lone["bad_nacp"], lone["score"]) == (1, 1, 0.0), lone
         h = pq.read_table(os.path.join(out, "2025-10-16.hourly.parquet")).to_pylist()
