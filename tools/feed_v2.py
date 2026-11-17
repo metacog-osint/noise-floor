@@ -155,6 +155,12 @@ def event_span(day, h0, h1):
             "end": utc(d + timedelta(hours=h1 + 1))}
 
 
+def where(r):
+    """' near Doha' for a place, ' in Turkey' for a country (board.py's near_kind, tools/area_names.py), '' unnamed."""
+    near = r.get("near")
+    return (" in " if r.get("near_kind") == "country" else " near ") + near if near else ""
+
+
 def plain_day(day):
     return datetime.strptime(day, "%Y-%m-%d").strftime("%d %b %Y").lstrip("0")
 
@@ -206,11 +212,10 @@ def build(board, days, now=None):
     rule = ch.get("rule", "")
     for r in ch.get("new") or []:
         geom, pts = h3_polygon(r["region"])
-        near = r.get("near")
         add(geom, {
             "id": f"noisefloor-new-{r['region']}-{day}", "kind": "observation", "tier": "anomaly",
             "product_category": "current", "precision_class": "area",
-            "title": f"GPS interference newly seen{' near ' + near if near else ''}",
+            "title": f"GPS interference newly seen{where(r)}",
             "summary": f"At jamming scale on {r['days_in_last7']} of the last 7 days and on none of the 30 before.",
             "measure": {"name": "days_at_jamming_scale_last7", "value": r["days_in_last7"], "expected": 0},
             "baseline_ref": {"id": "noisefloor-regions-30d", "window": "30 days before the last 7", "type": "rolling",
@@ -221,7 +226,6 @@ def build(board, days, now=None):
     for key in ("ended", "below"):      # ended passes board.ended_check(); below only dropped under the 3-cell mark
         for r in ch.get(key) or []:
             geom, pts = h3_polygon(r["region"])
-            near = r.get("near")
             share = r.get("share7_pct")
             seen = (f"Severe GPS error over the last 7 days: {share:g}% of {r.get('min_aircraft', 0):,}+ aircraft-cells a day"
                     if share is not None else "No aircraft-cells over the last 7 days")
@@ -234,7 +238,7 @@ def build(board, days, now=None):
             add(geom, {
                 "id": f"noisefloor-{key}-{r['region']}-{day}", "kind": "observation", "tier": "routine",
                 "product_category": "current", "precision_class": "area",
-                "title": f"GPS interference {title}{' near ' + near if near else ''}",
+                "title": f"GPS interference {title}{where(r)}",
                 "summary": f"At jamming scale on {r['days_in_prior30']} of the 30 days before last week, and on none of "
                            f"the last 7. {says}",
                 "requirement_ids": ["NF-PIR-2"], **tags(pts, near_at=r.get("near_at"))})
@@ -257,7 +261,6 @@ def build(board, days, now=None):
 
     te = board.get("top_events") or {}
     for i, e in enumerate(te.get("events") or []):
-        near = e.get("near")
         eday = te.get("day", day)
         span = event_span(eday, e.get("h0"), e.get("h1"))
         major = e["tier"] == "major"
@@ -271,7 +274,7 @@ def build(board, days, now=None):
         add(geom, {
             "id": f"noisefloor-event-{eday}-{i + 1}", "kind": "observation",
             "tier": "anomaly" if major else "routine", "product_category": "current", **place,
-            "title": f"{e['tier'].capitalize()} GPS interference event{' near ' + near if near else ''}",
+            "title": f"{e['tier'].capitalize()} GPS interference event{where(e)}",
             "summary": " ".join(x for x in [
                 f"Graded {e['tier']} by Noisefloor's events rule"
                 + (" (25 points or more over the same hour's usual share)." if major else

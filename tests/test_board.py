@@ -124,7 +124,7 @@ def test_top_events_all_majors_first():
         os.makedirs(os.path.join(tmp, "data", "events"))
         json.dump({"places": [["Visby", 57.64, 18.3, 3, 0]]}, open(os.path.join(tmp, "data", "places.json"), "w"))
         an = [{"m": "jam", "tier": "notable" if k % 3 else "major", "h0": k, "h1": k, "peak": 20 + k, "excess": 15 + k,
-               "lat": 57.5, "lon": 17.5, "cells": ["821f2ffffffffff"], "hs": 0.1} for k in range(9)]
+               "lat": 57.5, "lon": 17.5, "cells": ["820897fffffffff"], "hs": 0.1} for k in range(9)]   # the point's own region
         an += [{"m": "jam", "tier": "minor", "lat": 0, "lon": 0}, {"m": "acc", "tier": "major", "lat": 0, "lon": 0}]
         json.dump({"anomalies": an, "bursts": [], "tests": []}, open(os.path.join(tmp, "data", "events", "2026-11-13.json"), "w"))
         te = B.top_events(tmp, "2026-11-13", B.Places(tmp))
@@ -248,6 +248,58 @@ def test_ended_check():
     thin = tot([2346, 2072, 2333, 2462, 1961, 1000, 2356], [26, 15, 27, 37, 5, 18, 12], 2533)
     assert B.ended_check(r, last7, before, thin)[0] is False                       # one day under half its usual traffic
     assert B.ended_check(r, last7, before, {})[0:2] == (False, None)                # no aircraft at all: never "ended"
+
+
+def _places(tmp, rows):
+    os.makedirs(os.path.join(tmp, "data"), exist_ok=True)
+    json.dump({"places": rows}, open(os.path.join(tmp, "data", "places.json"), "w", encoding="utf-8"))
+    return B.Places(tmp)
+
+
+def test_area_names():
+    """A region or event takes a listed place within 150 km in its own country, else the country it lies in, with no
+    place coordinates (so the feed tags no borrowed city). The 15 Nov 2026 Turkish-coast majors were "near Sochi"."""
+    tmp = tempfile.mkdtemp()
+    try:
+        p = _places(tmp, [["Sochi", 43.6, 39.73, 3, 0], ["Gjirokaster", 40.08, 20.14, 5, 0], ["Visby", 57.64, 18.3, 3, 0]])
+        assert p.area(41.26, 41.05, ["822c27fffffffff"]) == ("Turkey", None)          # Sochi is 281 km away
+        assert p.area(39.68, 20.68, []) == ("Greece", None)                           # Albanian town, 63 km, across a border
+        assert p.area(57.5, 17.5, []) == ("Visby", [57.64, 18.3])                     # at sea, 50 km: the place
+        p = _places(tmp, [["Ioannina", 39.66, 20.85, 4, 0]])
+        assert p.area(39.68, 20.68, []) == ("Ioannina", [39.66, 20.85])               # same country, 15 km
+        assert p.area(0.0, -30.0, []) == (None, None)                                 # mid-ocean: unnamed
+        p = _places(tmp, [["Doha", 25.29, 51.53, 2, 0], ["Yalta", 44.5, 34.17, 5, 0]])
+        assert p.area(23.35, 51.33, ["82534ffffffffff"]) == ("Saudi Arabia", None)    # Doha is 217 km off; the land is Saudi
+        assert p.area(43.0, 34.0, []) == ("Yalta", None)                              # open sea: the old 350 km, name only
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_changes_ties_break_on_region():
+    """New regions with the same day count come out in region order, the same on every build."""
+    tmp = tempfile.mkdtemp()
+    try:
+        places = _places(tmp, [])
+        os.makedirs(os.path.join(tmp, "data", "gnss"))
+        regions = sorted({h3.latlng_to_cell(la, lo, 2) for la, lo in ((25.3, 51.5), (52.3, 76.9), (39.9, 116.4), (55.0, 20.0))})
+        days = [{"day": f"2026-11-{d:02d}"} for d in range(1, 16)]
+        for i, d in enumerate(days):
+            on = regions if i == len(days) - 1 else []
+            cells = [[c, 10, 3, 3, 10, 0, 0, 0] for r in on for c in hexes_in(r, 3)]
+            json.dump({"cols": COLS, "cells": cells or [[hexes_in(h3.latlng_to_cell(0.0, 0.0, 2), 1)[0], 10, 0, 0, 10, 0, 0, 0]]},
+                      open(os.path.join(tmp, "data", "gnss", f"{d['day']}.json"), "w"))
+        c = B.changes(tmp, days, places)
+        assert [r["region"] for r in c["new"]] == regions and c["new_count"] == 4, c["new"]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_brief_country_names():
+    """A country name reads 'in Turkey'; a place keeps 'near Tel Aviv'."""
+    s = B.brief({"changes": {"new": [], "new_count": 0,
+                             "ended": [{"near": "Tel Aviv", "near_kind": "place"}], "ended_count": 1,
+                             "below": [{"near": "Turkey", "near_kind": "country"}], "below_count": 1}})
+    assert "ended in one area, near Tel Aviv" in s and "fell below jamming scale in one, in Turkey" in s, s
 
 
 def test_brief_wording():
