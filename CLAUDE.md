@@ -255,7 +255,7 @@ loaded automatically; read it when you need the background.
   res-2 region, from spoof_day's hex2 table) for the map's "Spoofed share" layer; days published before it lack it
   until redone. From 16 Nov 2026 spoof_site also adds `sent2`/`unplaced2` (where each region's aircraft were shown), `level2` (each
   region against its own usual level; above needs 2x usual and, from 16 Nov 2026, 5 or more aircraft-hours over it,
-  `REGION_MIN_OVER`, pre-registered in `docs/spoofing-light-plan.md` with a recheck about 7 Dec) and `share2_7` (7 days pooled) to each day file, and `regions` to history.json;
+  `REGION_MIN_OVER`, pre-registered in `docs/spoofing-light-plan.md`; P1-P3 all held at the 30-day run on 16 Nov 2026) and `share2_7` (7 days pooled) to each day file, and `regions` to history.json;
   board.py adds `region_levels` and `line` (the Today page's spoofing sentence); feed_v2 adds up to five
   `noisefloor-spoof-region-above-<day>-<n>` items. The map's Measure → Spoofing (`m=spf`) shows only spoofing.
   `tools/cygnss_daily.py` makes CYGNSS day summaries on this PC (needs `EARTHDATA_TOKEN`) from the 06:30 collectors task
