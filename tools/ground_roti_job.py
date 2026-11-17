@@ -10,7 +10,10 @@ by 14:00 UTC on D+1.
 For each day (default: yesterday and the --refresh-days days before it, UTC, oldest first):
   1. Gate. If the day file is already in its release: skip it when it lists no missing station, or when the day is
      more than --refresh-days old; otherwise look at BKG again and, if a station it lists as missing is now posted,
-     remake the whole day and replace the file. So extra starts of the workflow cost about a minute.
+     remake the whole day and replace the file. So extra starts of the workflow cost about a minute. A published day
+     that needs no new look is skipped without asking BKG; when BKG can't be reached while a published day is looked
+     at again, its file stays as it is, the job logs a warning and the next start tries again (not a failed run;
+     BKG's listing timed out for 40 min on 17 Nov 2026 and turned two runs red for nothing).
   2. Not in the release yet. For the newest day before --publish-hour UTC, publish only once every station is
      posted; otherwise stop quietly (the next start looks again). From --publish-hour, wait up to --wait-minutes for
      missing stations, then publish what is posted. Older days are published with what is posted.
@@ -78,7 +81,18 @@ def run_day(day, a, now=None, sleep=time.sleep):
     doc = None if a.force else published_doc(tag, name)
     day_age = (now.date() - date.fromisoformat(day)).days - 1     # 0 on D+1
     newest = day_age <= 0
-    have, nav, _ = R.available(day, stations)
+    if doc is not None and (not doc.get("missing") or day_age > a.refresh_days):
+        have, nav = {}, None                       # decide() skips it whatever BKG lists: no request
+    elif doc is not None:
+        try:
+            have, nav, _ = R.available(day, stations)
+        except Exception as e:                     # the published file stands; the next start looks again
+            log(f"{day}: WARNING BKG not reachable ({str(e)[:160]}); {name} in {tag} kept, missing "
+                f"{', '.join(doc.get('missing') or []) or 'none'}")
+            summary(f"- {day}: BKG not reachable; published file kept, the next start looks again")
+            return "skipped"
+    else:
+        have, nav, _ = R.available(day, stations)
     if not nav:
         have = {}
     what = decide(doc, have, len(stations), newest, datetime.now(timezone.utc).hour, a, day_age)

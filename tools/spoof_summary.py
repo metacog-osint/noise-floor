@@ -75,7 +75,7 @@ def summarise(spoof_dir, day, loaded=None):
             "aircraft_with_episodes": len({e.get("icao") for e in active if e.get("icao")}),
             "cells": sorted([[c, n] for c, n in hexes.items()], key=lambda x: -x[1]),
             "victim_res2_top": [{"region": c, "lat": round(h3.cell_to_latlng(c)[0], 2), "lon": round(h3.cell_to_latlng(c)[1], 2),
-                                 "episodes": n} for c, n in regions.most_common(10)],
+                                 "episodes": n} for c, n in sorted(regions.items(), key=lambda x: (-x[1], x[0]))[:10]],
             "spoofed_to_top": [{"lat": la, "lon": lo, "episodes": n} for _, la, lo, n in (s.get("spoofed_to_res6_top") or [])[:10]],
             "targets_file": f"{day}.spoof-targets.json",
             **({"share2": sh} if (sh := share2(spoof_dir, day)) is not None else {}),
