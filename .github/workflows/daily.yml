@@ -4,8 +4,8 @@ name: daily
 # --position-loss adds <day>.loss.parquet and <day>.loss_daily.parquet (docs/validation/position-loss.md); reanalyse runs
 # ignore it.
 # adsb.lol publishes day D at about 03:30 UTC on D+1. Each run checks the last 7 days and fills any gap.
-# Starts: tic-dispatch (The Intelligence Company's dispatch Worker) starts this through workflow_dispatch at :40 past
-# 04-09 UTC (from 17 Nov 2026), because GitHub's own cron fires 4-9 hours late on this account (the 12:40 cron ran at
+# Starts: tic-dispatch (The Intelligence Company's dispatch Worker) starts this through workflow_dispatch at :25 past
+# 04-07 UTC (from 17 Nov 2026), because GitHub's own cron fires 4-9 hours late on this account (the 12:40 cron ran at
 # 12:10-14:19 on 7-16 Nov, the 05:40 one never on time). A start with no new day exits in a few minutes. The crons
 # below are the fallback. The GEO steps run only on the crons: CelesTrak asks for one download per 2-hour update and
 # Space-Track allows the gp class at most once an hour, so hourly dispatched starts must not repeat them.

@@ -31,6 +31,9 @@ There are two thresholds, because they answer different questions:
    - **Sampled at most once every 30 s** per aircraft, so slow and fast reporters weigh alike.
    - **Inside the UTC day** being processed.
 2. **Bad aircraft in a hex (or a hex-hour):** 50% or more of its kept reports there are bad on that measure.
+   `bad_nacp_any` (from 17 Nov 2026; `bad_any` in the map file) counts an aircraft with any one gross-bad report there
+   instead, for comparison with GPSJam and for interference met at a cell's edge (`docs/validation/bad-any.md`). It is raw,
+   like `bad_nacp`, and turns a thin cell high on one brief dropout, so read it with the aircraft count.
 3. **Avionics suspects (peer test):**
    - An aircraft is dropped from every hex for the day if **80% or more of its reports are gross-bad** and it is bad **where its peers are fine**.
    - "Where its peers are fine" means this: of the hex-hours where it is bad and at least two other aircraft are present, 75% or more have fewer than 25% of those others bad. At least three such hex-hours are needed to judge.

@@ -177,10 +177,10 @@ def test_brief_live_board():
                                 area("Western Black Sea coast", 6.6, 10.9, -4.3), area("Cyprus–Levant", 3.2, 2.5, 0.7),
                                 area("Strait of Hormuz / Gulf of Oman", 2.9, 2.0, 0.9), area("High latitude excl. Baltic/Russia", 0.1, 0.2, -0.1)]},
          "changes": {"new": near("Peshawar", "Las Vegas", "Ryazan", "Pskov", "Sakata"), "new_count": 5,
-                     "ended": near("Tel Aviv", "Doha", "Lviv", "Yerevan", "Tianjin", "Kushiro"), "ended_count": 6}}
+                     "below": near("Tel Aviv", "Doha", "Lviv", "Yerevan", "Tianjin", "Kushiro"), "below_count": 6}}
     assert B.brief(b) == (M + "below its usual level over Kaliningrad and the southern Black Sea. "
                           "GPS interference started in five areas this week, among them Peshawar and Las Vegas; "
-                          "it has stopped in six, including Tel Aviv."), B.brief(b)
+                          "it fell below jamming scale in six, including Tel Aviv."), B.brief(b)
 
 
 def test_brief_watched_areas():
@@ -209,26 +209,45 @@ def test_brief_watched_areas():
 
 
 def test_brief_started_stopped():
-    """Sentence 2: areas where GPS interference started this week (new) or has stopped (ended)."""
+    """Sentence 2: areas where GPS interference started this week (new), fell below jamming scale (below) or ended
+    (below, plus enough aircraft and a background-level share: suite review Mistake 2, Tom 16 Nov 2026)."""
     near = BRIEF_NEAR
-    two = lambda new, n, ended, m: B.brief({"changes": {"new": new, "new_count": n, "ended": ended, "ended_count": m}})  # noqa: E731
-    assert two(near("Malmö", "Ryazan", "Las Vegas"), 5, near("Tel Aviv", "Yerevan"), 4) == \
-        "GPS interference started in five areas this week, among them Malmö and Ryazan; it has stopped in four, including Tel Aviv."
-    assert two(near("Malmö"), 1, near("Tel Aviv"), 1) == \
-        "GPS interference started in one area this week, near Malmö; it has stopped in one, near Tel Aviv."
-    assert two(near("Malmö", "Ryazan"), 2, [], 0) == \
-        "GPS interference started in two areas this week, near Malmö and Ryazan; it has stopped in none."
-    assert two(near("Malmö"), 2, [], 0) == \
-        "GPS interference started in two areas this week, among them Malmö; it has stopped in none."   # one of two unnamed
-    assert two([{"near": None}], 1, [], 0) == "GPS interference started in one area this week; it has stopped in none."
-    assert two([], 0, near("Tel Aviv", "Doha"), 6) == \
-        "GPS interference has stopped in six areas, including Tel Aviv; it started in none this week."
-    assert two([], 0, near("Tel Aviv"), 1) == "GPS interference has stopped in one area, near Tel Aviv; it started in none this week."
-    assert two([], 0, [], 3) == "GPS interference has stopped in three areas; it started in none this week."
-    assert two(near(*"ABCDEFGH"), 12, [], 10) == \
-        "GPS interference started in 12 areas this week, among them A and B; it has stopped in 10."
-    assert two([], 0, [], 0) == "GPS interference has not started or stopped in any area this week."
+    two = lambda new, n, ended, m, below=(), k=0: B.brief({"changes": {  # noqa: E731
+        "new": new, "new_count": n, "ended": ended, "ended_count": m, "below": list(below), "below_count": k}})
+    assert two(near("Malmö", "Ryazan", "Las Vegas"), 5, [], 0, near("Manama", "Lviv"), 4) ==         "GPS interference started in five areas this week, among them Malmö and Ryazan; it fell below jamming scale in four, including Manama."
+    assert two(near("Doha"), 1, near("Tel Aviv"), 1, near("Manama", "Sochi", "Lviv"), 3) ==         ("GPS interference started in one area this week, near Doha; it ended in one, near Tel Aviv, and fell below "
+         "jamming scale in three, including Manama.")
+    assert two(near("Malmö"), 1, near("Tel Aviv"), 1) ==         "GPS interference started in one area this week, near Malmö; it ended in one, near Tel Aviv."
+    assert two(near("Malmö", "Ryazan"), 2, [], 0) ==         "GPS interference started in two areas this week, near Malmö and Ryazan; none fell below jamming scale."
+    assert two(near("Malmö"), 2, [], 0) ==         "GPS interference started in two areas this week, among them Malmö; none fell below jamming scale."   # one of two unnamed
+    assert two([{"near": None}], 1, [], 0) == "GPS interference started in one area this week; none fell below jamming scale."
+    assert two([], 0, near("Tel Aviv", "Doha"), 6) ==         "GPS interference ended in six areas, including Tel Aviv; it started in none this week."
+    assert two([], 0, [], 0, near("Manama"), 1) ==         "GPS interference fell below jamming scale in one area, near Manama; it started in none this week."
+    assert two([], 0, [], 3, [], 2) == "GPS interference ended in three areas and fell below jamming scale in two; it started in none this week."
+    assert two(near(*"ABCDEFGH"), 12, [], 0, [], 10) ==         "GPS interference started in 12 areas this week, among them A and B; it fell below jamming scale in 10."
+    assert two([], 0, [], 0) == "GPS interference has not started or fallen below jamming scale in any area this week."
     assert B.brief({"changes": {}}) == "" and B.brief({"changes": None}) == ""
+
+
+def test_ended_check():
+    """'Ended' needs 500+ aircraft-cells (and half the usual number) on each of the last 7 days and a pooled share of
+    1% or less. The Manama, Sochi and Tel Aviv regions of 9-15 Nov 2026, from the live day maps."""
+    r = "825367fffffffff"
+    last7 = [f"d{i}" for i in range(7)]
+    before = [f"b{i}" for i in range(30)]
+    def tot(ac7, bad7, usual):
+        t = {d: {r: [a, b]} for d, a, b in zip(last7, ac7, bad7)}
+        t.update({d: {r: [usual, 0]} for d in before})
+        return t
+    manama = tot([5638, 5067, 5669, 5795, 6267, 6381, 5516], [214, 120, 93, 68, 140, 90, 125], 4546)
+    assert B.ended_check(r, last7, before, manama) == (False, 2.11, 5067)            # 2.1%: degraded aircraft go on
+    sochi = tot([59, 26, 35, 49, 34, 33, 22], [25, 7, 5, 12, 8, 5, 11], 32)
+    assert B.ended_check(r, last7, before, sochi)[0] is False                      # 22-59 aircraft-cells: too few to tell
+    telaviv = tot([2346, 2072, 2333, 2462, 1961, 1617, 2356], [26, 15, 27, 37, 5, 18, 12], 2533)
+    assert B.ended_check(r, last7, before, telaviv) == (True, 0.92, 1617)
+    thin = tot([2346, 2072, 2333, 2462, 1961, 1000, 2356], [26, 15, 27, 37, 5, 18, 12], 2533)
+    assert B.ended_check(r, last7, before, thin)[0] is False                       # one day under half its usual traffic
+    assert B.ended_check(r, last7, before, {})[0:2] == (False, None)                # no aircraft at all: never "ended"
 
 
 def test_brief_wording():
@@ -238,9 +257,10 @@ def test_brief_wording():
                   [area("Caucasus", 20.0, 13.0, 7.0), area("Kaliningrad and approaches", 30.0, 41.0, -11.0)], []):
         for n, m in ((0, 0), (1, 0), (0, 1), (3, 2)):
             s = B.brief({"hotspots": {"areas": areas},
-                         "changes": {"new": near("Malmö") * n, "new_count": n, "ended": near("Tel Aviv") * m, "ended_count": m}})
-            assert "GPS" in s and "degraded" not in s and "areas started" not in s and " stopped," not in s, s
-            assert "rose" not in s and "fell" not in s and "interference fell" not in s and "stopped this week" not in s, s
+                         "changes": {"new": near("Malmö") * n, "new_count": n, "ended": near("Tel Aviv") * m, "ended_count": m,
+                                     "below": near("Manama") * m, "below_count": m}})
+            assert "GPS" in s and "degraded" not in s and "areas started" not in s and "stopped" not in s, s
+            assert "rose" not in s and "fell" not in s.replace("fell below jamming scale", "") and "scale this week" not in s and "ended this week" not in s, s
             assert s.count(".") == (2 if areas else 1) and s[0].isupper(), s
 
 

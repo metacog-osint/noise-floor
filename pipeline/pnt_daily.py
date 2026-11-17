@@ -8,6 +8,8 @@ Method (docs/method-card.md):
       gross:     NACp < 8  (EPU >= 0.05 NM, ~93 m)  — jamming-scale loss; NIC < 7 tracked alongside
       accuracy:  NACp < 10 (EPU >= 10 m)            — fine degradation, sensitive to space weather
   * An aircraft is bad in a hex (and in a hex-hour) if >= 50% of its reports there are bad.
+    `bad_nacp_any` (from 17 Nov 2026) counts it if any one of its sampled reports there is gross-bad: closer to how
+    GPSJam marks an aircraft, and kinder to aircraft that cross a hex on the edge of interference.
   * Post-exposure (v1.4; replaces v1.3 latching): an aircraft's exposure point is its first hex-hour with a gross-bad
     report where its peers were bad too (genuine interference: >= PEER_MIN peers, >= 25% of them bad). Any LATER
     hex-hour with gross-bad reports >= POST_MIN_KM from the exposure point, where peers are mostly good, is
@@ -38,9 +40,11 @@ bytes are SHA-256 hashed during the same pass, for provenance.
 
 Output (in --out, default data/pnt/daily):
   YYYY-MM-DD.parquet         h3, lat, lon, aircraft, bad_nacp, bad_nic, bad_acc10, score, score_acc10, capable,
-                             cap_bad_acc10, latched, bad_nacp_live, score_live, heavy_live
+                             cap_bad_acc10, latched, bad_nacp_live, score_live, heavy_live, bad_nacp_any
   YYYY-MM-DD.hourly.parquet  h3, hour, aircraft, bad_nacp, bad_nic, bad_acc10, capable, cap_bad_acc10, latched, bad_nacp_live,
-                             heavy_live
+                             heavy_live, bad_nacp_any
+  YYYY-MM-DD.region_hourly.parquet (from 17 Nov 2026)  h3 (res 2), hour, aircraft, bad_live_aircraft,
+                             heavy_bad_live_aircraft: distinct aircraft per region-hour (region_hour_counts())
   YYYY-MM-DD.minute.parquet  h3, minute (0-1439), bad_nacp, latched, heavy (aircraft with a gross-bad / latched report that
                              minute; nonzero rows only)
   heavy_live / heavy (from 25 Oct 2026): how many of the live gross-bad aircraft (in bad_nacp_live, or in bad_nacp minus
@@ -421,9 +425,9 @@ def find_suspects(recs, tot, latched, ignore=frozenset()):
 
 def aggregate(recs, drop, latched, apart=None):
     # hex (or (hex, hour)) -> [aircraft, gross, nic, acc, capable, capable acc-bad, latched, live gross, heavy apart,
-    #                         live gross that is an A350/A380]
-    daily = defaultdict(lambda: [0] * 10)
-    hourly = defaultdict(lambda: [0] * 10)
+    #                         live gross that is an A350/A380, any gross-bad report]
+    daily = defaultdict(lambda: [0] * 11)
+    hourly = defaultdict(lambda: [0] * 11)
     minute = defaultdict(lambda: [0, 0, 0, 0])    # (hex, minute) -> [aircraft gross-bad, latched, heavy apart, heavy live]
     no_apart = set()
 
@@ -438,6 +442,7 @@ def aggregate(recs, drop, latched, apart=None):
         is_live = live_reports * 2 >= c[R] and live_reports > 0
         t[7] += is_live
         t[9] += is_live and heavy
+        t[10] += c[G] > 0
 
     for i, (cells, meta, bad_minutes) in enumerate(recs):
         if i in drop:
@@ -462,6 +467,38 @@ def aggregate(recs, drop, latched, apart=None):
             x = minute[(hx, m)]; x[0] += 1; x[1] += (hx, m // 60) in lc; x[2] += (hx, m // 60) in ac
             x[3] += heavy and (hx, m // 60) not in lc and (hx, m // 60) not in ac
     return daily, hourly, minute
+
+
+def region_hour_counts(recs, drop, latched, apart=None, res=2):
+    """{(res-2 region, hour): [aircraft, live gross-bad aircraft, of which A350/A380]}, each aircraft counted once per
+    region-hour however many res-4 cells it crossed (the hourly table counts it once per cell). Live as in aggregate():
+    an aircraft is gross-bad in a cell-hour when its live gross-bad reports are half or more of its reports there.
+    Pre-registered use: the distinct-aircraft floor, docs/validation/event-floor.md (16 Nov 2026)."""
+    out = defaultdict(lambda: [0, 0, 0])
+    par = {}
+    for i, (cells, meta, _) in enumerate(recs):
+        if i in drop:
+            continue
+        lc = latched[i]
+        ac = apart[i] if apart is not None else ()
+        seen, bad = set(), set()
+        for (hx, hour), c in cells.items():
+            r = par.get(hx)
+            if r is None:
+                r = par[hx] = h3.cell_to_parent(h3.int_to_str(hx), res)
+            seen.add((r, hour))
+            lr = c[G] if (hx, hour) in lc else 0
+            ar = c[G] if (hx, hour) in ac else 0
+            live_reports = c[G] - lr - ar
+            if live_reports > 0 and live_reports * 2 >= c[R]:
+                bad.add((r, hour))
+        heavy = meta[6] in HEAVY_TYPES
+        for k in seen:
+            out[k][0] += 1
+        for k in bad:
+            out[k][1] += 1
+            out[k][2] += heavy
+    return out
 
 
 def score(bad, n):
@@ -564,6 +601,7 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
         "bad_nacp_live": [v[7] for _, v in rows],
         "score_live": [score(v[7], v[0]) for _, v in rows],
         "heavy_live": [v[9] for _, v in rows],
+        "bad_nacp_any": [v[10] for _, v in rows],
         **extra(rows, 8),
     }), os.path.join(out_dir, f"{day}.parquet"), compression="zstd")
     hrows = sorted(hourly.items())
@@ -579,8 +617,17 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
         "latched": [v[6] for _, v in hrows],
         "bad_nacp_live": [v[7] for _, v in hrows],
         "heavy_live": [v[9] for _, v in hrows],
+        "bad_nacp_any": [v[10] for _, v in hrows],
         **extra(hrows, 8),
     }), os.path.join(out_dir, f"{day}.hourly.parquet"), compression="zstd")
+    rh = sorted(region_hour_counts(recs, drop, latched, apart).items())
+    pq.write_table(pa.table({
+        "h3": [r for (r, _), _ in rh],
+        "hour": pa.array([hr for (_, hr), _ in rh], pa.int8()),
+        "aircraft": pa.array([v[0] for _, v in rh], pa.int32()),
+        "bad_live_aircraft": pa.array([v[1] for _, v in rh], pa.int32()),
+        "heavy_bad_live_aircraft": pa.array([v[2] for _, v in rh], pa.int32()),
+    }), os.path.join(out_dir, f"{day}.region_hourly.parquet"), compression="zstd")
     mrows = sorted(minute.items())
     pq.write_table(pa.table({
         "h3": [h3.int_to_str(hx) for (hx, _), _ in mrows],

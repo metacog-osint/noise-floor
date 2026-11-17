@@ -221,8 +221,11 @@ loaded automatically; read it when you need the background.
   `dash.js` fill the page, and `tools/map_thumb.py` draws the map thumbnail at deploy (`site/data/today-map*.svg`).
   The hub (theintelligence.company) quotes `brief` too, so it must make sense to someone who has never seen Noisefloor
   (Tom, 31 Oct 2026): it names the measure ("the share of aircraft with severe GPS error was above/near/below its usual
-  level", i.e. against the 30-day median, never "rose" or "fell") and says "GPS interference started in … / has stopped
-  in …"; the rules are in `brief()`'s docstring.
+  level", i.e. against the 30-day median, never "rose" or "fell") and says "GPS interference started in …". A region
+  that drops under the 3-cell mark "fell below jamming scale"; it "ended" only with 500+ aircraft-cells (and half its
+  usual number) on each of the last 7 days and a 7-day severe-error share of 1% or less, the background level
+  (`ended_check`; suite review Mistake 2, Tom 16 Nov 2026, replacing the 31 Oct "has stopped in …"). Board keys
+  `below`/`ended`, feed ids `noisefloor-below-`/`noisefloor-ended-`. The rules are in `brief()`'s docstring.
   Tool pages (Map, Sea, Trends, Sun, GEO) open with a `.page-head` (title, one-line subtitle, "How to read" link) and the tool; their
   explanations live in one `<section id="howto" class="howto">` at the end (site.js scrolls there without touching the hash,
   which holds map and filter state).
@@ -243,7 +246,8 @@ loaded automatically; read it when you need the background.
   `<day>.spoof-targets.json` (every spoofed-to cluster, `tools/spoof_summary.py`; `docs/validation/spoofing-lima.md`); redo
   them on published days with backfill.yml `spoofing_only` (`daily_job.py --spoof-only`, downloads the raw archive).
   **Scoring a detector variant on GitHub (16 Nov 2026):** `.github/workflows/spoof-variant.yml` (Run workflow: `set`,
-  `label`, `days`; each run is Tom's call) reruns the 12 held-out days from their caches and scores H1-H6. The caches
+  `label`, `days`; each run is Tom's call) runs `tools/spoof_variant.py` on the 12 held-out days' caches and scores H1-H6 and H8 (H7 and the
+  Lima check stay on the PC). The caches
   and the H6 baseline's events hold ICAO addresses, so they sit in a PRIVATE release (`spoof-cache` in
   metacog-osint/noise-floor-archive; Tom, 16 Nov 2026), uploaded with `tools/spoof_cache_release.py upload` and read
   with the read-only secret `SPOOF_CACHE_TOKEN`; only aggregate scores leave the job. The Lima check stays on the PC.
@@ -257,7 +261,10 @@ loaded automatically; read it when you need the background.
   region against its own usual level; above needs 2x usual and, from 16 Nov 2026, 5 or more aircraft-hours over it,
   `REGION_MIN_OVER`, pre-registered in `docs/spoofing-light-plan.md`; P1-P3 all held at the 30-day run on 16 Nov 2026) and `share2_7` (7 days pooled) to each day file, and `regions` to history.json;
   board.py adds `region_levels` and `line` (the Today page's spoofing sentence); feed_v2 adds up to five
-  `noisefloor-spoof-region-above-<day>-<n>` items. The map's Measure → Spoofing (`m=spf`) shows only spoofing.
+  `noisefloor-spoof-region-above-<day>-<n>` items. A region above on a day inside an announced US GPS test (the FAA advisories in
+  `faa_gps_tests.json`, widest radius reaching the region's centre, day overlap) carries the test ids (`tests` in
+  `region_levels`, `tests2` in the day file); the Today line and the feed summary say so, tier unchanged (17 Nov 2026,
+  after the White Sands finding in `docs/spoofing-light-plan.md`). The map's Measure → Spoofing (`m=spf`) shows only spoofing.
   `tools/cygnss_daily.py` makes CYGNSS day summaries on this PC (needs `EARTHDATA_TOKEN`) from the 06:30 collectors task
   (`collectors/run_daily.cmd`) and uploads them to the `cygnss-data` release (Tom approved 26 Oct 2026); the newest
   complete day runs about six days behind. **Map layers (27 Oct 2026):** the map page's Spoofing and CYGNSS checkboxes read
