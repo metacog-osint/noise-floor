@@ -53,6 +53,12 @@ loaded automatically; read it when you need the background.
   the end of its last UTC hour with `period {start, end}`, and its measure is `peak_severe_share_pct` (with `unit`;
   it was misnamed `peak_degraded_aircraft`). **Country tags** come from each cell's corners, centre and res-5 children
   plus the named place's country (`place_country`, rings out to 25 km where the kit's outlines miss a coastal town).
+  **Names (17 Nov 2026, Tom's yes):** jamming regions and events are named by `tools/area_names.py` (board,
+  feed and Atom day feed): a listed place within 150 km of the area's point whose country the area covers, else
+  the country most of its land lies in ("in Turkey", `near_kind: country`, no place coordinates, so no borrowed
+  country tag), else on open sea the nearest place within 350 km as a name only. It was 350 km for everything:
+  the 15 Nov Turkish-coast majors were "near Sochi" and tagged RU. New, ended and below-scale lists break ties on
+  the region id, so a build names the same places every time. Spoofing and satellite cards keep their own limits.
   **Side effect on COP:** its freshness is the newest item's `data_as_of` (Noisefloor's windows: 36 h late, 72 h stale), so
   the day's items now read about a day older and may show "late" for part of each day until COP treats `day` items
   as end-of-day for freshness or widens the windows.
