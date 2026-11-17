@@ -1189,7 +1189,9 @@ def write_day(day, out_dir, recs, info, t0, t_read, workers, airspeed, v06, a2_h
         "unresolved_jumps": sum(len(r["unresolved"]) for r in nd), "jumps": sum(r["jumps"] for r in nd),
         **diag,
         "spoofed_to_res6_top": [[c, *[round(x, 3) for x in h3.cell_to_latlng(c)], n] for c, n in to_pts.most_common(40)],
-        "victim_res2_top": Counter(h3.cell_to_parent(c, RES2) for e in events for c in set(e["victim_cells"])).most_common(40),
+        # sorted on (count, region) so ties don't come out in hash-seed order (set iteration)
+        "victim_res2_top": sorted(Counter(h3.cell_to_parent(c, RES2) for e in events for c in set(e["victim_cells"])).items(),
+                                  key=lambda x: (-x[1], x[0]))[:40],
         "geo_sat_trusted_res2_top": Counter(h3.int_to_str(c) for r in nd for c in r["geo_sat_trusted_cells"]).most_common(20),
         "method": {k: v for k, v in globals().items() if k.isupper() and isinstance(v, (int, float, tuple, str))
                    and k not in ("T", "LAT", "LON", "ALT", "GS", "TRK", "GEO", "NACP", "NIC", "VER", "IAS", "TR", "V2", "V2B", "KP", "KB", "ROOT", "VERSION")},
