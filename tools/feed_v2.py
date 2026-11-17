@@ -4,7 +4,7 @@
   python tools/feed_v2.py [SITE]
 
 Built at deploy, right after board.py, from SITE/data/board.json and SITE/data/gnss/days.json. Every item here is a
-measurement (kind observation): regions that newly reached jamming scale this week, regions where it ended, named areas
+measurement (kind observation): regions that newly reached jamming scale this week, regions that fell below it or where it ended, named areas
 whose severe share rose 5 points or more above their 30-day median, the day's major and notable events (majors
 anomaly, notables routine; each drawn as its H3 res-2 regions, stamped with its own hours), and up to five
 places where aircraft were newly shown at a false position (spoofing; tools/spoof_site.py new_targets(), placed where
@@ -218,16 +218,26 @@ def build(board, days, now=None):
             "requirement_ids": ["NF-PIR-2"], "warning_problem_id": "NF-WP-1", "indicator_id": "NF-IND-1",
             "hypothesis_id": "NF-WP-1-H1", "direction": "supports", "indicator_state": "present",
             **tags(pts, near_at=r.get("near_at"))})
-    for r in ch.get("ended") or []:
-        geom, pts = h3_polygon(r["region"])
-        near = r.get("near")
-        add(geom, {
-            "id": f"noisefloor-ended-{r['region']}-{day}", "kind": "observation", "tier": "routine",
-            "product_category": "current", "precision_class": "area",
-            "title": f"GPS interference no longer seen{' near ' + near if near else ''}",
-            "summary": f"At jamming scale on {r['days_in_prior30']} of the 30 days before last week, and on none of the "
-                       "last 7. Check position loss before reading this as an easing (assumption NF-AS-3).",
-            "requirement_ids": ["NF-PIR-2"], **tags(pts, near_at=r.get("near_at"))})
+    for key in ("ended", "below"):      # ended passes board.ended_check(); below only dropped under the 3-cell mark
+        for r in ch.get(key) or []:
+            geom, pts = h3_polygon(r["region"])
+            near = r.get("near")
+            share = r.get("share7_pct")
+            seen = (f"Severe GPS error over the last 7 days: {share:g}% of {r.get('min_aircraft', 0):,}+ aircraft-cells a day"
+                    if share is not None else "No aircraft-cells over the last 7 days")
+            if key == "ended":
+                title, says = "ended", (f"{seen}, at background level with enough aircraft to tell. Check position loss "
+                                        "before reading this as an easing (assumption NF-AS-3).")
+            else:
+                title, says = "fell below jamming scale", (f"{seen}; that is not yet background level, or too few aircraft "
+                                                           "were seen to tell, so this is not an end.")
+            add(geom, {
+                "id": f"noisefloor-{key}-{r['region']}-{day}", "kind": "observation", "tier": "routine",
+                "product_category": "current", "precision_class": "area",
+                "title": f"GPS interference {title}{' near ' + near if near else ''}",
+                "summary": f"At jamming scale on {r['days_in_prior30']} of the 30 days before last week, and on none of "
+                           f"the last 7. {says}",
+                "requirement_ids": ["NF-PIR-2"], **tags(pts, near_at=r.get("near_at"))})
 
     hs = board.get("hotspots") or {}
     for a in hs.get("areas") or []:
