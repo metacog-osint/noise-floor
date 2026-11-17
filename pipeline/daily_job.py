@@ -51,7 +51,8 @@ NOTES = """GNSS degradation outputs for {month}, one set per UTC day, made autom
 
 Per day: `<day>.parquet` (per hex), `.hourly.parquet`, `.minute.parquet`, `.summary.json` (run details and method
 parameters), `.sbas.json`, `.anomalies.json`, `.bursts.json`, `.hotspots.json` (shares in the named areas) and
-`.map.json` (the site's map file).
+`.map.json` (the site's map file); from 17 Nov 2026 `.coverage.json` (feeder coverage per H3 res-2 region and a
+`thin` flag, docs/validation/coverage-flag.md).
 Method: [method card](https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md)."""
 
 
@@ -300,9 +301,16 @@ def process(day, a):
     size, st = E.map_day(day, os.path.join(SITE, f"{day}.map.json"))
     hexes, jam = st["hexes"], st["jam_hexes"]
     E.hotspot_day(day, os.path.join(SITE, f"{day}.hotspots.json"))
+    cov = []
+    try:                                     # per-region feeder coverage (tools/feeder_coverage.py); never fatal
+        import feeder_coverage as C
+        C.write(os.path.join(SITE, f"{day}.map.json"), os.path.join(SITE, f"{day}.coverage.json"))
+        cov = [os.path.join(SITE, f"{day}.coverage.json")]
+    except Exception as e:  # noqa: BLE001
+        print(f"{day}: coverage file skipped: {e}", flush=True)
     if not a.no_upload:
         upload(day, with_analysis=not a.skip_analysis,
-               extra=(loss_outputs(day) if a.position_loss else []) + spoof)
+               extra=(loss_outputs(day) if a.position_loss else []) + spoof + cov)
     return {"day": day, "status": "published" if not a.no_upload else "done (not uploaded)",
             "spoofing": "summary made" if spoof else ("failed or skipped" if a.spoofing else "off"),
             "aircraft": s["aircraft"], "hexes_5plus": hexes, "jam_hexes": jam, "history_files": hist,
