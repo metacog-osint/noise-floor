@@ -75,7 +75,12 @@ loaded automatically; read it when you need the background.
   use `--min-contrast 10 --ghosts drop --landmask` for better precision).
 - **GEO globe (planned 27 Oct 2026, Tom approved every idea):** read `docs/geo-globe-plan.md` first (Space-Track data
   and credentials, the region and membership events, the 3D viewer, callouts C1–C8 to validate on history, footprints
-  and their licence checks, build steps G1–G5, all built). `tools/geo_region.py` (Space-Track gp daily in `daily.yml`;
+  and their licence checks, build steps G1–G5, all built). **Moving to Orbit (Tom accepted the boundary 16 Nov 2026:
+  Orbit owns objects in orbit, Noisefloor owns signals; sun outages stay here).** From branch `geo/from-orbit`, the daily
+  step "GEO region (from Orbit)" runs `geo_region.py pull --from-orbit`: it reads Orbit's published
+  `<day>.geo-region.json` (release `geo-YYYY` of metacog-osint/orbit), makes no Space-Track request and writes the same
+  files as before, so /geo keeps working until the page moves (Orbit's `doctrine/geo-move-plan.md` steps 4-5). Merge
+  only after Orbit's own GEO runs are live and checked. Before that: `tools/geo_region.py` (Space-Track gp daily in `daily.yml`;
   gp_history held once in `data/geo/region/history/`, never re-fetched; `replay` rebuilds the day files offline;
   from 16 Nov 2026 its gp query skips when Orbit, on the same Space-Track account, queried under an hour ago (Orbit's
   public snapshot, `maneuvers.read_at`), when that snapshot can't be read, or from :38 to :05 around 00, 06, 12 and
