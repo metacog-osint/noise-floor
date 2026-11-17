@@ -72,17 +72,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python tools/geo.py snapshot --upload
-      # the GEO region from Space-Track: one gp query per run (its rules: at most hourly, never twice within the hour),
-      # tools/geo_region.py; basic SSA data, cited
-      - name: GEO region (Space-Track)
+      # the GEO region from Orbit's published day file (from 16 Nov 2026: Orbit makes the one gp query on the shared
+      # Space-Track account; same rules, orbit/geo_region.py there). No Space-Track request here. The step's name
+      # must not be "GEO region (Space-Track)": Orbit's runs wait for a step of that name.
+      - name: GEO region (from Orbit)
         id: region
         if: ${{ !cancelled() }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-          SPACETRACK_USER: ${{ secrets.SPACETRACK_USER }}
-          SPACETRACK_PASSWORD: ${{ secrets.SPACETRACK_PASSWORD }}
-        run: python tools/geo_region.py pull --upload
+        run: python tools/geo_region.py pull --from-orbit --upload
   deploy:
     needs: process
     if: ${{ !cancelled() && (needs.process.outputs.changed == 'true' || needs.process.outputs.tests_changed == 'true' || needs.process.outputs.geo_changed == 'true' || needs.process.outputs.region_changed == 'true') }}
