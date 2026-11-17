@@ -111,7 +111,9 @@ fresh run from the raw archive.
 - **On GitHub.** A variant's held-out score now runs on GitHub Actions instead of the PC
   (`.github/workflows/spoof-variant.yml`, Run workflow with `set` and `label`). The caches and the H6 baseline's
   events hold ICAO addresses, so they are in a private release, uploaded with `tools/spoof_cache_release.py` and read
-  with a read-only token; only aggregate scores leave the job. The Lima check stays on the PC.
+  with a read-only token; only aggregate scores leave the job. From 17 Nov 2026 the job runs the same
+  `tools/spoof_variant.py` as the PC (H1-H6 and H8; H8's baseline count comes from the baseline's events, which the
+  release holds without summaries). H7 and the Lima check need local files and stay on the PC.
 - **Raw archives.** 102 of the 103 day archives in `data/raw/trace_box/` are still published by adsb.lol with the
   same file names and sizes, so they could be downloaded again (the 103rd is an unfinished local download).
 
