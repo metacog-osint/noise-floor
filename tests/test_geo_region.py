@@ -156,6 +156,46 @@ def test_gp_skips_for_orbit():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_pull_from_orbit():
+    """Orbit's day file (schema orbit-geo-region/1) gives the same day as the gp reply it came from; no Space-Track."""
+    tmp, orbit_dir = tempfile.mkdtemp(), tempfile.mkdtemp()
+    try:
+        d1 = [rec(1, "2026-11-15T01:00:00"), rec(2, "2026-11-15T01:00:00")]
+        G.pull("2026-11-15", tmp, False, d1, geo_dir=tmp)
+        d2 = [rec(1, "2026-11-16T01:00:00", alt=36200.0), rec(3, "2026-11-16T01:00:00", launch="2026-11-01")]
+        cols = G.OBJ_COLS + ["elset", "rev"]
+        objects = [[int(r["NORAD_CAT_ID"]), r["OBJECT_NAME"], r["OBJECT_ID"], r["OBJECT_TYPE"], r["COUNTRY_CODE"],
+                    r["LAUNCH_DATE"], r["RCS_SIZE"], "zone", r["EPOCH"], float(r["MEAN_MOTION"]), float(r["ECCENTRICITY"]),
+                    float(r["INCLINATION"]), 80.0, 10.0, 200.0, 0.0, 0.0, 0.0, 999, 1000] for r in d2]
+        doc = {"schema": "orbit-geo-region/1", "day": "2026-11-16", "fetched_utc": "2026-11-16T03:20Z",
+               "object_cols": cols, "objects": objects, "active": [1, 3]}
+
+        class NoST:
+            def __enter__(self):
+                raise AssertionError("no Space-Track login when reading Orbit's file")
+        real = G.SpaceTrack
+        G.SpaceTrack = NoST
+        try:
+            G.pull_from_orbit("2026-11-16", tmp, False, get=lambda day: doc, geo_dir=tmp)
+            G.pull("2026-11-16", orbit_dir, False, d2, geo_dir=orbit_dir)     # the same reply, as a gp query
+        finally:
+            G.SpaceTrack = real
+        mine = G.load_region(tmp, "2026-11-16")
+        assert mine["fetched_utc"] == "2026-11-16T03:20Z"
+        kinds = sorted((e["norad"], e["kind"]) for e in mine["events"])
+        assert (1, "left up") in kinds and (2, "gone") in kinds and (3, "new") in kinds, kinds
+        assert mine["regions"] == G.load_region(orbit_dir, "2026-11-16")["regions"]
+        # the same fetch twice is skipped; an unreadable file is skipped too
+        assert G.pull_from_orbit("2026-11-16", tmp, False, get=lambda day: doc, geo_dir=tmp) == (None, None)
+
+        def down(day):
+            raise OSError("404")
+        assert G.pull_from_orbit("2026-11-17", tmp, False, get=down, geo_dir=tmp) == (None, None)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+        shutil.rmtree(orbit_dir, ignore_errors=True)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
