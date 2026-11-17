@@ -353,7 +353,9 @@ def build(board, days, now=None):
                         + (f" ({share:.1f}% of {r['aircraft_hours']:,} aircraft-hours)" if share is not None else "")
                         + f", against a usual {r['usual']:g} (median of the {rl['earlier_days']} earlier days with "
                         "regional shares). Counted where the aircraft really were, not where they were shown; not a "
-                        "transmitter site."),
+                        "transmitter site."
+                        + (f" Coincides with an announced US GPS test that day (FAA flight advisory "
+                           f"{', '.join(r['tests'])}), whose area covers the region." if r.get("tests") else "")),
             "measure": {"name": "spoofed_active_aircraft_hours", "value": r["active_ah"], "expected": r["usual"]},
             "baseline_ref": {"id": "noisefloor-spoof-region-level", "window": f"{rl['earlier_days']} earlier days with "
                              "regional shares (up to 30)", "type": "rolling", "version": "1", "rule": rl.get("rule", "")},
