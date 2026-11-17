@@ -267,7 +267,8 @@ loaded automatically; read it when you need the background.
   `noisefloor-spoof-region-above-<day>-<n>` items. A region above on a day inside an announced US GPS test (the FAA advisories in
   `faa_gps_tests.json`, widest radius reaching the region's centre, day overlap) carries the test ids (`tests` in
   `region_levels`, `tests2` in the day file); the Today line and the feed summary say so, tier unchanged (17 Nov 2026,
-  after the White Sands finding in `docs/spoofing-light-plan.md`). The map's Measure → Spoofing (`m=spf`) shows only spoofing.
+  after the White Sands finding in `docs/spoofing-light-plan.md`); the map's region tooltip, the table under the map and
+  the layer note name the test too (17 Nov 2026, Tom's yes). The map's Measure → Spoofing (`m=spf`) shows only spoofing.
   `tools/cygnss_daily.py` makes CYGNSS day summaries on this PC (needs `EARTHDATA_TOKEN`) from the 06:30 collectors task
   (`collectors/run_daily.cmd`) and uploads them to the `cygnss-data` release (Tom approved 26 Oct 2026); the newest
   complete day runs about six days behind. **Map layers (27 Oct 2026):** the map page's Spoofing and CYGNSS checkboxes read
