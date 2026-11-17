@@ -11,7 +11,7 @@ scintillation nowcast. Every section is built on its own: a source that fails le
 "problems", and the deploy carries on.
 
 Sections: summary (one line), hotspots (named areas: today, against the 30 days before, 30-day series), changes (H3
-res-2 regions at jamming scale: new, ended, long-running), declared (announced US GPS tests, official notices, EASA
+res-2 regions at jamming scale: new, fell below, ended, long-running), declared (announced US GPS tests, official notices, EASA
 FIRs), loss (aircraft heard by MLAT but sending no position), scintillation, spoofing, cygnss, sentinel6, smap, events (this month's
 graded counts), freshness. Aggregates only; licences are stated in the file.
 """
@@ -28,6 +28,11 @@ from datetime import datetime, timedelta, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UA = {"User-Agent": "noise-floor board (github.com/metacog-osint/noise-floor)"}
 JAM_MIN_AIRCRAFT, JAM_SCORE, REGION_HEXES = 5, 10.0, 3        # the map's colouring rule and the events level check
+# "Ended" needs more than falling below jamming scale (suite review 15 Nov 2026, Mistake 2; Tom's choice 16 Nov):
+# coverage on each of the last 7 days (aircraft-cells >= ENDED_MIN_AIRCRAFT and >= half the region's own median over
+# the 30 days before) and a pooled 7-day severe-error share at background level. In regions never at jamming scale,
+# 95% of 7-day windows with 500+ aircraft-cells a day pooled to 0.92% or less (live day maps 10 Oct-15 Nov 2026).
+ENDED_MIN_AIRCRAFT, ENDED_COVER, ENDED_MAX_SHARE = 500, 0.5, 1.0
 LOOKBACK = 60                                                 # days of day maps read for the changes section
 FAR_KM = 1000                                                 # a new spoofed-to place this far from its aircraft is named in the summary
 LOSS_BOXES = {"Suwałki–Ełk": (53.5, 54.35, 21.6, 23.0)}       # added to the trend's named areas (position-loss write-up)
@@ -108,14 +113,37 @@ def jam_regions(cells, cols):
     return {r: n for r, n in count.items() if n >= REGION_HEXES}
 
 
+def region_totals(cells, cols):
+    """{H3 res-2 region: [aircraft-cells, severe-error aircraft-cells]} summed over its res-4 cells."""
+    import h3
+    i_h, i_a, i_b = cols.index("h3"), cols.index("aircraft"), cols.index("bad_live")
+    out = {}
+    for c in cells:
+        t = out.setdefault(h3.cell_to_parent(c[i_h], 2), [0, 0])
+        t[0] += c[i_a]
+        t[1] += c[i_b]
+    return out
+
+
+def ended_check(r, last7, before, totals):
+    """The 'ended' gate for a region that fell below jamming scale: (passed, 7-day share %, fewest aircraft-cells)."""
+    ac = [totals.get(d, {}).get(r, [0, 0])[0] for d in last7]
+    bad = sum(totals.get(d, {}).get(r, [0, 0])[1] for d in last7)
+    usual = statistics.median([totals.get(d, {}).get(r, [0, 0])[0] for d in before]) if before else 0
+    share = round(100 * bad / sum(ac), 2) if sum(ac) else None
+    covered = min(ac) >= max(ENDED_MIN_AIRCRAFT, ENDED_COVER * usual)
+    return covered and share is not None and share <= ENDED_MAX_SHARE, share, min(ac)
+
+
 def changes(site, days, places):
     import h3
     recent = [d["day"] for d in days][-LOOKBACK:]
-    per_day = {}
+    per_day, totals = {}, {}
     for day in recent:
         m = load(os.path.join(site, "data", "gnss", f"{day}.json"))
         if m and m.get("cells"):
             per_day[day] = jam_regions(m["cells"], m["cols"])
+            totals[day] = region_totals(m["cells"], m["cols"])
     ds = sorted(per_day)
     if len(ds) < 14:
         raise ValueError(f"only {len(ds)} day maps")
@@ -133,17 +161,25 @@ def changes(site, days, places):
         return {"region": r, "lat": round(la, 2), "lon": round(lo, 2), "near": name, "near_at": at, **extra}
 
     new = [row(r, {"days_in_last7": sum(1 for d in last7 if r in per_day[d])}) for r in seen7 if r not in seen_before]
-    ended = [row(r, {"days_in_prior30": n}) for r, n in seen_before.items() if n >= 3 and r not in seen7]
+    ended, below = [], []
+    for r, n in seen_before.items():
+        if n >= 3 and r not in seen7:
+            ok, share, fewest = ended_check(r, last7, before, totals)
+            (ended if ok else below).append(row(r, {"days_in_prior30": n, "share7_pct": share, "min_aircraft": fewest}))
     span = ds[-LOOKBACK:]
     long_running = [r for r in set().union(*(per_day[d] for d in span))
                     if sum(1 for d in span if r in per_day[d]) >= 0.9 * len(span)]
     new.sort(key=lambda x: -x["days_in_last7"])
     ended.sort(key=lambda x: -x["days_in_prior30"])
-    return {"day": ds[-1], "regions_today": len(today), "new": new[:8], "new_count": len(new), "ended": ended[:8],
-            "ended_count": len(ended), "long_running": len(long_running), "long_running_days": len(span),
+    below.sort(key=lambda x: -x["days_in_prior30"])
+    return {"day": ds[-1], "regions_today": len(today), "new": new[:8], "new_count": len(new),
+            "below": below[:8], "below_count": len(below), "ended": ended[:8], "ended_count": len(ended),
+            "long_running": len(long_running), "long_running_days": len(span),
             "rule": f"an H3 res-2 region with {REGION_HEXES}+ hexes at jamming scale; new = in the last 7 days and none of "
-                    "the 30 before; ended = on 3+ of those 30 days and none of the last 7; long-running = 90% of the days "
-                    f"read ({len(span)})"}
+                    "the 30 before; fell below jamming scale = on 3+ of those 30 days and none of the last 7; ended = "
+                    f"fell below it, with {ENDED_MIN_AIRCRAFT}+ aircraft-hexes (and half the region's usual number) on each "
+                    f"of the last 7 days and a 7-day severe-error share of {ENDED_MAX_SHARE:g}% or less (background); "
+                    f"long-running = 90% of the days read ({len(span)})"}
 
 
 def top_events(site, day, places):
@@ -482,9 +518,13 @@ def brief(b):
        says interference fell, because a lower share can mean jammed aircraft stopped reporting a position at all,
        which the page's position-loss row shows.
     2. GPS interference by area (changes(): H3 res-2 regions with 3+ cells at jamming scale): it "started this week"
-       in a region seen on any of the last 7 days and none of the 30 before, and "has stopped" in a region seen on 3+
-       of those 30 days and none of the last 7 (it may have stopped before this week began, so never "stopped this
-       week"). Up to two new areas and one stopped area are named by the nearest place.
+       in a region seen on any of the last 7 days and none of the 30 before. A region seen on 3+ of those 30 days and
+       none of the last 7 "fell below jamming scale"; it "ended" only when it also passes ended_check() (enough
+       aircraft on each of the last 7 days and a background-level severe-error share), because a region can drop
+       under the 3-cell mark while degraded aircraft and graded events go on (suite review 15 Nov 2026, Mistake 2;
+       Tom replaced "has stopped" on 16 Nov). "Fell" appears only in "fell below jamming scale". Neither says "this
+       week", since it may have happened before the week began. Up to two new areas and one area of each other kind
+       are named by the nearest place.
     A section that is missing leaves its sentence out."""
     out = []
     areas = [a for a in ((b.get("hotspots") or {}).get("areas") or [])
@@ -503,18 +543,24 @@ def brief(b):
     c = b.get("changes")
     if c:
         new = [r.get("near") for r in c.get("new") or [] if r.get("near")][:2]
-        gone = [r.get("near") for r in c.get("ended") or [] if r.get("near")][:1]
-        n, m = c.get("new_count") or 0, c.get("ended_count") or 0
+        n = c.get("new_count") or 0
         started = f"started in {_num(n)} area{'' if n == 1 else 's'} this week{_named(new, n, ', among them ')}"
-        if n and m:
-            out.append(f"GPS interference {started}; it has stopped in {_num(m)}{_named(gone, m, ', including ')}.")
+        tails = []
+        for key, verb in (("ended", "ended in"), ("below", "fell below jamming scale in")):
+            k = c.get(f"{key}_count") or 0
+            if k:
+                names = [r.get("near") for r in c.get(key) or [] if r.get("near")][:1]
+                areas = "" if n or tails else f" area{'' if k == 1 else 's'}"
+                tails.append(f"{verb} {_num(k)}{areas}{_named(names, k, ', including ')}")
+        tail = (", and " if "," in tails[0] else " and ").join(tails) if tails else ""
+        if n and tails:
+            out.append(f"GPS interference {started}; it {tail}.")
         elif n:
-            out.append(f"GPS interference {started}; it has stopped in none.")
-        elif m:
-            out.append(f"GPS interference has stopped in {_num(m)} area{'' if m == 1 else 's'}"
-                       f"{_named(gone, m, ', including ')}; it started in none this week.")
+            out.append(f"GPS interference {started}; none fell below jamming scale.")
+        elif tails:
+            out.append(f"GPS interference {tail}; it started in none this week.")
         else:
-            out.append("GPS interference has not started or stopped in any area this week.")
+            out.append("GPS interference has not started or fallen below jamming scale in any area this week.")
     return " ".join(out)
 
 
@@ -524,7 +570,8 @@ def summary_line(b):
     if ch:
         parts.append(f"{ch['regions_today']} areas with GPS interference on {_dayname(ch['day'])}"
                      + (f", {ch['new_count']} new this week" if ch["new_count"] else "")
-                     + (f", {ch['ended_count']} ended" if ch["ended_count"] else ""))
+                     + (f", {ch['ended_count']} ended" if ch.get("ended_count") else "")
+                     + (f", {ch['below_count']} below jamming scale" if ch.get("below_count") else ""))
     hs = (b.get("hotspots") or {}).get("areas") or []
     rise = max((a for a in hs if a["change"] is not None), key=lambda a: a["change"], default=None)
     if rise and rise["change"] >= 5:
