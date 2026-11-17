@@ -276,6 +276,24 @@ def test_job_run_day():
         assert GJ.run_day("2026-10-20", args(), now) == "skipped"
         state["doc"] = {"missing": ["ACRG00GHA"]}
         assert GJ.run_day("2026-11-13", args(), now) == "refreshed"
+        # BKG unreachable: a complete or too-old published day asks BKG nothing; one with missing stations keeps
+        # its file and is skipped with a warning; a day not yet published still fails
+        def down(day, stations):
+            raise RuntimeError("BKG listing https://example/320/: <urlopen error timed out>")
+        R.available = down
+        state["doc"] = {"missing": []}
+        assert GJ.run_day("2026-11-13", args(), now) == "skipped"
+        state["doc"] = {"missing": ["ACRG00GHA"]}
+        assert GJ.run_day("2026-10-20", args(), now) == "skipped"         # older than --refresh-days
+        n = len(calls)
+        assert GJ.run_day("2026-11-13", args(), now) == "skipped" and len(calls) == n
+        state["doc"] = None
+        try:
+            GJ.run_day("2026-11-13", args(), now)
+            raise AssertionError("expected an unpublished day to fail when BKG is down")
+        except RuntimeError as e:
+            assert "timed out" in str(e)
+        R.available = lambda day, stations: (dict(state["have"]), "nav", {})
         state["doc"] = None
         slept = []
 

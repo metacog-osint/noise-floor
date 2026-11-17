@@ -135,7 +135,8 @@ loaded automatically; read it when you need the background.
     makes `<day>.cosmic2-limb-s4.json` (`tools/cosmic2_s4.py`; release `swx-data-YYYY-MM`) and the interference file
     `<day>.cosmic2.json` (uploaded to `cosmic2-data` only if the PC's `cosmic2_daily.py` hasn't, and compared if it
     has; from 16 Nov 2026 the PC run likewise keeps a copy the job made and logs `Compared with it: {...}`,
-    and a clean week of match lines is the case for retiring it). UCAR posts about 04:35 UTC; the limb file is due
+    and a clean week of match lines is the case for retiring it; `python tools/ops_tally.py cosmic2` tallies them, and
+    `ops_tally.py landing --since DAY` lists when each day's `map.json` reached its release). UCAR posts about 04:35 UTC; the limb file is due
     by 14:00 UTC. The gate (the day's file already in the release) makes extra starts cheap. GitHub's cron runs hours late (crons at 01:15, 03:15, 05:15, 08:15 UTC are the
     fallback), so tic-dispatch starts it at :50 past 04-08 and 10-13 UTC (Tom's yes 15 Nov 2026, hub 1739e03; noise-floor
     was added to the `tic-dispatch` token's repository access the same day). Keep the PC path until the GitHub
