@@ -599,9 +599,9 @@
     var rows = sm ? Object.keys(sm).map(function (r) { return sm[r]; }).filter(function (c) { return c[2] > 0; })
       .sort(function (a, b) { return b[2] - a[2] || b[2] / b[1] - a[2] / a[1]; }).slice(0, 25) : [];
     rows.forEach(function (c) {
-      var ll = h3.cellToLatLng(c[0]), tr = document.createElement("tr"), l = lv && lv[c[0]];
+      var ll = h3.cellToLatLng(c[0]), tr = document.createElement("tr"), l = lv && lv[c[0]], tt = spsTests(c[0]);
       [where(ll[0], ll[1]), c[1].toLocaleString(), c[2].toLocaleString(), fmtShare(c[2] / c[1]),
-       l ? LEVEL_TXT[l[1]] + " (usual " + fmtNum(l[0]) + ")" : "–"].forEach(function (v, i) {
+       l ? LEVEL_TXT[l[1]] + " (usual " + fmtNum(l[0]) + ")" + (tt ? "; announced US GPS test " + tt.join(", ") : "") : "–"].forEach(function (v, i) {
         var td = document.createElement("td"); td.textContent = v; if (i && i < 4) td.className = "num"; else if (!i) td.title = ll2(ll[0], ll[1]); tr.appendChild(td);
       });
       var td = document.createElement("td"), btn = document.createElement("button");
@@ -610,7 +610,9 @@
       td.appendChild(btn); tr.appendChild(td); body.appendChild(tr);
     });
     document.getElementById("map-table-note").textContent = rows.length ? "Ranked by aircraft-hours in active spoofing episodes" +
-      (spsPooled() ? " over the 7 days to " + fmtDay(state.day) : "") + ". \"Show\" draws where the region's aircraft were shown." :
+      (spsPooled() ? " over the 7 days to " + fmtDay(state.day) : "") + ". \"Show\" draws where the region's aircraft were shown." +
+      (state.sps && state.sps.tests2 && !spsPooled() ? " A region above usual whose area an announced US GPS test covered that day (FAA flight " +
+      "advisory) is marked with the test; the reading stands, and the test is a likely cause, not proof." : "") :
       sm ? "No spoofing in any region on this day." : "No regional spoofed share for this day.";
   }
   function renderTable() {
@@ -1068,6 +1070,10 @@
     return spsIdx.m;
   }
   function spsLevels() { return !spsPooled() && state.sps && state.sps.level2 && Object.keys(state.sps.level2).length ? state.sps.level2 : null; }
+  function spsTests(r2) {                              // announced US GPS test ids for a region above usual on this day
+    var t = !spsPooled() && state.sps && state.sps.tests2 && state.sps.tests2[r2];
+    return t && t.length ? t : null;
+  }
   function sentFrom(r2) { return (state.sps && state.sps.sent2 && state.sps.sent2[r2]) || []; }
   function regionAt(ll) { var m = spsMap(), r = h3.latLngToCell(ll.lat, ll.lng, 2); return m && m[r] ? r : null; }
   function fmtNum(x) { return x % 1 ? x.toFixed(1) : String(x); }
@@ -1080,6 +1086,9 @@
                                 " (median of " + state.sps.level_days + " earlier days)"]);
     else if (lv && !c[2]) out.push(["Against usual", "none, as usual"]);
     else if (!pooled && !short && state.sps.share2) out.push(["Against usual", "not yet: needs 7 earlier days with regional shares"]);
+    var tt = spsTests(r2);
+    if (tt) out.push(["Announced test", "inside an announced US GPS test that day (FAA flight advisory " + tt.join(", ") +
+                      "), whose area covers the region"]);
     var to = sentFrom(r2);
     if (to.length && state.sps.targets) {               // grouped by name: two clusters near one city read as one line
       var grp = [], byName = {};
@@ -1264,7 +1273,10 @@
       "300 km across with 10 or more aircraft-hours. Darker: 0.1%, 1% and 5% or more; outlined only: none seen. It counts where aircraft really " +
       "were, not where they were shown." + (spsLevels() ? " A bold dashed outline marks a region above its own usual level (at least twice its " +
       "median over the " + state.sps.level_days + " earlier days with regional shares, and 5 or more spoofed aircraft-hours over it); an " +
-      "observation against the region's own normal, not a warning." : "") + " Hover a region for where its aircraft were shown; click to draw " +
+      "observation against the region's own normal, not a warning." : "") +
+      (state.sps.tests2 && !spsPooled() ? " " + Object.keys(state.sps.tests2).length + " region" +
+      (Object.keys(state.sps.tests2).length === 1 ? " above usual lies" : "s above usual lie") + " inside an announced US GPS test area that day " +
+      "(FAA flight advisory; hover for the test)." : "") + " Hover a region for where its aircraft were shown; click to draw " +
       "lines there. On 12 held-out days, six quiet control regions stayed at 0.0023%, against 0.397% in the Middle East and 0.904% in the Baltic and " +
       "western Russia (detector v0.6; see Validation). Separate from jamming: a spoofed receiver can report good accuracy."
       : state.sps ? "No regional spoofed share in this day's file: it is published from 7 Nov 2026." + nearest("spoof", state.day)
