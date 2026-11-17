@@ -184,13 +184,12 @@ def ll2(lat, lon):
     return f"{abs(lat):.1f}°{'N' if lat >= 0 else 'S'} {abs(lon):.1f}°{'E' if lon >= 0 else 'W'}"
 
 
-def nearest(places, lat, lon, limit_km=350):
-    best, name = limit_km, None
-    for p in places:
-        d = km((lat, lon), (p[1], p[2]))
-        if d < best:
-            best, name = d, p[0]
-    return name
+def nearest(places, lat, lon, cells=()):
+    """The board's naming rule (tools/area_names.py): a listed place within 150 km in the same country, else the
+    country the event lies in."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import area_names
+    return area_names.area_name(places, lat, lon, cells)[0]
 
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -217,7 +216,7 @@ def day_summary(d, prior, ev, places):
     else:
         items = []
         for e in top:
-            near = nearest(places, e["lat"], e["lon"])
+            near = nearest(places, e["lat"], e["lon"], e.get("cells") or [])
             url = f"{SITE_URL}/map#day={d['day']}&m=jam&v={e['lat']:.2f},{e['lon']:.2f},6"
             hs = e.get("hs")
             items.append(f'<li><a href="{escape(url)}">{TIER.get(e["tier"], e["tier"])}: {e["peak"]:.0f}% of aircraft degraded '
