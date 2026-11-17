@@ -8,6 +8,8 @@ Method (docs/method-card.md):
       gross:     NACp < 8  (EPU >= 0.05 NM, ~93 m)  — jamming-scale loss; NIC < 7 tracked alongside
       accuracy:  NACp < 10 (EPU >= 10 m)            — fine degradation, sensitive to space weather
   * An aircraft is bad in a hex (and in a hex-hour) if >= 50% of its reports there are bad.
+    `bad_nacp_any` (from 17 Nov 2026) counts it if any one of its sampled reports there is gross-bad: closer to how
+    GPSJam marks an aircraft, and kinder to aircraft that cross a hex on the edge of interference.
   * Post-exposure (v1.4; replaces v1.3 latching): an aircraft's exposure point is its first hex-hour with a gross-bad
     report where its peers were bad too (genuine interference: >= PEER_MIN peers, >= 25% of them bad). Any LATER
     hex-hour with gross-bad reports >= POST_MIN_KM from the exposure point, where peers are mostly good, is
@@ -38,9 +40,9 @@ bytes are SHA-256 hashed during the same pass, for provenance.
 
 Output (in --out, default data/pnt/daily):
   YYYY-MM-DD.parquet         h3, lat, lon, aircraft, bad_nacp, bad_nic, bad_acc10, score, score_acc10, capable,
-                             cap_bad_acc10, latched, bad_nacp_live, score_live, heavy_live
+                             cap_bad_acc10, latched, bad_nacp_live, score_live, heavy_live, bad_nacp_any
   YYYY-MM-DD.hourly.parquet  h3, hour, aircraft, bad_nacp, bad_nic, bad_acc10, capable, cap_bad_acc10, latched, bad_nacp_live,
-                             heavy_live
+                             heavy_live, bad_nacp_any
   YYYY-MM-DD.minute.parquet  h3, minute (0-1439), bad_nacp, latched, heavy (aircraft with a gross-bad / latched report that
                              minute; nonzero rows only)
   heavy_live / heavy (from 25 Oct 2026): how many of the live gross-bad aircraft (in bad_nacp_live, or in bad_nacp minus
@@ -421,9 +423,9 @@ def find_suspects(recs, tot, latched, ignore=frozenset()):
 
 def aggregate(recs, drop, latched, apart=None):
     # hex (or (hex, hour)) -> [aircraft, gross, nic, acc, capable, capable acc-bad, latched, live gross, heavy apart,
-    #                         live gross that is an A350/A380]
-    daily = defaultdict(lambda: [0] * 10)
-    hourly = defaultdict(lambda: [0] * 10)
+    #                         live gross that is an A350/A380, any gross-bad report]
+    daily = defaultdict(lambda: [0] * 11)
+    hourly = defaultdict(lambda: [0] * 11)
     minute = defaultdict(lambda: [0, 0, 0, 0])    # (hex, minute) -> [aircraft gross-bad, latched, heavy apart, heavy live]
     no_apart = set()
 
@@ -438,6 +440,7 @@ def aggregate(recs, drop, latched, apart=None):
         is_live = live_reports * 2 >= c[R] and live_reports > 0
         t[7] += is_live
         t[9] += is_live and heavy
+        t[10] += c[G] > 0
 
     for i, (cells, meta, bad_minutes) in enumerate(recs):
         if i in drop:
@@ -564,6 +567,7 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
         "bad_nacp_live": [v[7] for _, v in rows],
         "score_live": [score(v[7], v[0]) for _, v in rows],
         "heavy_live": [v[9] for _, v in rows],
+        "bad_nacp_any": [v[10] for _, v in rows],
         **extra(rows, 8),
     }), os.path.join(out_dir, f"{day}.parquet"), compression="zstd")
     hrows = sorted(hourly.items())
@@ -579,6 +583,7 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
         "latched": [v[6] for _, v in hrows],
         "bad_nacp_live": [v[7] for _, v in hrows],
         "heavy_live": [v[9] for _, v in hrows],
+        "bad_nacp_any": [v[10] for _, v in hrows],
         **extra(hrows, 8),
     }), os.path.join(out_dir, f"{day}.hourly.parquet"), compression="zstd")
     mrows = sorted(minute.items())
