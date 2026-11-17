@@ -9,7 +9,9 @@
   It also gains `sent2` {res-2 region: [[targets row, aircraft], ...]} and `unplaced2` {region: aircraft}: where each
   region's spoofed aircraft were shown (sent()); and, on days with `share2`, `level2` {region: [usual, level]} with
   `level_days` (region_levels(): active aircraft-hours against the region's own median) and `share2_7` with
-  `share2_7_days` (share2 pooled over the days with one in the 7 days to the day, pooled()).
+  `share2_7_days` (share2 pooled over the days with one in the 7 days to the day, pooled()), and `tests2` {region:
+  [test ids]} for regions above on a day inside an announced US GPS test (RELEASE_DIR/faa_gps_tests.json,
+  region_tests()).
 - SITE/data/spoof/history.json: the Trends page's spoofing section. `days`: per published day, active episodes,
   aircraft and the res-4 cells where spoofed aircraft really were, by region group (the validation's region boxes,
   tools/spoof_day.py REGIONS and GROUPS; everything else is "Elsewhere"). `targets`: spoofed-to places followed from
@@ -57,6 +59,31 @@ def load(path, default=None):
             return json.load(f)
     except (OSError, ValueError):
         return default
+
+
+def load_tests(release):
+    """Announced US GPS tests (RELEASE_DIR/faa_gps_tests.json, from pipeline/faa_gps_tests.py: the FAA's public flight
+    advisories); [] when the file is missing."""
+    t = load(os.path.join(release, "faa_gps_tests.json")) or {}
+    t = t.get("tests", t) if isinstance(t, dict) else t
+    return list(t.values()) if isinstance(t, dict) else list(t or [])
+
+
+def region_tests(tests, day, region):
+    """Ids of the announced tests with a window on the UTC day whose widest radius (the FL400 one) reaches the region's
+    centre. Regional readings are whole days, so this is day overlap, not hour overlap; a match means "consistent with
+    an announced test", not proof (as for the jamming events, tools/site_days.py annotate())."""
+    import h3
+    la, lo = h3.cell_to_latlng(region)
+    d0, d1 = f"{day}T00:00Z", f"{day}T23:59Z"
+    out = set()
+    for t in tests or []:
+        c = t.get("centre")
+        if not c or not any(w[0] <= d1 and w[1] >= d0 for w in t.get("windows") or []):
+            continue
+        if km(la, lo, c[0], c[1]) <= max((t.get("radii_nm") or {}).values() or [0]) * 1.852:
+            out.add(t["id"])
+    return sorted(out)
 
 
 def regions():
@@ -307,9 +334,10 @@ def sent(targets):
             dict(sorted(un.items())))
 
 
-def regions_now(sdays, places=None):
+def regions_now(sdays, places=None, tests=None):
     """The newest day with share2: regions above their usual level (largest rise first) and all regions together.
-    None without a share2 day."""
+    A region inside an announced US GPS test that day (region_tests()) carries `tests`, and `above_in_tests` counts
+    them. None without a share2 day."""
     import h3
     if not sdays:
         return None
@@ -321,13 +349,18 @@ def regions_now(sdays, places=None):
             continue
         a, k = sdays[day][r]
         la, lo = h3.cell_to_latlng(r)
-        above.append({"region": r, "lat": round(la, 2), "lon": round(lo, 2), "near": _near(places, la, lo, 350),
-                      "active_ah": k, "aircraft_hours": a, "usual": usual})
+        row = {"region": r, "lat": round(la, 2), "lon": round(lo, 2), "near": _near(places, la, lo, 350),
+               "active_ah": k, "aircraft_hours": a, "usual": usual}
+        ids = region_tests(tests, day, r)
+        if ids:
+            row["tests"] = ids
+        above.append(row)
     above.sort(key=lambda x: (-(x["active_ah"] - x["usual"]), x["region"]))
     days = sorted(sdays)
     totals = [sum(n for _, n in sdays[d].values()) for d in days]
     t_usual, t_level = level(totals[-1], totals[-1 - USUAL_DAYS:-1])
     return {"day": day, "earlier_days": n_earlier, "above": above[:REGION_ROWS], "above_count": len(above),
+            "above_in_tests": sum(1 for x in above if x.get("tests")),
             "spoofed_regions": sum(1 for _, n in sdays[day].values() if n), "regions": len(sdays[day]),
             "total": {"latest": totals[-1], "usual": t_usual, "level": t_level,
                       "aircraft_hours": sum(a for a, _ in sdays[day].values())},
@@ -361,28 +394,36 @@ def day_series(release):
     return out, names
 
 
-def history(release, places=None, tdays=None, sdays=None):
+def history(release, places=None, tdays=None, sdays=None, tests=None):
     tdays = tdays if tdays is not None else target_days(release)
     sdays = sdays if sdays is not None else share_days(sorted(glob.glob(os.path.join(release, "*.spoof.json"))))
+    tests = tests if tests is not None else load_tests(release)
     days, names = day_series(release)
     return {"licence": LICENCE, "groups": names, "days": days, "targets": track(tdays, places),
-            "new": new_targets(release, places, tdays), "regions": regions_now(sdays, places),
+            "new": new_targets(release, places, tdays), "regions": regions_now(sdays, places, tests),
             "method": "tools/spoof_site.py from the published <day>.spoof.json and <day>.spoof-targets.json "
                       "(tools/spoof_summary.py; docs/validation/spoofing.md). cells: H3 res-4 cells where aircraft "
                       "really were during active episodes, by the validation's region boxes. Spoofed-to places are "
                       "where receivers were shown, not where a transmitter is."}
 
 
-def add_regions(d, targets, sdays, places=None):
+def add_regions(d, targets, sdays, places=None, tests=None):
     """A site day file gains, with a targets file: targets, unplaced (compact()), sent2 and unplaced2 (sent()); and
     with share2: level2 {region: [usual, level]} with level_days (region_levels()), and share2_7 with share2_7_days
-    (pooled())."""
+    (pooled()); and `tests2` {region: [announced test ids]} for the regions above on a day inside an announced US
+    GPS test (region_tests())."""
     if targets:
         d["targets"], d["unplaced"] = compact(targets, places)
         d["sent2"], d["unplaced2"] = sent(targets)
     day = d.get("day")
     if day in sdays:
         d["level_days"], d["level2"] = region_levels(sdays, day)
+        t2 = {r: ids for r, (_u, lev) in (d["level2"] or {}).items() if lev == "above"
+              for ids in [region_tests(tests, day, r)] if ids}
+        if t2:
+            d["tests2"] = t2
+        else:
+            d.pop("tests2", None)
         rows, use = pooled(sdays, day)
         d["share2_7"], d["share2_7_days"] = rows, use
     return d
@@ -403,17 +444,18 @@ def main():
     out = os.path.join(site, "data", "spoof")
     os.makedirs(out, exist_ok=True)
     sdays = share_days(sorted(glob.glob(os.path.join(release, "*.spoof.json"))))
+    tests = load_tests(release)
     n = 0
     for day in sorted(set(tdays) | set(sdays)):
         p = os.path.join(out, f"{day}.json")
         d = load(p)
         if not d:
             continue
-        add_regions(d, tdays.get(day), sdays, places)
+        add_regions(d, tdays.get(day), sdays, places, tests)
         with open(p, "w", encoding="utf-8", newline="\n") as g:
             json.dump(d, g, ensure_ascii=False, separators=(",", ":"))
         n += 1
-    h = history(release, places, tdays, sdays)
+    h = history(release, places, tdays, sdays, tests)
     with open(os.path.join(out, "history.json"), "w", encoding="utf-8", newline="\n") as g:
         json.dump(h, g, ensure_ascii=False, separators=(",", ":"))
     print(f"spoof_site: targets added to {n} day files; history {len(h['days'])} days, "
