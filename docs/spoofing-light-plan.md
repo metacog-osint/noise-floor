@@ -111,7 +111,9 @@ fresh run from the raw archive.
 - **On GitHub.** A variant's held-out score now runs on GitHub Actions instead of the PC
   (`.github/workflows/spoof-variant.yml`, Run workflow with `set` and `label`). The caches and the H6 baseline's
   events hold ICAO addresses, so they are in a private release, uploaded with `tools/spoof_cache_release.py` and read
-  with a read-only token; only aggregate scores leave the job. The Lima check stays on the PC.
+  with a read-only token; only aggregate scores leave the job. From 17 Nov 2026 the job runs the same
+  `tools/spoof_variant.py` as the PC (H1-H6 and H8; H8's baseline count comes from the baseline's events, which the
+  release holds without summaries). H7 and the Lima check need local files and stay on the PC.
 - **Raw archives.** 102 of the 103 day archives in `data/raw/trace_box/` are still published by adsb.lol with the
   same file names and sizes, so they could be downloaded again (the 103rd is an unfinished local download).
 
@@ -238,6 +240,37 @@ spoofed aircraft-hours, all outside the validation's boxes: central Turkey (twic
 Istanbul, east of Moscow, the Oman coast, the UAE interior and two regions of central India. Persistence, from the one
 pair of days: 1 of 7 dropped readings and 1 of 6 kept ones were above again the next day, so P3 can't be judged yet.
 Below and near readings were the same under both rules on both days, as they must be.
+
+**Verdict (16 Nov 2026, evening).** The `share2` backfill (backfill.yml `spoofing_only`, run 43919624652, 7 Oct-6 Nov
+redone as v0.6.1) gave 40 published days with `share2`, 7 Oct-15 Nov, so 33 days have at least 7 earlier ones (14 Oct-
+15 Nov) and 15 Nov has the full 30: this is the 30-day run. Each day's usual level is the median of up to 30 earlier
+days, so the October days rest on fewer. Scored with the same code as above (`spoof_site.region_levels()`, old rule
+`min_over=3` against new `min_over=5`) on the files as published.
+- Above readings: 451 under the old rule, 282 under the new one (169 dropped; every dropped reading rose by 3 to 4.5
+  spoofed aircraft-hours, in regions of 11 to 7,326 aircraft-hours). Below and near readings were the same under both
+  rules on every day.
+- **P1 (noise): holds.** Control-box readings 39 → 16. The 16 left are in two boxes: us_west 9 (6 of them in the region
+  centred near 35.5° N, 106.2° W in New Mexico, 5-10 aircraft-hours against a usual of 0) and c_europe 7 (4 near
+  49.5° N, 14.1° E, 2 near 50.1° N, 9.9° E, 1 near 50.5° N, 5.7° E; 5-11 against usual 0-2).
+  **The us_west readings are announced tests, not noise (checked 16 Nov 2026, evening).** Against the FAA's SPANS GPS
+  test advisories (`declared-data` release, `faa_gps_tests.json`): all 9 fall on days of a White Sands Missile Range
+  test (WSMRNM GPS 26-45, 26-47 REV 2, 26-18 REV 1) whose announced radius covers the region. For the New Mexico region
+  (H3 res 2 `8248dffffffffff`) over all 40 days: 29 were test days, and spoofed aircraft-hours were above 0 on 12 of
+  them and on none of the other 11 (all 12 landing on test days by chance: hypergeometric p = 0.009). Reruns of 7, 9
+  and 10 Nov from the day caches: all 23 active episodes over that region lie inside the test's 04:00-12:00 UTC window.
+  So the us_west control box is not quiet on test days. From 17 Nov 2026 a region above on a day inside an announced US GPS
+  test is tagged with the test (`spoof_site.region_tests()`: the advisory's widest radius reaches the region's centre
+  and one of its windows falls on that UTC day); the Today line and the feed item say so. On the 40 days, 11 of the
+  282 above readings are tagged, all with White Sands tests. The c_europe readings are not checked (no matching notice
+  source is ingested yet).
+- **P2 (signal kept): holds.** Readings in the spoofing groups 160 → 122 (76% kept; the test needs 50%). Of the 169
+  dropped: 89 elsewhere, 23 control, 19 South Asia, 14 Middle East, 13 Black Sea, 11 Baltic and W Russia.
+- **P3 (persistence): holds.** Dropped readings were above again the next day (old rule) 44 times in 166, 27%; kept
+  readings 111 in 280, 40%. (Not pre-registered, for scale only: Fisher's exact test, odds ratio 0.55, p = 0.005.)
+- The 14-15 Nov figures in the first scoring changed because those days now have up to 30 earlier days, not 7
+  (14 Nov 16 → 11, 15 Nov 5 → 2).
+- Decision: the new rule (`REGION_MIN_OVER = 5`) stays, as pre-registered. The 7 Dec recheck is no longer needed for
+  the verdict; run then, it is an out-of-sample check on the 21 days after this one.
 
 This needs no new processing: it reads the files the daily run already publishes. It answers the analyst's question
 (is spoofing happening, where, and more than usual?) in one line. The detector stays as the engine underneath. Like the

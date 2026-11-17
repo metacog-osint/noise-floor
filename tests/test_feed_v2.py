@@ -15,7 +15,10 @@ BOARD = {
     "freshness": {"aircraft_day": "2026-10-29"},
     "changes": {"day": "2026-10-29", "rule": "test rule",
                 "new": [{"region": "821e07fffffffff", "lat": 44.4, "lon": 25.5, "near": "Bucharest", "days_in_last7": 4}],
-                "ended": [{"region": "822d27fffffffff", "lat": 41.0, "lon": 29.0, "near": None, "days_in_prior30": 9}]},
+                "ended": [{"region": "822d27fffffffff", "lat": 41.0, "lon": 29.0, "near": None, "days_in_prior30": 9,
+                           "share7_pct": 0.4, "min_aircraft": 900}],
+                "below": [{"region": "825367fffffffff", "lat": 27.71, "lon": 49.21, "near": "Manama", "days_in_prior30": 11,
+                           "share7_pct": 2.11, "min_aircraft": 5067}]},
     "hotspots": {"day": "2026-10-29", "areas": [
         {"name": "Gulf of Finland / Estonia–Russia border", "box": [58.5, 60.5, 24.0, 32.0], "today": 41.0, "median30": 30.0, "change": 11.0},
         {"name": "Caucasus", "box": [40.0, 43.5, 41.0, 49.0], "today": 2.0, "median30": 1.0, "change": 1.0}]},
@@ -31,11 +34,15 @@ DAYS = [{"day": f"2026-10-{d:02d}", "hexes": 20000} for d in range(1, 29)] + [{"
 def main():
     feed = feed_v2.build(BOARD, DAYS, now=datetime(2026, 10, 30, 6, 12, tzinfo=timezone.utc))
     ids = [f["properties"]["id"] for f in feed["features"]]
-    assert len(ids) == 6, ids                      # summary, 1 new, 1 ended, 1 rise (Caucasus below threshold), 1 event, 1 spoof
+    assert len(ids) == 7, ids                      # summary, 1 new, 1 ended, 1 below, 1 rise (Caucasus below threshold), 1 event, 1 spoof
     assert len(set(ids)) == len(ids), "ids must be unique"
     problems = feed_v2.check(feed)
     assert not problems, problems
     by = {f["properties"]["id"]: f["properties"] for f in feed["features"]}
+    below = by["noisefloor-below-825367fffffffff-2026-10-29"]                  # suite review Mistake 2: never "stopped"
+    assert below["title"] == "GPS interference fell below jamming scale near Manama", below["title"]
+    assert "2.11% of 5,067+ aircraft-cells a day" in below["summary"] and "not an end" in below["summary"], below["summary"]
+    assert by["noisefloor-ended-822d27fffffffff-2026-10-29"]["title"] == "GPS interference ended"
     rise = next(p for i, p in by.items() if i.startswith("noisefloor-rise-"))
     assert {"EE", "RU"} <= set(rise["countries"]), rise["countries"]
     assert rise["tier"] == "anomaly" and rise["baseline_ref"]["type"] == "rolling"
