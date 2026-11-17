@@ -239,6 +239,27 @@ Istanbul, east of Moscow, the Oman coast, the UAE interior and two regions of ce
 pair of days: 1 of 7 dropped readings and 1 of 6 kept ones were above again the next day, so P3 can't be judged yet.
 Below and near readings were the same under both rules on both days, as they must be.
 
+**Verdict (16 Nov 2026, evening).** The `share2` backfill (backfill.yml `spoofing_only`, run 43919624652, 7 Oct-6 Nov
+redone as v0.6.1) gave 40 published days with `share2`, 7 Oct-15 Nov, so 33 days have at least 7 earlier ones (14 Oct-
+15 Nov) and 15 Nov has the full 30: this is the 30-day run. Each day's usual level is the median of up to 30 earlier
+days, so the October days rest on fewer. Scored with the same code as above (`spoof_site.region_levels()`, old rule
+`min_over=3` against new `min_over=5`) on the files as published.
+- Above readings: 451 under the old rule, 282 under the new one (169 dropped; every dropped reading rose by 3 to 4.5
+  spoofed aircraft-hours, in regions of 11 to 7,326 aircraft-hours). Below and near readings were the same under both
+  rules on every day.
+- **P1 (noise): holds.** Control-box readings 39 → 16. The 16 left are in two boxes: us_west 9 (6 of them in the region
+  centred near 35.5° N, 106.2° W in New Mexico, 5-10 aircraft-hours against a usual of 0) and c_europe 7 (4 near
+  49.5° N, 14.1° E, 2 near 50.1° N, 9.9° E, 1 near 50.5° N, 5.7° E; 5-11 against usual 0-2). Whether these are announced tests or detector
+  noise is not checked here.
+- **P2 (signal kept): holds.** Readings in the spoofing groups 160 → 122 (76% kept; the test needs 50%). Of the 169
+  dropped: 89 elsewhere, 23 control, 19 South Asia, 14 Middle East, 13 Black Sea, 11 Baltic and W Russia.
+- **P3 (persistence): holds.** Dropped readings were above again the next day (old rule) 44 times in 166, 27%; kept
+  readings 111 in 280, 40%. (Not pre-registered, for scale only: Fisher's exact test, odds ratio 0.55, p = 0.005.)
+- The 14-15 Nov figures in the first scoring changed because those days now have up to 30 earlier days, not 7
+  (14 Nov 16 → 11, 15 Nov 5 → 2).
+- Decision: the new rule (`REGION_MIN_OVER = 5`) stays, as pre-registered. The 7 Dec recheck is no longer needed for
+  the verdict; run then, it is an out-of-sample check on the 21 days after this one.
+
 This needs no new processing: it reads the files the daily run already publishes. It answers the analyst's question
 (is spoofing happening, where, and more than usual?) in one line. The detector stays as the engine underneath. Like the
 new-places list, it compares a place with its own normal, and is not a warning.
