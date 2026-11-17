@@ -140,9 +140,29 @@ def main():
         assert ev["bursts"][0]["test"] == "WSMRNM GPS 25-16" and ev["tests"][0]["place"].startswith("White Sands"), ev
         assert json.load(open(os.path.join(evd, "2025-10-25.json")))["tests"] == []
         test_feed(tmp)
+        test_names_without_h3()
         print("test_site_days: ok")
     finally:
         shutil.rmtree(tmp)
+
+
+def test_names_without_h3():
+    """The deploy runs site_days.py before it installs h3 (run 44166653406 failed on 17 Nov 2026): naming must not
+    need it. Without h3 the cells are skipped and the point alone decides."""
+    import area_names
+    saved = sys.modules.get("h3")
+    sys.modules["h3"] = None                       # makes `import h3` raise ImportError
+    area_names._cell_countries.cache_clear()
+    try:
+        places = [["Sochi", 43.6, 39.73, 3, 0], ["Ioannina", 39.66, 20.85, 4, 0]]
+        assert S.nearest(places, 39.68, 20.68, ["822c27fffffffff"]) == "Ioannina"
+        assert S.nearest(places, 41.26, 41.05, ["822c27fffffffff"]) in ("Sochi", "Turkey")   # sea point: no crash
+    finally:
+        if saved is None:
+            sys.modules.pop("h3", None)
+        else:
+            sys.modules["h3"] = saved
+        area_names._cell_countries.cache_clear()
 
 
 if __name__ == "__main__":
