@@ -101,6 +101,18 @@ distinct-aircraft count has been made for any day, and no variant has been run.
 3. A scoring script applies the corroboration rules and the marks above and writes the results under this file,
    unedited.
 
+## Implementation note (17 Nov 2026, after freezing, before any scoring)
+
+The rules, sets and marks above are unchanged. Two details of the procedure differ from step 1:
+- `pnt_daily.py` writes the distinct counts as a new table, `<day>.region_hourly.parquet` (`region_hour_counts()`;
+  the daily run uploads it from 17 Nov 2026, so set C needs no reprocessing).
+- `pnt_analysis.py` is untouched, so the default grade stays V0. F, H and FH are applied in `tools/event_floor.py`.
+  It regroups V0's anomalous region-hours with the analysis's own grouping and grading, and follows each V0 event into
+  each variant by its region-hours.
+
+`.github/workflows/event-floor.yml` reprocesses each day with `daily_job.py DAY --force --no-upload`, so nothing
+reaches the data releases. It then scores; the day files and the report are workflow artifacts.
+
 ## Results
 
 Not yet run.
