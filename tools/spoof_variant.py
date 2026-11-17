@@ -105,8 +105,15 @@ def h7_h8(out, baseline, days, h7_list, confirmed):
     if baseline:
         base_conf = 0
         for d in days:
-            with open(os.path.join(baseline, f"{d}.summary.json"), encoding="utf-8") as f:
-                base_conf += json.load(f)["episodes_mlat_confirmed"]
+            p = os.path.join(baseline, f"{d}.summary.json")
+            if os.path.exists(p):
+                with open(p, encoding="utf-8") as f:
+                    base_conf += json.load(f)["episodes_mlat_confirmed"]
+            else:   # the private release holds the baseline's events only: count them as spoof_day's summary does
+                ev = read_events(baseline, d)
+                if not ev:
+                    raise SystemExit(f"{d}: no summary or events in the baseline {baseline}")
+                base_conf += sum(1 for e in ev if e.get("mlat_dis"))
         res["H8"] = {"confirmed": confirmed, "baseline": base_conf, "min": int(H8_SHARE * base_conf + 0.999999),
                      "pass": confirmed >= H8_SHARE * base_conf}
     path = h7_list or (os.path.join(baseline, "new_controls.json") if baseline else None)
