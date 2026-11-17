@@ -73,6 +73,10 @@ def map_day(day, path):
     obj = {"day": day, "licence": "ODbL 1.0; derived from adsb.lol",
            "cols": ["h3", "aircraft", "bad_live", "bad_raw", "capable", "capable_bad10"],
            "cells": [[r["h3"], r["aircraft"], r["bad_nacp_live"], r["bad_nacp"], r["capable"], r["cap_bad_acc10"]] for r in rows]}
+    if rows and rows[0].get("bad_nacp_any") is not None:    # days processed from 17 Nov 2026 (pnt_daily bad_nacp_any)
+        obj["cols"].append("bad_any")
+        for c, r in zip(obj["cells"], rows):
+            c.append(r["bad_nacp_any"])
     return write(path, obj), stats(obj)
 
 
