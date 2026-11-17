@@ -3,6 +3,7 @@
 arrived or left. Behaviour only, never intent.
 
   python tools/geo_region.py pull [--day D] [--out DIR] [--upload]        # one gp query: inventory, element sets, events
+  python tools/geo_region.py pull --from-orbit [--upload]                 # the same from Orbit's day file (from 16 Nov 2026)
   python tools/geo_region.py backfill --since 2026-07-01 --events-from 2026-07-29 [--out DIR] [--upload]
                                                                           # gp_history once per object, then replay days
   python tools/geo_region.py replay --events-from 2026-07-29 [--out DIR] [--upload]  # the replay alone, from held files
@@ -324,6 +325,35 @@ def gp_near_geo(out, st=None, busy=None):
     return data
 
 
+# From 16 Nov 2026 the GEO region is Orbit's (the boundary Tom accepted: Orbit owns objects in orbit, Noisefloor owns
+# signals). Orbit makes the one gp query on the shared account (orbit/geo_region.py there, the same rules) and
+# publishes each day's file on its public release geo-YYYY. `pull --from-orbit` reads that file instead of asking
+# Space-Track, turns its objects back into gp records and runs the same pull, so Noisefloor's /geo page keeps its
+# files until the page moves to Orbit (step 4 of Orbit's doctrine/geo-move-plan.md).
+ORBIT_DAY = "https://github.com/metacog-osint/orbit/releases/download/geo-{year}/{day}.geo-region.json"
+ORBIT_KEYS = {"norad": "NORAD_CAT_ID", "name": "OBJECT_NAME", "cospar": "OBJECT_ID", "type": "OBJECT_TYPE",
+              "owner": "COUNTRY_CODE", "launch": "LAUNCH_DATE", "rcs": "RCS_SIZE", "epoch": "EPOCH", "n": "MEAN_MOTION",
+              "e": "ECCENTRICITY", "i": "INCLINATION", "raan": "RA_OF_ASC_NODE", "argp": "ARG_OF_PERICENTER",
+              "M": "MEAN_ANOMALY", "bstar": "BSTAR", "ndot": "MEAN_MOTION_DOT", "nddot": "MEAN_MOTION_DDOT",
+              "elset": "ELEMENT_SET_NO", "rev": "REV_AT_EPOCH"}
+
+
+def _orbit_day(day):
+    req = urllib.request.Request(ORBIT_DAY.format(year=day[:4], day=day), headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=120) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def from_orbit(doc):
+    """Orbit's day file -> (gp records as Space-Track gives them, Orbit's active list or None, its fetch time)."""
+    if doc.get("schema") != "orbit-geo-region/1" or "objects" not in doc:
+        raise ValueError("not an Orbit GEO day file with objects")
+    cols = doc["object_cols"]
+    recs = [{ORBIT_KEYS[c]: (None if v is None else str(v)) for c, v in zip(cols, row) if c in ORBIT_KEYS}
+            for row in doc["objects"]]
+    return recs, (set(doc["active"]) if doc.get("active") else None), doc.get("fetched_utc")
+
+
 GP_NEAR_GEO = ("class/gp/decay_date/null-val/MEAN_MOTION/{}--{}/ECCENTRICITY/%3C{}/orderby/NORAD_CAT_ID%20asc/format/json"
                .format(N_MIN, N_MAX, E_MAX))
 
@@ -425,10 +455,29 @@ def load_region(out, day):
 
 
 # ---------------------------------------------------------------- commands
-def pull(day, out, upload, records=None, geo_dir=os.path.join(ROOT, "data", "geo")):
-    """One gp query (or `records`, for tests and the backfill's own first query): today's file and new element sets."""
+def pull_from_orbit(day, out, upload, get=_orbit_day, geo_dir=os.path.join(ROOT, "data", "geo")):
+    """Today's file from Orbit's published day file: no Space-Track request. Skips (None) when Orbit has not
+    published the day yet, or when Noisefloor's file already holds Orbit's same fetch."""
+    try:
+        recs, active, fetched = from_orbit(get(day))
+    except Exception as e:
+        print(f"{day}: Orbit's GEO day file not read ({type(e).__name__}: {str(e)[:120]}): skipped; the next run tries again")
+        return None, None
+    if upload:
+        os.makedirs(out, exist_ok=True)
+        release_get([f"{day}.geo-region.json"], out)
+    held = load_region(out, day)
+    if held and fetched and held.get("fetched_utc") == fetched:
+        print(f"{day}: Orbit's file of {fetched} already read: skipped")
+        return None, None
+    return pull(day, out, upload, recs, geo_dir, active=active, fetched=fetched)
+
+
+def pull(day, out, upload, records=None, geo_dir=os.path.join(ROOT, "data", "geo"), active=None, fetched=None):
+    """One gp query (or `records`, for tests, the backfill's own first query and Orbit's day file): today's file and
+    new element sets. `active`: the active list to use (else the GEO board's snapshot); `fetched`: the gp reply's time."""
     os.makedirs(out, exist_ok=True)
-    fetched = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    fetched = fetched or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
     if records is None and upload:
         release_get([f"{day}.geo-region.json"], out)
         held = load_region(out, day)
@@ -454,7 +503,9 @@ def pull(day, out, upload, records=None, geo_dir=os.path.join(ROOT, "data", "geo
     prev_doc = load_region(out, yday)
     prev = {int(k): {"region": v[0], "epoch": v[1]} for k, v in prev_doc["regions"].items()} if prev_doc else None
     inv = from_latest(latest, prev)
-    evs = events(prev, inv, day, static, active=active_ids(day, geo_dir)) if prev is not None else []   # a first day lists none
+    if active is None:
+        active = active_ids(day, geo_dir)
+    evs = events(prev, inv, day, static, active=active) if prev is not None else []   # a first day lists none
     objects = []
     for k in sorted(inv):
         s, r = static.get(k, {}), latest[k]
@@ -555,6 +606,7 @@ def main():
     p.add_argument("--day", default=datetime.now(timezone.utc).strftime("%Y-%m-%d"))
     p.add_argument("--out", default=os.path.join(ROOT, "data", "geo", "region"))
     p.add_argument("--upload", action="store_true")
+    p.add_argument("--from-orbit", action="store_true", help="read Orbit's published day file; no Space-Track request")
     b = sub.add_parser("backfill")
     b.add_argument("--since", required=True, help="first epoch to fetch (YYYY-MM-DD); fetched once per object, ever")
     b.add_argument("--events-from", required=True, help="first day with events (a week or more after --since)")
@@ -566,7 +618,7 @@ def main():
     r.add_argument("--upload", action="store_true")
     a = ap.parse_args()
     if a.cmd == "pull":
-        pull(a.day, a.out, a.upload)
+        (pull_from_orbit if a.from_orbit else pull)(a.day, a.out, a.upload)
     elif a.cmd == "replay":
         replay(a.events_from, a.out, a.upload)
     else:
