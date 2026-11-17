@@ -121,6 +121,14 @@ def test_heldout_extras():
         assert r["H8"] == {"confirmed": 99, "baseline": 100, "min": 98, "pass": True}, r
         assert r["H7"] == {"still_present": 0, "of": 1, "pass": True}, r
         assert V.h7_h8(base, base, ["2025-01-01"], None, 97)["H8"]["pass"] is False
+        # a baseline with events only (the private release, on GitHub): H8 counts its MLAT-confirmed episodes
+        ev_only = os.path.join(tmp, "ev_only")
+        os.makedirs(ev_only)
+        with gzip.open(os.path.join(ev_only, "2025-01-01.events.json.gz"), "wt") as f:
+            json.dump([{**ep, "mlat_dis": 2}, {**ep, "mlat_dis": 0}, {**ep, "mlat_dis": 1}], f)
+        r = V.h7_h8(out, ev_only, ["2025-01-01"], None, 2)
+        assert r["H8"] == {"confirmed": 2, "baseline": 2, "min": 2, "pass": True}, r
+        assert "H7" not in r, r
     finally:
         shutil.rmtree(tmp)
 

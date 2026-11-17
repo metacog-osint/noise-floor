@@ -232,6 +232,54 @@ def test_region_levels_pool_and_sent():
     assert items[0]["geometry"]["type"] == "Polygon"
 
 
+def test_region_announced_tests():
+    """Regions above their usual level on a day inside an announced US GPS test carry the test's id (day overlap, the
+    test's widest radius reaching the region's centre), in history, the site day file, the Today line and the feed."""
+    nm, quiet = (h3.latlng_to_cell(*p, 2) for p in ((35.5, -106.2), (47.5, 19.0)))
+    ds = days(10)
+    sd = {d: {nm: (2800, 0), quiet: (900, 0)} for d in ds[:-1]}
+    sd[ds[-1]] = {nm: (2900, 7), quiet: (900, 6)}
+    d0 = ds[-1]
+    wsmr = {"id": "WSMRNM GPS 26-18 REV 1", "centre": [33.6558, -106.5242], "radii_nm": {"FL400": 381, "50FT AGL": 40},
+            "windows": [[f"{d0}T04:00Z", f"{d0}T12:00Z"]]}
+    far = dict(wsmr, id="FAR", centre=[30.4, -86.8], radii_nm={"FL400": 200})           # Florida: out of reach
+    small = dict(wsmr, id="SMALL", radii_nm={"FL400": 60})                              # 112 nm away: out of reach
+    other_day = dict(wsmr, id="OTHER DAY", windows=[[f"{ds[-2]}T04:00Z", f"{ds[-2]}T12:00Z"]])
+    tests = [wsmr, far, small, other_day]
+    assert SP.region_tests(tests, d0, nm) == ["WSMRNM GPS 26-18 REV 1"]
+    assert SP.region_tests(tests, d0, quiet) == [] and SP.region_tests(None, d0, nm) == []
+    r = SP.regions_now(sd, Places(), tests)
+    by = {x["region"]: x for x in r["above"]}
+    assert r["above_count"] == 2 and r["above_in_tests"] == 1, r
+    assert by[nm]["tests"] == ["WSMRNM GPS 26-18 REV 1"] and "tests" not in by[quiet]
+    assert SP.regions_now(sd, Places())["above_in_tests"] == 0                          # no tests file: no tags
+    d = SP.add_regions({"day": d0}, None, sd, Places(), tests)
+    assert d["tests2"] == {nm: ["WSMRNM GPS 26-18 REV 1"]}, d
+    assert "tests2" not in SP.add_regions({"day": d0, "tests2": {"x": ["old"]}}, None, sd, Places(), [])
+    tmp = tempfile.mkdtemp()
+    try:
+        json.dump({"tests": {"WSMRNM GPS 26-18": wsmr}}, open(os.path.join(tmp, "faa_gps_tests.json"), "w"))
+        assert SP.load_tests(tmp) == [wsmr] and SP.load_tests(os.path.join(tmp, "none")) == []
+    finally:
+        shutil.rmtree(tmp)
+    import board
+    import feed_v2
+    named = [dict(by[nm], near="Albuquerque"), dict(by[quiet], near="Budapest")]
+    sp = {"day": d0, "active": 13, "region_levels": dict(r, above=named)}
+    line = board.spoof_line(sp)
+    assert "in two regions, most near Albuquerque and Budapest (one of them inside an announced US GPS test area);"         in line, line
+    one = dict(r, above=named[:1], above_count=1, above_in_tests=1)
+    assert "most near Albuquerque (inside an announced US GPS test area);" in board.spoof_line({"region_levels": one})
+    f = feed_v2.build({"freshness": {"aircraft_day": d0}, "spoofing": sp, "summary": "", "brief": ""}, [])
+    items = {x["properties"]["title"]: x["properties"] for x in f["features"]
+             if x["properties"]["id"].startswith("noisefloor-spoof-region-above-")}
+    assert not feed_v2.check(f), feed_v2.check(f)
+    p = items["More GPS spoofing than usual near Albuquerque"]
+    assert p["tier"] == "anomaly" and p["summary"].endswith(
+        "Coincides with an announced US GPS test that day (FAA flight advisory WSMRNM GPS 26-18 REV 1), whose area "
+        "covers the region."), p["summary"]
+    assert "announced" not in items["More GPS spoofing than usual near Budapest"]["summary"]
+
 def test_share2():
     import pyarrow as pa
     import pyarrow.parquet as pq

@@ -148,6 +148,8 @@ def upload(day, with_analysis=True, extra=()):
            "--notes", NOTES.format(month=day[:7]), "--latest=false")
         _ASSETS[(REPO, tag)] = {}
     files = outputs(day) if with_analysis else outputs(day)[:4]
+    rh = os.path.join(DAILY, f"{day}.region_hourly.parquet")    # distinct aircraft per region-hour (from 17 Nov 2026)
+    files += [rh] if os.path.exists(rh) else []
     gh("release", "upload", tag, "-R", REPO, "--clobber", *files, *extra, os.path.join(SITE, f"{day}.hotspots.json"))
     gh("release", "upload", tag, "-R", REPO, "--clobber", os.path.join(SITE, f"{day}.map.json"))   # last: marks done
     _ASSETS.pop((REPO, tag), None)
