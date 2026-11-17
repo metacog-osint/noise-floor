@@ -1,0 +1,99 @@
+name: event-floor
+# The pre-registered event-grade test (docs/validation/event-floor.md, frozen in e285899): each day is reprocessed from
+# adsb.lol's raw archive with the current pnt_daily (which adds distinct aircraft per region-hour), analysed with the
+# current grade (V0), then graded under F, H and FH by tools/event_floor.py. Nothing is uploaded to the data releases:
+# the day files and the report are workflow artifacts, and hold counts only (no ICAO addresses).
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "A, B, C (the write-up's sets) and/or YYYY-MM-DD or START:END, space-separated"
+        required: true
+        default: "A B"
+permissions:
+  contents: read
+concurrency:
+  group: event-floor
+  cancel-in-progress: false
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      days: ${{ steps.p.outputs.days }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: p
+        env:
+          DAYS: ${{ inputs.days }}
+        run: |
+          python - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, os
+          from datetime import date, timedelta
+          A = [f"2025-10-{d:02d}" for d in range(9, 26)] + ["2025-11-11", "2025-11-12", "2026-09-22"]
+          B = [(date(2026, 10, 25) + timedelta(k)).isoformat() for k in range(22)]
+          C = [(date(2026, 11, 16) + timedelta(k)).isoformat() for k in range(14)]
+          out = []
+          for t in os.environ["DAYS"].split():
+              if t in ("A", "B", "C"):
+                  out += {"A": A, "B": B, "C": C}[t]
+              elif ":" in t:
+                  d0, d1 = (date.fromisoformat(x) for x in t.split(":"))
+                  out += [(d0 + timedelta(k)).isoformat() for k in range((d1 - d0).days + 1)]
+              else:
+                  out.append(date.fromisoformat(t).isoformat())
+          print("days=" + json.dumps(sorted(set(out))))
+          EOF
+  day:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        day: ${{ fromJSON(needs.plan.outputs.days) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Reprocess the day (no upload)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python pipeline/daily_job.py ${{ matrix.day }} --force --no-upload
+      - name: Grade under V0, F, H, FH
+        run: python tools/event_floor.py day ${{ matrix.day }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ef-${{ matrix.day }}
+          path: data/event_floor/${{ matrix.day }}.event-floor.json
+          retention-days: 90
+  score:
+    needs: day
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: ef-*
+          merge-multiple: true
+          path: data/event_floor
+      - name: Score against the frozen marks
+        run: |
+          python tools/event_floor.py score data/event_floor --report data/event_floor_report.json | tee verdict.json
+          { echo '## Event-floor verdicts'; echo '```'; cat verdict.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: event-floor-report
+          path: |
+            data/event_floor_report.json
+            data/event_floor/*.json
+          retention-days: 90
