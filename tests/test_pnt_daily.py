@@ -196,6 +196,17 @@ def test_heavy_apart():
     assert daily14[hx[0]][7] == 1 and daily14[hx[0]][8] == 0 and minute14[(hx[2], 185)] == [2, 0, 0, 2]
     assert daily14[hx[0]][9] == 1 and daily14[hx[1]][9] == 1   # v1.4: every live A350/A380 counts in heavy_live
     assert P.hex_hour_totals(recs)[(hx[2], 3)] == [4, 2] and tot[(hx[2], 3)] == [2, 0]
+    # distinct aircraft per res-2 region-hour (event-floor test, 16 Nov 2026): one aircraft bad in three res-4 cells of
+    # one region counts three times in the hourly table and once here
+    reg = h3.latlng_to_cell(50.0, 10.0, 2)
+    kids = [h3.str_to_int(c) for c in sorted(h3.cell_to_children(reg, P.RES))[:3]]
+    one = [rec("A359", [(k, 1) for k in kids]), rec("B738", [(kids[0], 0)])]
+    _, hourly1, _ = P.aggregate(one, set(), [set(), set()])
+    assert sum(hourly1[(k, 3)][7] for k in kids) == 3
+    rh = P.region_hour_counts(one, set(), [set(), set()])
+    assert rh[(reg, 3)] == [2, 1, 1], rh
+    assert P.region_hour_counts(one, set(), [{(k, 3) for k in kids}, set()])[(reg, 3)] == [2, 0, 0]   # latched: not live
+    assert P.region_hour_counts(one, {0}, [set(), set()])[(reg, 3)] == [1, 0, 0]          # dropped suspect
 
 
 def test_position_loss():
