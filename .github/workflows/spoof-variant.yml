@@ -1,5 +1,5 @@
 name: spoof-variant
-# Score a spoofing detector variant on the 12 held-out days (tools/spoof_heldout.py, H1-H6) from the day caches,
+# Score a spoofing detector variant on the 12 held-out days (tools/spoof_variant.py: H1-H6 and H8) from the day caches,
 # on GitHub instead of the PC. The caches and the H6 baseline's events are in a PRIVATE release
 # (tools/spoof_cache_release.py, repo metacog-osint/noise-floor-archive), read with the read-only token
 # SPOOF_CACHE_TOKEN. The reruns' outputs hold ICAO addresses, so they never leave the job: only aggregate scores and
@@ -39,7 +39,7 @@ jobs:
           if [ -z "$DAYS" ]; then sel=--heldout; else sel="$DAYS"; fi
           python tools/spoof_cache_release.py fetch $sel --dest "$RUNNER_TEMP/cache" --baseline-dest "$RUNNER_TEMP/base"
           ls "$RUNNER_TEMP/cache" > days.txt
-      - name: Rerun the variant from the caches
+      - name: Rerun and score the variant (tools/spoof_variant.py)
         env:
           SET: ${{ inputs.set }}
           LABEL: ${{ inputs.label }}
@@ -50,45 +50,35 @@ jobs:
             args+=(--set "$kv")
           done
           [[ "$LABEL" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "bad label"; exit 1; }
-          # CPU time of the rerun and all its pool workers (RUSAGE_CHILDREN counts waited-for descendants)
+          # The same tool as on the PC: reruns, then H1-H6 and H8 against the baseline's events. H7 needs the local
+          # new_controls.json and the Lima check needs local outside files, so both stay on the PC.
+          # CPU time of the whole tool and its pool workers (RUSAGE_CHILDREN counts waited-for descendants).
           python - "$RUNNER_TEMP" "$LABEL" "${args[@]}" <<'EOF'
           import json, os, resource, subprocess, sys
           tmp, label, sets = sys.argv[1], sys.argv[2], sys.argv[3:]
           days = open("days.txt").read().split()
-          with open("rerun.jsonl", "w") as out:
-              r = subprocess.run([sys.executable, "tools/spoof_day.py", "rerun", *days, "--cache", f"{tmp}/cache",
-                                  "--out", f"{tmp}/out", "--workers", str(len(os.sched_getaffinity(0))),
-                                  *sets, "--label", label], stdout=out)
+          r = subprocess.run([sys.executable, "tools/spoof_variant.py", "--days", *days, "--cache", f"{tmp}/cache",
+                              "--out", f"{tmp}/out", "--baseline", f"{tmp}/base", "--report", "report.json",
+                              "--workers", str(len(os.sched_getaffinity(0))), "--no-lock", *sets, "--label", label])
           u = resource.getrusage(resource.RUSAGE_CHILDREN)
           json.dump({"cpu_seconds": round(u.ru_utime + u.ru_stime, 1), "max_rss_kb": u.ru_maxrss}, open("cpu.json", "w"))
           sys.exit(r.returncode)
           EOF
           cat cpu.json
-      - name: Score (held-out checks)
-        run: |
-          python tools/spoof_heldout.py "$RUNNER_TEMP/out" --days $(cat days.txt) --baseline "$RUNNER_TEMP/base" \
-            > heldout.json
       - name: Report (aggregates only, no ICAO addresses)
-        env:
-          SET: ${{ inputs.set }}
-          LABEL: ${{ inputs.label }}
         run: |
           python - <<'EOF'
           import json, os
-          per = [json.loads(l) for l in open("rerun.jsonl") if l.startswith("{")]
-          held = json.load(open("heldout.json"))
-          cpu = json.load(open("cpu.json"))["cpu_seconds"]
-          rep = {"set": os.environ["SET"], "label": os.environ["LABEL"], "commit": os.environ["GITHUB_SHA"],
-                 "cpus": os.cpu_count(), "cpu_seconds": round(cpu, 1),
-                 "days": [{k: p[k] for k in ("day", "seconds", "aircraft", "episodes", "aircraft_with_episodes")}
-                          for p in per],
-                 "heldout": held}
+          rep = json.load(open("report.json"))
+          held = rep.get("heldout", {})
+          rep["commit"] = os.environ["GITHUB_SHA"]
+          rep["job_cpu_seconds"] = json.load(open("cpu.json"))["cpu_seconds"]
           json.dump(rep, open("report.json", "w"), indent=1)
-          wall = sum(p["seconds"] for p in per)
-          lines = [f"## Spoofing variant `{rep['label']}` ({rep['set'] or 'current method'})", "",
-                   f"{len(per)} days, reruns {wall:.0f} s wall, {cpu:.0f} s CPU on {rep['cpus']} CPUs", "",
-                   "| Check | Result | Pass |", "|---|---|---|"]
-          for k in ("H1", "H2", "H3", "H4", "H5", "H6"):
+          t = rep["totals"]
+          lines = [f"## Spoofing variant `{rep['label']}` ({json.dumps(rep['overrides']) if rep['overrides'] else 'current method'})",
+                   "", f"{t['days']} days, reruns {t['seconds']:.0f} s wall, {rep['job_cpu_seconds']:.0f} s CPU on "
+                   f"{rep['cpu_count']} CPUs", "", "| Check | Result | Pass |", "|---|---|---|"]
+          for k in ("H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8"):
               if k in held:
                   v = {x: y for x, y in held[k].items() if x != "pass"}
                   lines.append(f"| {k} | `{json.dumps(v)[:180]}` | {held[k].get('pass')} |")
