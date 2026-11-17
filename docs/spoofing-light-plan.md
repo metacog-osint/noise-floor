@@ -251,8 +251,15 @@ days, so the October days rest on fewer. Scored with the same code as above (`sp
   rules on every day.
 - **P1 (noise): holds.** Control-box readings 39 → 16. The 16 left are in two boxes: us_west 9 (6 of them in the region
   centred near 35.5° N, 106.2° W in New Mexico, 5-10 aircraft-hours against a usual of 0) and c_europe 7 (4 near
-  49.5° N, 14.1° E, 2 near 50.1° N, 9.9° E, 1 near 50.5° N, 5.7° E; 5-11 against usual 0-2). Whether these are announced tests or detector
-  noise is not checked here.
+  49.5° N, 14.1° E, 2 near 50.1° N, 9.9° E, 1 near 50.5° N, 5.7° E; 5-11 against usual 0-2).
+  **The us_west readings are announced tests, not noise (checked 16 Nov 2026, evening).** Against the FAA's SPANS GPS
+  test advisories (`declared-data` release, `faa_gps_tests.json`): all 9 fall on days of a White Sands Missile Range
+  test (WSMRNM GPS 26-45, 26-47 REV 2, 26-18 REV 1) whose announced radius covers the region. For the New Mexico region
+  (H3 res 2 `8248dffffffffff`) over all 40 days: 29 were test days, and spoofed aircraft-hours were above 0 on 12 of
+  them and on none of the other 11 (all 12 landing on test days by chance: hypergeometric p = 0.009). Reruns of 7, 9
+  and 10 Nov from the day caches: all 23 active episodes over that region lie inside the test's 04:00-12:00 UTC window.
+  So the us_west control box is not quiet on test days. The c_europe readings are not checked (no matching notice
+  source is ingested yet).
 - **P2 (signal kept): holds.** Readings in the spoofing groups 160 → 122 (76% kept; the test needs 50%). Of the 169
   dropped: 89 elsewhere, 23 control, 19 South Asia, 14 Middle East, 13 Black Sea, 11 Baltic and W Russia.
 - **P3 (persistence): holds.** Dropped readings were above again the next day (old rule) 44 times in 166, 27%; kept
