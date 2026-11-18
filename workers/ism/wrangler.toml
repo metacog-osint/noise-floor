@@ -1,0 +1,20 @@
+name = "nf-ism"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = false    # no public URL: the Worker only runs on its cron
+preview_urls = false
+
+# ESA posts each hour's nowcast about 2 h after its valid time and replaces it an hour later, so four tries an hour
+# catch every hour; a run for an hour already stored does nothing. Off the :00 and :05 marks the other crons use.
+[triggers]
+crons = ["7,22,37,52 * * * *"]
+
+# Private bucket (no public access, no custom domain). ESA's S2P terms (3.2) keep the raw grids from being passed on.
+[[r2_buckets]]
+binding = "ISM"
+bucket_name = "nf-ism-archive"
+
+# Optional secret HC_PING_URL (a Healthchecks.io check): `wrangler secret put HC_PING_URL`.
+
+[observability]
+enabled = true
