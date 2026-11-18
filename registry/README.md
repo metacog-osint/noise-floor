@@ -16,7 +16,7 @@ anything that couldn't be read is marked UNVERIFIED in the row. Rows tagged `cla
 | Column | Meaning |
 |---|---|
 | `id` | Stable identifier, used in code and in `raw_items` |
-| `lane` | gnss-observed · maritime · declared · context · satcom · lf-hf · emitters · community · attribution |
+| `lane` | gnss-observed · maritime · declared · context · satcom · lf-hf · emitters · community · attribution · military-air |
 | `licence` | The licence or terms as found. UNVERIFIED marks anything not read at the source |
 | `commercial` | yes (commercial use allowed) · no (non-commercial only) · ask (permission needed) · unverified |
 | `use` | What the project may do with it (below) |

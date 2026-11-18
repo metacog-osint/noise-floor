@@ -11,7 +11,10 @@ places where aircraft were newly shown at a false position (spoofing; tools/spoo
 the aircraft really were), plus one daily summary. From 16 Nov 2026 (Tom's yes) also the space weather files
 (tools/swx_site.py, board section "swx"): the day's highest limb S4 cells (H3 res-1 polygons) and every ground ROTI
 station (points), each at its highest UTC hour. Those are routine observations with no baseline: no tier above routine
-is used for them until a baseline is set and stated, and neither is read against S4 alert levels. Warnings (judged, with likelihood and confidence) come later through doctrine/indicators.json.
+is used for them until a baseline is set and stated, and neither is read against S4 alert levels. Military air
+(tools/milair.py, SITE/data/milair/reading.json, from 18 Nov 2026): one routine observation per region, military
+aircraft-hours against the same UTC hours of the 28 days before, every count a lower bound, each item carrying the
+lane's `health`; tier routine whatever the level. Warnings (judged, with likelihood and confidence) come later through doctrine/indicators.json.
 
 The doctrine kit's tradecraft linter (doctrine/kit) checks the feed before it is written. A feed that fails is not
 written, the reason is printed, and the deploy carries on.
@@ -48,7 +51,12 @@ IGS = {"id": "cors-igs", "publisher": "International GNSS Service (IGS) and the 
        "independence_group": "igs-stations", "source_type": "dataset",
        "descriptor": "Daily 30 s RINEX observation files of 17 IGS stations and the IGS merged broadcast orbits; posted "
                      "the next day; evaluated against INGV eSWua ground receivers (docs/validation/ground-roti.md)."}
-SWX_NCF = ["provide_pnt"]                              # doctrine/ncf_map.json, product space-weather
+PLANE_ALERT = {"id": "plane-alert-db", "publisher": "SDR-Enthusiasts (plane-alert-db)",
+               "url": "https://github.com/sdr-enthusiasts/plane-alert-db", "licence": "ODbL 1.0", "grade": "C3",
+               "independence_group": "plane-alert-db", "source_type": "dataset",
+               "descriptor": "Volunteer-kept list of military aircraft ICAO addresses with type names; a slimmed "
+                             "snapshot is committed (registry/plane_alert_mil.csv) and read at run time, never fetched."}
+SWX_NCF = ["provide_pnt"]                            # doctrine/ncf_map.json, product space-weather
 ROTI_STATIONS = 17                                     # stations in the frozen method (docs/validation/ground-roti.md)
 COSMIC2_SATELLITES = 6                                 # COSMIC-2 receivers; only some deliver podTc2 files
 COMMON = {"contract": CONTRACT, "program": "noisefloor", "status": "actual", "msg_type": "new", "human_review": "none",
@@ -187,7 +195,7 @@ def tags(points, extra=None, near_at=None):
 DAY_ONLY = {"data_as_of_precision": "day"}
 
 
-def build(board, days, now=None):
+def build(board, days, now=None, milair=None):
     now = now or datetime.now(timezone.utc)
     day = (board.get("freshness") or {}).get("aircraft_day")
     if not day:
@@ -204,6 +212,8 @@ def build(board, days, now=None):
         merged = {**base, **props}
         if merged.get("data_as_of_precision") is None:    # an item with a real time (an event) is not date-only
             merged.pop("data_as_of_precision", None)
+        if "coverage_fraction" in props and props["coverage_fraction"] is None:   # not the GNSS day's coverage
+            merged.pop("coverage_fraction")
         feats.append({"type": "Feature", "geometry": geom, "properties": merged})
 
     add(None, {
@@ -370,6 +380,7 @@ def build(board, days, now=None):
             "requirement_ids": ["NF-EEI-3"], **tags(pts)})
 
     swx_items(board.get("swx") or {}, add, published)
+    milair_items(milair, add, published, now)
 
     return {
         "type": "FeatureCollection", "contract": CONTRACT, "program": "noisefloor", "generated_at": published,
@@ -464,6 +475,71 @@ def swx_items(sw, add, published):
             **tags([(s["lat"], s["lon"])], near_at=[s["lat"], s["lon"]])})
 
 
+MILAIR_STALE_DAYS = 7                                  # withhold military air items whose newest day is older
+
+
+def milair_health(rd, published, now):
+    """The military air lane's health, carried on each of its items: fresh up to 2 days behind (the archive posts
+    the next morning), late up to 4, stale after."""
+    age = (now.date() - datetime.strptime(rd["day"], "%Y-%m-%d").date()).days
+    state = "fresh" if age <= 2 else "late" if age <= 4 else "stale"
+    return {"lane": "milair", "state": state, "newest_day": rd["day"], "days_behind": age,
+            "made_at": rd.get("made_at"), "checked_at": published}
+
+
+def milair_items(rd, add, published, now):
+    """Military air (tools/milair.py): one routine observation per region with aircraft seen today or usually."""
+    if not rd or not rd.get("regions"):
+        return
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import milair
+    health = milair_health(rd, published, now)
+    if health["days_behind"] > MILAIR_STALE_DAYS:
+        return
+    day = rd["day"]
+    src = [{**ADSBLOL, "accessed_at": rd.get("made_at") or published}, {**PLANE_ALERT, "accessed_at": published}]
+    for rid, meta in (rd.get("regions_meta") or {}).items():
+        r = rd["regions"].get(rid)
+        if not r or not (r[milair.ALL]["distinct"] or r[milair.ALL]["usual_distinct"]):
+            continue
+        a = r[milair.ALL]
+        boxes = [(s, n, w, e) for w, s, e, n in meta["boxes"]]     # milair [W, S, E, N] -> this file's [S, N, W, E]
+        geom = box_polygon(boxes[0]) if len(boxes) == 1 else {
+            "type": "MultiPolygon", "coordinates": [box_polygon(b)["coordinates"] for b in boxes]}
+        pts = [(la0 + (la1 - la0) * (i + 0.5) / 12, lo0 + (lo1 - lo0) * (j + 0.5) / 12)   # finer than box_points:
+               for la0, la1, lo0, lo1 in boxes for i in range(12) for j in range(12)]        # these boxes are large
+        props = {
+            "id": f"noisefloor-milair-{rid}-{day}", "kind": "observation", "tier": "routine",
+            "product_category": "current", "precision_class": "area",
+            "title": (f"Military aircraft seen over {meta['name']}: {a['distinct']:,} on {plain_day(day)}"
+                      + (f", {milair.level_words(a)}" if milair.baseline_ok(r) else "") + " (a lower bound)"),
+            "summary": milair.region_sentence(meta["name"], r, day),
+            "measure": {"name": "military_aircraft_hours", "value": a["aircraft_hours"],
+                        "unit": "aircraft-hours: distinct military aircraft per UTC hour, summed over the day; a lower bound"},
+            "measures": {"distinct_aircraft": a["distinct"], "usual_distinct_aircraft": a["usual_distinct"],
+                         "ratio": a["ratio"], "level": a["level"], "band": a["band"],
+                         "mlat_only_share": a["mlat_only_share"], "week_mean_distinct": a["week_mean_distinct"],
+                         "by_role": {k: {"distinct": r[k]["distinct"], "aircraft_hours": r[k]["aircraft_hours"],
+                                         "usual_aircraft_hours": r[k]["usual_aircraft_hours"], "level": r[k]["level"],
+                                         "band": r[k]["band"]} for k in milair.HEADLINE}},
+            "data_as_of": f"{day}T00:00:00Z", "coverage_fraction": None,
+            "health": {**health, "baseline_days": r["baseline"]["days"], "min_baseline_days": r["baseline"]["min_days"],
+                       "day_type": r["baseline"]["day_type"]},
+            "sources": src, "pmesii_pt": ["military"], "ascope": ["capabilities"],
+            "requirement_ids": ["NF-PIR-6", "NF-EEI-6"], "watchfloor_zone": meta.get("watchfloor"),
+            **tags(pts)}
+        if milair.baseline_ok(r):
+            b = r["baseline"]
+            props["measure"]["expected"] = a["usual_aircraft_hours"]
+            props["baseline_ref"] = {
+                "id": "noisefloor-milair-same-hours-28d",
+                "window": f"the same UTC hours on the {b['days']} {b['day_type']}s in the 28 days before",
+                "type": "rolling", "version": "1",
+                "rule": "median of the days' totals over the same hours, workdays and weekends apart; above at 2x with a floor of 5 aircraft, "
+                        "below at half (tools/milair.py)"}
+        add(geom, props)
+
+
 def check(feed):
     problems = []
     for f in feed["features"]:
@@ -475,7 +551,8 @@ def write(site, board=None, now=None):
     board = board if board is not None else load(os.path.join(site, "data", "board.json"))
     if not board:
         raise ValueError("no board.json")
-    feed = build(board, load(os.path.join(site, "data", "gnss", "days.json"), []) or [], now)
+    feed = build(board, load(os.path.join(site, "data", "gnss", "days.json"), []) or [], now,
+                 load(os.path.join(site, "data", "milair", "reading.json")))
     problems = check(feed)
     if problems:
         raise ValueError(f"{len(problems)} contract errors, first: {problems[0]}")

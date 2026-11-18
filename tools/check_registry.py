@@ -13,7 +13,7 @@ import csv, os, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PATH = os.path.join(ROOT, "registry", "sources.csv")
 COLS = ["id", "name", "lane", "gives", "access", "licence", "commercial", "use", "phase", "assessed", "notes"]
-LANES = {"gnss-observed", "maritime", "declared", "context", "satcom", "lf-hf", "emitters", "community", "attribution"}
+LANES = {"gnss-observed", "maritime", "declared", "context", "satcom", "lf-hf", "emitters", "community", "attribution", "military-air"}
 COMMERCIAL = {"yes", "no", "ask", "unverified"}
 USES = {"ingest", "ingest-after-ok", "private-watch", "cite-only", "visual-only", "later", "exclude"}
 

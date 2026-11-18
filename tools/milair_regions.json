@@ -1,0 +1,30 @@
+{
+ "note": "Regions for tools/milair.py. Boxes are [west, south, east, north] in degrees, copied from Watchfloor's published zone boxes (metacog-osint/more-context, scripts/build_interests.py BOXES, 18 Nov 2026), keyed by Watchfloor's warning problem. Watchfloor's Red Sea box overlaps its Gulf box, so here it is split into two boxes that stop at the Gulf box's edge: no two regions overlap (tests/test_milair.py checks). The Gulf comes first. 'weekend' gives the region's weekend days for the baseline (Python weekday numbers, Monday 0): Friday-Saturday [4, 5] where Watchfloor's zone countries keep that weekend (the Gulf states, Israel, Yemen; Iran's is Friday), and the data show the dip on those days; else Saturday-Sunday [5, 6], the default. Watchfloor's Somalia box (WF-WP-Z19) is left out for now because it overlaps the Red Sea box.",
+ "version": "1",
+ "regions": [
+  {"id": "gulf", "weekend": [4, 5], "name": "the Persian Gulf and Strait of Hormuz", "watchfloor": "WF-WP-Z11",
+   "boxes": [[47.5, 23.5, 60.0, 30.5]]},
+  {"id": "red-sea", "weekend": [4, 5], "name": "the Red Sea, Gulf of Aden and western Arabia", "watchfloor": "WF-WP-Z11",
+   "boxes": [[32.0, 11.0, 51.5, 23.5], [32.0, 23.5, 47.5, 30.0]]},
+  {"id": "levant", "weekend": [4, 5], "name": "the eastern Mediterranean Levant coast", "watchfloor": "WF-WP-Z10",
+   "boxes": [[33.5, 31.0, 36.0, 34.7]]},
+  {"id": "black-sea", "name": "the Black Sea and Sea of Azov", "watchfloor": "WF-WP-Z01",
+   "boxes": [[27.5, 43.0, 40.0, 47.5]]},
+  {"id": "baltic", "name": "the Baltic Sea", "watchfloor": "WF-WP-Z07",
+   "boxes": [[10.0, 53.5, 30.5, 66.0]]},
+  {"id": "barents", "name": "the Barents Sea", "watchfloor": "WF-WP-Z07",
+   "boxes": [[15.0, 68.0, 45.0, 76.0]]},
+  {"id": "taiwan", "name": "the Taiwan Strait and approaches", "watchfloor": "WF-WP-Z02",
+   "boxes": [[117.0, 21.0, 123.5, 26.5]]},
+  {"id": "korea", "name": "the Yellow Sea and East Sea around Korea", "watchfloor": "WF-WP-Z03",
+   "boxes": [[123.5, 33.0, 132.5, 43.0]]},
+  {"id": "south-china-sea", "name": "the South China Sea", "watchfloor": "WF-WP-Z08",
+   "boxes": [[105.0, 4.0, 121.0, 21.0]]},
+  {"id": "arabian-sea", "name": "the northern Arabian Sea and Kashmir", "watchfloor": "WF-WP-Z06",
+   "boxes": [[66.0, 22.0, 78.0, 36.0]]},
+  {"id": "venezuela", "name": "the Venezuelan Caribbean", "watchfloor": "WF-WP-Z05",
+   "boxes": [[-73.5, 8.5, -58.0, 13.5]]},
+  {"id": "cuba", "name": "Cuban waters and the Florida Straits", "watchfloor": "WF-WP-Z15",
+   "boxes": [[-85.5, 19.5, -74.0, 24.5]]}
+ ]
+}
