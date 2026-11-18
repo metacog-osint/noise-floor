@@ -258,7 +258,8 @@ loaded automatically; read it when you need the background.
   `<day>.spoof-targets.json` (every spoofed-to cluster, `tools/spoof_summary.py`; `docs/validation/spoofing-lima.md`); redo
   them on published days with backfill.yml `spoofing_only` (`daily_job.py --spoof-only`, downloads the raw archive).
   From 17 Nov 2026 it also uploads `<day>.coverage.json` (covered res-4 cells per H3 res-2 region and `thin`, fewer
-  than 10; `tools/feeder_coverage.py`, `docs/validation/coverage-flag.md`; Tom's yes 17 Nov 2026).
+  than 10; `tools/feeder_coverage.py`, `docs/validation/coverage-flag.md`; Tom's yes 17 Nov 2026). Published days from 1 Oct 2025 got theirs on 18 Nov 2026,
+  built from each `map.json` and uploaded with `gh release upload --clobber` (no download, no Actions minutes).
   **Scoring a detector variant on GitHub (16 Nov 2026):** `.github/workflows/spoof-variant.yml` (Run workflow: `set`,
   `label`, `days`; each run is Tom's call) runs `tools/spoof_variant.py` on the 12 held-out days' caches and scores H1-H6 and H8 (H7 and the
   Lima check stay on the PC). The caches
