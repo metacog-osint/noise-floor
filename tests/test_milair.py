@@ -237,6 +237,13 @@ def test_site_and_feed():
         late = feed_v2.build(board, [], now=now + timedelta(days=3), milair=rd)
         lp = next(f["properties"] for f in late["features"] if f["properties"]["id"].startswith("noisefloor-milair-"))
         assert lp["health"]["state"] == "late"
+        # coverage_fraction: the receiver network's on the item's own day, as the GNSS items carry it
+        days = ([{"day": f"2026-10-{d:02d}", "hexes": 1000} for d in range(14, 32)]
+                + [{"day": f"2026-11-{d:02d}", "hexes": 1000} for d in range(1, 10)]
+                + [{"day": DAY, "hexes": 900}])
+        cp = next(f["properties"] for f in feed_v2.build(board, days, now=now, milair=rd)["features"]
+                  if f["properties"]["id"].startswith("noisefloor-milair-"))
+        assert cp["coverage_fraction"] == 0.9, cp.get("coverage_fraction")
         gone = feed_v2.build(board, [], now=now + timedelta(days=9), milair=rd)
         assert not [f for f in gone["features"] if f["properties"]["id"].startswith("noisefloor-milair-")]
         # no reading file: no items, and the rest of the feed is untouched
