@@ -329,7 +329,10 @@ def gp_near_geo(out, st=None, busy=None):
 # signals). Orbit makes the one gp query on the shared account (orbit/geo_region.py there, the same rules) and
 # publishes each day's file on its public release geo-YYYY. `pull --from-orbit` reads that file instead of asking
 # Space-Track, turns its objects back into gp records and runs the same pull, so Noisefloor's /geo page keeps its
-# files until the page moves to Orbit (step 4 of Orbit's doctrine/geo-move-plan.md).
+# files until the page moves to Orbit (step 4 of Orbit's doctrine/geo-move-plan.md). The regions and events are
+# Orbit's as published, not worked out again here: Orbit can pull a day twice (a late fallback run), and an event
+# worked out against Noisefloor's older copy of the day before lands on the wrong day (LDPE-2's return, 17 Nov 2026,
+# was dated 18 Nov here). So yesterday's file is also read again when Orbit's copy of it is newer.
 ORBIT_DAY = "https://github.com/metacog-osint/orbit/releases/download/geo-{year}/{day}.geo-region.json"
 ORBIT_KEYS = {"norad": "NORAD_CAT_ID", "name": "OBJECT_NAME", "cospar": "OBJECT_ID", "type": "OBJECT_TYPE",
               "owner": "COUNTRY_CODE", "launch": "LAUNCH_DATE", "rcs": "RCS_SIZE", "epoch": "EPOCH", "n": "MEAN_MOTION",
@@ -345,13 +348,17 @@ def _orbit_day(day):
 
 
 def from_orbit(doc):
-    """Orbit's day file -> (gp records as Space-Track gives them, Orbit's active list or None, its fetch time)."""
+    """Orbit's day file -> (gp records as Space-Track gives them, Orbit's active list or None, its fetch time,
+    {"regions", "events"} as Orbit published them)."""
     if doc.get("schema") != "orbit-geo-region/1" or "objects" not in doc:
         raise ValueError("not an Orbit GEO day file with objects")
+    if "regions" not in doc or "events" not in doc:
+        raise ValueError("Orbit's GEO day file has no regions or events")
     cols = doc["object_cols"]
     recs = [{ORBIT_KEYS[c]: (None if v is None else str(v)) for c, v in zip(cols, row) if c in ORBIT_KEYS}
             for row in doc["objects"]]
-    return recs, (set(doc["active"]) if doc.get("active") else None), doc.get("fetched_utc")
+    return (recs, (set(doc["active"]) if doc.get("active") else None), doc.get("fetched_utc"),
+            {"regions": doc["regions"], "events": doc["events"]})
 
 
 GP_NEAR_GEO = ("class/gp/decay_date/null-val/MEAN_MOTION/{}--{}/ECCENTRICITY/%3C{}/orderby/NORAD_CAT_ID%20asc/format/json"
@@ -455,27 +462,42 @@ def load_region(out, day):
 
 
 # ---------------------------------------------------------------- commands
+def _same_as_orbit(held, fetched, orbit):
+    return bool(held and fetched and held.get("fetched_utc") == fetched and held.get("events") == orbit["events"]
+                and held.get("regions") == orbit["regions"])
+
+
 def pull_from_orbit(day, out, upload, get=_orbit_day, geo_dir=os.path.join(ROOT, "data", "geo")):
-    """Today's file from Orbit's published day file: no Space-Track request. Skips (None) when Orbit has not
-    published the day yet, or when Noisefloor's file already holds Orbit's same fetch."""
+    """Today's file from Orbit's published day file: no Space-Track request. Yesterday's file is first read again
+    when Orbit's copy of it differs from Noisefloor's. Skips (None) when Orbit has not published the day yet, or
+    when Noisefloor's file already holds Orbit's same fetch, regions and events."""
     try:
-        recs, active, fetched = from_orbit(get(day))
+        recs, active, fetched, orbit = from_orbit(get(day))
     except Exception as e:
         print(f"{day}: Orbit's GEO day file not read ({type(e).__name__}: {str(e)[:120]}): skipped; the next run tries again")
         return None, None
+    yday = (datetime.strptime(day, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
     if upload:
         os.makedirs(out, exist_ok=True)
-        release_get([f"{day}.geo-region.json"], out)
-    held = load_region(out, day)
-    if held and fetched and held.get("fetched_utc") == fetched:
+        release_get([f"{day}.geo-region.json", f"{yday}.geo-region.json"], out)
+    try:
+        y_recs, y_active, y_fetched, y_orbit = from_orbit(get(yday))
+    except Exception:
+        y_recs = None                                       # no Orbit file for yesterday: keep Noisefloor's
+    y_held = load_region(out, yday)
+    if y_recs is not None and y_held is not None and not _same_as_orbit(y_held, y_fetched, y_orbit):
+        print(f"{yday}: Orbit's file of {y_fetched} differs from the one held ({y_held.get('fetched_utc')}): read again")
+        pull(yday, out, upload, y_recs, geo_dir, active=y_active, fetched=y_fetched, orbit=y_orbit)
+    if _same_as_orbit(load_region(out, day), fetched, orbit):
         print(f"{day}: Orbit's file of {fetched} already read: skipped")
         return None, None
-    return pull(day, out, upload, recs, geo_dir, active=active, fetched=fetched)
+    return pull(day, out, upload, recs, geo_dir, active=active, fetched=fetched, orbit=orbit)
 
 
-def pull(day, out, upload, records=None, geo_dir=os.path.join(ROOT, "data", "geo"), active=None, fetched=None):
+def pull(day, out, upload, records=None, geo_dir=os.path.join(ROOT, "data", "geo"), active=None, fetched=None, orbit=None):
     """One gp query (or `records`, for tests, the backfill's own first query and Orbit's day file): today's file and
-    new element sets. `active`: the active list to use (else the GEO board's snapshot); `fetched`: the gp reply's time."""
+    new element sets. `active`: the active list to use (else the GEO board's snapshot); `fetched`: the gp reply's time;
+    `orbit`: Orbit's published {"regions", "events"}, used as they are."""
     os.makedirs(out, exist_ok=True)
     fetched = fetched or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
     if records is None and upload:
@@ -497,15 +519,22 @@ def pull(day, out, upload, records=None, geo_dir=os.path.join(ROOT, "data", "geo
     yday = (datetime.strptime(day, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
     months = sorted({month_of(r["epoch"]) for r in rows if r["epoch"] >= HISTORY_START})
     if upload:
-        release_get([f"geo-elements-{m}.parquet" for m in months] + [f"{yday}.geo-region.json"], out)
+        release_get([f"geo-elements-{m}.parquet" for m in months] + ([] if orbit else [f"{yday}.geo-region.json"]), out)
     merged = merge_elements(out, rows)
     latest = {r["norad"]: r for r in rows}
-    prev_doc = load_region(out, yday)
-    prev = {int(k): {"region": v[0], "epoch": v[1]} for k, v in prev_doc["regions"].items()} if prev_doc else None
-    inv = from_latest(latest, prev)
-    if active is None:
-        active = active_ids(day, geo_dir)
-    evs = events(prev, inv, day, static, active=active) if prev is not None else []   # a first day lists none
+    if orbit is not None:
+        inv = {int(k): {"region": v[0], "epoch": v[1]} for k, v in orbit["regions"].items()}
+        missing = set(inv) - set(latest)
+        if missing:
+            raise ValueError(f"Orbit's regions list {len(missing)} objects with no element set, e.g. {sorted(missing)[:3]}")
+        evs = orbit["events"]
+    else:
+        prev_doc = load_region(out, yday)
+        prev = {int(k): {"region": v[0], "epoch": v[1]} for k, v in prev_doc["regions"].items()} if prev_doc else None
+        inv = from_latest(latest, prev)
+        if active is None:
+            active = active_ids(day, geo_dir)
+        evs = events(prev, inv, day, static, active=active) if prev is not None else []   # a first day lists none
     objects = []
     for k in sorted(inv):
         s, r = static.get(k, {}), latest[k]
