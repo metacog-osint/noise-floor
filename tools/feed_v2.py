@@ -392,7 +392,7 @@ def build(board, days, now=None, milair=None):
             "requirement_ids": ["NF-EEI-3"], **tags(pts)})
 
     swx_items(board.get("swx") or {}, add, published)
-    milair_items(milair, add, published, now)
+    milair_items(milair, add, published, now, days)
 
     return {
         "type": "FeatureCollection", "contract": CONTRACT, "program": "noisefloor", "generated_at": published,
@@ -499,8 +499,10 @@ def milair_health(rd, published, now):
             "made_at": rd.get("made_at"), "checked_at": published}
 
 
-def milair_items(rd, add, published, now):
-    """Military air (tools/milair.py): one routine observation per region with aircraft seen today or usually."""
+def milair_items(rd, add, published, now, days=()):
+    """Military air (tools/milair.py): one routine observation per region with aircraft seen today or usually.
+    coverage_fraction is the receiver network's on the item's own day (covered cells against their 28-day median),
+    the same measure the GNSS items carry; None when that day has no cell count."""
     if not rd or not rd.get("regions"):
         return
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -534,7 +536,7 @@ def milair_items(rd, add, published, now):
                          "by_role": {k: {"distinct": r[k]["distinct"], "aircraft_hours": r[k]["aircraft_hours"],
                                          "usual_aircraft_hours": r[k]["usual_aircraft_hours"], "level": r[k]["level"],
                                          "band": r[k]["band"]} for k in milair.HEADLINE}},
-            "data_as_of": f"{day}T00:00:00Z", "coverage_fraction": None,
+            "data_as_of": f"{day}T00:00:00Z", "coverage_fraction": coverage(list(days), day),
             "health": {**health, "baseline_days": r["baseline"]["days"], "min_baseline_days": r["baseline"]["min_days"],
                        "day_type": r["baseline"]["day_type"]},
             "sources": src, "pmesii_pt": ["military"], "ascope": ["capabilities"],
