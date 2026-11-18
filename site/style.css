@@ -38,7 +38,7 @@
   --surface-chart: #ffffff; --grid: #e6e9ee; --axis: #c9cfd7; --ink-3: #6b7480;
   --series-1: #2a6fcb; --series-2: #e0682f; --series-base: #8a93a0; --wash: rgba(42, 111, 203, 0.10); --band: rgba(224, 104, 47, 0.10);
   --map-event: #2a6fcb; --map-spoof: #7e3fbf; --map-cyg: #0f766e; --map-nisar: #c2185b; --map-s6: #b45309; --map-smap: #4d7c0f; --map-c2: #4338ca; --map-s1: #0284c7; --map-ls4: #059669; --map-roti: #1e3a8a;
-  --map-border: rgba(70, 80, 95, 0.5); --map-label: #2f3742; --map-halo: rgba(255, 255, 255, 0.9); --map-area: #6b5a8e;
+  --map-border: rgba(70, 80, 95, 0.5); --map-label: #2f3742; --map-halo: rgba(255, 255, 255, 0.9); --map-area: #6b5a8e; --map-thin: #4b5563;
   --sea-sanctioned: #b42318; --sea-state: #1f5fad; --sea-flag: #a16207; --sea-gnss: #6b5a8e;
 }
 @media (prefers-color-scheme: dark) {
@@ -53,7 +53,7 @@
     --surface-chart: #161a21; --grid: #262c35; --axis: #353c47; --ink-3: #8e97a3;
     --series-1: #5b9bea; --series-2: #e5713a; --series-base: #8e97a3; --wash: rgba(91, 155, 234, 0.12); --band: rgba(229, 113, 58, 0.10);
     --map-event: #5b9bea; --map-spoof: #b98ae6; --map-cyg: #4fd1c5; --map-nisar: #f06292; --map-s6: #f6ad55; --map-smap: #a3e635; --map-c2: #a5b4fc; --map-s1: #38bdf8; --map-ls4: #6ee7b7; --map-roti: #93c5fd;
-    --map-border: rgba(190, 196, 204, 0.42); --map-label: #d6dae0; --map-halo: rgba(14, 17, 22, 0.9); --map-area: #b39ddb;
+    --map-border: rgba(190, 196, 204, 0.42); --map-label: #d6dae0; --map-halo: rgba(14, 17, 22, 0.9); --map-area: #b39ddb; --map-thin: #aab2bd;
     --sea-sanctioned: #f08080; --sea-state: #8ab4f0; --sea-flag: #e0b54a; --sea-gnss: #b39ddb;
   }
 }
@@ -441,6 +441,7 @@ details.table-view .tw { max-height: 22rem; overflow: auto; }
 .lyr-key-s6 { border: 1.5px solid var(--map-s6); background: color-mix(in srgb, var(--map-s6) 25%, transparent); }
 .lyr-key-smap { border: 1.5px solid var(--map-smap); background: color-mix(in srgb, var(--map-smap) 25%, transparent); }
 .lyr-key-s1 { border: 1.5px solid color-mix(in srgb, var(--map-s1) 40%, transparent); background: color-mix(in srgb, var(--map-s1) 30%, transparent); }
+.lyr-key-thin { border: 1px solid var(--map-thin); background: repeating-linear-gradient(135deg, var(--map-thin) 0 1.2px, transparent 1.2px 4px); }
 .lyr-key-c2 { border: 1.5px solid var(--map-c2); background: color-mix(in srgb, var(--map-c2) 25%, transparent); }
 .lyr-key-ls4 { border: 1.5px solid var(--map-ls4); background: color-mix(in srgb, var(--map-ls4) 30%, transparent); }
 .lyr-key-roti { border: 1.8px solid var(--map-roti); border-radius: 50%; background: color-mix(in srgb, var(--map-roti) 40%, transparent); }

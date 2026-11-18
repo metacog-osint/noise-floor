@@ -32,7 +32,10 @@
   var EV_ROWS = { anom: 15, burst: 10 };
   var TIER = { major: "Major", notable: "Notable", minor: "Minor" };
   var days = [], cells = {}, cellList = [], land = [], colors = {}, borders = [], places = [], areas = [];
-  var layersOn = { borders: true, places: true, areas: false };
+  var layersOn = { borders: true, places: true, areas: false, thin: true };
+  // Thin coverage: the rule of tools/feeder_coverage.py (<day>.coverage.json), applied to the day's own cells, which all
+  // have 3+ aircraft: an H3 res-2 area with fewer than THIN_MIN of its 49 res-4 cells covered is thin. Keep the two equal.
+  var THIN_MIN = 10, thinPattern = null;
   var imagery = { on: false, want: false, key: null, layer: null };   // Esri World Imagery under the hexes (not remembered between visits)
   var BASE_MAX_ZOOM = 7, IMG_MAX_ZOOM = 10;                            // imagery is worth a closer look
   try { var savedLayers = JSON.parse(localStorage.getItem("nf-map-layers") || "null"); if (savedLayers) layersOn = Object.assign(layersOn, savedLayers); } catch (e) { /* defaults */ }
@@ -46,8 +49,9 @@
                focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean"), test: css("--ink-2"),
                border: css("--map-border"), label: css("--map-label"), halo: css("--map-halo"), area: css("--map-area"),
                spoof: css("--map-spoof"), cyg: css("--map-cyg"), nisar: css("--map-nisar"), s6: css("--map-s6"), smap: css("--map-smap"), c2: css("--map-c2"), s1: css("--map-s1"),
-               ls4: css("--map-ls4"), roti: css("--map-roti") };
+               ls4: css("--map-ls4"), roti: css("--map-roti"), thin: css("--map-thin") };
     mapEl.style.background = colors.ocean;
+    thinPattern = null;                                // rebuilt in the new colour on the next draw
   }
 
   // value and class for a cell under the current measure; null = not drawn
@@ -172,6 +176,20 @@
           });
         });
       g.globalAlpha = 1;
+      if (layersOn.thin && state.thin && state.measure !== "spf") {   // thin coverage: diagonal hatching over the area
+        if (!thinPattern) {                                          // one pattern, anchored to the canvas: no seams
+          var pc = document.createElement("canvas"); pc.width = pc.height = 8;
+          var pg = pc.getContext("2d"); pg.strokeStyle = colors.thin; pg.lineWidth = 1.2;
+          pg.beginPath(); pg.moveTo(0, 8); pg.lineTo(8, 0); pg.moveTo(-2, 2); pg.lineTo(2, -2); pg.moveTo(6, 10); pg.lineTo(10, 6); pg.stroke();
+          thinPattern = g.createPattern(pc, "repeat");
+        }
+        g.save(); g.fillStyle = thinPattern; g.globalAlpha = 0.7; g.beginPath();
+        Object.keys(state.thin).forEach(function (r) {
+          var sh = shapeOf(r);
+          if (!sh.wrap && onScreen(sh.mb)) trace(g, sh.m, true);
+        });
+        g.fill(); g.restore();
+      }
       if (state.focus && cells[state.focus]) {
         g.strokeStyle = colors.focus; g.lineWidth = 2; g.beginPath();
         trace(g, cells[state.focus].s.m, true); g.stroke();
@@ -489,6 +507,8 @@
       lines.push(["Share", e && e.share !== null ? e.share.toFixed(1) + "%" :
         (e && e.nobase ? "no usual level yet (fewer than 5 earlier days)" : e ? "low coverage (3–4 aircraft)" : "too few aircraft")]);
     }
+    var tr2 = state.thin ? state.thin[h3.cellToParent(h, 2)] : undefined;
+    if (tr2 !== undefined) lines.push(["Coverage", "thin: few aircraft heard in this area (" + tr2 + " of its 49 cells have 3 or more), so most of it goes unmeasured"]);
     if (state.spoofShow && state.spoof && state.spoof.cells) {
       var sc = state.spoof.cells.filter(function (c) { return c[0] === h; })[0];
       if (sc) lines.push(["Spoofing", sc[1] + " active episode" + (sc[1] === 1 ? "" : "s") + " (aircraft really here)"]);
@@ -1378,6 +1398,10 @@
         if (sh.wrap) return;
         var c = { h: d[0], d: d, s: sh }; cells[d[0]] = c; cellList.push(c);
       });
+      var cov = {};                                   // covered res-4 cells per res-2 area (every cell here has 3+ aircraft)
+      j.cells.forEach(function (d) { if (d[1] >= 3) { var r = h3.cellToParent(d[0], 2); cov[r] = (cov[r] || 0) + 1; } });
+      state.thin = {};
+      Object.keys(cov).forEach(function (r) { if (cov[r] < THIN_MIN) state.thin[r] = cov[r]; });
       state.iu = (j.cols || []).indexOf("usual");
       document.getElementById("mp-chg-wrap").classList.toggle("off", state.iu < 0);
       document.querySelector('input[name="measure"][value="chg"]').disabled = state.iu < 0;
@@ -1604,7 +1628,7 @@
     if (state.view) map.setView([state.view[0], state.view[1]], state.view[2], { animate: false });
     else map.setView([35, 15], window.innerWidth < 700 ? 1.5 : 2.5);
     map.on("moveend", writeHash);
-    ["borders", "places", "areas"].forEach(function (k) {
+    ["borders", "places", "areas", "thin"].forEach(function (k) {
       var box = document.getElementById("lyr-" + k);
       box.checked = layersOn[k];
       box.addEventListener("change", function () {
