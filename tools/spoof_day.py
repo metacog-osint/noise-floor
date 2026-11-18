@@ -124,6 +124,10 @@ EPISODE_GAP_S, EPISODE_MIN_PTS, EPISODE_MIN_S = 900, 2, 20.0
 VICTIM_MAX_S = 3600                         # trusted anchors before and after an episode, joined: each within this time
 VICTIM_SINGLE_S = 900                       # a single anchor (the other missing or inconsistent): within this time
 POST_MIN_KM, POST_GAP_S, PEER_HOURS = 300.0, 900.0, 1   # post-exposure and peer rules (see aggregate())
+# Carried-over error (pre-registered R3, docs/spoofing-light-plan.md section 5): an episode meeting the post rule is post
+# even with peers when the aircraft's nearest earlier episode ended at most CARRY_MAX_S before it and under
+# CARRY_TRUSTED_S of trusted ADS-B time lies between. 0 turns the rule off (the default: outputs as v0.6.1).
+CARRY_MAX_S, CARRY_TRUSTED_S = 0, 0
 MLAT_DT_S, MLAT_KM = 30.0, 20.0
 KIN_DT_S, KIN_MIN_KM, KIN_KT, KIN_DEG, KIN_MIN_BAD = (25.0, 90.0), 0.5, 100.0, 45.0, 3
 GEO_STEP_FT, GEO_STEP_S, GEO_SAT_FT, GEO_PEER_FT, GEO_PEER_MIN = 1000, 60.0, 3100, 1500, 4
@@ -545,6 +549,26 @@ def cell(lat, lon, res):
     return h3.str_to_int(h3.latlng_to_cell(lat, lon, res))
 
 
+def carry_since(A, trusted, episodes):
+    """For each episode (sorted on t0), in place: prev_gap_s, the time from the end of the same aircraft's nearest
+    earlier episode (the latest-ending of those starting earlier, any kind) to its start, and prev_trusted_s, the trusted
+    ADS-B time strictly between them (consecutive positions both trusted, each step capped at OBS_GAP_S); both None
+    with no earlier episode. Read by classify()'s carried-over rule (CARRY_MAX_S, CARRY_TRUSTED_S)."""
+    ts = [p[T] for p in A]
+    for i, e in enumerate(episodes):
+        earlier = [p for p in episodes[:i] if p["t0"] < e["t0"]]
+        if not earlier:
+            e["prev_gap_s"] = e["prev_trusted_s"] = None
+            continue
+        t1 = max(p["t1"] for p in earlier)
+        lo, hi = bisect.bisect_right(ts, t1), bisect.bisect_left(ts, e["t0"])
+        tr = 0.0
+        for j in range(lo, hi - 1):
+            if trusted[j] and trusted[j + 1]:
+                tr += min(ts[j + 1] - ts[j], OBS_GAP_S)
+        e["prev_gap_s"], e["prev_trusted_s"] = round(e["t0"] - t1), round(tr)
+
+
 def score_trace(raw, day0, airspeed=False, v06=False, a2_hi_ft=None, cache=False):
     """One trace file -> aircraft record, or None. airspeed: --airspeed-fast (v0.5); v06: --v06;
     a2_hi_ft: --slow-hi-a2-ft; cache: also mark whether the aircraft is a cache candidate (candidate())."""
@@ -642,6 +666,7 @@ def score_trace(raw, day0, airspeed=False, v06=False, a2_hi_ft=None, cache=False
             "ref": [round(statistics.median(m[1] for m in pts), 4), round(statistics.median(m[2] for m in pts), 4)],
         })
     episodes.sort(key=lambda e: e["t0"])
+    carry_since(A, trusted, episodes)
     ml_tr = [x for x in r["mlat"] if trusted[x[0]]]
     ml_fa = [x for x in r["mlat"] if false[x[0]]]
     mlat_cells = defaultdict(lambda: [0, 0, 0])             # (hex4, hour) at the MLAT position -> [pairs, disagree,
@@ -915,6 +940,11 @@ def classify(recs):
                     ps |= near.get((p2, h + dh), set())
             ps.discard(r["icao"])
             e["peers"] = len(ps)
+            if (ps and CARRY_MAX_S and e["cand_post"] and not e["replay"] and e["vcells"]
+                    and e.get("prev_gap_s") is not None and e["prev_gap_s"] <= CARRY_MAX_S
+                    and e["prev_trusted_s"] < CARRY_TRUSTED_S):
+                e["carried"] = True        # carried-over error (R3): post despite peers; key absent otherwise
+                ps = ()
             e["class"] = ("replay" if e["replay"] else "unlocated" if not e["vcells"] else "active" if ps
                           else "post" if e["cand_post"] else "isolated")
 
@@ -996,7 +1026,8 @@ def aggregate(recs):
             events.append({"icao": r["icao"], "type": r["type"], "cat": r["cat"],
                            "start": datetime.fromtimestamp(e["t0"], timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                            "end": datetime.fromtimestamp(e["t1"], timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                           **{k: v for k, v in e.items() if k not in ("t0", "t1", "vcells", "fcells")},
+                           **{k: v for k, v in e.items() if k not in ("t0", "t1", "vcells", "fcells", "prev_gap_s",
+                                                                      "prev_trusted_s")},
                            "victim_cells": sorted({h3.int_to_str(hx) for hx, _ in e["vcells"]}),
                            "victim_hours": sorted({h for _, h in e["vcells"]})})
         ep_geo_out += any_geo_out_in_ep
@@ -1198,6 +1229,8 @@ def write_day(day, out_dir, recs, info, t0, t_read, workers, airspeed, v06, a2_h
         "source": "adsb.lol globe_history (ODbL 1.0)",
     }
     summary["method"]["FAST_CATS"] = sorted(FAST_CATS)
+    if CARRY_MAX_S:                                     # only with the carried-over rule on: off, the summary is v0.6.1's
+        summary["episodes_carried"] = sum(1 for e in events if e.get("carried"))
     summary["method"]["SLOW_HI_A2_FT"] = a2_hi_ft
     json.dump(summary, open(os.path.join(out_dir, f"{day}.summary.json"), "w"), indent=1, default=list)
     return summary
