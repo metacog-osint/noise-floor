@@ -85,10 +85,11 @@ class Places:
         return area_names.area_name(self.pl, lat, lon, cells)
 
     def area_kind(self, lat, lon, cells=()):
-        """area() plus the kind of name: "place", "country", "sea" or None."""
+        """area() plus the kind of name ("place", "country", "sea" or None) and, for a country, a reference such as
+        "220 km W of Tbilisi" (area_names.ref)."""
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import area_names
-        return area_names.area(self.pl, lat, lon, cells)
+        return area_names.area_ref(self.pl, lat, lon, cells)
 
 
 def _countries(rows):
@@ -174,9 +175,9 @@ def changes(site, days, places):
 
     def row(r, extra):
         la, lo = h3.cell_to_latlng(r)
-        name, at, kind = places.area_kind(la, lo, [r])
+        name, at, kind, ref = places.area_kind(la, lo, [r])
         return {"region": r, "lat": round(la, 2), "lon": round(lo, 2), "near": name, "near_at": at,
-                "near_kind": kind, **extra}
+                "near_kind": kind, "near_ref": ref, **extra}
 
     new = [row(r, {"days_in_last7": sum(1 for d in last7 if r in per_day[d])}) for r in seen7 if r not in seen_before]
     ended, below = [], []
@@ -209,10 +210,10 @@ def top_events(site, day, places):
     rows = []
     for e in ev.get("anomalies", []):
         if e.get("m") == "jam" and e.get("tier") in ("major", "notable"):
-            name, at, kind = places.area_kind(e["lat"], e["lon"], e.get("cells") or [])
+            name, at, kind, ref = places.area_kind(e["lat"], e["lon"], e.get("cells") or [])
             rows.append({"tier": e["tier"], "peak": e.get("peak"), "excess": e.get("excess"), "h0": e.get("h0"),
                          "h1": e.get("h1"), "lat": e["lat"], "lon": e["lon"], "near": name, "near_at": at,
-                         "near_kind": kind,
+                         "near_kind": kind, "near_ref": ref,
                          "cells": e.get("cells") or [], "heavy_share": e.get("hs"), "test": e.get("test")})
     rows.sort(key=lambda r: r["tier"] != "major")    # majors first, each tier in the analysis's own order (stable)
     # Every major and notable event, not the first six: a cap of six fired exactly six event items a day, 31 Oct to
@@ -526,6 +527,12 @@ def _num(n):
     return WORDS[n].lower() if n < len(WORDS) else str(n)
 
 
+def _brief_name(r):
+    """A named area in the brief: 'Saudi Arabia (330 km W of Abu Dhabi)' for a country with a reference, else the
+    name (brackets keep the list of names readable)."""
+    return f"{r['near']} ({r['near_ref']})" if r.get("near_kind") == "country" and r.get("near_ref") else r["near"]
+
+
 def _named(names, n, some, countries=False):
     """', near A and B' (', in A and B' when every name is a country) when the names cover all n areas; otherwise
     `some` (', among them ') and the names."""
@@ -553,7 +560,8 @@ def brief(b):
        Tom replaced "has stopped" on 16 Nov). "Fell" appears only in "fell below jamming scale". Neither says "this
        week", since it may have happened before the week began. Up to two new areas and one area of each other kind
        are named by tools/area_names.py: a listed place within 150 km, else the country most of the area lies in
-       ("in Turkey" when every name is a country, "near Doha" otherwise).
+       ("in Turkey" when every name is a country, "near Doha" otherwise); a country carries its reference in
+       brackets, "Saudi Arabia (330 km W of Abu Dhabi)" (area_names.ref, Tom's choice 18 Nov 2026).
     A section that is missing leaves its sentence out."""
     out = []
     areas = [a for a in ((b.get("hotspots") or {}).get("areas") or [])
@@ -572,7 +580,7 @@ def brief(b):
     c = b.get("changes")
     if c:
         rows = [r for r in c.get("new") or [] if r.get("near")][:2]
-        new = [r["near"] for r in rows]
+        new = [_brief_name(r) for r in rows]
         n = c.get("new_count") or 0
         started = f"started in {_num(n)} area{'' if n == 1 else 's'} this week{_named(new, n, ', among them ', _countries(rows))}"
         tails = []
@@ -581,7 +589,7 @@ def brief(b):
             if k:
                 rows = [r for r in c.get(key) or [] if r.get("near")][:1]
                 areas = "" if n or tails else f" area{'' if k == 1 else 's'}"
-                tails.append(f"{verb} {_num(k)}{areas}{_named([r['near'] for r in rows], k, ', including ', _countries(rows))}")
+                tails.append(f"{verb} {_num(k)}{areas}{_named([_brief_name(r) for r in rows], k, ', including ', _countries(rows))}")
         tail = (", and " if "," in tails[0] else " and ").join(tails) if tails else ""
         if n and tails:
             out.append(f"GPS interference {started}; it {tail}.")

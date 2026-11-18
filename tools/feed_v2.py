@@ -164,9 +164,14 @@ def event_span(day, h0, h1):
 
 
 def where(r):
-    """' near Doha' for a place, ' in Turkey' for a country (board.py's near_kind, tools/area_names.py), '' unnamed."""
+    """' near Doha' for a place, ' in Georgia, 220 km W of Tbilisi' for a country (board.py's near_kind and
+    near_ref, tools/area_names.py), '' unnamed."""
     near = r.get("near")
-    return (" in " if r.get("near_kind") == "country" else " near ") + near if near else ""
+    if not near:
+        return ""
+    if r.get("near_kind") == "country":
+        return " in " + near + (", " + r["near_ref"] if r.get("near_ref") else "")
+    return " near " + near
 
 
 def plain_day(day):
