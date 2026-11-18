@@ -271,6 +271,22 @@ days, so the October days rest on fewer. Scored with the same code as above (`sp
   (14 Nov 16 → 11, 15 Nov 5 → 2).
 - Decision: the new rule (`REGION_MIN_OVER = 5`) stays, as pre-registered. The 7 Dec recheck is no longer needed for
   the verdict; run then, it is an out-of-sample check on the 21 days after this one.
+- **Announced tests, reported and not gating (Tom, 18 Nov 2026).** From now on, P1 and H6 also report how many
+  control-box readings or episodes fall inside an announced US GPS test, and P1 with those set aside. The pass marks
+  don't change.
+  - **For P1:** a reading counts as inside when it is tagged by `spoof_site.region_tests()`.
+  - **For H6:** an episode counts as inside when an advisory window overlaps it and the advisory's widest radius
+    reaches one of its victim cells. This is `spoof_heldout.py --tests`, and `spoof_variant.py --tests` passes it on.
+  - **Coverage:** the FAA list (`faa_gps_tests.json`, `declared-data` release) starts on 2 Sep 2025, so only 3 of the 12
+    held-out days (20 Oct 2025, 20 Feb and 20 Jun 2026) can match.
+  - **First figures (18 Nov 2026):**
+    - P1 on 35 scored days (14 Oct-17 Nov): control-box readings were 40 under the old rule and 16 under the new one.
+      Of those, 19 and 9 fall inside announced tests. All are in us_west and fall within a White Sands test; 2 of
+      the old rule's readings are also within a Yuma test. Set aside, they leave 21 and 7 (c_europe 18 and 7,
+      uk_ie 3 and 0), and P1 still holds.
+    - H6: 2 of the 122 held-out control-box episodes fall inside an announced test, both isolated. That is the same
+      at v0.6.1 and under R3.
+  - A match means "consistent with an announced test", not proof. Readings in c_europe still have no notice source.
 
 This needs no new processing: it reads the files the daily run already publishes. It answers the analyst's question
 (is spoofing happening, where, and more than usual?) in one line. The detector stays as the engine underneath. Like the
@@ -378,6 +394,40 @@ Reported, not gating:
   Liège/Eifel excursions had no earlier episode that day and served as each other's peers.
 - An aircraft genuinely spoofed twice within 3 h, with under 30 trusted minutes between, is relabelled post. That cost
   is what C2 bounds.
+
+**The midnight limit, measured (18 Nov 2026, descriptive).** 7-12 Nov 2026 are six consecutive cached days, and they
+were run under R3. On the five days with a cached day before them (8-12 Nov), the active episodes were counted that
+have no earlier episode that day, and whose aircraft had an episode on the day before ending at most 3 h before.
+- There were 3 such episodes, and none meets the post rule (300 km away).
+- So a cross-day version of R3 would have moved none of the 3,863 active aircraft-hours. Only 6 of the 47 active
+  episodes between 00:00 and 03:00 UTC belonged to an aircraft with an episode after 21:00 UTC the day before.
+- On these days the midnight limit costs nothing measurable, so no cross-day rule is proposed.
+- These are the days that picked R3, and they are November days only.
+
+**The central-Europe control readings under R3 (18 Nov 2026).** The seven c_europe readings above their usual level
+(section 3, Verdict) were rerun under R3. The three October days not cached before were rerun from their raw archives,
+now kept on the PC; 15 Oct and 8 Nov came from their caches. The figures are active aircraft-hours in the region at
+v0.6.1 → under R3, against the published usual level:
+
+| Day | Region | v0.6.1 → R3 | Usual |
+|---|---|---|---|
+| 15 Oct | Liège/Eifel | 5 → 3 | 0 |
+| 16 Oct | Bohemia | 8 → 5 | 0 |
+| 26 Oct | Bohemia | 8 → 4 | 1 |
+| 26 Oct | Hesse/Franconia | 10 → 6 | 1 |
+| 29 Oct | Bohemia | 6 → 3 | 1 |
+| 8 Nov | Bohemia | 11 → 5 | 2 |
+| 8 Nov | Hesse/Franconia | 9 → 2 | 1 |
+
+- With the region floor (twice usual and 5 or more over), 5 of the 7 no longer read above. 16 Oct Bohemia and 26 Oct
+  Hesse/Franconia still do, each exactly 5 over.
+- The usual levels would also be recomputed under R3, and should be lower, so this is an approximation.
+- Every episode moved had an earlier episode that day 580-1,810 km to the east or south-east, 15-93 minutes before:
+  over Hungary, Romania or the Black Sea.
+- **What remains:** the same signature without any earlier episode seen, that day or (for 16 Oct, checked against
+  15 Oct) the evening before. These are mostly A5 widebodies at 34,000-40,000 ft with NIC 0 and NACp 9-10, and every
+  MLAT pair disagreeing. That fits exposure where adsb.lol hears no positions, but this is unverified.
+- No announced-test source covers central Europe (section 3), so these readings are still not called noise.
 
 **Held-out score (18 Nov 2026, after the two commits above).**
 - **How it was run:** `tools/spoof_variant.py --set CARRY_MAX_S=10800 --set CARRY_TRUSTED_S=1800 --label r3`. It reran
