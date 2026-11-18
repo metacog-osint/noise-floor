@@ -8,6 +8,14 @@
    "until": "2026-12-15",
    "why": "Calibration: the version v0.6.1 replaced, so the daily files show the shadow mechanism working against a known difference (docs/validation/spoofing-v061.md).",
    "registered": "docs/spoofing-light-plan.md"
+  },
+  {
+   "name": "carry-r3",
+   "set": {"CARRY_MAX_S": 10800, "CARRY_TRUSTED_S": 1800},
+   "from": "2026-11-19",
+   "until": "2026-12-17",
+   "why": "Pre-registered R3: an episode meeting the post rule is post even with peers when the aircraft's nearest earlier episode ended at most 3 h before and under 30 trusted minutes lie between (carried-over position error). Gates: H1-H3, H6, H8, C1, C2 over at least 14 days.",
+   "registered": "docs/spoofing-light-plan.md section 5"
   }
  ]
 }

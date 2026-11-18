@@ -14,6 +14,10 @@ number of episodes located in a control box with a baseline output folder made f
   H5  eastern Mediterranean: the named point with the most aircraft among those top cells     Beirut, Beirut, Amman on
                                                                                              20 Feb, 20 Jun, 20 Oct 2024
   H6  episodes located in a control box, all classes, against the baseline                   <= 1.5x
+  C1  (carried-over rule, docs/spoofing-light-plan.md section 5) pooled active aircraft-hours
+      in the six control boxes, against the baseline                                         lower
+  C2  the same in the spoofing groups (Middle East, Black Sea, Baltic and W Russia)           >= 90% of the baseline
+C1 and C2 are reported whenever there is a baseline; only the carried-over pre-registration gates on them.
 """
 import argparse
 import gzip
@@ -36,6 +40,23 @@ EAST_MED = ("Beirut OLBA", "Amman OJAI", "Cairo HECA", "Tel Aviv LLBG")
 def control_episodes(ev):
     ctl = {n for n, (b, k) in S.REGIONS.items() if k == "control"}
     return [e for e in ev if ({S.region_of(c) for c in e.get("victim_cells") or []} & ctl)]
+
+
+SPOOF_GROUPS = ("Middle East", "Black Sea", "Baltic and W Russia")
+C2_SHARE = 0.90
+
+
+def active_hours(out_dir, days):
+    """{region group: pooled res-4 active aircraft-hours} (hex4 spoofed_active, region of the cell as in H1)."""
+    import pyarrow.parquet as pq
+    grp = {b: g for g, bs in S.GROUPS.items() for b in bs}
+    out = Counter()
+    for d in days:
+        for r in pq.read_table(os.path.join(out_dir, f"{d}.hex4.parquet"), columns=["h3", "spoofed_active"]).to_pylist():
+            b = S.region_of(r["h3"])
+            if b:
+                out[grp[b]] += r["spoofed_active"]
+    return out
 
 
 def score(out_dir, days, baseline=None):
@@ -95,6 +116,14 @@ def score(out_dir, days, baseline=None):
         out["H6"] = {"control_episodes": ctl_now, "baseline": ctl_base,
                      "ratio": round(ctl_now / ctl_base, 2) if ctl_base else None,
                      "pass": ctl_now <= 1.5 * ctl_base}
+        now, base = active_hours(out_dir, days), active_hours(baseline, days)
+        sg_now, sg_base = sum(now[g] for g in SPOOF_GROUPS), sum(base[g] for g in SPOOF_GROUPS)
+        out["C1"] = {"control_active_ah": now["Controls"], "baseline": base["Controls"],
+                     "pass": now["Controls"] < base["Controls"]}
+        out["C2"] = {"spoofing_groups_active_ah": sg_now, "baseline": sg_base,
+                     "kept": round(sg_now / sg_base, 4) if sg_base else None,
+                     "pass": sg_now >= C2_SHARE * sg_base,
+                     "by_group": {g: [now[g], base[g]] for g in S.GROUPS}}
     return out
 
 

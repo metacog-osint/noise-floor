@@ -9,14 +9,14 @@
 <meta property="og:description" content="Interactive world map of GNSS degradation from aircraft ADS-B reports, per H3 cell, updated daily.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=6499e92d24">
+<link rel="stylesheet" href="/style.css?v=45589100d5">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=17dab3051f"></script>
 <link rel="stylesheet" href="/tic-nav.css?v=7a0e56eae2">
 <script defer src="/tic-nav.js?v=642ad3d135" data-health="on"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=5d032ac984"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=ef14b9c430"></script>
 <script defer src="/tic-init.js?v=d888070c79"></script>
 </head>
 <body>
@@ -67,6 +67,7 @@
         <label><input type="checkbox" id="lyr-borders" checked> Country borders</label>
         <label><input type="checkbox" id="lyr-places" checked> Place names</label>
         <label><input type="checkbox" id="lyr-areas"> Monitored areas</label>
+        <label><input type="checkbox" id="lyr-thin" checked> Thin coverage (few aircraft heard) <span class="lyr-key lyr-key-thin" aria-hidden="true"></span></label>
         <label><input type="checkbox" id="lyr-events" checked> Events and announced tests</label>
         <label id="lyr-imagery-opt" hidden><input type="checkbox" id="lyr-imagery"> Satellite imagery (Esri)</label>
         <label><input type="checkbox" id="lyr-spoof"> Spoofing (aircraft) <span class="lyr-key lyr-key-spoof" aria-hidden="true"></span></label>
@@ -178,6 +179,7 @@
   <li><strong>Ground ROTI</strong> (Map options → Layers): ROTI, a measured TEC fluctuation index at fixed stations, in TECU per minute. It measures how fast the electron content along each GPS and Galileo path changes, a proxy for ionospheric irregularities; it is not an S4 value and is never read against S4 alert levels. Each dot is an IGS station with its highest hourly 95th percentile that day; the dashed ring shows roughly where its paths above 30° cross 350 km. Hover for the hour and the station's other high hours. Irregularities at these latitudes usually follow sunset, so check the local solar time. Checked against INGV ground scintillation receivers on 25 held-out days (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/ground-roti.md">validation</a>, AUC 0.887). Full hourly files: the swx-data releases, CC BY 4.0, from IGS station data via BKG (credit the IGS and the station operators).</li>
   <li><strong>Play</strong> (▶ under the strip) steps through the days one by one; any other control stops it.</li>
   <li><strong>Cells</strong> are H3 resolution 4, about 1,770 km² each. A cell is coloured only when 5 or more aircraft were in it that day; 3–4 show as low coverage, and 1–2 are left out.</li>
+  <li><strong>Thin coverage</strong> (grey diagonal hatching, on by default under Layers) marks areas about 300 km across (H3 resolution 2) where fewer than 10 of their 49 cells had 3 or more aircraft that day. Few aircraft were heard there, so the area can look quieter than it is. Areas with no cells at all are left blank. The same flag is published each day as <code>&lt;day&gt;.coverage.json</code> with the day's data files in the GitHub releases.</li>
   <li><strong>Share</strong> follows the formula GPSJam publishes: one bad aircraft is subtracted, so a single faulty receiver never colours a cell.</li>
   <li><strong>Severe GPS error</strong> means a reported position uncertainty of 93 m or worse (NACp below 8). "Live" leaves out aircraft still degraded after leaving interference elsewhere; tick the box to include them.</li>
   <li><strong>Accuracy</strong> counts only aircraft that showed 10 m accuracy at least once that day. Storms and SBAS outages show here, rarely on the 93 m measure.</li>

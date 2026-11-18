@@ -64,5 +64,28 @@ interference edges and GPSJam has a little more coverage of quieter cells.
   step 6).
 - Nothing on the site uses `bad_any` yet.
 
+## Known over-read: busy daytime traffic in the US Southwest (checked 18 Nov 2026)
+Against GPSJam on 2-15 Nov 2026 (10 weekday cutoffs, 3+ aircraft, b/n on both sides), `bad_any` reads 3.5 times
+GPSJam's high cells in a Mexico / SW US box (18-37°N, 118-96°W; `bad_live` 0.39). Of the 192 cell-days `bad_any`
+calls high there, 127 are low in GPSJam (not even 2%), and they are busy cells, not thinly flown ones: median 256
+aircraft (GPSJam 268), median 36 counted bad by `bad_any`, 1 by `bad_live`.
+
+- **Where.** Worldwide, of 97,602 cell-days with 100+ aircraft, only 93 read over 10% on `bad_any` while `bad_live`
+  and GPSJam both read 2% or less. 62 of them are in the Phoenix-Tucson corridor (20 distinct cells overall); the rest
+  are near San Diego, Utah Valley, the Willamette Valley, western Oklahoma and west of San Antonio.
+- **When.** In six of the Phoenix-Tucson cells, hour by hour on 4, 5 and 10 Nov (`<day>.hourly.parquet`): 13-22% of
+  aircraft count as bad on `bad_any` in each hour from 14:00 to 24:00 UTC (7 AM-5 PM MST), against at most 1.5% on
+  `bad_live`; 1-17% in the evening to 04:00 UTC; overnight few aircraft fly there and few of them count. The cells
+  turn up on every day of 2-15 Nov, fewer at weekends.
+- **Not an announced test.** The nearest notices in `faa_gps_tests.json` don't fit: White Sands (within reach at
+  altitude) ran 04:00-12:00 UTC each night, when these cells read clean; Thermal, CA and Middlegate, NV are out of
+  range.
+- **Likely cause (unverified):** brief NACp dips on aircraft that turn hard or fly training patterns, where the GPS
+  antenna loses sky for a moment. These areas have heavy flight training, civil and military. Aircraft types were not
+  checked (the release files hold no per-aircraft data).
+- **Effect.** `bad_live` and GPSJam are not affected; one-report rules are. A guard such as two or more bad reports per
+  aircraft in the cell, or a share of its reports, would need the raw archive and a pre-registered test before any
+  change.
+
 Comparison with GPSJam: GPSJam daily files (gpsjam.org/data/<day>-h3_4.csv) for side-by-side validation only, as in
 the source registry.
