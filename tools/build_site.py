@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the public site (site/, served by Cloudflare Pages) from site_src/ and the licence registry.
 
-  python tools/build_site.py           # writes site/*.html, site/style.css, robots.txt, _headers
+  python tools/build_site.py           # writes site/*.html, site/style.css, robots.txt, favicon.ico, _headers
 
 Sources:
   site_src/*.html     page bodies; first line is a JSON comment with title, description, nav
@@ -368,12 +368,14 @@ def main():
     for f in sorted(os.listdir(FONTS)):
         open(os.path.join(OUT, "fonts", f), "wb").write(open(os.path.join(FONTS, f), "rb").read())
     open(os.path.join(OUT, "robots.txt"), "w", newline="\n").write("User-agent: *\nAllow: /\n")
+    open(os.path.join(OUT, "favicon.ico"), "wb").write(open(os.path.join(SRC, "favicon.ico"), "rb").read())   # the TIC mark; browsers ask for /favicon.ico
     year, day, hour, short = ("public, max-age=31536000, immutable", "public, max-age=86400, stale-while-revalidate=604800",
                               "public, max-age=3600, stale-while-revalidate=86400", "public, max-age=300, stale-while-revalidate=3600")
     rules = [("/*", "X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n"
                     "  Strict-Transport-Security: max-age=31536000")]   # HTTPS only from the first visit on (one year, this host)
     rules += [(f"/{f}", f"Cache-Control: {year}") for f in ASSETS]              # always requested as /file?v=<content hash>
     rules += [("/fonts/*", f"Cache-Control: {year}")]                         # font files never change in place
+    rules += [("/favicon.ico", f"Cache-Control: {day}")]
     rules += [(f"/data/{f}", f"Cache-Control: {day}") for f in ("land.json", "borders.json", "places.json")]
     rules += [(p, f"Cache-Control: {hour}") for p in ("/data/gnss/2*", "/data/events/*", "/data/history/*")]   # day files
     rules += [("/data/vessels/*", f"Cache-Control: {hour}")]                  # Sea map data, refreshed by hand
@@ -387,7 +389,7 @@ def main():
         dup = sorted({i for i in ids if ids.count(i) > 1})
         if dup:
             sys.exit(f"{name}: duplicate ids {dup}")
-    expected = set(written) | set(ASSETS) | {"robots.txt", "_headers", "data", "fonts", "feed.xml"}   # feed.xml: written at deploy (site_days.py)
+    expected = set(written) | set(ASSETS) | {"robots.txt", "favicon.ico", "_headers", "data", "fonts", "feed.xml"}   # feed.xml: written at deploy (site_days.py)
     stray = sorted(set(os.listdir(OUT)) - expected)
     if stray:
         sys.exit(f"unexpected files in site/: {stray} (remove them, or add them to the build)")
