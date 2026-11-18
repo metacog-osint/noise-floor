@@ -79,8 +79,10 @@ loaded automatically; read it when you need the background.
   Orbit owns objects in orbit, Noisefloor owns signals; sun outages stay here).** From branch `geo/from-orbit`, the daily
   step "GEO region (from Orbit)" runs `geo_region.py pull --from-orbit`: it reads Orbit's published
   `<day>.geo-region.json` (release `geo-YYYY` of metacog-osint/orbit), makes no Space-Track request and writes the same
-  files as before, so /geo keeps working until the page moves (Orbit's `doctrine/geo-move-plan.md` steps 4-5). Merge
-  only after Orbit's own GEO runs are live and checked. Before that: `tools/geo_region.py` (Space-Track gp daily in `daily.yml`;
+  files as before, so /geo keeps working until the page moves (Orbit's `doctrine/geo-move-plan.md` steps 4-5). Merged
+  17 Nov 2026 (`9c9ebc2`). From 18 Nov 2026 the regions and events are Orbit's as published, and yesterday's file is
+  read again when Orbit's copy of it is newer: Orbit's late fallback re-pulled 17 Nov, and Noisefloor, working events
+  out against its older copy, dated LDPE-2's return 18 Nov instead of 17 Nov. Before that: `tools/geo_region.py` (Space-Track gp daily in `daily.yml`;
   gp_history held once in `data/geo/region/history/`, never re-fetched; `replay` rebuilds the day files offline;
   from 16 Nov 2026 its gp query skips when Orbit, on the same Space-Track account, queried under an hour ago (Orbit's
   public snapshot, `maneuvers.read_at`), when that snapshot can't be read, or from :38 to :05 around 00, 06, 12 and
