@@ -8,6 +8,13 @@ country when the cells give none), with no place coordinates, so the feed's coun
 never from a borrowed city. An area over open sea with neither falls back to the nearest place within SEA_KM, the old
 limit, as a name only.
 
+A country name also carries a reference point, "220 km W of Tbilisi" (ref()): the nearest listed place within REF_KM
+in that country, unless a place across a border is under 1/REF_SAME of its distance, when that one is used. The
+reference is words only: no place coordinates, so it never adds a country tag. Why (18 Nov 2026, Tom's choice "B"):
+on 17 Nov 2026 the brief said GPS interference started in Saudi Arabia and fell below jamming scale in Saudi Arabia,
+two areas about 500 km apart; "Saudi Arabia (330 km W of Abu Dhabi)" and "Saudi Arabia (210 km NW of Manama)" tell
+them apart. The Sentinel-6 card already words its peaks this way ("64 km N of Shostka").
+
 Why (17 Nov 2026, Tom's yes): with 350 km, the two 15 Nov 2026 majors on the Turkish-Georgian Black Sea coast
 (41.26N 41.05E) were "near Sochi" (281 km) and tagged RU. On 3-16 Nov 2026, 82 of 256 major and notable events were
 named after a place 150-350 km away, some across a border (a point in Greece "near Tirana").
@@ -18,12 +25,50 @@ import math
 NAME_KM = 150     # listed places within this distance of the area's point
 SAMPLE_RES = 4    # sample points for the area's countries: each cell's corners, centre and res-4 children's centres
 SEA_KM = 350      # an area over open sea with no place in reach and no country: the old naming distance
+REF_KM = 500      # a country name's reference place: within this distance of the area's point
+REF_SAME = 1.5    # ... in the named country, unless the nearest place elsewhere is closer by more than this factor
+COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
 
 def km(a, b):
     p = math.pi / 180
     h = math.sin((b[0] - a[0]) * p / 2) ** 2 + math.cos(a[0] * p) * math.cos(b[0] * p) * math.sin((b[1] - a[1]) * p / 2) ** 2
     return 12742 * math.asin(min(1.0, math.sqrt(h)))
+
+
+def bearing(a, b):
+    """Initial compass bearing in degrees from a to b."""
+    p = math.pi / 180
+    y = math.sin((b[1] - a[1]) * p) * math.cos(b[0] * p)
+    x = math.cos(a[0] * p) * math.sin(b[0] * p) - math.sin(a[0] * p) * math.cos(b[0] * p) * math.cos((b[1] - a[1]) * p)
+    return (math.degrees(math.atan2(y, x)) + 360) % 360
+
+
+def ref(places, lat, lon, cc=None, limit=REF_KM):
+    """'220 km W of Tbilisi': the area's point from a listed place, distance to the nearest 10 km and one of eight
+    compass points. The place is the nearest in country `cc` within `limit` km, unless one elsewhere is closer than
+    1/REF_SAME of its distance; None when no place is in reach."""
+    import feed_v2
+    near = sorted((km((lat, lon), (p[1], p[2])), p[0], (p[1], p[2])) for p in places)
+    near = [t for t in near if t[0] <= limit]
+    if not near:
+        return None
+    pick = near[0]
+    if cc:
+        for t in near:
+            if t[0] > near[0][0] * REF_SAME:
+                break
+            if feed_v2.place_country(list(t[2])) == cc:
+                pick = t
+                break
+    d, name, at = pick
+    return f"{max(10, round(d / 10) * 10):.0f} km {COMPASS[int((bearing(at, (lat, lon)) + 22.5) // 45) % 8]} of {name}"
+
+
+def label(name, kind, near_ref):
+    """The words for a named area after "in"/"near": 'Georgia, 220 km W of Tbilisi' for a country with a
+    reference, else the name."""
+    return f"{name}, {near_ref}" if kind == "country" and near_ref else name
 
 
 def nearest(places, lat, lon, limit):
@@ -65,6 +110,16 @@ def area_name(places, lat, lon, cells=(), limit=NAME_KM):
 
 def area(places, lat, lon, cells=(), limit=NAME_KM):
     """(name, place [lat, lon] or None, kind): kind "place", "country", "sea" (open sea, a place name only) or None."""
+    return _area(places, lat, lon, cells, limit)[:3]
+
+
+def area_ref(places, lat, lon, cells=(), limit=NAME_KM):
+    """area() plus a reference for a country name ("220 km W of Tbilisi", ref()), else None."""
+    name, at, kind, cc = _area(places, lat, lon, cells, limit)
+    return name, at, kind, (ref(places, lat, lon, cc) if kind == "country" else None)
+
+
+def _area(places, lat, lon, cells=(), limit=NAME_KM):
     import feed_v2
     seen = {}
     for c in dict.fromkeys(cells or []):
@@ -77,11 +132,11 @@ def area(places, lat, lon, cells=(), limit=NAME_KM):
         if d > limit:
             break
         if not covered or feed_v2.place_country(at) in covered:
-            return n, at, "place"
+            return n, at, "place", None
     cc = max(sorted(seen), key=seen.get) if seen else here
     country = feed_v2.geo.name(cc) if cc else None
     if country:
-        return country, None, "country"
+        return country, None, "country", cc
     # Open sea: the nearest place within the old 350 km, as a name only (no place coordinates, so no country tag).
     n, _ = nearest(places, lat, lon, SEA_KM)
-    return (n, None, "sea") if n else (None, None, None)
+    return (n, None, "sea", None) if n else (None, None, None, None)
