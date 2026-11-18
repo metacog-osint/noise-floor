@@ -156,41 +156,87 @@ def test_gp_skips_for_orbit():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def orbit_doc(src_dir, day, fetched, records):
+    """Orbit's day file for `day`, from a region file pulled into `src_dir` the same way Orbit pulls it."""
+    d = G.load_region(src_dir, day)
+    cols = G.OBJ_COLS + ["elset", "rev"]
+    objects = [row + [999, 1000] for row in d["objects"]]
+    return {"schema": "orbit-geo-region/1", "day": day, "fetched_utc": fetched, "object_cols": cols, "objects": objects,
+            "regions": d["regions"], "events": d["events"], "active": sorted(int(r["NORAD_CAT_ID"]) for r in records)}
+
+
+class NoST:
+    def __enter__(self):
+        raise AssertionError("no Space-Track login when reading Orbit's file")
+
+
 def test_pull_from_orbit():
-    """Orbit's day file (schema orbit-geo-region/1) gives the same day as the gp reply it came from; no Space-Track."""
+    """Orbit's day file (schema orbit-geo-region/1) gives Orbit's regions and events as published; no Space-Track."""
     tmp, orbit_dir = tempfile.mkdtemp(), tempfile.mkdtemp()
     try:
         d1 = [rec(1, "2026-11-15T01:00:00"), rec(2, "2026-11-15T01:00:00")]
-        G.pull("2026-11-15", tmp, False, d1, geo_dir=tmp)
         d2 = [rec(1, "2026-11-16T01:00:00", alt=36200.0), rec(3, "2026-11-16T01:00:00", launch="2026-11-01")]
-        cols = G.OBJ_COLS + ["elset", "rev"]
-        objects = [[int(r["NORAD_CAT_ID"]), r["OBJECT_NAME"], r["OBJECT_ID"], r["OBJECT_TYPE"], r["COUNTRY_CODE"],
-                    r["LAUNCH_DATE"], r["RCS_SIZE"], "zone", r["EPOCH"], float(r["MEAN_MOTION"]), float(r["ECCENTRICITY"]),
-                    float(r["INCLINATION"]), 80.0, 10.0, 200.0, 0.0, 0.0, 0.0, 999, 1000] for r in d2]
-        doc = {"schema": "orbit-geo-region/1", "day": "2026-11-16", "fetched_utc": "2026-11-16T03:20Z",
-               "object_cols": cols, "objects": objects, "active": [1, 3]}
-
-        class NoST:
-            def __enter__(self):
-                raise AssertionError("no Space-Track login when reading Orbit's file")
+        for day, d in (("2026-11-15", d1), ("2026-11-16", d2)):
+            G.pull(day, orbit_dir, False, d, geo_dir=orbit_dir)          # Orbit's own pulls
+        docs = {"2026-11-15": orbit_doc(orbit_dir, "2026-11-15", "2026-11-15T03:20Z", d1),
+                "2026-11-16": orbit_doc(orbit_dir, "2026-11-16", "2026-11-16T03:20Z", d2)}
         real = G.SpaceTrack
         G.SpaceTrack = NoST
         try:
-            G.pull_from_orbit("2026-11-16", tmp, False, get=lambda day: doc, geo_dir=tmp)
-            G.pull("2026-11-16", orbit_dir, False, d2, geo_dir=orbit_dir)     # the same reply, as a gp query
+            G.pull_from_orbit("2026-11-15", tmp, False, get=docs.__getitem__, geo_dir=tmp)
+            G.pull_from_orbit("2026-11-16", tmp, False, get=docs.__getitem__, geo_dir=tmp)
         finally:
             G.SpaceTrack = real
         mine = G.load_region(tmp, "2026-11-16")
         assert mine["fetched_utc"] == "2026-11-16T03:20Z"
+        assert mine["events"] == docs["2026-11-16"]["events"] and mine["regions"] == docs["2026-11-16"]["regions"]
         kinds = sorted((e["norad"], e["kind"]) for e in mine["events"])
         assert (1, "left up") in kinds and (2, "gone") in kinds and (3, "new") in kinds, kinds
-        assert mine["regions"] == G.load_region(orbit_dir, "2026-11-16")["regions"]
         # the same fetch twice is skipped; an unreadable file is skipped too
-        assert G.pull_from_orbit("2026-11-16", tmp, False, get=lambda day: doc, geo_dir=tmp) == (None, None)
+        assert G.pull_from_orbit("2026-11-16", tmp, False, get=docs.__getitem__, geo_dir=tmp) == (None, None)
 
         def down(day):
             raise OSError("404")
         assert G.pull_from_orbit("2026-11-17", tmp, False, get=down, geo_dir=tmp) == (None, None)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+        shutil.rmtree(orbit_dir, ignore_errors=True)
+
+
+def test_from_orbit_takes_orbit_events_and_rereads_yesterday():
+    """Orbit pulls a day again after Noisefloor copied it (17 Nov 2026: LDPE-2 came back between Orbit's two pulls).
+    Noisefloor reads yesterday again and keeps the event on Orbit's day, not on the next one."""
+    tmp, orbit_dir = tempfile.mkdtemp(), tempfile.mkdtemp()
+    try:
+        d0 = [rec(1, "2026-11-14T01:00:00")]
+        d1_early = [rec(1, "2026-11-15T01:00:00")]
+        d1_late = [rec(1, "2026-11-15T01:00:00"), rec(2, "2026-11-15T13:00:00", alt=36400.0)]   # back in the catalogue
+        d2 = [rec(1, "2026-11-16T01:00:00"), rec(2, "2026-11-16T01:00:00", alt=36400.0)]
+        G.pull("2026-11-13", orbit_dir, False, [rec(1, "2026-11-13T01:00:00"), rec(2, "2026-11-13T01:00:00", alt=36400.0)],
+               geo_dir=orbit_dir)                                                               # 2 seen once
+        G.pull("2026-11-14", orbit_dir, False, d0, geo_dir=orbit_dir)
+        G.pull("2026-11-15", orbit_dir, False, d1_early, geo_dir=orbit_dir)
+        early = orbit_doc(orbit_dir, "2026-11-15", "2026-11-15T12:04Z", d1_early)
+        G.pull("2026-11-15", orbit_dir, False, d1_late, geo_dir=orbit_dir)                     # Orbit's second pull
+        late = orbit_doc(orbit_dir, "2026-11-15", "2026-11-15T23:04Z", d1_late)
+        G.pull("2026-11-16", orbit_dir, False, d2, geo_dir=orbit_dir)
+        today = orbit_doc(orbit_dir, "2026-11-16", "2026-11-16T11:55Z", d2)
+        assert [e["norad"] for e in late["events"]] == [2] and today["events"] == []
+
+        G.pull("2026-11-14", tmp, False, d0, geo_dir=tmp)
+        docs = {"2026-11-15": early}
+        G.pull_from_orbit("2026-11-15", tmp, False, get=docs.__getitem__, geo_dir=tmp)         # Noisefloor's copy
+        assert G.load_region(tmp, "2026-11-15")["fetched_utc"] == "2026-11-15T12:04Z"
+        docs = {"2026-11-15": late, "2026-11-16": today}
+        real = G.SpaceTrack
+        G.SpaceTrack = NoST
+        try:
+            G.pull_from_orbit("2026-11-16", tmp, False, get=docs.__getitem__, geo_dir=tmp)
+        finally:
+            G.SpaceTrack = real
+        y, t = G.load_region(tmp, "2026-11-15"), G.load_region(tmp, "2026-11-16")
+        assert y["fetched_utc"] == "2026-11-15T23:04Z" and y["events"] == late["events"], y["events"]
+        assert t["events"] == [] and t["regions"] == today["regions"], t["events"]
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         shutil.rmtree(orbit_dir, ignore_errors=True)
