@@ -117,6 +117,19 @@ def _near(places, lat, lon, limit):
         return None
 
 
+def _where(places, lat, lon, cell=None):
+    """The jamming rule's words for a spoofing place (tools/area_names.py through board.Places.where): 'near Doha',
+    'in Oman, 330 km W of Muscat'; None without places. A false position is judged by its own H3 res-2 cell
+    (Tom's yes, 18 Nov 2026: titles read 'near 22.7°N, 55.5°E' before)."""
+    try:
+        if not places or not hasattr(places, "where"):
+            return None
+        import h3
+        return places.where(lat, lon, [cell or h3.latlng_to_cell(lat, lon, 2)])
+    except Exception:
+        return None
+
+
 def victims(cells, places, top=3):
     """Res-4 victim cells [[cell, episodes, aircraft], ...] -> the res-2 regions holding most of them."""
     import h3
@@ -180,6 +193,7 @@ def new_targets(release, places=None, tdays=None):
             import h3
             dist = round(km(c["lat"], c["lon"], *h3.cell_to_latlng(vic[0][0])))
         out["new"].append({"lat": c["lat"], "lon": c["lon"], "near": _near(places, c["lat"], c["lon"], NEAR_KM),
+                           "where": _where(places, c["lat"], c["lon"]),
                            "aircraft": c["aircraft"], "episodes": c["episodes"], "first": c.get("first"),
                            "last": c.get("last"), "km_from_aircraft": dist,
                            "victims": [{"region": r, "episodes": n, "near": nm} for r, n, nm in vic]})
@@ -240,6 +254,7 @@ def track(tdays, places=None):
             la, lo = h3.cell_to_latlng(r)
             vic.append(_near(places, la, lo, 350) or f"{la:.1f}, {lo:.1f}")
         row = {"lat": t["lat"], "lon": t["lon"], "near": _near(places, t["lat"], t["lon"], NEAR_KM),
+               "where": _where(places, t["lat"], t["lon"]),
                "first": seen[0], "last": seen[-1], "days": len(seen), "aircraft_days": total,
                "latest": t["by_day"].get(days[-1], 0), "series": [t["by_day"].get(d, 0) for d in recent],
                "victims": list(dict.fromkeys(vic)), "usual": t["usual"], "level": t["level"]}
@@ -350,6 +365,7 @@ def regions_now(sdays, places=None, tests=None):
         a, k = sdays[day][r]
         la, lo = h3.cell_to_latlng(r)
         row = {"region": r, "lat": round(la, 2), "lon": round(lo, 2), "near": _near(places, la, lo, 350),
+               "where": _where(places, la, lo, r),
                "active_ah": k, "aircraft_hours": a, "usual": usual}
         ids = region_tests(tests, day, r)
         if ids:

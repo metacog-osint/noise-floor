@@ -14,6 +14,7 @@ A committed file wins over a downloaded one for the same day. The index keeps th
 marks every other day "daily": made automatically, not reviewed by a person.
 """
 import json
+import time
 import math
 import os
 import re
@@ -180,6 +181,62 @@ def annotate_all(events_dir, tests_path):
     return files, tagged
 
 
+NAME_BUDGET_S = 240     # seconds of new naming per deploy (the job's limit is 15 minutes; a cold cache needs ~13)
+
+
+def name_all(events_dir, places, cache_path=None, budget_s=NAME_BUDGET_S):
+    """Write each event's words ("where", the board's rule) into every events file, so the map's tables say what the
+    Today page and the feeds say (Tom's yes, 18 Nov 2026; map.js falls back to its own nearest-place name). Names are
+    kept in cache_path (the deploy's cached release-file folder) under area_names.fingerprint, so a deploy names only
+    new events (about 13 ms an event, 400 days). New naming stops after budget_s seconds, newest days first; the
+    rest keep map.js's own name until a later deploy reaches them. Returns the number of events named."""
+    if not os.path.isdir(events_dir):
+        return 0
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import area_names
+    fp, cache = area_names.fingerprint(places), {}
+    if cache_path and os.path.exists(cache_path):
+        try:
+            with open(cache_path, encoding="utf-8") as f:
+                c = json.load(f)
+            cache = c.get("names", {}) if c.get("fingerprint") == fp else {}
+        except (OSError, ValueError):
+            cache = {}
+    n, t0, before = 0, time.time(), len(cache)
+    for name in sorted(os.listdir(events_dir), reverse=True):
+        if not name.endswith(".json"):
+            continue
+        p = os.path.join(events_dir, name)
+        with open(p, encoding="utf-8") as f:
+            ev = json.load(f)
+        for e in ev.get("anomalies", []) + ev.get("bursts", []):
+            if "lat" in e and "lon" in e:
+                k = f"{e['lat']},{e['lon']},{'|'.join(e.get('cells') or [])}"
+                if k not in cache and time.time() - t0 < budget_s:
+                    cache[k] = where(places, e["lat"], e["lon"], e.get("cells") or [])
+                if k in cache:
+                    e["where"] = cache[k]
+                    n += 1
+        with open(p, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(ev, f, separators=(",", ":"), ensure_ascii=False)
+    if cache_path and (len(cache) != before or not os.path.exists(cache_path)):
+        with open(cache_path, "w", encoding="utf-8", newline="\n") as f:
+            json.dump({"fingerprint": fp, "names": cache}, f, separators=(",", ":"), ensure_ascii=False)
+        if os.environ.get("GITHUB_OUTPUT"):          # new names: the deploy saves the release-file cache
+            with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+                f.write("changed=true\n")
+    return n
+
+
+def load_places(path=None):
+    """Listed places of rank 5 or better from places.json ([] when missing)."""
+    path = path or PLACES
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [p for p in json.load(f).get("places", []) if p[3] <= 5]
+
+
 def ll2(lat, lon):
     return f"{abs(lat):.1f}°{'N' if lat >= 0 else 'S'} {abs(lon):.1f}°{'E' if lon >= 0 else 'W'}"
 
@@ -191,12 +248,12 @@ def nearest(places, lat, lon, cells=()):
 
 
 def where(places, lat, lon, cells=()):
-    """'near Zagreb' for a place (or a name on open sea), 'in Georgia, 220 km W of Tbilisi' for a country, None when
-    unnamed: the feed's titles use the same words (feed_v2.where)."""
+    """The board's words for an event (area_names.where): 'near Zagreb', 'in Georgia, 220 km W of Tbilisi', 'in the
+    Baltic Sea, 260 km S of Stockholm', 'across 25 countries, centred near Zagreb'; None when unnamed. The feed's
+    titles use the same words (feed_v2.where)."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import area_names
-    name, _, kind, ref = area_names.area_ref(places, lat, lon, cells)
-    return None if not name else ("in " if kind == "country" else "near ") + area_names.label(name, kind, ref)
+    return area_names.where(places, lat, lon, cells, event=True)
 
 
 def _area(places, lat, lon, cells):
@@ -258,10 +315,7 @@ def write_feed(index, events_dir, path=None, places_path=None, n=30, alerts_path
     Each day entry's updated time is the end of its UTC day and each alert's is its own time, so a redeploy doesn't
     re-announce old entries. Returns the number of entries."""
     path, places_path, alerts_path = path or FEED, places_path or PLACES, alerts_path or SUN_ALERTS
-    places = []
-    if os.path.exists(places_path):
-        with open(places_path, encoding="utf-8") as f:
-            places = [p for p in json.load(f).get("places", []) if p[3] <= 5]
+    places = load_places(places_path)
     days = sorted(index, key=lambda d: d["day"])
     entries = []
     for i in range(len(days) - 1, max(-1, len(days) - 1 - n), -1):
@@ -343,6 +397,9 @@ def main():
     hot_days = sorted(m.group(1) for m in map(HOT_FILE.match, os.listdir(src) if os.path.isdir(src) else []) if m)
     trend = write_trend(hot_days, src, os.path.join(os.path.dirname(GNSS), "trend.json"))   # every day, validated too
     n_files, n_tagged = annotate_all(EVENTS, os.path.join(src, "faa_gps_tests.json"))
+    t0 = time.time()
+    n_named = name_all(EVENTS, load_places(), os.path.join(src, "area-names-cache.json") if os.path.isdir(src) else None)
+    print(f"events named: {n_named} in {time.time() - t0:.0f} s")
     index = list(committed.values()) + [entry(d, daily=True) for d in added]
     index.sort(key=lambda d: d["day"])
     with open(index_path, "w", encoding="utf-8", newline="\n") as f:

@@ -163,13 +163,25 @@ def event_span(day, h0, h1):
             "end": utc(d + timedelta(hours=h1 + 1))}
 
 
+def _spot(r):
+    """A spoofing place's words: spoof_site's "where" (the jamming rule: 'near Doha', 'in Oman, 330 km W of
+    Muscat'), else 'near' its old nearest-place name, else 'at 22.7°N, 55.5°E'."""
+    if r.get("where"):
+        return r["where"]
+    if r.get("near"):
+        return "near " + r["near"]
+    return f"at {abs(r['lat']):.1f}°{'N' if r['lat'] >= 0 else 'S'}, {abs(r['lon']):.1f}°{'E' if r['lon'] >= 0 else 'W'}"
+
+
 def where(r):
     """' near Doha' for a place, ' in Georgia, 220 km W of Tbilisi' for a country (board.py's near_kind and
     near_ref, tools/area_names.py), '' unnamed."""
+    if r.get("where"):                       # board.py's full words (area_names.where), spread included for events
+        return " " + r["where"]
     near = r.get("near")
     if not near:
         return ""
-    if r.get("near_kind") == "country":
+    if r.get("near_kind") in ("country", "sea"):
         return " in " + near + (", " + r["near_ref"] if r.get("near_ref") else "")
     return " near " + near
 
@@ -318,13 +330,13 @@ def build(board, days, now=None, milair=None):
             continue
         geom, pts = h3_polygon(vic[0]["region"])
         over = ", ".join(dict.fromkeys(v["near"] for v in vic if v.get("near"))) or "unnamed areas"
-        at = t.get("near") or f"{abs(t['lat']):.1f}°{'N' if t['lat'] >= 0 else 'S'}, {abs(t['lon']):.1f}°{'E' if t['lon'] >= 0 else 'W'}"
+        at = _spot(t)
         far = t.get("km_from_aircraft")
         add(geom, {
             "id": f"noisefloor-spoof-new-{sp['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
             "product_category": "current", "precision_class": "area", "data_as_of": f"{sp['day']}T00:00:00Z",
-            "title": f"Aircraft shown at a new false position near {at}",
-            "summary": (f"{t['aircraft']} aircraft over or near {over} had receivers showing them near {at} on "
+            "title": f"Aircraft shown at a new false position {at}",
+            "summary": (f"{t['aircraft']} aircraft over or near {over} had receivers showing them {at} on "
                         f"{datetime.strptime(sp['day'], '%Y-%m-%d').strftime('%d %b %Y').lstrip('0')}"
                         + (f", about {far:,} km from where most of them were" if far else "") + f"; no false position within "
                         f"10 km in the {sp['history_days']} days before with a spoofing targets file. The false "
@@ -341,13 +353,13 @@ def build(board, days, now=None, milair=None):
             continue
         geom, pts = h3_polygon(regs[0]["region"])
         over = ", ".join(dict.fromkeys(r["near"] for r in regs if r.get("near"))) or "unnamed areas"
-        at = t.get("near") or f"{abs(t['lat']):.1f}°{'N' if t['lat'] >= 0 else 'S'}, {abs(t['lon']):.1f}°{'E' if t['lon'] >= 0 else 'W'}"
+        at = _spot(t)
         usual = f"{t['usual']:g}"
         add(geom, {
             "id": f"noisefloor-spoof-above-{lv['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
             "product_category": "current", "precision_class": "area", "data_as_of": f"{lv['day']}T00:00:00Z",
-            "title": f"More aircraft than usual shown at the false position near {at}",
-            "summary": (f"{t['latest']} aircraft, mostly over or near {over}, had receivers showing them near {at} on "
+            "title": f"More aircraft than usual shown at the false position {at}",
+            "summary": (f"{t['latest']} aircraft, mostly over or near {over}, had receivers showing them {at} on "
                         f"{datetime.strptime(lv['day'], '%Y-%m-%d').strftime('%d %b %Y').lstrip('0')}, against a usual "
                         f"{usual} a day (median of the {lv['earlier_days']} earlier days with a spoofing targets file). "
                         "The false position is where receivers were told they were, not a transmitter site."),
@@ -359,13 +371,13 @@ def build(board, days, now=None, milair=None):
     rl = (board.get("spoofing") or {}).get("region_levels") or {}
     for i, r in enumerate((rl.get("above") or [])[:ABOVE_REGION_ITEMS]):
         geom, pts = h3_polygon(r["region"])
-        at = r.get("near") or f"{abs(r['lat']):.1f}°{'N' if r['lat'] >= 0 else 'S'}, {abs(r['lon']):.1f}°{'E' if r['lon'] >= 0 else 'W'}"
+        at = _spot(r)
         share = 100 * r["active_ah"] / r["aircraft_hours"] if r.get("aircraft_hours") else None
         add(geom, {
             "id": f"noisefloor-spoof-region-above-{rl['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
             "product_category": "current", "precision_class": "area", "data_as_of": f"{rl['day']}T00:00:00Z",
-            "title": f"More GPS spoofing than usual near {at}",
-            "summary": (f"Aircraft in the region about 300 km across near {at} spent {r['active_ah']} aircraft-hours in "
+            "title": f"More GPS spoofing than usual {at}",
+            "summary": (f"Aircraft in the region about 300 km across {at} spent {r['active_ah']} aircraft-hours in "
                         f"active spoofing episodes on "
                         f"{datetime.strptime(rl['day'], '%Y-%m-%d').strftime('%d %b %Y').lstrip('0')}"
                         + (f" ({share:.1f}% of {r['aircraft_hours']:,} aircraft-hours)" if share is not None else "")
