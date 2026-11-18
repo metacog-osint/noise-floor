@@ -199,6 +199,23 @@ def test_carried_over():
         S.CARRY_MAX_S, S.CARRY_TRUSTED_S = old
 
 
+def test_heldout_test_line():
+    """H6's reported line: a control-box episode inside an announced US GPS test (window overlaps, radius reaches a
+    victim cell) counts; one outside the window or the radius doesn't."""
+    import spoof_heldout as H
+    c = S.cell(32.5, -106.4, S.RES)
+    cs = c if isinstance(c, str) else __import__("h3").int_to_str(c)
+    test = {"id": "T1", "centre": [33.0, -106.3], "radii_nm": {"FL400": 300}, "windows": [["2026-02-20T04:00Z", "2026-02-20T12:00Z"]]}
+    e_in = {"start": "2026-02-20T05:00:00Z", "end": "2026-02-20T05:30:00Z", "victim_cells": [cs], "class": "post"}
+    e_late = dict(e_in, start="2026-02-20T13:00:00Z", end="2026-02-20T13:30:00Z")
+    far = S.cell(45.0, -75.0, S.RES)
+    e_far = dict(e_in, victim_cells=[far if isinstance(far, str) else __import__("h3").int_to_str(far)])
+    assert H.inside_tests(e_in, [test]) == ["T1"]
+    assert H.inside_tests(e_late, [test]) == [] and H.inside_tests(e_far, [test]) == []
+    line = H.test_line({"2026-02-20": [e_in, e_late], "2024-02-20": []}, ["2024-02-20", "2026-02-20"], [test])
+    assert line["inside_announced_tests"] == 1 and line["days_covered"] == ["2026-02-20"] and not line["gating"], line
+
+
 def build_day(folder, day, traces):
     stem = os.path.join(folder, f"v{day.replace('-', '.')}-planes-readsb-prod-0.tar")
     buf = io.BytesIO()
