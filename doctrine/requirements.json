@@ -121,6 +121,30 @@
         "COSMIC-2 limb S4",
         "ground ROTI"
       ]
+    },
+    {
+      "id": "NF-SQ-1",
+      "type": "standing",
+      "standing_question": "SQ1",
+      "question": "Is a zone escalating? Noisefloor's part: military aircraft activity seen on ADS-B and MLAT, against its usual level."
+    },
+    {
+      "id": "NF-PIR-6",
+      "type": "pir",
+      "parent": "NF-SQ-1",
+      "question": "Where is military air activity seen on ADS-B and MLAT above or below its usual level, and in which roles (tanker, ISR, transport, bomber, fighter)?",
+      "series": [
+        "military air"
+      ]
+    },
+    {
+      "id": "NF-EEI-6",
+      "type": "eei",
+      "parent": "NF-PIR-6",
+      "question": "Military aircraft seen per region and role: aircraft-hours and distinct aircraft against the same UTC hours over the 28 days before, with the share placed by multilateration only. Always a lower bound: military aircraft often fly with ADS-B off.",
+      "series": [
+        "military air"
+      ]
     }
   ]
 }

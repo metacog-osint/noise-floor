@@ -180,6 +180,18 @@
     "exoanalytic-public": {
       "independence_group": "anduril-exoanalytic",
       "descriptor": "ExoAnalytic (Anduril from 2026) public statements from its GEO telescope network."
+    },
+    "plane-alert-db": {
+      "grade": "C3",
+      "independence_group": "plane-alert-db",
+      "ease_of_faking": "medium",
+      "cadence_s": 2592000,
+      "descriptor": "Volunteer-kept list of military aircraft ICAO addresses with type names (plane-alert-db, ODbL 1.0); a slimmed snapshot is committed (registry/plane_alert_mil.csv) and refreshed by hand, never fetched at run time.",
+      "probe": {
+        "url": "https://api.github.com/repos/sdr-enthusiasts/plane-alert-db",
+        "expect": "json",
+        "time_path": "pushed_at"
+      }
     }
   }
 }

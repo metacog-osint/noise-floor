@@ -1,0 +1,45 @@
+name: milair
+# Military air day job (tools/milair_job.py): military aircraft seen on ADS-B and MLAT per region and role, from the
+# adsb.lol daily archive (ODbL), streamed from its public release links without saving it -> <day>.milair.json on
+# the release milair-data-YYYY. Aggregates only, no aircraft identifiers. Every count is a lower bound. Method:
+# docs/validation/milair.md. The site's deploy reads the files (tools/milair.py site) and feed_v2.py adds one routine
+# item per region; nothing here is an alert.
+# adsb.lol posts day D's archive about 03:25 UTC on D+1. GitHub's cron fires hours late on this account, so these
+# starts land through the morning; a start with no days given makes any of the last three days still missing, so an
+# extra start costs about a minute. Backfill: Run workflow with days START:END (about 4 min a day on GitHub).
+on:
+  schedule:
+    - cron: "45 4 * * *"
+    - cron: "45 8 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days: YYYY-MM-DD or START:END, space-separated. Empty = any of the last three days not yet made."
+        required: false
+        default: ""
+      force:
+        description: "Remake days already in the release"
+        type: boolean
+        default: false
+permissions:
+  contents: write    # create the yearly milair-data release and upload assets
+concurrency:
+  group: milair
+  cancel-in-progress: false
+jobs:
+  day:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Military air day files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ inputs.days }}
+          FORCE: ${{ inputs.force && '--force' || '' }}
+        run: python tools/milair_job.py $DAYS $FORCE
