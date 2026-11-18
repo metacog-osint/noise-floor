@@ -292,3 +292,118 @@ From now on, a change to the spoofing detector goes through these steps:
 
 Expected cost of an envelope change: 18 reruns of a few minutes each, plus a scoring command over files the daily run
 already published, against about 3.5 hours of PC time and the raw archives on disk.
+
+## 5. Carried-over position error (pre-registered 18 Nov 2026, before any scoring)
+
+**What was seen.** A receiver that was spoofed can go on reporting false positions after the aircraft leaves the
+spoofed area. `classify()` calls such an episode **post** only when it has no peers. Peers are other aircraft with an
+episode in the same res-2 region within an hour, and they are decided first, so a carried-over episode over a busy
+region still counts as **active** if any other aircraft there was flagged at the time. The effect was described on the
+18 cached test days at v0.6.1 (reruns from `data/spoof_cache2`, identical to `data/spoofing_v061_cached`), using
+aggregates only.
+- **Held-out days, active aircraft-hours by location** (res-4 cell, region of the cell as in H1). The share is the part
+  coming from episodes that already meet the post rule (an earlier episode by the same aircraft that day, ended at
+  least 15 min before and at least 300 km away):
+
+  | Location | Share | Aircraft-hours |
+  |---|---|---|
+  | Control boxes | 66% | 231 of 348 |
+  | Spoofing groups | 14% | 892 of 6,485 |
+  | South Asia | 4% | 16 of 382 |
+  | Elsewhere | 23% | 658 of 2,913 |
+
+  In central Europe it is 21 of 38 episodes, mostly category A5, and the trusted time between the two episodes is
+  mostly 5-30 minutes.
+- **What lies between an active episode and the aircraft's previous one** (held-out days, 882 episodes with an earlier
+  one): no ADS-B at all 14%, ADS-B but none trusted 3%, trusted under 5 min 15%, 5-30 min 27%, 30 min or more 41%.
+  "No trusted position between" is therefore not a usable continuity condition.
+- **Four rule options were compared on 7-12 Nov 2026 only**, so the 12 held-out days keep no rule scored on them. The
+  table gives the share of active aircraft-hours each rule moves out of active:
+
+  | Rule | Control boxes | Spoofing groups |
+  |---|---|---|
+  | R1: post rule beats peers | 56% | 6.9% |
+  | R2: R1, and gap ≤ 3 h | 54% | 4.2% |
+  | R3: R2, and under 30 trusted minutes between | 47% | 2.3% |
+  | R4: R2, and no trusted position between | 0% | 0.9% |
+
+  Of these, R3 has the best trade-off between the effect in the controls and the cost in the spoofing groups. The
+  held-out bins above were looked at before this pre-registration; no rule was scored on them.
+
+**The rule (R3).** An episode that meets the post rule (`cand_post`) is classed **post** even when it has peers if:
+- the gap from the end of the same aircraft's nearest earlier episode that day (the one with the latest end among those
+  starting earlier, any kind) to this episode's start is at most `CARRY_MAX_S` = 10,800 s (3 h); and
+- the trusted ADS-B time strictly between them is under `CARRY_TRUSTED_S` = 1,800 s (30 min). Trusted time is counted
+  as in the description: the sum over consecutive ADS-B positions that are both trusted, each step capped at
+  `OBS_GAP_S` (120 s).
+
+Implementation:
+- `score_trace()` writes the gap and the trusted time to each episode.
+- `classify()` applies the rule, and events mark the episodes it moved (`carried`).
+- Both constants are 0 by default (rule off). With the rule off, the outputs are identical to v0.6.1.
+- The rule only changes the class of `cand_post` episodes. These are already left out of other aircraft's peers, so no
+  other episode's class or peer count changes, and no episode appears or disappears.
+- Every aircraft with an episode is a cache candidate, so the change is inside the envelope. It is scored from the day
+  caches, with no raw archive.
+
+**Pass marks, fixed before any run.** The variant (`CARRY_MAX_S=10800`, `CARRY_TRUSTED_S=1800`) is scored with
+`tools/spoof_variant.py` on the 18 cached days, against `data/spoofing_v061_cached`. Gating, on the 12 held-out days:
+- **H1-H6 and H8**, the standing checks (H7 is v0.6's own check and is not part of this test).
+- **C1 (control noise falls):** pooled active aircraft-hours in the six control boxes are lower than the default's.
+  These are res-4 `spoofed_active` from the `hex4` tables, with the region taken from the cell as in H1.
+- **C2 (signal kept):** pooled active aircraft-hours in the spoofing groups (Middle East, Black Sea, Baltic and W Russia;
+  same measure) are at least 90% of the default's.
+
+Reported, not gating:
+- Lima P1 and P2 (on 7-12 Nov, from the caches);
+- the 7-12 Nov figures, which are in-sample because they chose the rule;
+- South Asia and elsewhere;
+- the moved episodes by emitter category, location and gap.
+
+**Shadow.** The variant is listed in `tools/spoof_shadow.json` for at least 14 daily days from the day it reaches
+`main`. Its shadow score:
+- the standing shadow checks (H1, H2, H3, H6, H8);
+- C1 on the pooled shadow days, where live days with no control-box active aircraft-hours in the default count as
+  "no change";
+- C2 on the region-group active aircraft-hours in the shadow files.
+
+**Decision.**
+- Adoption needs both the held-out score and the shadow score to pass, and then Tom's call. If adopted, the default
+  becomes `CARRY_MAX_S = 10800`, `CARRY_TRUSTED_S = 1800` (v0.6.2), and the region levels in section 3 rest on it from
+  the day it goes live.
+- A failed gate goes to Tom with the numbers. Nothing changes in the published output until he decides.
+
+**Limits known in advance.**
+- The rule sees one UTC day at a time. An exposure before 00:00 UTC is invisible to it. On 15 Oct 2026, two of the three
+  Liège/Eifel excursions had no earlier episode that day and served as each other's peers.
+- An aircraft genuinely spoofed twice within 3 h, with under 30 trusted minutes between, is relabelled post. That cost
+  is what C2 bounds.
+
+**Held-out score (18 Nov 2026, after the two commits above).**
+- **How it was run:** `tools/spoof_variant.py --set CARRY_MAX_S=10800 --set CARRY_TRUSTED_S=1800 --label r3`. It reran
+  all 18 days from the format-2 caches (2,303 CPU-s) against `data/spoofing_v061_cached`.
+- **Rule-off check:** with both constants at 0, the reruns of 20 Oct 2024, 10 May 2025 and 8 Nov 2026 matched v0.6.1
+  exactly (`spoof_same.py`: tie order only).
+- **Gating, all pass:**
+
+  | Check | Result |
+  |---|---|
+  | H1 | 0.0012% (v0.6.1: 0.0023%) |
+  | H2 | Middle East 0.389%, Baltic and W Russia 0.839% |
+  | H3 | 568 of 618 |
+  | H4 | 22 of 67 |
+  | H5 | Beirut, Beirut, Amman |
+  | H6 | 122 control-box episodes (v0.6.1: 122) |
+  | H8 | 568 (v0.6.1: 568; minimum 557) |
+  | C1 | control-box active aircraft-hours 185 (v0.6.1: 348; −47%) |
+  | C2 | spoofing groups 6,161 of 6,485, 95.0% kept (Middle East 97.8%, Black Sea 99.4%, Baltic and W Russia 92.8%) |
+
+- **Reported:**
+  - Lima P1 12 of 14 and P2 47 of 56, the same as v0.6.1.
+  - Elsewhere 84.9% of active aircraft-hours kept; South Asia 98.7%.
+  - 181 held-out episodes moved from active to post: A3 127, A5 50, A2 3, A0 1. By location: spoofing groups 95,
+    elsewhere 68, control 17, South Asia 1. By gap: 15-60 min 121, 1-2 h 31, 2-3 h 29.
+  - 7-12 Nov, in sample: control 157 of 298 kept (−47.3%), spoofing groups 97.7% kept. That is the description's R3
+    figure exactly, which confirms that the code and the description apply the same rule.
+- **Next:** the shadow listing (`carry-r3`, 19 Nov-17 Dec 2026) starts once this reaches `main`. Adoption waits for at
+  least 14 shadow days and Tom's call.

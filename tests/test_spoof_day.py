@@ -165,6 +165,40 @@ def test_classify():
     assert got == ["active", "active", "isolated", "post", "isolated", "unlocated"], got
 
 
+def test_carried_over():
+    """R3 (docs/spoofing-light-plan.md section 5): a post-rule episode with peers is post when the earlier episode ended
+    <= CARRY_MAX_S before and < CARRY_TRUSTED_S trusted time lies between; off (0) by default."""
+    pt = lambda t: (t, 0.0, 0.0, 35000, 450, 90, None, 9, 8, 2, None)
+    A = [pt(DAY0 + k * 60) for k in range(40)]                      # one position a minute for 40 minutes
+    trusted = [k not in (20, 21) for k in range(40)]                # two untrusted positions at minutes 20 and 21
+    eps = [{"t0": DAY0, "t1": DAY0 + 300}, {"t0": DAY0 + 60, "t1": DAY0 + 600}, {"t0": DAY0 + 1800, "t1": DAY0 + 2000}]
+    S.carry_since(A, trusted, eps)
+    assert eps[0]["prev_gap_s"] is None and eps[0]["prev_trusted_s"] is None
+    assert eps[1]["prev_gap_s"] == 60 - 300 and eps[1]["prev_trusted_s"] == 0
+    # between 600 s and 1800 s: positions at 11..29 min; pairs (11,12)..(28,29) minus the three touching 20 and 21
+    assert eps[2]["prev_gap_s"] == 1200 and eps[2]["prev_trusted_s"] == (18 - 3) * 60, eps[2]
+
+    def ep(t0, lat, lon, h, gap=None, tr=None):
+        return {"t0": t0, "t1": t0 + 300, "ref": [lat, lon], "vcells": [(S.cell(lat, lon, S.RES), h)],
+                "prev_gap_s": gap, "prev_trusted_s": tr}
+
+    def run(gap, tr):
+        c = {"icao": "c", "episodes": [ep(DAY0, 55.0, 30.0, 0), ep(DAY0 + 7200, 48.0, 5.0, 2, gap, tr)]}
+        f = {"icao": "f", "episodes": [ep(DAY0 + 7300, 48.0, 5.0, 2)]}
+        S.classify([c, f])
+        return c["episodes"][1]["class"], c["episodes"][1].get("carried"), f["episodes"][0]["class"]
+
+    assert run(6900, 600) == ("active", None, "isolated")           # rule off: peers win, as v0.6.1
+    old = S.CARRY_MAX_S, S.CARRY_TRUSTED_S
+    S.CARRY_MAX_S, S.CARRY_TRUSTED_S = 10800, 1800
+    try:
+        assert run(6900, 600) == ("post", True, "isolated")         # carried over: post; f (no non-post peer) unchanged
+        assert run(6900, 1800) == ("active", None, "isolated")      # 30 trusted minutes between: a new exposure
+        assert run(10801, 0) == ("active", None, "isolated")        # earlier episode more than 3 h before
+    finally:
+        S.CARRY_MAX_S, S.CARRY_TRUSTED_S = old
+
+
 def build_day(folder, day, traces):
     stem = os.path.join(folder, f"v{day.replace('-', '.')}-planes-readsb-prod-0.tar")
     buf = io.BytesIO()
@@ -449,6 +483,7 @@ def test_cache_rerun_and_shadow():
         assert "bbb0" not in txt and "bbb2" not in txt, "no aircraft identifiers"
         sc = SH.score([os.path.join(tmp, "site")])["v0.6"]
         assert sc["days"] == 1 and sc["episodes"] == {"default": 1, "variant": 2} and sc["new"]["episodes"] == 1
+        assert "C1" in sc and "C2" in sc and isinstance(sc["C1"]["pass"], bool)
         assert SH.variants("2026-11-20") and not SH.variants("2027-01-01")      # the listed calibration variant's dates
     finally:
         S._set_overrides({"SLOW_HI_A2_FT": 36000})
