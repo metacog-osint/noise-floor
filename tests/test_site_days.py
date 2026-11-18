@@ -153,19 +153,21 @@ def test_names_without_h3():
     saved = sys.modules.get("h3")
     sys.modules["h3"] = None                       # makes `import h3` raise ImportError
     area_names._cell_countries.cache_clear()
+    area_names._cell_samples.cache_clear()
     try:
         places = [["Sochi", 43.6, 39.73, 3, 0], ["Ioannina", 39.66, 20.85, 4, 0]]
         assert S.nearest(places, 39.68, 20.68, ["822c27fffffffff"]) == "Ioannina"
-        assert S.nearest(places, 41.26, 41.05, ["822c27fffffffff"]) in ("Sochi", "Turkey")   # sea point: no crash
+        assert S.nearest(places, 41.26, 41.05, ["822c27fffffffff"]) in ("Sochi", "Turkey", "the Black Sea")   # coast point: no crash
         assert S.where(places, 39.68, 20.68) == "near Ioannina"
         assert S.where(places, 39.0, 35.0) == "in Turkey", S.where(places, 39.0, 35.0)   # inland Turkey, no place in reach
-        assert S.where([], 0.0, -30.0) is None                                          # open Atlantic, nothing listed
+        assert S.where([], -10.0, -30.0) == "in the South Atlantic Ocean"                # open Atlantic, nothing listed: its sea
     finally:
         if saved is None:
             sys.modules.pop("h3", None)
         else:
             sys.modules["h3"] = saved
         area_names._cell_countries.cache_clear()
+        area_names._cell_samples.cache_clear()
 
 
 if __name__ == "__main__":

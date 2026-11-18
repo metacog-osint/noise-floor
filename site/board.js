@@ -91,7 +91,7 @@
       var evs = all.slice(0, 6);           // majors first, then by peak; the rest are on the map
       set("ev-list", evs.length ? evs.map(function (e) {
         var tier = e.tier === "major" ? "Major" : e.tier === "notable" ? "Notable" : "Minor", k = e.tier === "major" ? 3 : 1;
-        var where = e.near ? (e.near_kind === "country" ? "In " + e.near + (e.near_ref ? ", " + e.near_ref : "") : "Near " + e.near) : Math.abs(e.lat).toFixed(1) + "°" + (e.lat >= 0 ? "N" : "S") + " " + Math.abs(e.lon).toFixed(1) + "°" + (e.lon >= 0 ? "E" : "W");
+        var where = e.where ? e.where.charAt(0).toUpperCase() + e.where.slice(1) : e.near ? (e.near_kind === "country" || e.near_kind === "sea" ? "In " + e.near + (e.near_ref ? ", " + e.near_ref : "") : "Near " + e.near) : Math.abs(e.lat).toFixed(1) + "°" + (e.lat >= 0 ? "N" : "S") + " " + Math.abs(e.lon).toFixed(1) + "°" + (e.lon >= 0 ? "E" : "W");
         return '<li><span class="tier"><i style="background: var(--ramp-' + k + ')"></i>' + tier + '</span><span class="where"><a href="' + mapHref(te.day, e.lat, e.lon) + '">' +
           esc(where) + '</a></span><span class="what">' + Math.round(e.peak) + "% of aircraft degraded</span>" +
           '<span class="when">' + pad(e.h0) + ":00–" + pad(e.h1) + ":59 UTC</span>" + (e.test ? '<span class="note">Fits announced test ' + esc(e.test) + "</span>" : "") + "</li>";
@@ -107,7 +107,7 @@
     if (c) {
       var names = function (xs) {         // a country carries its reference: "Saudi Arabia (330 km W of Abu Dhabi)"
         return xs.filter(function (r) { return r.near; }).map(function (r) {
-          return r.near + (r.near_kind === "country" && r.near_ref ? " (" + r.near_ref + ")" : "");
+          return r.near + ((r.near_kind === "country" || r.near_kind === "sea") && r.near_ref ? " (" + r.near_ref + ")" : "");
         }).join(", ");
       };
       set("wk", "<dt>Started (" + n(c.new_count) + ")</dt><dd>" + (esc(names(c.new || [])) || "None") + "</dd>" +

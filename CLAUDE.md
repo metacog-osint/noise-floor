@@ -76,11 +76,11 @@ repo). Keep this file under 12 KB (global rule); state and narrative go in the h
   `routine` (Tom's choice). MultiPolygon of H3 res-2 regions, `data_as_of` = end of last UTC hour with `period`,
   measure `peak_severe_share_pct`. Country tags from each cell's corners, centre and res-5 children plus
   `place_country` (rings to 25 km for coastal towns).
-- **Names (Tom's yes 17 Nov; refs option B 18 Nov):** `tools/area_names.py`: a listed place within 150 km whose
-  country the area covers, else the country most of its land is in (`near_kind: country`, no borrowed tag), else on
-  open sea the nearest place within 350 km, name only. Country names carry `near_ref` ("220 km W of Tbilisi": nearest
-  place within 500 km, same country unless another is closer by > 1.5x; words only). Ties break on region id. The
-  map's events table still uses map.js `where()` (350 km), so it can differ from the Today page.
+- **Names (Tom 17-18 Nov; rule in `tools/area_names.py`):** a listed place within 150 km in a country the area
+  covers; else the point's country, or the land-majority one when half the cells' samples are land; else its
+  Natural Earth sea (`tools/sea_areas.py`). Countries and seas carry `near_ref` ("220 km W of Tbilisi"); events
+  of 10+ regions over 5+ countries read "across N countries, centred ...". Full words in `where` (board rows, map
+  events files, spoofing rows). Cell countries: `site/data/cell_countries.json` (rebuild on kit border changes).
 - Spoofing items: up to five new places and up to five `noisefloor-spoof-region-above-<day>-<n>`; ids
   `noisefloor-below-`/`noisefloor-ended-`. Space weather items are routine, no `baseline_ref` (see below).
 
