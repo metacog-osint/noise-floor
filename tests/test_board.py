@@ -275,6 +275,32 @@ def test_area_names():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_area_reference():
+    """A country name carries "220 km S of Doha" (Tom's option B, 18 Nov 2026): the nearest listed place, preferring
+    one in the named country unless a place elsewhere is closer by more than 1.5 times. A place name carries none."""
+    tmp = tempfile.mkdtemp()
+    try:
+        p = _places(tmp, [["Doha", 25.29, 51.53, 2, 0], ["Riyadh", 24.69, 46.72, 1, 0]])
+        name, at, kind, ref = p.area_kind(23.35, 51.33, ["82534ffffffffff"])
+        assert (name, at, kind, ref) == ("Saudi Arabia", None, "country", "220 km S of Doha"), ref   # Riyadh 490 km
+        p = _places(tmp, [["Pavlodar", 52.3, 76.95, 4, 0], ["Omsk", 54.99, 73.4, 4, 0]])
+        assert p.area_kind(54.52, 77.51, ["82214ffffffffff"])[2:] == ("country", "270 km E of Omsk")  # Pavlodar (KZ) 250 km
+        p = _places(tmp, [["Ioannina", 39.66, 20.85, 4, 0]])
+        assert p.area_kind(39.68, 20.68, []) == ("Ioannina", [39.66, 20.85], "place", None)
+        p = _places(tmp, [])
+        assert p.area_kind(23.35, 51.33, ["82534ffffffffff"])[2:] == ("country", None)                # nothing in reach
+        b = {"changes": {"new": [{"near": "Saudi Arabia", "near_kind": "country", "near_ref": "330 km W of Abu Dhabi"},
+                                 {"near": "Russia", "near_kind": "country", "near_ref": "270 km E of Omsk"}],
+                         "new_count": 3, "ended_count": 0,
+                         "below": [{"near": "Saudi Arabia", "near_kind": "country", "near_ref": "210 km NW of Manama"}],
+                         "below_count": 3}}
+        assert B.brief(b) == ("GPS interference started in three areas this week, among them Saudi Arabia (330 km W of "
+                              "Abu Dhabi) and Russia (270 km E of Omsk); it fell below jamming scale in three, including "
+                              "Saudi Arabia (210 km NW of Manama)."), B.brief(b)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_changes_ties_break_on_region():
     """New regions with the same day count come out in region order, the same on every build."""
     tmp = tempfile.mkdtemp()

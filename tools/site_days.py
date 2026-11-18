@@ -191,10 +191,12 @@ def nearest(places, lat, lon, cells=()):
 
 
 def where(places, lat, lon, cells=()):
-    """'near Zagreb' for a place (or a name on open sea), 'in Georgia' for a country, None when unnamed: the
-    feed's titles use the same words (feed_v2.where)."""
-    name, _, kind = _area(places, lat, lon, cells)
-    return None if not name else ("in " if kind == "country" else "near ") + name
+    """'near Zagreb' for a place (or a name on open sea), 'in Georgia, 220 km W of Tbilisi' for a country, None when
+    unnamed: the feed's titles use the same words (feed_v2.where)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import area_names
+    name, _, kind, ref = area_names.area_ref(places, lat, lon, cells)
+    return None if not name else ("in " if kind == "country" else "near ") + area_names.label(name, kind, ref)
 
 
 def _area(places, lat, lon, cells):

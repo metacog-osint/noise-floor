@@ -59,6 +59,11 @@ loaded automatically; read it when you need the background.
   country tag), else on open sea the nearest place within 350 km as a name only. It was 350 km for everything:
   the 15 Nov Turkish-coast majors were "near Sochi" and tagged RU. New, ended and below-scale lists break ties on
   the region id, so a build names the same places every time. Spoofing and satellite cards keep their own limits.
+  **Country references (18 Nov 2026, Tom's option B):** a country name carries `near_ref`, "220 km W of Tbilisi"
+  (`area_names.ref`: the nearest listed place within 500 km, in that country unless one elsewhere is closer by more
+  than 1.5 times; words only, no coordinates or tags). Cards and feed titles say "in Georgia, 220 km W of Tbilisi",
+  the brief and This week list "Saudi Arabia (210 km NW of Manama)". The map's events and bursts tables still name
+  places with map.js `where()` (nearest within 350 km), so they can differ from the Today page.
   **Side effect on COP:** its freshness is the newest item's `data_as_of` (Noisefloor's windows: 36 h late, 72 h stale), so
   the day's items now read about a day older and may show "late" for part of each day until COP treats `day` items
   as end-of-day for freshness or widens the windows.
