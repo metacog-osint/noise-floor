@@ -181,6 +181,16 @@ loaded automatically; read it when you need the background.
     its highest UTC hour. **All are routine observations with no baseline_ref:** the day's highest values, not
     departures from a usual level. Any tier above routine needs a stated baseline first (e.g. a station's own
     same-local-time median over 30 days) and Tom's yes. Requirement `NF-EEI-5`; NCF product `space-weather`.
+- **Military air (built 18 Nov 2026, not yet shipped):** read `docs/validation/milair.md` first. Military aircraft
+  seen on ADS-B and MLAT by role (tanker, ISR, transport, bomber, fighter) per region (Watchfloor's zone boxes, Gulf
+  first, `tools/milair_regions.json`) against the same UTC hours on the same kind of day (workday or weekend, each
+  region's own weekend) over the 28 days before. A measurement, never an
+  alert; every count is a lower bound and every item is tier routine. `tools/milair.py` (adsb.lol archive's
+  `dbFlags` military bit or the committed plane-alert-db snapshot `registry/plane_alert_mil.csv`; roles from ICAO
+  type codes in `registry/mil_roles.csv`, never from model categories); `tools/milair_job.py` and
+  `.github/workflows/milair.yml` stream each archive day (nothing kept) to `<day>.milair.json` on `milair-data-YYYY`
+  (ODbL); at deploy `milair.py site` writes `site/data/milair/` (gitignored) and `feed_v2.py` adds one item per region
+  with the lane's `health`. The live `/v2/mil` endpoint is probe-only (permission pending, like `adsblol-live`).
 - **`watch.py` sources (31 Oct 2026):** Cloudflare Radar (`CLOUDFLARE_RADAR_TOKEN`, private digest) and Page watch
   (pages in `private/watch/pollers.json` `pagewatch`, each with a link pattern). FAA NOTAMs wait on API credentials
   (requested 30 Oct); the public NOTAM Search site refuses automated clients.

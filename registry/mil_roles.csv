@@ -1,0 +1,222 @@
+type,role,split,note
+K35R,tanker,isr=RC-135|OC-135|WC-135|NC-135,KC-135R/T Stratotanker
+K35E,tanker,,KC-135E
+KC35,tanker,,KC-135 (alternate code)
+DC10,tanker,transport=^Douglas DC-10$,KC-10A Extender; KDC-10
+MD11,transport,,MD-11 (mostly charter airlift)
+B762,tanker,transport=^Boeing 767-2|C-767,KC-46A Pegasus; KC-767
+B763,tanker,transport=^Boeing 767-3,KC-767 variants; VIP 767s
+KC46,tanker,,KC-46A (alternate code)
+A332,tanker,transport=ACJ|A330-2\d\d$|A330-200$,A330 MRTT (Voyager; Phenix); plain A330s are transport
+A310,transport,tanker=MRTT,A310 (CC-150 Polaris; some MRTT)
+IL78,tanker,,Il-78 Midas
+B703,isr,tanker=KC-707|KE-3|Tanker;transport=^Boeing 707-3,E-8C J-STARS; KE-3; 707 transports
+B707,isr,tanker=KC-707|KE-3;transport=^Boeing 707,707 variants
+C30J,transport,tanker=KC-130;isr=EC-130,C-130J-30; KC-130J; MC-130J and HC-130J stay transport
+C130,transport,tanker=KC-130;isr=EC-130|RC-130,C-130H/T; EC-130H Compass Call
+L100,transport,,L-100 Hercules
+E390,transport,tanker=KC-390,C-390 Millennium
+E3TF,isr,,E-3 Sentry AWACS
+E3CF,isr,,E-3D/F Sentry AWACS
+E3,isr,,E-3 Sentry (alternate code)
+E6,isr,,E-6B Mercury (airborne command post)
+E2,isr,,E-2 Hawkeye
+E737,isr,,E-7 Wedgetail; Peace Eye
+R135,isr,,RC-135 Rivet Joint; Cobra Ball; Combat Sent
+C135,isr,transport=^Boeing C-135,OC-135; WC-135; NC-135
+E8,isr,,E-8C J-STARS (alternate code)
+P8,isr,,P-8 Poseidon
+P3,isr,,P-3 Orion; EP-3E; CP-140 Aurora
+ATLA,isr,,Atlantique 2
+U2,isr,,U-2S Dragon Lady
+Q4,isr,,RQ-4 Global Hawk; MQ-4C Triton
+Q9,isr,,MQ-9 Reaper; Protector; SkyGuardian
+Q1,isr,,MQ-1C Gray Eagle
+BTB2,isr,,Bayraktar TB2
+A50,isr,,A-50 Mainstay
+IL18,isr,transport=^Ilyushin IL-18,Il-20 and Il-22 (Il-18 airframe)
+IL20,isr,,Il-20 Coot-A (alternate code)
+AN30,isr,,An-30 survey
+B350,isr,transport=Super King Air|King Air 350$|^B350,MC-12 Liberty and other ISR King Airs; plain King Airs transport
+BE20,transport,isr=RC-12|MC-12,C-12 Huron; RC-12 Guardrail
+GLF5,transport,isr=CAEW|AEW|EC-37|Shamsung|Nahshon,C-37 VIP; G550 CAEW / AEW
+GLF6,transport,,G650
+GLEX,transport,isr=E-11|Sentinel|Raytheon Sentinel,E-11A BACN; Global 6000
+SF34,transport,isr=AEW|Argus|Erieye,Saab 340 AEW
+DH8C,transport,isr=RO-6|ARL,RO-6A ARL
+CN35,transport,isr=MPA|Persuader|Vigilant,CN-235; maritime patrol versions
+C295,transport,isr=Persuader|MPA|ASW,C-295; maritime patrol versions
+AT75,transport,isr=MPA,ATR 72 MPA
+E145,transport,isr=MP|SA|AEW|R-99|E-99,ERJ-145 AEW and SIGINT versions
+PC12,isr,transport=^Pilatus PC-12$|PC-12 NG,U-28A Draco
+SW4,isr,transport=C-26B|C-26D|C-26E|Metro,RC-26 Condor; C-26 Metro
+T204,transport,isr=Tu-214 R|Tu-214 ON|Tu-214R,Tu-214; Tu-214R SIGINT
+T214,transport,isr=R$|ON$,Tu-214 (alternate code)
+KC2,transport,isr=RC-2,Kawasaki C-2; RC-2
+B52,bomber,,B-52H Stratofortress
+B1,bomber,,B-1B Lancer
+B2,bomber,,B-2 Spirit
+TU95,bomber,,Tu-95 Bear
+TU22,bomber,,Tu-22M Backfire
+T160,bomber,,Tu-160 Blackjack
+H6,bomber,,Xian H-6
+EUFI,fighter,,Eurofighter Typhoon
+F16,fighter,,F-16 Fighting Falcon
+F15,fighter,,F-15 Eagle
+F18H,fighter,,F/A-18 Hornet
+F18S,fighter,,F/A-18E/F Super Hornet; EA-18G
+F35,fighter,,F-35 Lightning II
+F22,fighter,,F-22 Raptor
+A10,fighter,,A-10 Thunderbolt II (attack)
+TOR,fighter,,Tornado
+RFAL,fighter,,Rafale
+MIR2,fighter,,Mirage 2000
+SB39,fighter,,Gripen
+F5,fighter,,F-5 Tiger II
+HAR,fighter,,AV-8B Harrier II
+MG29,fighter,,MiG-29
+SU27,fighter,,Su-27 family
+SU30,fighter,,Su-30
+SU34,fighter,,Su-34
+SU35,fighter,,Su-35
+J10,fighter,,J-10
+JF17,fighter,,JF-17
+F4,fighter,,F-4 Phantom
+C17,transport,,C-17 Globemaster III
+C5M,transport,,C-5M Galaxy
+C5,transport,,C-5 Galaxy
+A400,transport,,A400M Atlas
+IL76,transport,tanker=IL-78;isr=A-50,Il-76; Il-78 tanker and A-50 when filed on the Il-76 code
+A124,transport,,An-124 Ruslan
+AN12,transport,isr=Y-8 ?[GJTX]|Y-8F-200W|Y-9 ?[GJ],An-12; Y-8 (ISR versions on the name)
+Y8,transport,,Y-8
+Y20,transport,tanker=YY-20,Y-20
+AN26,transport,,An-26
+AN72,transport,,An-72
+AN22,transport,,An-22
+A148,transport,,An-148
+A140,transport,,An-140
+C160,transport,,Transall C-160
+C27J,transport,,C-27J Spartan
+C2,transport,,C-2A Greyhound
+V22,transport,,V-22 Osprey (tiltrotor)
+B737,transport,,C-40 Clipper; BBJ
+B738,transport,,737NG
+B733,transport,,737
+B752,transport,,C-32
+B744,transport,,747 (VC-25 and others)
+B748,transport,,747-8
+A319,transport,,A319 / ACJ319
+A320,transport,,A320
+A321,transport,,A321
+A342,transport,,A340
+IL62,transport,,Il-62
+T134,transport,,Tu-134
+T154,transport,,Tu-154
+C560,transport,,UC-35 Citation
+LJ35,transport,,C-21A
+D328,transport,,C-146A
+L410,transport,,L-410
+CL60,transport,,Challenger 600 series
+CRJ7,transport,,Challenger 700/870
+F900,transport,,Falcon 900
+FA50,transport,,Falcon 50
+FA7X,transport,,Falcon 7X
+FA20,transport,isr=ECM|Guardian,Falcon 20
+FA10,transport,,Falcon 10
+GLF4,transport,,G-IV / C-20G
+GL5T,transport,,Global 5000
+E35L,transport,,Legacy 600
+LJ60,transport,,Learjet 60
+LJ45,transport,,Learjet 45
+H25B,transport,,Hawker 800
+C56X,transport,,Citation Excel
+P180,transport,,P-180 Avanti
+B190,transport,,1900D
+D228,transport,,Do 228
+DHC6,transport,,Twin Otter
+BN2P,transport,isr=Defender R,BN Islander; Defender R2
+C208,transport,,Caravan
+M28,transport,isr=Bryza.*R|Bryza 1R,M-28
+F50,transport,isr=MPA|Maritime,Fokker 50
+CN25,transport,,CN-235 (alternate code)
+TEX2,trainer,,T-6 Texan II
+T38,trainer,,T-38 Talon
+HAWK,trainer,,Hawk; T-45 Goshawk
+BE40,trainer,,T-1A Jayhawk
+PC21,trainer,,PC-21
+AJET,trainer,,Alpha Jet
+G12T,trainer,,G-120TP
+G120,trainer,,G-120
+BE9L,trainer,,T-44 Pegasus
+PC9,trainer,,PC-9
+PC7,trainer,,PC-7
+SR20,trainer,,T-53A
+C172,trainer,,T-41 Mescalero
+DG1T,trainer,,TG-16A glider
+PZ3T,trainer,,PZL-130 Orlik
+F260,trainer,,SF.260
+CT4,trainer,,CT-4 Airtrainer
+KT1,trainer,,KT-1
+T34T,trainer,,T-34C
+L39,trainer,,L-39
+G115,trainer,,G-115 Tutor
+E121,trainer,,Xingu
+E314,trainer,,Super Tucano
+T6,trainer,,Harvard
+DHC1,trainer,,Chipmunk
+EC45,rotary,,UH-72 Lakota; H145M
+H60,rotary,,UH-60 Black Hawk family
+H47,rotary,,CH-47 Chinook
+H64,rotary,,AH-64 Apache
+NH90,rotary,,NH90
+H53S,rotary,,CH-53E/K; MH-53E
+H53,rotary,,CH-53G
+EH10,rotary,,Merlin
+AS32,rotary,,Cougar; Puma; Super Puma
+EC35,rotary,,EC135 / EC635
+AS55,rotary,,Fennec
+A119,rotary,,TH-73A
+LYNX,rotary,,Lynx; Wildcat
+B06,rotary,,TH-57
+B212,rotary,,UH-1N
+GAZL,rotary,,Gazelle
+MI8,rotary,,Mi-8/17
+PUMA,rotary,,Puma
+A139,rotary,,MH-139; AW139
+EC25,rotary,,EC725 Caracal
+AS65,rotary,,Dauphin; Panther
+UH1,rotary,,UH-1
+AS50,rotary,,Squirrel
+B412,rotary,,Griffin
+A109,rotary,,A109
+TIGR,rotary,,Tiger
+S61,rotary,,Sea King
+W3,rotary,,W-3 Sokol
+MI24,rotary,,Mi-24
+H1,rotary,,UH-1Y / AH-1Z
+P1,isr,,Kawasaki P-1 maritime patrol
+AT76,transport,isr=MPA|Maritime|Patrol,ATR 72-600; maritime patrol versions
+DH8D,transport,isr=MPA|Maritime|Patrol,Dash 8-400; maritime patrol versions
+DH8A,transport,,Dash 8-100
+B736,transport,,737-600
+B77W,transport,,777-300ER (VIP)
+E550,transport,,Legacy 500 / C-390 crew trainer
+FA8X,transport,,Falcon 8X
+PC24,transport,,PC-24
+TBM7,transport,,TBM 700 liaison
+PC6T,transport,,PC-6 Porter
+AN32,transport,,An-32
+A169,rotary,,AW169
+B429,rotary,,Bell 429
+H160,rotary,,H160
+B505,rotary,,Bell 505
+EC20,rotary,,EC120
+EN48,rotary,,Enstrom 480
+TUCA,trainer,,EMB-312 Tucano
+DA40,trainer,,DA40
+DA42,trainer,isr=MPP|Surveillance,DA42; surveillance versions
+MF17,trainer,,MFI-17 Mushshak
+P28A,trainer,,PA-28
+Z42,trainer,,Zlin Z-142
+C182,trainer,,Cessna 182

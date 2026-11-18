@@ -1,0 +1,13 @@
+{
+ "file": "registry/plane_alert_mil.csv",
+ "source": "plane-alert-db, plane-alert-mil.csv (rows with #CMPG = Mil)",
+ "url": "https://github.com/sdr-enthusiasts/plane-alert-db",
+ "commit": "f7b46dbdeb29ea01c43eca2db21940d60fa7f36e",
+ "commit_date": "2026-09-23",
+ "fetched": "2026-11-18",
+ "licence": "ODbL 1.0 (database); DbCL 1.0 (contents)",
+ "attribution": "plane-alert-db, SDR-Enthusiasts, Ramon F. Kolb (kx1t) and contributors (ODbL 1.0)",
+ "columns": "icao (lower-case hex), icao_type, type (the database's type name), operator",
+ "kept": 9854,
+ "note": "A slimmed snapshot read from this file at run time, never fetched. It is a derived database, so it is published under ODbL 1.0 too. Refresh: download plane-alert-mil.csv at a commit, keep the four columns, update this file."
+}
