@@ -3,7 +3,8 @@
 
 Runs as the git pre-commit hook (checks the staged version of each added/changed file) or with --all (every tracked
 file, for CI). Terms are case-insensitive substrings, one per line, from the FORBIDDEN_TERMS environment variable
-(newline-separated; a CI secret) or private/forbidden_terms.txt (gitignored). With no term list it fails closed.
+(newline-separated; a CI secret) or private/forbidden_terms.txt (gitignored). In a linked worktree, which has no
+private/ folder of its own, the main checkout's private/forbidden_terms.txt is used. With no term list it fails closed.
 A term of fewer than 7 digits matches only where it isn't part of a longer number (no digit or decimal point directly
 before or after it): the Sea map's tracks hold millions of digits, and a five-digit term turned up inside a coordinate
 on 26 Oct 2026. Longer digit terms (a phone number, which may appear with a country code in front) and every other term
@@ -17,14 +18,33 @@ Usage
 """
 import gzip, os, re, subprocess, sys
 
-ROOT = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip() or "."
-TERMS_FILE = os.path.join(ROOT, "private", "forbidden_terms.txt")
+
+def _rev_parse(*args):
+    return subprocess.run(["git", "rev-parse", *args], capture_output=True, text=True).stdout.strip()
+
+
+ROOT = _rev_parse("--show-toplevel") or "."
+
+
+def terms_files():
+    """Where to look for the term list: this checkout's private/, then the main checkout's (the folder that holds the
+    shared .git directory), so a commit from a linked worktree is checked against the same list."""
+    paths = [os.path.join(ROOT, "private", "forbidden_terms.txt")]
+    common = _rev_parse("--path-format=absolute", "--git-common-dir")
+    if common:
+        main = os.path.join(os.path.dirname(os.path.normpath(common)), "private", "forbidden_terms.txt")
+        if os.path.normcase(os.path.abspath(main)) != os.path.normcase(os.path.abspath(paths[0])):
+            paths.append(main)
+    return paths
 
 
 def terms():
     raw = os.environ.get("FORBIDDEN_TERMS")
-    if raw is None and os.path.exists(TERMS_FILE):
-        raw = open(TERMS_FILE, encoding="utf-8").read()
+    if raw is None:
+        for path in terms_files():
+            if os.path.exists(path):
+                raw = open(path, encoding="utf-8").read()
+                break
     return [t.strip().lower() for t in (raw or "").splitlines() if t.strip() and not t.lstrip().startswith("#")]
 
 
