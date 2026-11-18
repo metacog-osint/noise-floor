@@ -18,6 +18,10 @@ number of episodes located in a control box with a baseline output folder made f
       in the six control boxes, against the baseline                                         lower
   C2  the same in the spoofing groups (Middle East, Black Sea, Baltic and W Russia)           >= 90% of the baseline
 C1 and C2 are reported whenever there is a baseline; only the carried-over pre-registration gates on them.
+With --tests (a folder holding faa_gps_tests.json, the declared-data release file), H6 also reports, NOT gating (Tom,
+18 Nov 2026), how many control-box episodes fall inside an announced US GPS test: a window overlapping the episode and
+the advisory's widest radius reaching one of its victim cells. The FAA list starts in Sep 2025, so only the held-out
+days from then on can match; the days it covers are listed.
 """
 import argparse
 import gzip
@@ -59,7 +63,34 @@ def active_hours(out_dir, days):
     return out
 
 
-def score(out_dir, days, baseline=None):
+def inside_tests(e, tests):
+    """Ids of the announced US GPS tests with a window overlapping the episode whose widest radius reaches one of its
+    victim cells (res-4 centres)."""
+    import h3
+    a, b = e["start"][:16] + "Z", e["end"][:16] + "Z"
+    out = set()
+    for t in tests:
+        c = t.get("centre")
+        if not c or not any(w[0] <= b and w[1] >= a for w in t.get("windows") or []):
+            continue
+        r = max((t.get("radii_nm") or {}).values() or [0]) * 1.852
+        if any(S.km(*h3.cell_to_latlng(v), c[0], c[1]) <= r for v in e.get("victim_cells") or []):
+            out.add(t["id"])
+    return sorted(out)
+
+
+def test_line(ev, days, tests):
+    """H6's reported line: control-box episodes inside announced US GPS tests (see the module docstring)."""
+    ws = [w for t in tests for w in t.get("windows") or []]
+    first = min(w[0] for w in ws)[:10] if ws else None
+    ctl = [e for d in days for e in control_episodes(ev[d])]
+    inside = [e for e in ctl if inside_tests(e, tests)]
+    return {"control_episodes": len(ctl), "inside_announced_tests": len(inside),
+            "by_class": dict(Counter(e["class"] for e in inside)),
+            "days_covered": [d for d in days if first and d >= first], "list_starts": first, "gating": False}
+
+
+def score(out_dir, days, baseline=None, tests=None):
     import pyarrow.parquet as pq
     regs, sm, ev = Counter(), {}, {}
     for d in days:
@@ -107,6 +138,7 @@ def score(out_dir, days, baseline=None):
         "H5": {"top_named": {d: v for d, v in h5.items()},
                "pass": all(h5.get(d) and h5[d][0] == want for d, want in H5_DAYS.items() if d in days)},
         "control_episodes": ctl_now,
+        **({"H6_tests": test_line(ev, days, tests)} if tests is not None else {}),
         "control_episodes_by_class": dict(Counter(e["class"] for d in days for e in control_episodes(ev[d]))),
         "episodes_by_kind": dict(sum((Counter(sm[d].get("episodes_by_kind") or {}) for d in days), Counter())),
     }
@@ -148,10 +180,15 @@ def main():
     ap.add_argument("out_dir")
     ap.add_argument("--baseline", help="output folder of the version compared against (H6)")
     ap.add_argument("--days", nargs="+", default=DAYS)
+    ap.add_argument("--tests", help="folder with faa_gps_tests.json (declared-data release): H6's reported test line")
     ap.add_argument("--new-controls", help="write the control-box episodes new against the baseline here (local)")
     ap.add_argument("--dropped-controls", help="write the baseline's control-box episodes that are gone here (local)")
     a = ap.parse_args()
-    print(json.dumps(score(a.out_dir, a.days, a.baseline), indent=1))
+    tests = None
+    if a.tests:
+        import spoof_site
+        tests = spoof_site.load_tests(a.tests)
+    print(json.dumps(score(a.out_dir, a.days, a.baseline, tests), indent=1))
     for path, args, what in ((a.new_controls, (a.out_dir, a.baseline), "new"),
                              (a.dropped_controls, (a.baseline, a.out_dir), "dropped")):
         if path and a.baseline:

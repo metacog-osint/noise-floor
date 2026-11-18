@@ -150,6 +150,7 @@ def main():
     ap.add_argument("--cache", default=os.path.join(ROOT, "data", "spoof_cache"), help="root of the day caches")
     ap.add_argument("--out", required=True, help="output folder of the reruns")
     ap.add_argument("--baseline", help="spoof_day output of the version compared against (H6, H7, H8)")
+    ap.add_argument("--tests", help="folder with faa_gps_tests.json: H6's reported announced-test line (not gating)")
     ap.add_argument("--h7-list", help="H7's list of episodes (default <baseline>/new_controls.json; local)")
     ap.add_argument("--reference", help="an earlier output of the same variant: spoof_same.py checks --out against it")
     ap.add_argument("--outside", help="folder of the outside day files (read only), for P1 and P2")
@@ -184,7 +185,11 @@ def main():
         held = [d for d in days if d in H.DAYS]
         if held and os.path.exists(os.path.join(a.out, f"{held[0]}.hex4.parquet")):
             t1 = time.time()
-            hs = H.score(a.out, held, a.baseline)
+            tests = None
+            if a.tests:
+                import spoof_site
+                tests = spoof_site.load_tests(a.tests)
+            hs = H.score(a.out, held, a.baseline, tests)
             hs.update(h7_h8(a.out, a.baseline, held, a.h7_list, hs["H3"]["confirmed"]))
             rep["heldout"] = hs
             rep["heldout_seconds"] = round(time.time() - t1, 1)
