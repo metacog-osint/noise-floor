@@ -7,7 +7,8 @@ days, and western Russia and Pakistan / northern India read a fraction of the tr
 know where that is, every day, from Noisefloor's own files.
 
 ## The flag
-`<day>.coverage.json` (release `pnt-data-YYYY-MM`, ODbL, from 17 Nov 2026), one row per H3 res-2 region:
+`<day>.coverage.json` (release `pnt-data-YYYY-MM`, ODbL; made daily from 17 Nov 2026, and built from each published
+map for 1 Oct 2025 to 16 Nov 2026 on 18 Nov 2026, so every published day has one), one row per H3 res-2 region:
 `[h3_2, covered, thin]`. A res-4 cell is **covered** when it has 3 or more aircraft. A region is **thin** when fewer
 than 10 of its 49 res-4 cells are covered. **A region not listed has no covered cell and is thin.** Made by
 `tools/feeder_coverage.py` from the day's `map.json`, after it, in the daily run. It uses only Noisefloor's own counts.
