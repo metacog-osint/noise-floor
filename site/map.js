@@ -669,6 +669,9 @@
   }
   var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function fmtDay(d) { return d ? +d.slice(8, 10) + " " + MON[+d.slice(5, 7) - 1] + " " + d.slice(0, 4) : ""; }   // "26 Oct 2026"
+  function evWhere(e) {                  // an event's words from the deploy (tools/area_names.py), as on the Today page
+    return e.where ? e.where.charAt(0).toUpperCase() + e.where.slice(1) : where(e.lat, e.lon);
+  }
   function where(lat, lon, lower) {      // the nearest well-known place within 350 km, else coordinates
     var best = 350, name = null, r = Math.PI / 180;
     places.forEach(function (p) {
@@ -778,7 +781,7 @@
 
     rows.anom.forEach(function (e) {
       var tr = document.createElement("tr"), w = when(state.day, e.h0 * 60, e.h1 * 60 + 59);
-      cell(tr, TIER[e.tier]); cell(tr, w[1]); cell(tr, where(e.lat, e.lon)).title = ll2(e.lat, e.lon);
+      cell(tr, TIER[e.tier]); cell(tr, w[1]); cell(tr, evWhere(e)).title = ll2(e.lat, e.lon);
       cell(tr, e.regions, "num"); cell(tr, e.peak.toFixed(0) + "%", "num"); cell(tr, "+" + e.excess.toFixed(0) + " pts", "num");
       heavyCell(tr, e.m === "jam" ? e.hs : null);
       cell(tr, e.test || "–", e.test ? "" : "mut");
@@ -792,7 +795,7 @@
 
     rows.burst.forEach(function (e) {
       var tr = document.createElement("tr"), w = when(state.day, mins(e.t0), mins(e.t1));
-      cell(tr, w[1]); cell(tr, where(e.lat, e.lon)).title = ll2(e.lat, e.lon); cell(tr, e.peak, "num"); cell(tr, e.regions, "num");
+      cell(tr, w[1]); cell(tr, evWhere(e)).title = ll2(e.lat, e.lon); cell(tr, e.peak, "num"); cell(tr, e.regions, "num");
       heavyCell(tr, e.hs);
       cell(tr, e.test || "–", e.test ? "" : "mut");
       showButton(tr, e, "burst at " + w[0]); burstBody.appendChild(tr);
