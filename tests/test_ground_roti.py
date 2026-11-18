@@ -241,6 +241,15 @@ def test_job_decide():
     assert GJ.decide({"missing": ["S1"]}, some, 17, True, 10, a, 0) == "refresh"
     assert GJ.decide({"missing": ["S2"]}, some, 17, True, 10, a, 0) == "skip"
     assert GJ.decide({"missing": ["S1"]}, some, 17, False, 10, a, 3) == "skip"   # too old to refresh
+    # a station whose download failed is tried again; one whose file could not be read is not
+    assert GJ.decide({"missing": [], "failed": {"S1": "URLError: <urlopen error timed out>"}}, some, 17, False,
+                     10, a, 1) == "refresh"
+    assert GJ.decide({"missing": [], "failed": {"S1": "TimeoutError: timed out"}}, some, 17, False, 10, a, 1) \
+        == "refresh"
+    assert GJ.decide({"missing": [], "failed": {"S1": "ValueError: bad header"}}, some, 17, False, 10, a, 1) \
+        == "skip"
+    assert GJ.decide({"missing": [], "failed": {"S1": "URLError: x"}}, some, 17, False, 10, a, 3) == "skip"
+    assert GJ.retry_set({"missing": ["S2"], "failed": {"S1": "URLError: x", "S3": "KeyError: 'L1'"}}) == {"S1", "S2"}
     assert GJ.decide(None, {}, 17, True, 5, a, 0) == "waiting"
     assert GJ.decide(None, {}, 17, True, 13, a, 0) == "late"
     assert GJ.decide(None, {}, 17, False, 13, a, 4) == "waiting"
@@ -276,6 +285,14 @@ def test_job_run_day():
         assert GJ.run_day("2026-10-20", args(), now) == "skipped"
         state["doc"] = {"missing": ["ACRG00GHA"]}
         assert GJ.run_day("2026-11-13", args(), now) == "refreshed"
+        # a station whose download failed is tried again; a remade file with fewer stations is not uploaded
+        state["doc"] = {"missing": [], "failed": {"ACRG00GHA": "URLError: <urlopen error timed out>"},
+                        "counts": {"stations": 1}}
+        assert GJ.run_day("2026-11-13", args(), now) == "refreshed"
+        state["doc"]["counts"]["stations"] = 5
+        n = len(calls)
+        assert GJ.run_day("2026-11-13", args(), now) == "skipped"
+        assert calls[n:] == [("make", "2026-11-13")]                      # remade, not uploaded
         # BKG unreachable: a complete or too-old published day asks BKG nothing; one with missing stations keeps
         # its file and is skipped with a warning; a day not yet published still fails
         def down(day, stations):

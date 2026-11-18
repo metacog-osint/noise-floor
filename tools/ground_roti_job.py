@@ -8,9 +8,11 @@ the stations used, 16 Oct-14 Nov 2026: most by 09:10 UTC; on 14 Nov one batch ca
 by 14:00 UTC on D+1.
 
 For each day (default: yesterday and the --refresh-days days before it, UTC, oldest first):
-  1. Gate. If the day file is already in its release: skip it when it lists no missing station, or when the day is
-     more than --refresh-days old; otherwise look at BKG again and, if a station it lists as missing is now posted,
-     remake the whole day and replace the file. So extra starts of the workflow cost about a minute. A published day
+  1. Gate. If the day file is already in its release: skip it when it lists no station to look at again (missing,
+     or failed on a network error), or when the day is more than --refresh-days old; otherwise look at BKG again and,
+     if such a station is posted, remake the whole day and replace the file, unless the new file has fewer stations
+     (then the published one stays; 17 Nov 2026 lost MOIU00KEN, SEY200SYC and UNSA00ARG to download timeouts, and
+     before this they were never tried again). So extra starts of the workflow cost about a minute. A published day
      that needs no new look is skipped without asking BKG; when BKG can't be reached while a published day is looked
      at again, its file stays as it is, the job logs a warning and the next start tries again (not a failed run;
      BKG's listing timed out for 40 min on 17 Nov 2026 and turned two runs red for nothing).
@@ -55,14 +57,26 @@ def published_doc(tag, name):
         return json.load(r)
 
 
+# Failures worth another try: the download, not the file (one bad station's error text starts with its type name)
+NET_ERRORS = ("URLError", "HTTPError", "TimeoutError", "timeout", "ConnectionError", "ConnectionResetError",
+              "ConnectionAbortedError", "RemoteDisconnected", "IncompleteRead")
+
+
+def retry_set(doc):
+    """Stations a published day file should get again: missing ones, and ones whose download failed."""
+    failed = doc.get("failed") or {}
+    net = {s for s, err in failed.items() if str(err).split(":", 1)[0].strip() in NET_ERRORS}
+    return set(doc.get("missing") or []) | net
+
+
 def decide(doc, have, n_stations, newest, hour, a, day_age):
     """What to do with a day: 'skip', 'publish', 'refresh', 'wait' (wait for missing stations, then publish),
     'waiting' (stop quietly) or 'late' (fail). doc: the published file or None; have: stations posted now."""
     if doc is not None and not a.force:
-        missing = set(doc.get("missing") or [])
-        if not missing or day_age > a.refresh_days:
+        want = retry_set(doc)
+        if not want or day_age > a.refresh_days:
             return "skip"
-        return "refresh" if missing & set(have) else "skip"
+        return "refresh" if want & set(have) else "skip"
     if not have:
         return "late" if newest and hour >= a.deadline_hour else "waiting"
     if len(have) == n_stations or not newest:
@@ -81,14 +95,14 @@ def run_day(day, a, now=None, sleep=time.sleep):
     doc = None if a.force else published_doc(tag, name)
     day_age = (now.date() - date.fromisoformat(day)).days - 1     # 0 on D+1
     newest = day_age <= 0
-    if doc is not None and (not doc.get("missing") or day_age > a.refresh_days):
+    if doc is not None and (not retry_set(doc) or day_age > a.refresh_days):
         have, nav = {}, None                       # decide() skips it whatever BKG lists: no request
     elif doc is not None:
         try:
             have, nav, _ = R.available(day, stations)
         except Exception as e:                     # the published file stands; the next start looks again
-            log(f"{day}: WARNING BKG not reachable ({str(e)[:160]}); {name} in {tag} kept, missing "
-                f"{', '.join(doc.get('missing') or []) or 'none'}")
+            log(f"{day}: WARNING BKG not reachable ({str(e)[:160]}); {name} in {tag} kept, to look at again: "
+                f"{', '.join(sorted(retry_set(doc))) or 'none'}")
             summary(f"- {day}: BKG not reachable; published file kept, the next start looks again")
             return "skipped"
     else:
@@ -97,8 +111,9 @@ def run_day(day, a, now=None, sleep=time.sleep):
         have = {}
     what = decide(doc, have, len(stations), newest, datetime.now(timezone.utc).hour, a, day_age)
     if what == "skip":
-        log(f"{day}: {name} is in {tag}" + (f" (missing {', '.join(doc['missing'])}, none posted since)"
-                                            if doc.get("missing") else "") + "; nothing to do")
+        want = retry_set(doc) if doc is not None else set()
+        log(f"{day}: {name} is in {tag}" + (f" (to look at again: {', '.join(sorted(want))}; none posted)"
+                                            if want and day_age <= a.refresh_days else "") + "; nothing to do")
         return "skipped"
     if what in ("waiting", "late"):
         msg = f"{day}: nothing posted at BKG yet ({'no broadcast navigation file' if not nav else 'no station'})"
@@ -120,6 +135,11 @@ def run_day(day, a, now=None, sleep=time.sleep):
         raise RuntimeError(f"{day}: no station could be read ({doc_new['failed']})")
     log(f"{day}: {c['stations']} stations, {c['station_hours']} station-hours ({c['with_p95']} with p95); "
         f"missing {doc_new['missing'] or 'none'}; failed {list(doc_new['failed']) or 'none'}")
+    had = ((doc or {}).get("counts") or {}).get("stations", 0)
+    if what == "refresh" and c["stations"] < had:
+        log(f"{day}: the remade file has {c['stations']} stations, the published one {had}; {name} in {tag} kept")
+        summary(f"- {day}: remade with fewer stations ({c['stations']} < {had}); published file kept")
+        return "skipped"
     if not a.no_upload:
         J.upload(tag, path, J.S4_TITLE.format(month=day[:7]), J.S4_NOTES.format(month=day[:7]))
         log(f"{day}: uploaded {name} to {tag}")
