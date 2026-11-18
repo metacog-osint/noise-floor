@@ -37,7 +37,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import spoof_day as S  # noqa: E402
 
 LICENCE = "ODbL 1.0; derived from adsb.lol"
-SHARE_GROUPS = ("Controls", "Middle East", "Baltic and W Russia")
+SHARE_GROUPS = ("Controls", "Middle East", "Baltic and W Russia", "Black Sea")   # Black Sea from 18 Nov 2026 (C2)
 CONFIG = os.path.join(ROOT, "tools", "spoof_shadow.json")
 _GROUP_OF = {r: g for g, rs in S.GROUPS.items() for r in rs}
 
@@ -124,6 +124,9 @@ def write(day, base_dir, results, site_dir):
     return p
 
 
+SPOOF_GROUPS = ("Middle East", "Black Sea", "Baltic and W Russia")
+
+
 def score(paths, name=None):
     """Pool <day>.spoof-shadow.json files (files or folders) per variant and apply the standing checks."""
     files = []
@@ -171,6 +174,14 @@ def score(paths, name=None):
             "gone": dict(P["gone"]), "new": dict(P["new"]),
         }
         out[nm]["all_pass"] = all(out[nm][h]["pass"] for h in ("H1", "H2", "H3", "H6", "H8"))
+        # C1 and C2 (carried-over rule, docs/spoofing-light-plan.md section 5): active aircraft-hours in the control
+        # boxes fall (no control-box active hours in the default either: no change, passes), and the spoofing groups
+        # keep >= 90% of theirs. Reported for every variant; only the carried-over pre-registration gates on them.
+        c_v, c_b = vv[("Controls", "act")], vb[("Controls", "act")]
+        sg_v = sum(vv[(g, "act")] for g in SPOOF_GROUPS); sg_b = sum(vb[(g, "act")] for g in SPOOF_GROUPS)
+        out[nm]["C1"] = {"control_active_ah": c_v, "default": c_b, "pass": c_v < c_b or c_v == c_b == 0}
+        out[nm]["C2"] = {"spoofing_groups_active_ah": sg_v, "default": sg_b,
+                         "kept": round(sg_v / sg_b, 4) if sg_b else None, "pass": sg_v >= 0.9 * sg_b}
     return out
 
 
