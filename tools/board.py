@@ -85,15 +85,22 @@ class Places:
         return area_names.area_name(self.pl, lat, lon, cells)
 
     def area_kind(self, lat, lon, cells=()):
-        """area() plus the kind of name ("place", "country", "sea" or None) and, for a country, a reference such as
-        "220 km W of Tbilisi" (area_names.ref)."""
+        """area() plus the kind of name ("place", "country", "sea", "offshore" or None) and, for a country or sea, a
+        reference such as "220 km W of Tbilisi" (area_names.ref)."""
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import area_names
         return area_names.area_ref(self.pl, lat, lon, cells)
 
+    def where(self, lat, lon, cells=(), event=False):
+        """The full words: 'near Doha', 'in the Baltic Sea, 260 km S of Stockholm', for an event 'across 25
+        countries, centred near Zagreb' (area_names.where)."""
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import area_names
+        return area_names.where(self.pl, lat, lon, cells, event=event)
+
 
 def _countries(rows):
-    return bool(rows) and all(r.get("near_kind") == "country" for r in rows)
+    return bool(rows) and all(r.get("near_kind") in ("country", "sea") for r in rows)
 
 
 def fetch(url, timeout=60):
@@ -177,7 +184,7 @@ def changes(site, days, places):
         la, lo = h3.cell_to_latlng(r)
         name, at, kind, ref = places.area_kind(la, lo, [r])
         return {"region": r, "lat": round(la, 2), "lon": round(lo, 2), "near": name, "near_at": at,
-                "near_kind": kind, "near_ref": ref, **extra}
+                "near_kind": kind, "near_ref": ref, "where": places.where(la, lo, [r]), **extra}
 
     new = [row(r, {"days_in_last7": sum(1 for d in last7 if r in per_day[d])}) for r in seen7 if r not in seen_before]
     ended, below = [], []
@@ -214,6 +221,7 @@ def top_events(site, day, places):
             rows.append({"tier": e["tier"], "peak": e.get("peak"), "excess": e.get("excess"), "h0": e.get("h0"),
                          "h1": e.get("h1"), "lat": e["lat"], "lon": e["lon"], "near": name, "near_at": at,
                          "near_kind": kind, "near_ref": ref,
+                         "where": places.where(e["lat"], e["lon"], e.get("cells") or [], event=True),
                          "cells": e.get("cells") or [], "heavy_share": e.get("hs"), "test": e.get("test")})
     rows.sort(key=lambda r: r["tier"] != "major")    # majors first, each tier in the analysis's own order (stable)
     # Every major and notable event, not the first six: a cap of six fired exactly six event items a day, 31 Oct to
@@ -528,9 +536,10 @@ def _num(n):
 
 
 def _brief_name(r):
-    """A named area in the brief: 'Saudi Arabia (330 km W of Abu Dhabi)' for a country with a reference, else the
-    name (brackets keep the list of names readable)."""
-    return f"{r['near']} ({r['near_ref']})" if r.get("near_kind") == "country" and r.get("near_ref") else r["near"]
+    """A named area in the brief: 'Saudi Arabia (330 km W of Abu Dhabi)' for a country or sea with a reference,
+    else the name (brackets keep the list of names readable)."""
+    return (f"{r['near']} ({r['near_ref']})" if r.get("near_kind") in ("country", "sea") and r.get("near_ref")
+            else r["near"])
 
 
 def _named(names, n, some, countries=False):

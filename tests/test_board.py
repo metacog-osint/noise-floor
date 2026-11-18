@@ -267,10 +267,46 @@ def test_area_names():
         assert p.area(57.5, 17.5, []) == ("Visby", [57.64, 18.3])                     # at sea, 50 km: the place
         p = _places(tmp, [["Ioannina", 39.66, 20.85, 4, 0]])
         assert p.area(39.68, 20.68, []) == ("Ioannina", [39.66, 20.85])               # same country, 15 km
-        assert p.area(0.0, -30.0, []) == (None, None)                                 # mid-ocean: unnamed
+        assert p.area(-10.0, -30.0, []) == ("the South Atlantic Ocean", None)          # mid-ocean: its sea
         p = _places(tmp, [["Doha", 25.29, 51.53, 2, 0], ["Yalta", 44.5, 34.17, 5, 0]])
         assert p.area(23.35, 51.33, ["82534ffffffffff"]) == ("Saudi Arabia", None)    # Doha is 217 km off; the land is Saudi
-        assert p.area(43.0, 34.0, []) == ("Yalta", None)                              # open sea: the old 350 km, name only
+        assert p.area(43.0, 34.0, []) == ("the Black Sea", None)                      # open sea: its sea (18 Nov 2026)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_area_point_first_and_seas():
+    """Tom's choice, 18 Nov 2026, on 17 Nov 2026's events: a point on land takes its own country; a point at sea takes
+    a country only when half its cells' sample points are land, else its Natural Earth sea; countries read as in a
+    sentence; an event over 5+ countries says so."""
+    import area_names as A
+    tmp = tempfile.mkdtemp()
+    try:
+        pl = [["Budapest", 47.5, 19.08, 1, 1], ["Marseille", 43.29, 5.37, 2, 0], ["Memphis", 35.12, -89.98, 2, 0],
+              ["Zagreb", 45.8, 15.98, 2, 1]]
+        p = _places(tmp, pl)
+        burst = ["821e07fffffffff", "821e0ffffffffff", "821e1ffffffffff", "821e77fffffffff", "821ef7fffffffff"]
+        assert p.area_kind(47.08, 21.13, burst) == ("Hungary", None, "country", "160 km E of Budapest")   # was Ukraine
+        assert p.area_kind(40.51, 6.47, ["82394ffffffffff"]) == ("the Mediterranean Sea", None, "sea",
+                                                                "320 km S of Marseille")                # was Italy
+        us = h3.latlng_to_cell(33.7, -90.0, 2)
+        assert p.where(33.7, -90.0, [us]) == "in the United States, 160 km S of Memphis", p.where(33.7, -90.0, [us])
+        assert p.where(40.51, 6.47, ["82394ffffffffff"]) == "in the Mediterranean Sea, 320 km S of Marseille"
+        wide = ["82184ffffffffff", "82186ffffffffff", "821e07fffffffff", "821e0ffffffffff", "821e17fffffffff",
+                "821e1ffffffffff", "821e27fffffffff", "821e2ffffffffff", "821e37fffffffff", "821e57fffffffff"]
+        n = A.spread(wide)
+        assert n >= A.SPREAD_MIN, n
+        assert p.where(46.29, 16.76, wide, event=True) == f"across {n} countries, centred near Zagreb"
+        assert p.where(46.29, 16.76, wide) == "near Zagreb"                             # a region, not an event
+        assert A.spread(wide[:5]) >= A.SPREAD_MIN                                       # 5 regions over 5+ countries...
+        assert p.where(46.29, 16.76, wide[:5], event=True) == "near Zagreb"             # ... too few regions: no spread
+        b = {"changes": {"new": [{"near": "the Baltic Sea", "near_kind": "sea", "near_ref": "260 km S of Stockholm"}],
+                         "new_count": 1, "ended_count": 0, "below_count": 0}}
+        import feed_v2 as F
+        assert F._spot({"where": "in Oman, 330 km W of Muscat", "near": None, "lat": 22.7, "lon": 55.5}) == "in Oman, 330 km W of Muscat"
+        assert F._spot({"near": None, "lat": 22.7, "lon": 55.5}) == "at 22.7°N, 55.5°E"
+        assert F._spot({"near": "Doha", "lat": 25.3, "lon": 51.5}) == "near Doha"
+        assert B.brief(b) == "GPS interference started in one area this week, in the Baltic Sea (260 km S of Stockholm); none fell below jamming scale.", B.brief(b)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
