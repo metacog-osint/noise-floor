@@ -271,6 +271,22 @@ days, so the October days rest on fewer. Scored with the same code as above (`sp
   (14 Nov 16 → 11, 15 Nov 5 → 2).
 - Decision: the new rule (`REGION_MIN_OVER = 5`) stays, as pre-registered. The 7 Dec recheck is no longer needed for
   the verdict; run then, it is an out-of-sample check on the 21 days after this one.
+- **Announced tests, reported and not gating (Tom, 18 Nov 2026).** From now on, P1 and H6 also report how many
+  control-box readings or episodes fall inside an announced US GPS test, and P1 with those set aside. The pass marks
+  don't change.
+  - **For P1:** a reading counts as inside when it is tagged by `spoof_site.region_tests()`.
+  - **For H6:** an episode counts as inside when an advisory window overlaps it and the advisory's widest radius
+    reaches one of its victim cells. This is `spoof_heldout.py --tests`, and `spoof_variant.py --tests` passes it on.
+  - **Coverage:** the FAA list (`faa_gps_tests.json`, `declared-data` release) starts on 2 Sep 2025, so only 3 of the 12
+    held-out days (20 Oct 2025, 20 Feb and 20 Jun 2026) can match.
+  - **First figures (18 Nov 2026):**
+    - P1 on 35 scored days (14 Oct-17 Nov): control-box readings were 40 under the old rule and 16 under the new one.
+      Of those, 19 and 9 fall inside announced tests. All are in us_west and fall within a White Sands test; 2 of
+      the old rule's readings are also within a Yuma test. Set aside, they leave 21 and 7 (c_europe 18 and 7,
+      uk_ie 3 and 0), and P1 still holds.
+    - H6: 2 of the 122 held-out control-box episodes fall inside an announced test, both isolated. That is the same
+      at v0.6.1 and under R3.
+  - A match means "consistent with an announced test", not proof. Readings in c_europe still have no notice source.
 
 This needs no new processing: it reads the files the daily run already publishes. It answers the analyst's question
 (is spoofing happening, where, and more than usual?) in one line. The detector stays as the engine underneath. Like the
