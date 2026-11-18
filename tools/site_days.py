@@ -187,9 +187,20 @@ def ll2(lat, lon):
 def nearest(places, lat, lon, cells=()):
     """The board's naming rule (tools/area_names.py): a listed place within 150 km in the same country, else the
     country the event lies in."""
+    return _area(places, lat, lon, cells)[0]
+
+
+def where(places, lat, lon, cells=()):
+    """'near Zagreb' for a place (or a name on open sea), 'in Georgia' for a country, None when unnamed: the
+    feed's titles use the same words (feed_v2.where)."""
+    name, _, kind = _area(places, lat, lon, cells)
+    return None if not name else ("in " if kind == "country" else "near ") + name
+
+
+def _area(places, lat, lon, cells):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import area_names
-    return area_names.area_name(places, lat, lon, cells)[0]
+    return area_names.area(places, lat, lon, cells)
 
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -216,11 +227,11 @@ def day_summary(d, prior, ev, places):
     else:
         items = []
         for e in top:
-            near = nearest(places, e["lat"], e["lon"], e.get("cells") or [])
+            near = where(places, e["lat"], e["lon"], e.get("cells") or [])
             url = f"{SITE_URL}/map#day={d['day']}&m=jam&v={e['lat']:.2f},{e['lon']:.2f},6"
             hs = e.get("hs")
             items.append(f'<li><a href="{escape(url)}">{TIER.get(e["tier"], e["tier"])}: {e["peak"]:.0f}% of aircraft degraded '
-                         + (f"near {escape(near)}" if near else f"around {ll2(e['lat'], e['lon'])}") + "</a>, "
+                         + (escape(near) if near else f"around {ll2(e['lat'], e['lon'])}") + "</a>, "
                          f'{e["h0"]:02d}:00–{e["h1"]:02d}:59 UTC, {e["excess"]:.0f} points above usual'
                          + (f"; {hs * 100:.0f}% of the degraded aircraft were A350s or A380s" if hs is not None and hs >= 0.5 else "")
                          + (f"; fits announced test {escape(e['test'])}" if e.get("test") else "") + ".</li>")
