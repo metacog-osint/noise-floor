@@ -378,3 +378,32 @@ Reported, not gating:
   Liège/Eifel excursions had no earlier episode that day and served as each other's peers.
 - An aircraft genuinely spoofed twice within 3 h, with under 30 trusted minutes between, is relabelled post. That cost
   is what C2 bounds.
+
+**Held-out score (18 Nov 2026, after the two commits above).**
+- **How it was run:** `tools/spoof_variant.py --set CARRY_MAX_S=10800 --set CARRY_TRUSTED_S=1800 --label r3`. It reran
+  all 18 days from the format-2 caches (2,303 CPU-s) against `data/spoofing_v061_cached`.
+- **Rule-off check:** with both constants at 0, the reruns of 20 Oct 2024, 10 May 2025 and 8 Nov 2026 matched v0.6.1
+  exactly (`spoof_same.py`: tie order only).
+- **Gating, all pass:**
+
+  | Check | Result |
+  |---|---|
+  | H1 | 0.0012% (v0.6.1: 0.0023%) |
+  | H2 | Middle East 0.389%, Baltic and W Russia 0.839% |
+  | H3 | 568 of 618 |
+  | H4 | 22 of 67 |
+  | H5 | Beirut, Beirut, Amman |
+  | H6 | 122 control-box episodes (v0.6.1: 122) |
+  | H8 | 568 (v0.6.1: 568; minimum 557) |
+  | C1 | control-box active aircraft-hours 185 (v0.6.1: 348; −47%) |
+  | C2 | spoofing groups 6,161 of 6,485, 95.0% kept (Middle East 97.8%, Black Sea 99.4%, Baltic and W Russia 92.8%) |
+
+- **Reported:**
+  - Lima P1 12 of 14 and P2 47 of 56, the same as v0.6.1.
+  - Elsewhere 84.9% of active aircraft-hours kept; South Asia 98.7%.
+  - 181 held-out episodes moved from active to post: A3 127, A5 50, A2 3, A0 1. By location: spoofing groups 95,
+    elsewhere 68, control 17, South Asia 1. By gap: 15-60 min 121, 1-2 h 31, 2-3 h 29.
+  - 7-12 Nov, in sample: control 157 of 298 kept (−47.3%), spoofing groups 97.7% kept. That is the description's R3
+    figure exactly, which confirms that the code and the description apply the same rule.
+- **Next:** the shadow listing (`carry-r3`, 19 Nov-17 Dec 2026) starts once this reaches `main`. Adoption waits for at
+  least 14 shadow days and Tom's call.
