@@ -73,6 +73,7 @@ jobs:
           python3 tools/geo.py build "$RUNNER_TEMP/release-files" site || echo "::warning::GEO board skipped"
           python3 tools/geo_globe.py build "$RUNNER_TEMP/release-files" site || echo "::warning::GEO globe skipped; the page shows its loading text"
           python3 tools/geo_callouts.py publish --data "$RUNNER_TEMP/release-files" --out site/data/geo/callouts.json || echo "::warning::GEO callouts skipped; the globe shows none"
+          python3 tools/milair.py site "$RUNNER_TEMP/release-files" site || echo "::warning::military air reading skipped; the feed goes out without it"
           python3 tools/board.py "$RUNNER_TEMP/release-files" site || echo "::warning::status board skipped; the home page shows its loading text"
           python3 tools/site_layers.py "$RUNNER_TEMP/release-files" site || echo "::warning::map layers skipped"
           python3 tools/spoof_site.py "$RUNNER_TEMP/release-files" site || echo "::warning::spoofing places and history skipped; the map shows the top points only"
