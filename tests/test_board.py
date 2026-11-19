@@ -262,7 +262,8 @@ def test_area_names():
     tmp = tempfile.mkdtemp()
     try:
         p = _places(tmp, [["Sochi", 43.6, 39.73, 3, 0], ["Gjirokaster", 40.08, 20.14, 5, 0], ["Visby", 57.64, 18.3, 3, 0]])
-        assert p.area(41.26, 41.05, ["822c27fffffffff"]) == ("Turkey", None)          # Sochi is 281 km away
+        # Sochi is 281 km away; Batumi (rank 6, places.json) is 70 km off and the cells reach Georgia (18 Nov 2026)
+        assert p.area(41.26, 41.05, ["822c27fffffffff"]) == ("Batumi", [41.6, 41.63])
         assert p.area(39.68, 20.68, []) == ("Greece", None)                           # Albanian town, 63 km, across a border
         assert p.area(57.5, 17.5, []) == ("Visby", [57.64, 18.3])                     # at sea, 50 km: the place
         p = _places(tmp, [["Ioannina", 39.66, 20.85, 4, 0]])
@@ -270,6 +271,9 @@ def test_area_names():
         assert p.area(-10.0, -30.0, []) == ("the South Atlantic Ocean", None)          # mid-ocean: its sea
         p = _places(tmp, [["Doha", 25.29, 51.53, 2, 0], ["Yalta", 44.5, 34.17, 5, 0]])
         assert p.area(23.35, 51.33, ["82534ffffffffff"]) == ("Saudi Arabia", None)    # Doha is 217 km off; the land is Saudi
+        # a reference across the border names its country (Tom's yes, 18 Nov 2026 evening CST)
+        assert p.area_kind(23.35, 51.33, ["82534ffffffffff"])[3] == "220 km S of Doha, Qatar"
+        assert p.where(23.35, 51.33, ["82534ffffffffff"]) == "in Saudi Arabia, 220 km S of Doha, Qatar"
         assert p.area(43.0, 34.0, []) == ("the Black Sea", None)                      # open sea: its sea (18 Nov 2026)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -318,7 +322,7 @@ def test_area_reference():
     try:
         p = _places(tmp, [["Doha", 25.29, 51.53, 2, 0], ["Riyadh", 24.69, 46.72, 1, 0]])
         name, at, kind, ref = p.area_kind(23.35, 51.33, ["82534ffffffffff"])
-        assert (name, at, kind, ref) == ("Saudi Arabia", None, "country", "220 km S of Doha"), ref   # Riyadh 490 km
+        assert (name, at, kind, ref) == ("Saudi Arabia", None, "country", "220 km S of Doha, Qatar"), ref   # Riyadh 490 km; Doha named with its country
         p = _places(tmp, [["Pavlodar", 52.3, 76.95, 4, 0], ["Omsk", 54.99, 73.4, 4, 0]])
         assert p.area_kind(54.52, 77.51, ["82214ffffffffff"])[2:] == ("country", "270 km E of Omsk")  # Pavlodar (KZ) 250 km
         p = _places(tmp, [["Ioannina", 39.66, 20.85, 4, 0]])
