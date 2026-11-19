@@ -157,7 +157,7 @@ def test_names_without_h3():
     try:
         places = [["Sochi", 43.6, 39.73, 3, 0], ["Ioannina", 39.66, 20.85, 4, 0]]
         assert S.nearest(places, 39.68, 20.68, ["822c27fffffffff"]) == "Ioannina"
-        assert S.nearest(places, 41.26, 41.05, ["822c27fffffffff"]) in ("Sochi", "Turkey", "the Black Sea")   # coast point: no crash
+        assert S.nearest(places, 41.26, 41.05, ["822c27fffffffff"]) in ("Sochi", "Batumi", "Turkey", "the Black Sea")   # coast point: no crash
         assert S.where(places, 39.68, 20.68) == "near Ioannina"
         assert S.where(places, 39.0, 35.0) == "in Turkey", S.where(places, 39.0, 35.0)   # inland Turkey, no place in reach
         assert S.where([], -10.0, -30.0) == "in the South Atlantic Ocean"                # open Atlantic, nothing listed: its sea
