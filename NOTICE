@@ -1,0 +1,13 @@
+Noisefloor: Copyright © 2026 Thomas Brummer, The Intelligence Company.
+The code is licensed under the GNU Affero General Public License v3.0 (LICENSE).
+
+Third-party and shared files in this repository keep their own licences:
+
+- doctrine/kit/        The Intelligence Company doctrine kit, MIT (doctrine/kit/LICENSE)
+- tic-*.js, tic-*.css in site/ and site_src/
+  The Intelligence Company's shared site scripts (tic-nav, tic-time), MIT.
+  Canonical copies: site/shared/ in github.com/metacog-osint/theintelligence-company.
+- site_src/fonts/ (copies in site/fonts/)   IBM Plex Sans and Mono, SIL Open Font License 1.1 (OFL.txt)
+
+Data keeps its sources' terms. Each source's licence is recorded in registry/sources.csv and
+doctrine/sources.json and credited on the site; downloadable data derived from adsb.lol is ODbL 1.0.
