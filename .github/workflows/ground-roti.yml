@@ -47,6 +47,8 @@ jobs:
       - name: Ground ROTI day files
         env:
           GH_TOKEN: ${{ github.token }}
+          # NASA Earthdata token: files BKG can't deliver come from CDDIS instead (unset: BKG only)
+          EARTHDATA_TOKEN: ${{ secrets.EARTHDATA_TOKEN }}
           DAYS: ${{ inputs.days }}
           FORCE: ${{ inputs.force && '--force' || '' }}
         run: python tools/ground_roti_job.py $DAYS $FORCE --wait-minutes 30 --publish-hour 9 --deadline-hour 13 --refresh-days 2
