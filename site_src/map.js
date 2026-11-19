@@ -27,7 +27,7 @@
     return { main: main, routine: routine };
   }
   function emeasure() { return state.measure === "acc" ? "acc" : "jam"; }    // events and the strip follow 93 m for chg
-  var state = { day: null, measure: "jam", raw: false, ev: null, evShow: true, evAll: { anom: false, burst: false }, evFocus: null,
+  var state = { day: null, measure: "jam", raw: false, ev: null, evShow: true, ntShow: false, ntAll: {}, nt: null, evAll: { anom: false, burst: false }, evFocus: null,
                 iu: -1, iun: -1, playing: false, hist: null };
   var EV_ROWS = { anom: 15, burst: 10 };
   var TIER = { major: "Major", notable: "Notable", minor: "Minor" };
@@ -49,7 +49,7 @@
                focus: css("--fg"), event: css("--map-event"), ring: css("--map-ocean"), test: css("--ink-2"),
                border: css("--map-border"), label: css("--map-label"), halo: css("--map-halo"), area: css("--map-area"),
                spoof: css("--map-spoof"), cyg: css("--map-cyg"), nisar: css("--map-nisar"), s6: css("--map-s6"), smap: css("--map-smap"), c2: css("--map-c2"), s1: css("--map-s1"),
-               ls4: css("--map-ls4"), roti: css("--map-roti"), thin: css("--map-thin") };
+               ls4: css("--map-ls4"), roti: css("--map-roti"), thin: css("--map-thin"), notam: css("--map-notam") };
     mapEl.style.background = colors.ocean;
     thinPattern = null;                                // rebuilt in the new colour on the next draw
   }
@@ -434,6 +434,14 @@
         });
         g.restore();
       }
+      if (state.ntShow) {
+        g.save(); g.setLineDash([2, 4]); g.strokeStyle = colors.notam; g.lineWidth = 1.5;
+        ntCircles().forEach(function (r) {
+          var ctr = cp(r.lat, r.lon), top = cp(r.lat + r.radius_nm * 1.852 / 111.32, r.lon);
+          g.beginPath(); g.arc(ctr.x, ctr.y, Math.max(3, Math.abs(ctr.y - top.y)), 0, 2 * Math.PI); g.stroke();
+        });
+        g.restore();
+      }
       if (state.evShow && state.ev) {
         var rows = evRows();
         var outline = function (e) {
@@ -548,6 +556,11 @@
         var nm = t.radii_nm.FL250 || 0, d = h3.greatCircleDistance(ll, t.centre, "km");
         if (nm && d <= nm * 1.852) lines.push(["Announced test", t.id]);
       });
+    }
+    if (state.ntShow) {
+      var nts = ntCircles().filter(function (r) { return h3.greatCircleDistance(ll, [r.lat, r.lon], "km") <= r.radius_nm * 1.852; });
+      if (nts.length) lines.push(["NOTAM", nts.slice(0, 4).map(function (r) { return r.number + " (" + r.location + ")"; }).join(", ") +
+        (nts.length > 4 ? " and " + (nts.length - 4) + " more" : "")]);
     }
     return lines;
   }
@@ -744,6 +757,103 @@
     var b = document.getElementById(id);
     b.hidden = total <= shown && !state.evAll[kind];
     b.textContent = state.evAll[kind] ? "Show fewer" : "Show all " + total + " " + label;
+  }
+  // ---------- GNSS NOTAMs in force that day (Launch's NMS-API files, archived by pipeline/gnss_notams.py)
+  var NT_OPEN = { test: true, interference: true }, NT_ROWS = 15;
+  function ntTestUrl(id) {               // the FAA flight advisory for an announced test the NOTAM names, if that day has it
+    var t = id && state.ev && (state.ev.tests || []).filter(function (x) { return x.id.replace(/ REV \d+$/, "") === id; })[0];
+    return t ? t.url : null;
+  }
+  function ntCircles() {                 // Q-line circles under 999 NM; a test the FAA advisory already draws is left out
+    var nt = state.nt;
+    if (!nt) return [];
+    return nt.notices.filter(function (r) {
+      return r.lat != null && r.radius_nm > 0 && r.radius_nm < 999 && !(r.kind === "test" && ntTestUrl(r.test));
+    });
+  }
+  function nearName(lat, lon) {          // a listed place within 150 km, as for event names
+    var best = 150, name = null, r = Math.PI / 180;
+    places.forEach(function (p) {
+      if (p.length > 3 && p[3] > 5) return;
+      var h = Math.pow(Math.sin((p[1] - lat) * r / 2), 2) + Math.cos(lat * r) * Math.cos(p[1] * r) * Math.pow(Math.sin((p[2] - lon) * r / 2), 2);
+      var d = 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
+      if (d < best) { best = d; name = p[0]; }
+    });
+    return name;
+  }
+  function ntDate(s) { return !s ? "–" : s === "PERM" ? "permanent" : fmtDay(s.slice(0, 10)); }
+  function renderNotams() {
+    var wrap = document.getElementById("nt-wrap"), nt = state.nt;
+    if (!wrap) return;
+    wrap.hidden = !nt;
+    if (!nt) return;
+    document.getElementById("nt-h").textContent = "GNSS notices to airmen (NOTAMs) in force on " + fmtDay(nt.day);
+    var dayEnd = Date.parse(nt.day + "T00:00:00Z") + 86400000;
+    document.getElementById("nt-summary").textContent = nt.n + " NOTAM" + (nt.n === 1 ? "" : "s") + " that name GNSS were in force on " +
+      fmtDay(nt.day) + (nt.groups < nt.n ? " (" + nt.groups + " once copies sent to several US centres count once)" : "") +
+      ". Newest first in each group; dates are UTC. Many are long-standing: a notice issued years ago and marked permanent still counts while it is in force." +
+      (nt.lane_status && nt.lane_status !== "ok" ? " Launch's reading of the NOTAM service was not complete that day (" + nt.lane_status + ")." : "");
+    var box = document.getElementById("nt-groups"); box.textContent = "";
+    Object.keys(nt.kinds).forEach(function (k) {
+      var rows = nt.notices.filter(function (r) { return r.kind === k; });
+      if (!rows.length) return;
+      var det = document.createElement("details"); det.className = "nt-group"; det.open = !!NT_OPEN[k];
+      var sm = document.createElement("summary"); sm.textContent = nt.kinds[k] + " (" + rows.length + ")"; det.appendChild(sm);
+      var list = document.createElement("div"); list.className = "nt-list";
+      function span(parent, text, title, cls) {
+        var e = document.createElement("span"); e.textContent = text; if (title) e.title = title; if (cls) e.className = cls;
+        parent.appendChild(e); return e;
+      }
+      rows.forEach(function (r, i) {
+        var it = document.createElement("div"); it.className = "nt-item"; if (i >= NT_ROWS && !state.ntAll[k]) it.hidden = true;
+        var hd = document.createElement("div"); hd.className = "nt-head";
+        var b = document.createElement("b"); b.textContent = r.number || "–";
+        b.title = ({ N: "New notice", R: "Replaces an earlier notice", C: "Cancels an earlier notice" }[r.type] || "Notice") +
+          (r.q_code ? "; Q-code " + r.q_code : "");
+        hd.appendChild(b);
+        if (r.copies.length) span(hd, " and " + r.copies.length + " cop" + (r.copies.length === 1 ? "y" : "ies"),
+          "Also issued as " + r.copies.map(function (c) { return c.number + " (" + c.location + ")"; }).join(", "));
+        var near = r.lat != null ? nearName(r.lat, r.lon) : null;
+        span(hd, " · " + (r.location || r.fir || "no location") + (near ? ", near " + near : ""),
+          r.lat != null ? ll2(r.lat, r.lon) + (r.radius_nm ? ", radius " + (r.radius_nm >= 999 ? "999 NM (the whole region)" : r.radius_nm + " NM") : "") +
+            (r.geo === "text" ? " (from the notice's text; it has no Q line)" : " (Q line)") + (r.fir ? "; FIR " + r.fir : "")
+          : "No position in the notice" + (r.fir ? "; FIR " + r.fir : ""));
+        span(hd, " · issued " + ntDate(r.issued));
+        if (r.issued && Date.parse(r.issued) >= dayEnd - 7 * 86400000) span(hd, " new this week", null, "nt-new");
+        span(hd, " · " + (r.ended_at ? "ended " + ntDate(r.ended_at) : r.end === "PERM" ? "permanent" : "in force to " + ntDate(r.end)),
+          "From " + (r.start || "–") + " to " + (r.end || "–") + (r.schedule ? "; schedule " + r.schedule : "") +
+          (r.cancelled_by ? "; cancelled by " + r.cancelled_by : "") + (r.replaced_by ? "; replaced by " + r.replaced_by : ""));
+        var url = r.kind === "test" && ntTestUrl(r.test);
+        if (url) {
+          hd.appendChild(document.createTextNode(" · "));
+          var a = document.createElement("a"); a.href = url; a.rel = "noopener"; a.textContent = "FAA flight advisory " + r.test; hd.appendChild(a);
+        }
+        it.appendChild(hd);
+        var t = (r.text || "").replace(/\s+/g, " ").trim(), tx;
+        if (t.length <= 160) { tx = document.createElement("div"); tx.textContent = t; }
+        else {
+          tx = document.createElement("details");
+          var s = document.createElement("summary"); s.textContent = t.slice(0, 140).replace(/\s+\S*$/, "") + " …"; tx.appendChild(s);
+          tx.appendChild(document.createTextNode(r.text));
+        }
+        tx.className = "nt-text"; it.appendChild(tx);
+        list.appendChild(it);
+      });
+      det.appendChild(list);
+      if (rows.length > NT_ROWS) {
+        var more = document.createElement("button"); more.type = "button"; more.className = "linkish";
+        more.textContent = state.ntAll[k] ? "Show fewer" : "Show all " + rows.length;
+        more.addEventListener("click", function () { state.ntAll[k] = !state.ntAll[k]; renderNotams(); });
+        det.appendChild(more);
+      }
+      box.appendChild(det);
+    });
+    var note = document.getElementById("nt-note"); note.textContent = nt.source_note + " ";
+    note.appendChild(document.createTextNode("The groups are Noisefloor's reading aid from each notice's own words, not an FAA or ICAO category. "));
+    var l1 = document.createElement("a"); l1.href = nt.from; l1.rel = "noopener"; l1.textContent = "Launch's file for the day"; note.appendChild(l1);
+    note.appendChild(document.createTextNode(" (how notices are chosen) and "));
+    var l2 = document.createElement("a"); l2.href = "https://github.com/metacog-osint/noise-floor/releases/tag/declared-data"; l2.textContent = "Noisefloor's archive copy";
+    note.appendChild(l2); note.appendChild(document.createTextNode("."));
   }
   function renderEvents() {
     var ev = state.ev, rows = evRows(), jam = emeasure() === "jam";
@@ -1388,9 +1498,12 @@
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true; state.nisFocus = null;
     state.spoof = null; state.sps = null; state.spoofFocus = null; state.spsFocus = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; state.s1 = null; state.ls = null; state.rt = null; state.rtFocus = null; loadLayers(day);
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
+    state.nt = null; renderNotams();
+    fetch("/data/notams/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (nt) { if (state.day !== day) return; state.nt = nt; renderNotams(); if (state.ntShow) layer.redraw(); });
     syncTimeline();
     fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-      .then(function (ev) { if (state.day !== day) return; state.ev = ev; state.evLoading = false; renderEvents(); layer.redraw(); });
+      .then(function (ev) { if (state.day !== day) return; state.ev = ev; state.evLoading = false; renderEvents(); renderNotams(); layer.redraw(); });
     renderEvents();
     mapEl.classList.add("loading");
     return fetchDay(day).then(function (j) {
@@ -1616,7 +1729,8 @@
     });
     document.getElementById("map-raw").addEventListener("change", function (e) { state.raw = e.target.checked; refresh(); });
     document.getElementById("ev-show").addEventListener("change", function (e) { state.evShow = e.target.checked; layer.redraw(); });
-    var sl = document.getElementById("tl-slider");
+    document.getElementById("nt-show").addEventListener("change", function (e) { state.ntShow = e.target.checked; layer.redraw(); });
+    var sl =document.getElementById("tl-slider");
     sl.addEventListener("input", function () { stepTo(+sl.value, false); });
     sl.addEventListener("change", function () { stepTo(+sl.value, true); });
     document.getElementById("tl-prev").addEventListener("click", function () { stepTo(dayIndex(state.day) - 1, true); });
