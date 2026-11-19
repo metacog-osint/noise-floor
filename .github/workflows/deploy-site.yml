@@ -14,7 +14,7 @@ on:
   workflow_call:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write   # the sun-outage alert history (release sun-alerts-YYYY), after the deploy
   actions: read
 jobs:
   deploy:
@@ -95,3 +95,11 @@ jobs:
         run: |
           npx --yes wrangler@4.151.3 pages deploy site --project-name noise-floor --branch main \
             --commit-hash "$SHA" --commit-message "deploy-site $SHA" --commit-dirty=true
+
+      # Retention (18 Nov 2026): the site shows 7 days of sun-outage alerts; every alert built is also appended to the
+      # release history sun-alerts-YYYY. After the deploy, so the site never waits on it; a failure turns the run red.
+      - name: Archive sun-outage alerts (release sun-alerts-YYYY)
+        if: steps.pick.outputs.sha != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/sun_alerts.py --archive --out "$RUNNER_TEMP/alerts.json"
