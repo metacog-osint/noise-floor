@@ -503,16 +503,6 @@ def smap(release, places, spacing_km=500.0, top=3):
 
 
 # ---------------------------------------------------------------- the board
-def geo_card(site):
-    g = load(os.path.join(site, "data", "geo.json"))
-    if not g:
-        raise ValueError("no geo.json (tools/geo.py build runs first)")
-    return {"at_utc": g["at_utc"], "snapshot_day": g["snapshot_day"], "snapshots": g["snapshots"], "counts": g["counts"],
-            "close": g["close_other_owner"][:5], "close_count": len(g["close_other_owner"]),
-            "manoeuvres": [m for m in g["manoeuvres"] if m.get("kind") != "station-keeping"][-4:],
-            "manoeuvre_count": len(g["manoeuvres"]), "manoeuvre_counts": g.get("manoeuvre_counts"), "source": g["source"]}
-
-
 SHORT = {   # watched-area names as they read inside a sentence
     "Kaliningrad and approaches": "Kaliningrad", "Southern Black Sea offshore Turkey": "the southern Black Sea",
     "Caucasus": "the Caucasus", "Gulf of Finland / Estonia–Russia border": "the Gulf of Finland",
@@ -678,7 +668,6 @@ def build(release, site, now=None):
     section("sentinel6", sentinel6, release, places)
     section("smap", smap, release, places)
     section("swx", swx_card, release, places)
-    section("geo", geo_card, site)
     em = load(os.path.join(site, "data", "events-monthly.json"))
 
     def events_card():
@@ -700,7 +689,6 @@ def build(release, site, now=None):
         "smap_day": (board.get("smap") or {}).get("day"),
         "limb_s4_day": ((board.get("swx") or {}).get("limb") or {}).get("day"),
         "roti_day": ((board.get("swx") or {}).get("roti") or {}).get("day"),
-        "geo_snapshot": (board.get("geo") or {}).get("snapshot_day"),
         "board_built": board["built_utc"],
     }
     board["summary"] = summary_line(board)

@@ -1,5 +1,9 @@
 # GEO globe: plan
 
+> **Moved to Orbit, 18 Nov 2026.** The GEO page, its code and its daily steps left Noisefloor (Orbit covers objects
+> in orbit, Noisefloor covers signals). The live page is https://orbit.theintelligence.company/geo. This file is kept
+> as history; the tools it names are no longer in this repo.
+
 Drafted 27 Oct 2026 after Tom approved every idea in the proposal. This plan decides the build order; anything marked
 *to check* is not verified yet. The GEO board (`tools/geo.py`, the /geo page) stays; the globe becomes the tool at the
 top of that page, with the board's tables below it as the text view.

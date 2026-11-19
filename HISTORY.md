@@ -100,3 +100,18 @@ The "History" section of `CLAUDE.md`, moved whole.
 - 6 Oct 2026 spike (`spikes/spike_day.py`, set `TRACES_DIR`): 3% of 16 Oct 2025, version-2 `adsb_icao` only, H3 res 4.
   It took 45 s with all reports and 18 s with 30 s sampling, both with a warm cache. A cold read from the USB drive took 222 s.
   The top hotspot was the Georgia/eastern Black Sea coast.
+
+## GEO page moved to Orbit (18 Nov 2026)
+
+- GEO step 5 of Orbit's `doctrine/geo-move-plan.md`. Orbit's /geo page took the globe, RPO pairs and callouts on
+  18 Nov (step 4) and the belt board (belt-wide orbit changes, close pairs of different owners within 100 km,
+  drifting count) the same day, checked against this repo's live board: same 563 active objects and classes.
+- Retired here: `tools/geo.py` (CelesTrak board), `geo_region.py` (Space-Track region, read from Orbit's day files
+  since 16 Nov), `geo_globe.py`, `geo_callouts.py`, their tests, the /geo page (`geo.html`, `geo.js`, `globe.js`,
+  `geo_roles.json`, `satcat_owners.json`, the globe and board CSS), the daily steps "GEO snapshot" and
+  "GEO region (from Orbit)" and the deploy's GEO builds. Tom's decisions: stop reading Orbit's day files; no GEO
+  card or row on the home page; the old /geo URL 404s.
+- Sentinel keeps its Space-Track reads through `tools/spacetrack.py` (the client, `history_path` and `elset_row`
+  from `geo_region.py`); `satrec` moved into `sentinel_gnss.py`.
+- The `pnt-data-YYYY-MM` releases keep `<day>.geo.json`, `<day>.geo-region.json` and `geo-elements-YYYY-MM.parquet`
+  to 18 Nov 2026.

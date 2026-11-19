@@ -22,14 +22,6 @@
     },
     {
       "match": {
-        "product": "geo-region"
-      },
-      "ncf": [
-        "provide_satellite_access"
-      ]
-    },
-    {
-      "match": {
         "product": "sun-outage"
       },
       "ncf": [

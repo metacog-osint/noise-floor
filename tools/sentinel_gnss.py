@@ -44,6 +44,7 @@ import hashlib
 import hmac
 import io
 import json
+import math
 import os
 import re
 import sys
@@ -404,7 +405,7 @@ def spans_needed(held, day, today):
 def ensure_elements(day, units, today=None, extra=()):
     """Hold Space-Track element sets covering `day` for every unit, and for the NORAD numbers in `extra` (E2.1's
     BeiDou-3 regional satellites); returns the store."""
-    import geo_region as G
+    import spacetrack as G
     today = today or dt.datetime.now(dt.timezone.utc).date()
     store = load_elements()
     plan = {}
@@ -429,6 +430,17 @@ def ensure_elements(day, units, today=None, extra=()):
     return store
 
 
+def satrec(r):
+    """An SGP4 Satrec from a stored element set (moved from tools/geo_globe.py, 18 Nov 2026)."""
+    from sgp4.api import WGS72, Satrec
+    s = Satrec()
+    ep = dt.datetime.fromisoformat(r["epoch"][:26])
+    days = (ep - dt.datetime(1949, 12, 31)).total_seconds() / 86400.0
+    s.sgp4init(WGS72, "i", 0, days, r.get("bstar") or 0.0, 0.0, 0.0, r["e"], math.radians(r["argp"]), math.radians(r["i"]),
+               math.radians(r["M"]), r["n"] * 2 * math.pi / 1440.0, math.radians(r["raan"]))
+    return s
+
+
 def epoch_unix(s):
     return dt.datetime.fromisoformat(s[:26]).replace(tzinfo=dt.timezone.utc).timestamp()
 
@@ -445,7 +457,6 @@ def gmst(jd_ut1):
 def spacecraft_ecef(sets, t_unix, max_age_h=MAX_ELSET_AGE_H):
     """Earth-fixed position (m) and velocity (m/s) at UTC Unix seconds from the nearest element set; NaN where none is
     within max_age_h. Returns (xyz[N,3], vel[N,3], age_h[N])."""
-    import geo_globe
     t_unix = np.asarray(t_unix, float)
     xyz = np.full((len(t_unix), 3), np.nan)
     vel = np.full((len(t_unix), 3), np.nan)
@@ -461,7 +472,7 @@ def spacecraft_ecef(sets, t_unix, max_age_h=MAX_ELSET_AGE_H):
         m = (pick == k) & (age <= max_age_h)
         if not m.any():
             continue
-        err, r, v = geo_globe.satrec(sets[k]).sgp4_array(jd[m], fr[m])
+        err, r, v = satrec(sets[k]).sgp4_array(jd[m], fr[m])
         ok = (err == 0)[:, None]
         r, v = np.where(ok, r, np.nan) * 1000.0, np.where(ok, v, np.nan) * 1000.0
         g = gmst(jd[m] + fr[m])

@@ -159,13 +159,6 @@
         rs.max_p95.toFixed(2) + " TECU/min (hour from " + both(rt.day + "T" + pad(rs.hour) + ":00Z") + ").");
     }
     set("swx-text", esc(sx.join(" ")));
-    var g = b.geo;
-    set("r-geo", g ? n(g.counts.objects) + " objects; " + n(g.close_count) + " close pairs; " +
-      (g.snapshots < 2 ? "orbit-change flags start with the second snapshot" : g.manoeuvre_counts ?
-        (g.manoeuvre_counts.other ? n(g.manoeuvre_counts.other) + " relocation" + (g.manoeuvre_counts.other === 1 ? "" : "s") + " or other orbit change" +
-          (g.manoeuvre_counts.other === 1 ? "" : "s") : "no relocations") + " and " + n(g.manoeuvre_counts["station-keeping"]) + " routine station-keeping this week"
-        : g.manoeuvre_count ? n(g.manoeuvre_count) + " orbit changes flagged this week" : "no orbit changes flagged")
-      : "Not available in the last build.");
     var d = b.declared || {}, bits = [];
     if (d.faa_tests) bits.push(n(d.faa_tests.today) + " US GPS tests today, " + n(d.faa_tests.next7) + " in the next 7 days");
     if (d.notams) bits.push(n(d.notams.groups) + " GNSS NOTAMs in force on " + dayShort(d.notams.day) + " (copies counted once)" +
@@ -183,7 +176,7 @@
     // latest data
     var f = b.freshness || {};
     var fr = [["Aircraft", f.aircraft_day && dayShort(f.aircraft_day)], ["Spoofing", f.spoofing_day && dayShort(f.spoofing_day)],
-      ["Ships (Finnish AIS)", dtShort(f.ships_built)], ["Satellite orbits", f.geo_snapshot && dayShort(f.geo_snapshot)],
+      ["Ships (Finnish AIS)", dtShort(f.ships_built)],
       ["Scintillation (ESA)", dtShort(f.scintillation_valid)], ["CYGNSS", f.cygnss_day && dayShort(f.cygnss_day)],
       ["Sentinel-6", f.s6_day && dayShort(f.s6_day)], ["Limb S4 (COSMIC-2)", f.limb_s4_day && dayShort(f.limb_s4_day)],
       ["ROTI (IGS stations)", f.roti_day && dayShort(f.roti_day)], ["SMAP (7 days to)", f.smap_day && dayShort(f.smap_day)],
