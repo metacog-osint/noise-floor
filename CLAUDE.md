@@ -86,7 +86,7 @@ History: `HISTORY.md`. Plan and open decisions: `docs/DESIGN.md` ("Merged plan" 
 |---|---|---|
 | ADS-B jamming | adsb.lol archive (ODbL), `pnt_analysis.py`, `tools/events.py` (graded v1.1; EASA FIR tables drive rule D1) | Severe share vs 30-day median |
 | ADS-B spoofing | `tools/spoof_day.py` (v0.6.1 default: rule A for A2 only >= 36,000 ft; `docs/validation/spoofing-v06*.md`), `spoof_summary.py`, `spoof_site.py` | Test detector changes per `docs/spoofing-light-plan.md` (`spoof_variant.py`, `spoof_same.py`; compare `cpu_seconds`, not wall). `spoof-variant.yml` scores the 12 held-out days (each run Tom's call); caches hold ICAO addresses, so they sit in the PRIVATE `spoof-cache` release of noise-floor-archive (`SPOOF_CACHE_TOKEN`); only aggregates leave. Region "above" = 2x usual and >= 5 aircraft-hours over (`REGION_MIN_OVER`, pre-registered). A region above inside an announced US GPS test (`faa_gps_tests.json`) names the test, tier unchanged |
-| GEO region | Orbit's published `<day>.geo-region.json` (`geo_region.py pull --from-orbit`, no Space-Track request); globe `site_src/globe.js`, `tools/geo_globe.py`, callouts `geo_callouts.py` (C3-C7 on) | Plan `docs/geo-globe-plan.md`. Footprints wait on licences |
+| GEO belt | Moved to Orbit 18 Nov 2026 (orbit.theintelligence.company/geo); releases keep the files to 18 Nov | Space tab lands on /sun; /geo 404s. `tools/spacetrack.py`: Sentinel's gp_history client; no gp query here |
 | NISAR | `python -m nisar_rfi export`, `nisar/run_daily.cmd` (extra areas `private/watch/nisar.d/`), `nisar-data` release, then deploy | Plan `docs/nisar-public-plan.md`. Each detection is a lead, not attribution |
 | Sentinel-6A `s6`, COSMIC-2 `cosmic2`, SMAP `smap`, Sentinel-1 `s1` | Daily from the PC 06:30 collectors task; `<day>.<layer>.json` to `<layer>-data` | S6 places regions, not sites; COSMIC-2 low latitudes only; SMAP saturates in crowded regions; S1 shows C-band radar by region, never GPS interference. Neither S6 nor COSMIC-2 rises on event days (rule S3), grading stays v1.1. Plan `docs/space-sensors-plan.md` |
 | Sentinel nav receivers (step E) | `tools/sentinel_gnss.py`, index `sentinel_rfi.py` (frozen), `sentinel_daily.py`; CDSE S3 keys in user env vars; private products only | Regional sensor ~2,000 km, not a cell map. **E2.1 in the products** (Tom's yes 16 Nov; `docs/validation/sentinel-gnss-e21.md` section 3); `--index e2` for comparison. BeiDou-3 C59/C60/C38-40 stay out (`FILL_LOAD`). |
@@ -104,5 +104,5 @@ Also `tools/sun_transit.py` (sun outages), CYGNSS (`cygnss_daily.py` to `cygnss-
 
 ## How other programs use Noisefloor
 - **COP** reads the feed; its freshness is the newest item's `data_as_of` (Noisefloor windows 36 h late, 72 h stale).
-- **Hub** quotes `brief`. **Orbit** supplies GEO region files; `orbit_busy` defers our gp query to Orbit on the shared
-  Space-Track account. Downstream users read the releases (private details in `CLAUDE.local.md`).
+- **Hub** quotes `brief`. **Orbit** owns the GEO belt (from 18 Nov 2026) and makes the gp queries on the shared
+  Space-Track account; Noisefloor reads only gp_history for Sentinel. Downstream users read the releases (private details in `CLAUDE.local.md`).

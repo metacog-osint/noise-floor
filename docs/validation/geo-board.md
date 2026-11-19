@@ -1,5 +1,9 @@
 # GEO board: first check against published cases (26 Oct 2026)
 
+> **Moved to Orbit, 18 Nov 2026.** The GEO page, its code and its daily steps left Noisefloor (Orbit covers objects
+> in orbit, Noisefloor covers signals). The live page is https://orbit.theintelligence.company/geo. This file is kept
+> as history; the tools it names are no longer in this repo.
+
 **Lane:** geo-board (built 26 Oct 2026; not validated). **Code:** `tools/geo.py`, page `/geo`. **Data:** CelesTrak GP elements
 for the active geosynchronous group and its catalogue records (USSPACECOM basic SSA data, used with citation), snapshot of
 26 Oct 2026, 569 objects. **This is a sanity check, not a validation:** it compares what the board shows on its first day

@@ -4,19 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Noisefloor</title>
-<meta name="description" content="A daily, open picture of interference with satellite navigation and communications: where aircraft lost GPS, spoofing, ships at sea, the geostationary belt and the evidence behind each.">
+<meta name="description" content="A daily, open picture of interference with satellite navigation and communications: where aircraft lost GPS, spoofing, ships at sea, sun outages and the evidence behind each.">
 <meta property="og:title" content="Noisefloor">
-<meta property="og:description" content="A daily, open picture of interference with satellite navigation and communications: where aircraft lost GPS, spoofing, ships at sea, the geostationary belt and the evidence behind each.">
+<meta property="og:description" content="A daily, open picture of interference with satellite navigation and communications: where aircraft lost GPS, spoofing, ships at sea, sun outages and the evidence behind each.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=4f5fe3acaa">
+<link rel="stylesheet" href="/style.css?v=2817299462">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=17dab3051f"></script>
 <link rel="stylesheet" href="/tic-nav.css?v=7a0e56eae2">
 <script defer src="/tic-nav.js?v=642ad3d135" data-health="on"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
-<script defer src="/sunoutage.js?v=e38fd7c286"></script><script defer src="/dash.js?v=c24252f2cc"></script><script defer src="/board.js?v=05c4e17cfd"></script>
+<script defer src="/sunoutage.js?v=e38fd7c286"></script><script defer src="/dash.js?v=c24252f2cc"></script><script defer src="/board.js?v=db668adf70"></script>
 <script defer src="/tic-init.js?v=d888070c79"></script>
 </head>
 <body>
@@ -26,7 +26,7 @@
 <a class="brand" href="/"><svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect class="mark-bg" x=".5" y=".5" width="27" height="27" rx="6"/><path class="mark-line" d="M5 17H9L10.6 10L12.4 20L14.2 12.5L15.8 17H23" fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg><span><b>Noisefloor</b><small>The Intelligence Company</small></span></a>
 <div class="site-tools"><span class="clock" id="clock" aria-hidden="true"></span><span id="time-settings"></span></div>
 </div>
-<div class="wrap"><nav class="tabs" aria-label="Main"><div class="tabs-scroll"><a href="/" aria-current="page">Today</a><a href="/map">Map</a><a href="/charts">Trends</a><a href="/sea">Sea</a><a href="/geo">Space</a></div><details class="menu"><summary>About<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu-pop"><a href="/guide"><b>Plain-language guide</b><span>What the site shows, in everyday words</span></a><a href="/methods"><b>Methods</b><span>How each measure works and what it can&#x27;t see</span></a><a href="/validation"><b>Validation</b><span>What was tested, including what failed</span></a><a href="/data"><b>Data and downloads</b><span>Daily files, their columns and licences</span></a><a href="/sources"><b>Sources and licences</b><span>Every source, and what it may be used for</span></a><a href="/lanes"><b>Roadmap</b><span>What is built, being tested or planned</span></a><a href="/terms"><b>Terms</b><span>Use, reuse and limits</span></a></div></details></nav></div>
+<div class="wrap"><nav class="tabs" aria-label="Main"><div class="tabs-scroll"><a href="/" aria-current="page">Today</a><a href="/map">Map</a><a href="/charts">Trends</a><a href="/sea">Sea</a><a href="/sun">Space</a></div><details class="menu"><summary>About<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu-pop"><a href="/guide"><b>Plain-language guide</b><span>What the site shows, in everyday words</span></a><a href="/methods"><b>Methods</b><span>How each measure works and what it can&#x27;t see</span></a><a href="/validation"><b>Validation</b><span>What was tested, including what failed</span></a><a href="/data"><b>Data and downloads</b><span>Daily files, their columns and licences</span></a><a href="/sources"><b>Sources and licences</b><span>Every source, and what it may be used for</span></a><a href="/lanes"><b>Roadmap</b><span>What is built, being tested or planned</span></a><a href="/terms"><b>Terms</b><span>Use, reuse and limits</span></a></div></details></nav></div>
 </header>
 <main id="main" class="home">
 <section class="brief" aria-labelledby="brief-h">
@@ -99,7 +99,6 @@
         <a class="row" id="r-smap-link" href="/map#sm=1"><span><b>L-band radars from orbit (SMAP)</b><em id="r-smap">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         <a class="row" href="/validation"><span><b>Aircraft without a GPS position</b><em id="r-loss">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         <a class="row" href="/sun"><span><b>Space weather</b><em><span id="kp-text">Geomagnetic Kp loading…</span> <span id="scint-text"></span> <span id="radio-text"></span> <span id="swx-text"></span></em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-        <a class="row" href="/geo"><span><b>Geostationary belt</b><em id="r-geo">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         <a class="row" href="/sun"><span><b>Sun outages</b><em id="sun-text">Calculating…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         <a class="row" href="/sea"><span><b>At sea</b><em id="sea-text">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         <a class="row" href="/map"><span><b>Official notices</b><em id="r-notices">Loading…</em></span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
