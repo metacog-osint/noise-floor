@@ -168,6 +168,8 @@
       : "Not available in the last build.");
     var d = b.declared || {}, bits = [];
     if (d.faa_tests) bits.push(n(d.faa_tests.today) + " US GPS tests today, " + n(d.faa_tests.next7) + " in the next 7 days");
+    if (d.notams) bits.push(n(d.notams.groups) + " GNSS NOTAMs in force on " + dayShort(d.notams.day) + " (copies counted once)" +
+      (d.notams.counts && d.notams.counts.interference ? ", " + n(d.notams.counts.interference) + " about interference reported or expected" : ""));
     if (d.notices && d.notices.length) bits.push(n(d.notices.length) + " official GNSS warning" + (d.notices.length === 1 ? "" : "s") + " in force");
     var ea = b.easa && b.easa.tables && b.easa.tables[0];
     if (ea) bits.push("EASA lists spoofing in " + ea.firs.filter(function (r) { return r.spoofing; }).length + " regions (" + dayShort(ea.date) + ")");

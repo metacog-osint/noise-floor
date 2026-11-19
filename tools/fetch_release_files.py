@@ -17,7 +17,7 @@ import time
 import urllib.request
 
 FILES = re.compile(r"^(\d{4}-\d{2}-\d{2}\.(map|anomalies|bursts|sbas|hotspots|spoof|spoof-targets|cygnss|nisar|s6|smap|cosmic2|s1|geo|geo-region|cosmic2-limb-s4|ground-roti|milair)\.json|\d{4}-\d{2}-\d{2}\.loss_daily\.parquet|geo-elements-\d{4}-\d{2}\.parquet"
-                   r"|faa_gps_tests\.json)$")
+                   r"|faa_gps_tests\.json|\d{4}-\d{2}-\d{2}\.gnss-notams\.json|gnss-notams-index\.json)$")
 TAGS = ("pnt-data-", "declared-data", "cygnss-data", "nisar-data", "s6-data", "smap-data", "cosmic2-data", "s1-data",
         "swx-data-", "milair-data-")   # daily outputs; announced GPS tests; CYGNSS daily
                                                                      # summaries; NISAR repeat-site snapshots
