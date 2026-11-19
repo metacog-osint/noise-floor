@@ -391,6 +391,10 @@ class Archive:
             tag = tag or f"{self.prefix}{now.strftime('%Y-%m')}"
             uploads = []
             for i, g in enumerate(groups):
+                if dry_run:      # no tar is built (it may be GBs): the part is named by its number only
+                    for f in g:
+                        where[f["sha256"]] = (tag, f"{stamp}-part{i}.tar.gz", f["member"])
+                    continue
                 tmp = work / f"part{i}.tar.gz"
                 write_tar(g, tmp)
                 name = f"{stamp}-{sha256_file(tmp)[:12]}.tar.gz"
@@ -414,7 +418,7 @@ class Archive:
             sizes = {p.name: p.stat().st_size for p in uploads + [index]}
             if dry_run:
                 log(f"dry run {tag}: {len(files)} files, {len(new)} new ({doc['new_bytes']:,} bytes) in "
-                    f"{len(groups)} tar(s); would upload {', '.join(sizes)}")
+                    f"{len(groups)} tar(s) and one index")
                 return {"status": "dry-run", "tag": tag, "assets": sizes, "doc": doc}
             # Tars first, then the index, so an index on the release always means its tars are there.
             if uploads:
