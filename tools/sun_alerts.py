@@ -19,6 +19,12 @@ Thresholds are provisional (docs/design/sun-outage.md).
 
   python tools/sun_alerts.py                    # fetch NOAA, write site/data/sun/alerts.json
   python tools/sun_alerts.py --noaa-dir DIR     # use saved NOAA files (solar-radio-flux.json, edited_events.json)
+  python tools/sun_alerts.py --archive          # also append new or changed alerts to the release history (below)
+
+History (retention rule, 18 Nov 2026): the site and feed show the last 7 days only. With --archive, every alert not yet
+held (by id and content hash) is appended to a new release asset `sun-alerts-history-YYYY-<UTC stamp>.jsonl` on release
+`sun-alerts-YYYY` (tools/release_archive.py; created if missing, nothing is overwritten). Needs GH_TOKEN and a job with
+`contents: write`. A failure prints a GitHub error annotation and leaves alerts.json as written.
 """
 import argparse, json, math, os, sys, time, urllib.request
 from datetime import datetime, timedelta, timezone
@@ -204,10 +210,28 @@ def make_alerts(targets, flux, events, reports, now=None):
             "alerts": alerts}
 
 
+def archive_alerts(res, now=None):
+    """Append the alerts in `res` that no history asset holds yet. Returns the number written, or -1 on failure."""
+    now = now or datetime.now(timezone.utc)
+    try:
+        import release_archive as R
+        n, name = R.archive_new(f"sun-alerts-{now.year}", f"sun-alerts-history-{now.year}", res["alerts"], lambda a: a["id"],
+                                ext=".jsonl", now=now, scan=r"sun-alerts-history-", create=True,
+                                title=f"Sun-outage alert history {now.year}",
+                                notes="Append-only history of the sun-outage and radio-burst alerts the site shows for 7 days "
+                                      "(tools/sun_alerts.py). One line per alert version; NOAA SWPC data, US public domain.")
+        print(json.dumps({"history_alerts_added": n, "history_asset": name}))
+        return n
+    except Exception as e:  # noqa: BLE001
+        print(f"::error::sun-outage alert history NOT archived ({e.__class__.__name__}: {e})"[:400], flush=True)
+        return -1
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--noaa-dir", help="read solar-radio-flux.json and edited_events.json from here instead of NOAA")
     ap.add_argument("--out", default=os.path.join(SUN_DIR, "alerts.json"))
+    ap.add_argument("--archive", action="store_true", help="also append new or changed alerts to the release history")
     a = ap.parse_args()
     targets = json.load(open(os.path.join(SUN_DIR, "targets.json"), encoding="utf-8"))
     rp = os.path.join(SUN_DIR, "reports.json")
@@ -219,6 +243,8 @@ def main():
     with open(a.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(res, f, indent=1, ensure_ascii=False)
     print(json.dumps({k: res[k] for k in ("generated", "pairs", "predicted_windows")} | {"alerts": len(res["alerts"]), "noaa": res["noaa"]}))
+    if a.archive:
+        archive_alerts(res)
 
 
 if __name__ == "__main__":

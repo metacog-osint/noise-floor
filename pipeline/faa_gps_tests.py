@@ -14,7 +14,9 @@ instead of reading it as hostile interference. Validated on WSMRNM GPS 25-16 (do
   python pipeline/faa_gps_tests.py --nids 14715 14774       # specific notice ids
 
 Store: data/declared/faa_gps_tests.json, one record per test, keyed by its base id (a revision replaces the
-earlier one). Needs pypdf.
+earlier one). Needs pypdf. History (retention rule, 18 Nov 2026): earlier revisions are kept in append-only release
+assets faa_gps_tests.history-YYYY-MM-<stamp>.jsonl.gz (tools/release_archive.py), written by --rss on GitHub Actions
+or with --history.
 """
 import argparse, io, json, math, os, re, sys, time, urllib.request
 import xml.etree.ElementTree as ET
@@ -22,6 +24,8 @@ from datetime import date, datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STORE = os.path.join(ROOT, "data", "declared", "faa_gps_tests.json")
+HISTORY_TAG = "declared-data"        # release holding the live store and the append-only history assets
+sys.path.insert(0, os.path.join(ROOT, "tools"))
 SITE = "https://www.faasafety.gov"
 RSS = SITE + "/RSS/NoticesRSS.aspx"
 UA = {"User-Agent": "noise-floor (research; github.com/metacog-osint/noise-floor)"}
@@ -178,8 +182,29 @@ def add(store, nid, sleep=2.0):
     return f"added {rec['id']} ({len(rec['windows'])} windows)"
 
 
+def archive_history(store, tag=None, now=None):
+    """Append every new or changed test record (by id + content hash) to an append-only history asset on release `tag`
+    (faa_gps_tests.history-YYYY-MM-<UTC stamp>.jsonl.gz, a new name each time). The live store asset is overwritten each
+    run and keeps only the latest revision of each test; this keeps every earlier one. The first run writes all stored
+    records. A failure is reported as a GitHub error annotation and does not stop the live store's upload that follows."""
+    now = now or datetime.now(timezone.utc)
+    try:
+        import release_archive as R
+        n, name = R.archive_new(tag or HISTORY_TAG, "faa_gps_tests.history-" + now.strftime("%Y-%m"),
+                                list(store["tests"].values()), lambda r: r["base"], now=now,
+                                scan=r"faa_gps_tests\.history-")
+        print(json.dumps({"history_records_added": n, "history_asset": name}))
+        return n
+    except Exception as e:  # noqa: BLE001
+        print(f"::error::FAA GPS test history NOT archived ({e.__class__.__name__}: {e})"[:400], flush=True)
+        return -1
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--history", action="store_true", help="also append new or changed records to the release history "
+                    "(automatic with --rss on GitHub Actions)")
+    ap.add_argument("--history-tag", default=None)
     ap.add_argument("--rss", action="store_true")
     ap.add_argument("--crawl", nargs=2, type=int, metavar=("FIRST_NID", "LAST_NID"))
     ap.add_argument("--parse")
@@ -231,6 +256,8 @@ def main():
             save(store)
     save(store)
     print(json.dumps({"checked": len(set(nids)), "added": added, "tests": len(store["tests"])}))
+    if a.history or (a.rss and os.environ.get("GITHUB_ACTIONS") == "true"):
+        archive_history(store, a.history_tag)
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
             f.write(f"tests_changed={'true' if added else 'false'}\n")

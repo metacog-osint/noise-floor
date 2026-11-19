@@ -28,7 +28,7 @@ Usage
   python pipeline/daily_job.py 2026-11-07:2026-11-13 --spoof-only  # rerun only the spoofing files on published days
                                                            # (downloads the raw archive again; nothing else changes)
 """
-import argparse, json, os, shutil, subprocess, sys, time, traceback, urllib.request
+import argparse, json, os, shutil, subprocess, sys, tempfile, time, traceback, urllib.request
 from datetime import date, datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -151,9 +151,39 @@ def upload(day, with_analysis=True, extra=()):
     files = outputs(day) if with_analysis else outputs(day)[:4]
     rh = os.path.join(DAILY, f"{day}.region_hourly.parquet")    # distinct aircraft per region-hour (from 17 Nov 2026)
     files += [rh] if os.path.exists(rh) else []
+    keep_old_versions(tag, [*files, *extra, os.path.join(SITE, f"{day}.hotspots.json"), os.path.join(SITE, f"{day}.map.json")])
     gh("release", "upload", tag, "-R", REPO, "--clobber", *files, *extra, os.path.join(SITE, f"{day}.hotspots.json"))
     gh("release", "upload", tag, "-R", REPO, "--clobber", os.path.join(SITE, f"{day}.map.json"))   # last: marks done
     _ASSETS.pop((REPO, tag), None)
+
+
+def keep_old_versions(tag, paths):
+    """Before an upload replaces a day's JSON outputs (a forced rerun, --reanalyse, --spoof-only), keep the earlier ones
+    as `<name>.v<n>.json` on the same release (retention rule, 18 Nov 2026). Skipped when the old asset is byte-for-byte
+    the new file. The `.v<n>` names match no reader's pattern. Raises on any failure, so the overwrite does not go ahead."""
+    have = assets(REPO, tag) or {}
+    kept = []
+    for p in paths:
+        name = os.path.basename(p)
+        if not name.endswith(".json") or name not in have or not os.path.exists(p):
+            continue
+        with tempfile.TemporaryDirectory() as tmp:
+            old = download(REPO, tag, name, tmp, have[name])
+            if open(old, "rb").read() == open(p, "rb").read():
+                continue
+            stem = name[:-len(".json")]
+            n = 1
+            while f"{stem}.v{n}.json" in have:
+                n += 1
+            dst = os.path.join(tmp, f"{stem}.v{n}.json")
+            os.replace(old, dst)
+            gh("release", "upload", tag, "-R", REPO, dst)          # no --clobber: a unique name
+            have[os.path.basename(dst)] = os.path.getsize(dst) if os.path.exists(dst) else 0
+            kept.append(os.path.basename(dst))
+    if kept:
+        _ASSETS.pop((REPO, tag), None)
+        print(f"kept earlier versions: {', '.join(kept)}", flush=True)
+    return kept
 
 
 def analyse(day):
@@ -183,6 +213,7 @@ def reanalyse(day, a):
             download(REPO, tag, name, DAILY, have.get(name))
     hist, an = analyse(day)
     if not a.no_upload:
+        keep_old_versions(tag, outputs(day)[4:])
         gh("release", "upload", tag, "-R", REPO, "--clobber", *outputs(day)[4:])
         _ASSETS.pop((REPO, tag), None)
     return {"day": day, "status": "reanalysed" if not a.no_upload else "reanalysed (not uploaded)", "history_files": hist,
@@ -275,6 +306,7 @@ def spoof_only(day, a):
     if not files:
         return {"day": day, "status": "ERROR spoofing failed", "total_s": round(time.time() - t0)}
     if not a.no_upload:
+        keep_old_versions(tag, files)
         gh("release", "upload", tag, "-R", REPO, "--clobber", *files)
         _ASSETS.pop((REPO, tag), None)
     return {"day": day, "status": "spoofing republished" if not a.no_upload else "spoofing done (not uploaded)",
