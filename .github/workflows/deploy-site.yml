@@ -67,12 +67,9 @@ jobs:
         run: |
           python3 tools/fetch_release_files.py "$RUNNER_TEMP/release-files"
           python3 tools/sun_alerts.py || echo "::warning::sun-outage alerts skipped (NOAA or script failure); the feed goes out without them"
-          python3 -m pip install --quiet --user h3 pyarrow sgp4 numpy   # before site_days: the Atom's area names need h3 (18 Nov 2026)
+          python3 -m pip install --quiet --user h3 pyarrow numpy   # before site_days: the Atom's area names need h3 (18 Nov 2026)
           python3 tools/site_days.py "$RUNNER_TEMP/release-files"
           python3 tools/site_history.py site
-          python3 tools/geo.py build "$RUNNER_TEMP/release-files" site || echo "::warning::GEO board skipped"
-          python3 tools/geo_globe.py build "$RUNNER_TEMP/release-files" site || echo "::warning::GEO globe skipped; the page shows its loading text"
-          python3 tools/geo_callouts.py publish --data "$RUNNER_TEMP/release-files" --out site/data/geo/callouts.json || echo "::warning::GEO callouts skipped; the globe shows none"
           python3 tools/milair.py site "$RUNNER_TEMP/release-files" site || echo "::warning::military air reading skipped; the feed goes out without it"
           python3 pipeline/gnss_notams.py site "$RUNNER_TEMP/release-files" site || echo "::warning::GNSS NOTAMs skipped; the map shows none"
           python3 tools/board.py "$RUNNER_TEMP/release-files" site || echo "::warning::status board skipped; the home page shows its loading text"

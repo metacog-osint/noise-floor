@@ -7,8 +7,7 @@ name: daily
 # Starts: tic-dispatch (The Intelligence Company's dispatch Worker) starts this through workflow_dispatch at :25 past
 # 04-07 UTC (from 17 Nov 2026), because GitHub's own cron fires 4-9 hours late on this account (the 12:40 cron ran at
 # 12:10-14:19 on 7-16 Nov, the 05:40 one never on time). A start with no new day exits in a few minutes. The crons
-# below are the fallback. The GEO steps run only on the crons: CelesTrak asks for one download per 2-hour update and
-# Space-Track allows the gp class at most once an hour, so hourly dispatched starts must not repeat them.
+# below are the fallback. (The GEO steps left on 18 Nov 2026 with the GEO page, now Orbit's.)
 on:
   schedule:
     - cron: "40 5 * * *"     # 05:40 UTC = 00:40 CDT / 23:40 CST
@@ -40,8 +39,6 @@ jobs:
     outputs:
       changed: ${{ steps.run.outputs.changed }}
       tests_changed: ${{ steps.tests.outputs.tests_changed }}
-      geo_changed: ${{ steps.geo.outputs.geo_changed }}
-      region_changed: ${{ steps.region.outputs.geo_changed }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -77,26 +74,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python pipeline/gnss_notams.py archive --upload
-      # the GEO board: one CelesTrak snapshot per run (its usage policy: once per 2-hour update), tools/geo.py
-      - name: GEO snapshot
-        id: geo
-        if: ${{ !cancelled() && github.event_name == 'schedule' }}
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python tools/geo.py snapshot --upload
-      # the GEO region from Orbit's published day file (from 16 Nov 2026: Orbit makes the one gp query on the shared
-      # Space-Track account; same rules, orbit/geo_region.py there). No Space-Track request here. The step's name
-      # must not be "GEO region (Space-Track)": Orbit's runs wait for a step of that name.
-      - name: GEO region (from Orbit)
-        id: region
-        if: ${{ !cancelled() && github.event_name == 'schedule' }}
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python tools/geo_region.py pull --from-orbit --upload
   deploy:
     needs: process
-    if: ${{ !cancelled() && (needs.process.outputs.changed == 'true' || needs.process.outputs.tests_changed == 'true' || needs.process.outputs.geo_changed == 'true' || needs.process.outputs.region_changed == 'true') }}
+    if: ${{ !cancelled() && (needs.process.outputs.changed == 'true' || needs.process.outputs.tests_changed == 'true') }}
     uses: ./.github/workflows/deploy-site.yml
     secrets: inherit

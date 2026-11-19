@@ -33,9 +33,11 @@ STATUS = {  # key: (label, css class, one-line meaning)
     "planned": ("Planned", "st-planned", "designed, not built"),
     "parked": ("Parked", "st-parked", "set aside with its final state written down; revisited on a named trigger"),
 }
-TABS = [("home", "Today", ""), ("map", "Map", "map"), ("charts", "Trends", "charts"), ("sea", "Sea", "sea"), ("space", "Space", "geo")]
+ORBIT_GEO = "https://orbit.theintelligence.company/geo"
+TABS = [("home", "Today", ""), ("map", "Map", "map"), ("charts", "Trends", "charts"), ("sea", "Sea", "sea"), ("space", "Space", "sun")]
 SECTIONS = {   # tab -> sub-pages shown in the section bar: (page key, label, href, one line for the About menu)
-    "space": [("geo", "GEO belt", "geo", ""), ("sun", "Sun outages", "sun", "")],
+    # the GEO belt moved to Orbit on 18 Nov 2026 (Orbit owns objects in orbit; Noisefloor keeps sun outages)
+    "space": [("sun", "Sun outages", "sun", ""), ("orbit-geo", "GEO belt (Orbit)", ORBIT_GEO, "")],
     "about": [("guide", "Plain-language guide", "guide", "What the site shows, in everyday words"),
               ("methods", "Methods", "methods", "How each measure works and what it can't see"),
               ("validation", "Validation", "validation", "What was tested, including what failed"),
@@ -122,7 +124,8 @@ def subnav_html(active):
     tab = SECTION_OF.get(active)
     if not tab:
         return ""
-    links = "".join(f'<a href="/{href}"' + (' aria-current="page"' if key == active else "") + f">{e(label)}</a>"
+    links = "".join(f'<a href="{href if href.startswith("https://") else "/" + href}"'
+                    + (' aria-current="page"' if key == active else "") + f">{e(label)}</a>"
                     for key, label, href, _ in SECTIONS[tab])
     name = "Space" if tab == "space" else "About"
     return f'<nav class="subnav" aria-label="{name}"><div class="wrap">{links}</div></nav>\n'
@@ -136,7 +139,7 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
-ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-nav.css", "tic-nav.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js", "geo.js", "globe.js")
+ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-nav.css", "tic-nav.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js")
 FONTS = os.path.join(SRC, "fonts")     # IBM Plex (SIL OFL 1.1, fonts/OFL.txt), served from this site so no visit contacts a font service
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
@@ -218,7 +221,7 @@ def lanes_page(data):
 <div class="tw"><table><thead><tr><th>Phase</th><th>Scope</th><th>Status</th></tr></thead><tbody>
 <tr><td>1. Foundation</td><td>Licence registry, GNSS processor, method card, validation against known events</td><td>""" + chip("validated") + """</td></tr>
 <tr><td>2. Daily and public</td><td>Daily pipeline and backfill, public map, declared-interference lane, home status board</td><td>""" + chip("running") + """</td></tr>
-<tr><td>3. SATCOM v1</td><td>Sun outages with alerts (running; the interference register folded in), GEO threat board (next), satellite-internet health (parked until permissions); the L-band risk overlay was dropped</td><td>""" + chip("running") + """ sun outages</td></tr>
+<tr><td>3. SATCOM v1</td><td>Sun outages with alerts (running; the interference register folded in), the GEO belt (moved to Orbit, 18 Nov 2026), satellite-internet health (parked until permissions); the L-band risk overlay was dropped</td><td>""" + chip("running") + """ sun outages</td></tr>
 <tr><td>4. Spoofing and maritime</td><td>ADS-B spoofing (validated), AIS spoofing at sea and dark ships (prototypes, held-out tests next), declared-warning layers</td><td>""" + chip("validated") + """ ADS-B spoofing</td></tr>
 <tr><td>5. Emitters</td><td>Sentinel-1 RFI board, weather-radar spokes</td><td>""" + chip("parked") + """</td></tr>
 <tr><td>6. Assessment</td><td>Event model and grading (v1.0, rules frozen; exclusions folded in), community lane, the home status board as the daily status; weekly assessment later</td><td>""" + chip("built") + """ events; community collection running</td></tr>
@@ -346,7 +349,7 @@ def main():
     fills.update(chart_fills())
     fills.update(events_fills())
     written = []
-    for name in ("index.html", "map.html", "sea.html", "sun.html", "geo.html", "charts.html", "guide.html", "methods.html", "validation.html", "data.html", "terms.html", "404.html"):
+    for name in ("index.html", "map.html", "sea.html", "sun.html", "charts.html", "guide.html", "methods.html", "validation.html", "data.html", "terms.html", "404.html"):
         meta, body = read_page(name)
         for k, v in fills.items():
             body = body.replace(k, v)
@@ -380,7 +383,7 @@ def main():
     rules += [(p, f"Cache-Control: {hour}") for p in ("/data/gnss/2*", "/data/events/*", "/data/history/*")]   # day files
     rules += [("/data/vessels/*", f"Cache-Control: {hour}")]                  # Sea map data, refreshed by hand
     rules += [(f"/data/{f}", f"Cache-Control: {short}") for f in ("gnss/days.json", "trend.json", "charts.json",
-                                                                  "events-monthly.json", "board.json", "geo.json",
+                                                                  "events-monthly.json", "board.json",
                                                                   "today-map.svg", "today-map-dark.svg")]
     rules += [("/feed.xml", f"Cache-Control: {short}")]
     open(os.path.join(OUT, "_headers"), "w", newline="\n").write("".join(f"{p}\n  {h}\n" for p, h in rules))
