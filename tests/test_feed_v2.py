@@ -65,6 +65,7 @@ def main():
     country_tags()
     event_tiers()
     event_place_unit_time()
+    same_titles_and_swx_names()
     print("test_feed_v2: all passed")
 
 
@@ -125,6 +126,34 @@ def event_place_unit_time():
     q = feed["features"][2]["properties"]                    # an event in the day's last hour ends at midnight
     assert q["data_as_of"] == "2026-11-16T00:00:00Z" and q["period"]["start"] == "2026-11-15T22:00:00Z"
     assert feed["features"][0]["properties"]["data_as_of_precision"] == "day"   # the summary stays date-only
+
+
+
+def same_titles_and_swx_names():
+    """Tom's yes, 18 Nov 2026 evening CST: two items that read the same take their UTC hours; limb S4 cells take the
+    board's words ("in Brazil, 350 km S of Marabá"); a ROTI station named by its country alone reads "in Gabon
+    (station NKLG)"."""
+    ev = {"tier": "notable", "peak": 12.0, "excess": 11.0, "h0": 6, "h1": 8, "lat": 20.3, "lon": 85.8,
+          "where": "near Bhubaneswar", "test": False, "cells": []}
+    other = {**ev, "h0": 14, "h1": 14}
+    board = {"freshness": {"aircraft_day": "2026-11-17"}, "top_events": {"day": "2026-11-17", "events": [ev, other]},
+             "swx": {"limb": {"day": "2026-11-17", "top": [
+                 {"cell": "81803ffffffffff", "lat": -8.5, "lon": -49.5, "p95": 0.5, "hour": 1, "lst": 22.0, "rfi": 0,
+                  "n": 40, "links": 3, "max": 0.7, "near": "Brazil", "near_at": None, "near_kind": "country",
+                  "near_ref": "350 km S of Marabá", "where": "in Brazil, 350 km S of Marabá"}]},
+                     "roti": {"day": "2026-11-17", "stations": [
+                         {"id": "NKLG00GAB", "place": "Gabon", "lat": 0.354, "lon": 9.672, "max_p95": 1.2, "hour": 20,
+                          "lst": 20.6, "hours": 24},
+                         {"id": "MAL200KEN", "place": "Malindi, Kenya", "lat": -2.996, "lon": 40.194, "max_p95": 0.9,
+                          "hour": 19, "lst": 21.7, "hours": 24}]}}}
+    feed = feed_v2.build(board, [], now=datetime(2026, 11, 18, 14, 0, tzinfo=timezone.utc))
+    assert not feed_v2.check(feed), feed_v2.check(feed)
+    titles = [f["properties"]["title"] for f in feed["features"]]
+    assert "Notable GPS interference event near Bhubaneswar, 06:00–08:59 UTC" in titles, titles
+    assert "Notable GPS interference event near Bhubaneswar, 14:00–14:59 UTC" in titles, titles
+    assert "Among the day's highest limb S4 readings from COSMIC-2, in Brazil, 350 km S of Marabá" in titles, titles
+    assert "Ground ROTI in Gabon (station NKLG): the highest hour of 17 Nov 2026" in titles, titles
+    assert "Ground ROTI at Malindi, Kenya: the highest hour of 17 Nov 2026" in titles, titles
 
 
 if __name__ == "__main__":

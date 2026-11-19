@@ -4,7 +4,8 @@ the Atom feed in site_days.py).
 A region or event is named, first that applies:
   place    the nearest listed place (site/data/places.json, rank 5 or better) within NAME_KM of its point, provided
            the place's country is one the area covers (a sample point of its H3 cells, or its own point) or the area
-           covers no land: "near Zagreb";
+           covers no land: "near Zagreb"; when none is in reach, the nearest smaller listed place (rank 6 or 7,
+           MINOR_RANKS) on the same terms: "near Batumi";
   country  the country its own point lies in; else, when at least LAND_MIN of its cells' sample points are on land,
            the country most of that land lies in: "in Hungary, 160 km E of Budapest";
   sea      the Natural Earth marine area its point lies in (tools/sea_areas.py): "in the Baltic Sea, 260 km S of
@@ -21,11 +22,16 @@ Why point first and sea names (18 Nov 2026, Tom's choice): on 17 Nov 2026 a burs
 km S of Marseille" from 1 of 56 sample points on Sardinia, "in Turkey, 160 km W of Nicosia" west of Cyprus.
 
 A country name also carries a reference point, "220 km W of Tbilisi" (ref()): the nearest listed place within REF_KM
-in that country, unless a place across a border is under 1/REF_SAME of its distance, when that one is used. The
-reference is words only: no place coordinates, so it never adds a country tag. Why (18 Nov 2026, Tom's choice "B"):
+in that country, unless a place across a border is under 1/REF_SAME of its distance, when that one is used, and then
+named with its country: "in Saudi Arabia, 220 km S of Doha, Qatar". The reference is words only: no place
+coordinates, so it never adds a country tag. Why (18 Nov 2026, Tom's choice "B"):
 on 17 Nov 2026 the brief said GPS interference started in Saudi Arabia and fell below jamming scale in Saudi Arabia,
 two areas about 500 km apart; "Saudi Arabia (330 km W of Abu Dhabi)" and "Saudi Arabia (210 km NW of Manama)" tell
 them apart. The Sentinel-6 card already words its peaks this way ("64 km N of Shostka").
+
+Why smaller places and the reference's country (18 Nov 2026 evening CST, Tom's yes after the reader's review of the
+17 Nov feed): two Black Sea coast events read "in Turkey, 390 km E of Samsun" with Batumi (rank 6) in reach, and "in
+Saudi Arabia, 220 km S of Doha" read as if Doha were in Saudi Arabia.
 
 Why (17 Nov 2026, Tom's yes): with 350 km, the two 15 Nov 2026 majors on the Turkish-Georgian Black Sea coast
 (41.26N 41.05E) were "near Sochi" (281 km) and tagged RU. On 3-16 Nov 2026, 82 of 256 major and notable events were
@@ -49,6 +55,8 @@ LAND_MIN = 0.5    # an area whose point is at sea takes a country only when this
 SPREAD_MIN = 5    # an event whose cells reach this many countries is named "across N countries, centred ..."
 SPREAD_REGIONS = 10   # ... when it also covers this many regions (Tom, 18 Nov 2026: at 5 countries alone, 18 of
                       # 17 Nov's 152 events read so, a one-region burst "across 5 countries, centred near Brussels")
+MINOR_RANKS = (6, 7)    # smaller listed places, tried only when no rank 5 or better place is within NAME_KM
+PLACES = os.path.join(ROOT, "site", "data", "places.json")
 IN_KINDS = ("country", "sea")    # these names follow "in"; a place (or offshore name) follows "near"
 # Country names as they read in a sentence (the kit's geo names otherwise).
 THE = {"United States of America": "the United States"}
@@ -92,7 +100,28 @@ def ref(places, lat, lon, cc=None, limit=REF_KM):
                 pick = t
                 break
     d, name, at = pick
-    return f"{max(10, round(d / 10) * 10):.0f} km {COMPASS[int((bearing(at, (lat, lon)) + 22.5) // 45) % 8]} of {name}"
+    out = f"{max(10, round(d / 10) * 10):.0f} km {COMPASS[int((bearing(at, (lat, lon)) + 22.5) // 45) % 8]} of {name}"
+    pc = _place_country(at[0], at[1]) if cc else None
+    if pc and pc != cc and country_name(pc):          # a place across the border is named with its country
+        out += ", " + plain_country(pc)
+    return out
+
+
+def plain_country(cc):
+    """A country's name after a place, as in an address: 'Doha, Qatar', 'Dubai, United Arab Emirates'."""
+    n = country_name(cc)
+    return n[4:] if n and n.startswith("the ") else n
+
+
+@functools.lru_cache(maxsize=1)
+def minor_places():
+    """The listed places of MINOR_RANKS from places.json ([] when missing)."""
+    try:
+        with open(PLACES, encoding="utf-8") as f:
+            pl = json.load(f).get("places", [])
+    except (OSError, ValueError):
+        return []
+    return [p for p in pl if len(p) > 3 and p[3] in MINOR_RANKS]
 
 
 def label(name, kind, near_ref):
@@ -151,7 +180,7 @@ def fingerprint(places):
     h = hashlib.sha1()
     here = os.path.dirname(os.path.abspath(__file__))
     for p in (os.path.join(here, "area_names.py"), os.path.join(here, "sea_areas.py"), CELLS,
-              os.path.join(ROOT, "site", "data", "seas.json")):
+              os.path.join(ROOT, "site", "data", "seas.json"), PLACES):
         try:
             with open(p, "rb") as f:
                 h.update(f.read())
@@ -259,6 +288,12 @@ def _area(places, lat, lon, cells=(), limit=NAME_KM):
     covered = set(seen) | ({here} if here else set())
     near = sorted((km((lat, lon), (p[1], p[2])), p[0], [p[1], p[2]]) for p in _band(places, lat, limit))
     for d, n, at in near:
+        if d > limit:
+            break
+        if not covered or _place_country(at[0], at[1]) in covered:
+            return n, at, "place", None
+    minor = sorted((km((lat, lon), (p[1], p[2])), p[0], [p[1], p[2]]) for p in _band(minor_places(), lat, limit))
+    for d, n, at in minor:                              # a smaller place in reach before a country name
         if d > limit:
             break
         if not covered or _place_country(at[0], at[1]) in covered:

@@ -393,6 +393,7 @@ def build(board, days, now=None, milair=None):
 
     swx_items(board.get("swx") or {}, add, published)
     milair_items(milair, add, published, now, days)
+    tell_apart(feats)
 
     return {
         "type": "FeatureCollection", "contract": CONTRACT, "program": "noisefloor", "generated_at": published,
@@ -425,6 +426,37 @@ SWX_TAGS = {"ncf": SWX_NCF, "sector": vocab.derive_sectors(SWX_NCF), "pmesii_pt"
             "product_category": "current"}
 
 
+def roti_at(s, place):
+    """'in Gabon (station NKLG)' when a station's place is its country's name alone (Tom's yes 18 Nov 2026 evening
+    CST: "at Gabon" read badly), else 'at Malindi, Kenya', 'at Saba'."""
+    import area_names
+    cc = geo.country_at(s["lat"], s["lon"])
+    if cc and "," not in place and ROTI_ALIASES.get(place, place) in (geo.name(cc), area_names.plain_country(cc)):
+        return f"in {area_names.country_name(cc) if place == geo.name(cc) else place} (station {s['id'][:4]})"
+    return f"at {place}"
+
+
+ROTI_ALIASES = {"Cape Verde": "Cabo Verde"}     # station place names that the kit spells another way
+
+
+def hours_words(period):
+    """'06:00–08:59 UTC' for a period of whole UTC hours."""
+    a = datetime.strptime(period["start"], "%Y-%m-%dT%H:%M:%SZ")
+    b = datetime.strptime(period["end"], "%Y-%m-%dT%H:%M:%SZ") - timedelta(minutes=1)
+    return f"{a:%H:%M}–{b:%H:%M} UTC"
+
+
+def tell_apart(feats):
+    """Two items whose titles read the same take their UTC hours (Tom's yes 18 Nov 2026 evening CST: 17 Nov had two
+    "near Bhubaneswar" events, two "in Turkey, 390 km E of Samsun" and two in the Persian Gulf)."""
+    from collections import Counter
+    seen = Counter(f["properties"].get("title") for f in feats)
+    for f in feats:
+        p = f["properties"]
+        if seen[p.get("title")] > 1 and p.get("period"):
+            p["title"] = f"{p['title']}, {hours_words(p['period'])}"
+
+
 def swx_items(sw, add, published):
     """Limb S4 and ground ROTI items (routine observations, no baseline): see the module docstring."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -435,11 +467,12 @@ def swx_items(sw, add, published):
         geom, pts = h3_polygon(c["cell"])
         span = hour_span(lm["day"], c["hour"])
         near = c.get("near")
-        at = near or f"{abs(c['lat']):.0f}°{'N' if c['lat'] >= 0 else 'S'}, {abs(c['lon']):.0f}°{'E' if c['lon'] >= 0 else 'W'}"
+        at = (c.get("where") or ("near " + near if near else None)
+              or f"at {abs(c['lat']):.0f}°{'N' if c['lat'] >= 0 else 'S'}, {abs(c['lon']):.0f}°{'E' if c['lon'] >= 0 else 'W'}")
         lst = solar(c.get("lst"))
         add(geom, {
             **SWX_TAGS, "id": f"noisefloor-limb-s4-{lm['day']}-{i + 1}", "precision_class": "area",
-            "title": f"Among the day's highest limb S4 readings from COSMIC-2, {'near ' if near else 'at '}{at}",
+            "title": f"Among the day's highest limb S4 readings from COSMIC-2, {at}",
             "summary": (f"{swx_site.LIMB_LABEL}: 95th percentile {c['p95']:.2f} from {c['n']} ten-second values on "
                         f"{c['links']} radio-occultation link{'s' if c['links'] != 1 else ''}, in the hour from "
                         f"{span['start'][11:16]} UTC on {plain_day(lm['day'])}"
@@ -470,7 +503,7 @@ def swx_items(sw, add, published):
         place = s.get("place") or s["id"]
         add({"type": "Point", "coordinates": [s["lon"], s["lat"]]}, {
             **SWX_TAGS, "id": f"noisefloor-roti-{ro['day']}-{s['id'].lower()}", "precision_class": "point",
-            "title": f"Ground ROTI at {place}: the highest hour of {plain_day(ro['day'])}",
+            "title": f"Ground ROTI {roti_at(s, place)}: the highest hour of {plain_day(ro['day'])}",
             "summary": (f"{swx_site.ROTI_LABEL}: at IGS station {s['id']} ({place}) the highest hourly 95th percentile on "
                         f"{plain_day(ro['day'])} was {s['max_p95']:.2f} TECU/min, in the hour from "
                         f"{span['start'][11:16]} UTC" + (f" (about {lst} local solar time)" if lst else "")
