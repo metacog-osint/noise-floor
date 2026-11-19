@@ -101,6 +101,8 @@ COLUMN_NOTES = {
 CREDIT = ["GNSS station data: International GNSS Service (IGS) and the station operators, via the BKG GNSS Data "
           "Center (igs.bkg.bund.de)",
           "Broadcast orbits: IGS merged broadcast navigation file (BRDC00IGS), via BKG"]
+CREDIT_CDDIS = "Files BKG could not deliver: the same IGS files via NASA CDDIS (cddis.nasa.gov)"
+
 LICENCE = ("CC BY 4.0. Derived from IGS station data (IGS terms of use: open to all users, attribution required); "
            "credit the IGS and the station operators")
 LOCATION = ("Each 5-minute value is placed at the pierce point of its station-satellite path through a thin shell at "
@@ -411,15 +413,30 @@ def available(day, stations):
     return have, nav, lst
 
 
-def download(url, dest, tries=3):
+def download(url, dest, tries=3, headers=None):
     for k in range(tries):
         try:
-            return SC.download(url, dest)
+            return SC.download(url, dest, headers=headers)
         except Exception as e:                       # urllib, timeouts, truncated reads
             if k == tries - 1:
                 raise
             print(f"  retry {url.rsplit('/', 1)[1]}: {e}", file=sys.stderr)
             time.sleep(15 * (k + 1))
+
+
+def fetch(bkg_url, dest_dir, cddis_url, log=print):
+    """(path, "BKG" or "CDDIS"): the file from BKG, else the same IGS file from NASA CDDIS when an Earthdata token is
+    set (EARTHDATA_TOKEN; station_cn0.cddis_headers). BKG often times out from GitHub's runners while answering this PC
+    in seconds: 17 Nov 2026 had 13 of 17 stations. cddis_url is a function, so CDDIS is only asked after BKG fails."""
+    name = bkg_url.rsplit("/", 1)[1]
+    try:
+        return download(bkg_url, os.path.join(dest_dir, name)), "BKG"
+    except Exception as e:
+        url = cddis_url() if SC.cddis_headers() else None
+        if not url:
+            raise
+        log(f"  {name}: BKG failed ({type(e).__name__}: {str(e)[:80]}); trying NASA CDDIS")
+        return download(url, os.path.join(dest_dir, url.rsplit("/", 1)[1]), tries=2, headers=SC.cddis_headers()), "CDDIS"
 
 
 def raw_dir(day):
@@ -453,7 +470,7 @@ def run_station(sta, path, eph, day):
     return hours, info
 
 
-def build(day, results, missing, failed, nav, now=None, posted=None):
+def build(day, results, missing, failed, nav, now=None, posted=None, nav_from="BKG"):
     """The day file. results: {station: (hours, info)}; missing: stations not posted; failed: {station: reason}."""
     now = now or datetime.now(timezone.utc)
     hours = []
@@ -475,6 +492,7 @@ def build(day, results, missing, failed, nav, now=None, posted=None):
             problems.append(f"{s}: {info['note']}")
     rows = [r for hh in hours for r in hh["stations"]]
     stations = [results[s][1] for s in sorted(results)]
+    via_cddis = sorted(s["id"] for s in stations if s.get("from") == "CDDIS") + (["nav"] if nav_from == "CDDIS" else [])
     for s in stations:
         if posted and s["file"] in posted:
             s["posted"] = posted[s["file"]] + " UTC" if posted[s["file"]] else None
@@ -485,7 +503,7 @@ def build(day, results, missing, failed, nav, now=None, posted=None):
         "not_s4": "A proxy for ionospheric irregularities from TEC fluctuations. It is not an S4 value and is never "
                   "read against S4 alert levels.",
         "units": "TECU/min",
-        "sources": ["cors-igs"], "credit": CREDIT, "licence": LICENCE,
+        "sources": ["cors-igs"], "credit": CREDIT + ([CREDIT_CDDIS] if via_cddis else []), "licence": LICENCE,
         "method": {"tool": "tools/ground_roti.py", "validation": "docs/validation/ground-roti.md",
                    "signals": "geometry-free carrier phase: GPS L1 C/A with L2 (L2C, else P(Y)); Galileo E1 with E5a",
                    "rot": "slant TEC change between consecutive 30 s epochs, TECU/min",
@@ -503,7 +521,8 @@ def build(day, results, missing, failed, nav, now=None, posted=None):
         "counts": {"stations": len(results), "station_hours": len(rows),
                    "with_p95": sum(1 for r in rows if r[5] is not None),
                    "values": sum(r[3] for r in rows)},
-        "source": {"obs": bkg_dir(day, "obs"), "nav": (bkg_dir(day, "nav") + nav) if nav else None},
+        "source": {"obs": bkg_dir(day, "obs"), "nav": (bkg_dir(day, "nav") + nav) if nav else None,
+                   **({"via_cddis": via_cddis} if via_cddis else {})},
         "problems": problems,
     }
 
@@ -515,7 +534,7 @@ def make_day(day, stations=None, log=print):
     if not nav:
         raise SourceError(f"no broadcast navigation file at BKG for {day}")
     sub = raw_dir(day)
-    navp = download(bkg_dir(day, "nav") + nav, os.path.join(sub, nav))
+    navp, nav_from = fetch(bkg_dir(day, "nav") + nav, sub, lambda: SC.cddis_nav_url(day), log)
     with gzip.open(navp, "rb") as f:
         eph = SC.parse_nav(f.read().decode("latin-1"))
     results, failed = {}, {}
@@ -524,16 +543,18 @@ def make_day(day, stations=None, log=print):
             continue
         t0 = time.time()
         try:
-            p = download(bkg_dir(day, "obs") + have[sta], os.path.join(sub, have[sta]))
+            p, src = fetch(bkg_dir(day, "obs") + have[sta], sub, lambda: SC.cddis_obs_url(sta, day), log)
             results[sta] = run_station(sta, p, eph, day)
             info = results[sta][1]
+            if src != "BKG":
+                info["from"] = src
             log(f"{day} {sta}: {info['windows']} ROTI values from {info['satellites']} satellites "
                 f"({time.time() - t0:.0f} s)")
         except Exception as e:                       # one bad station must not stop the day
             failed[sta] = f"{type(e).__name__}: {str(e)[:150]}"
             log(f"{day} {sta}: FAILED {failed[sta]}")
     missing = [s for s in stations if s not in have]
-    doc = build(day, results, missing, failed, nav, posted=listing)
+    doc = build(day, results, missing, failed, nav, posted=listing, nav_from=nav_from)
     return doc, write(doc)
 
 
