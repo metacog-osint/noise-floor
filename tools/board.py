@@ -249,6 +249,11 @@ def declared(release, site, now):
     notices = load(os.path.join(ROOT, "site_src", "official_notices.json"))
     if notices:
         out["notices"] = [n for n in notices.get("notices", []) if not n.get("valid_to_utc") or n["valid_to_utc"] >= now.strftime("%Y-%m-%dT%H:%MZ")]
+    nt = load(os.path.join(site, "data", "notams", "index.json"))    # pipeline/gnss_notams.py site, run before the board
+    if nt and nt.get("days"):
+        d = nt["days"][-1]
+        out["notams"] = {"day": d["day"], "n": d["n"], "groups": d["groups"], "counts": d.get("counts") or {},
+                         "source_note": nt.get("source_note")}
     return out
 
 

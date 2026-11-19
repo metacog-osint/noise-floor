@@ -69,6 +69,14 @@ jobs:
           gh release download declared-data -p faa_gps_tests.json -D data/declared --clobber
           python pipeline/faa_gps_tests.py --rss
           gh release upload declared-data data/declared/faa_gps_tests.json --clobber
+      # GPS/GNSS NOTAMs: Launch's day files (read through the FAA NMS-API), kept beyond Launch's 14 days
+      - name: GNSS NOTAMs
+        id: notams
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python pipeline/gnss_notams.py archive --upload
       # the GEO board: one CelesTrak snapshot per run (its usage policy: once per 2-hour update), tools/geo.py
       - name: GEO snapshot
         id: geo

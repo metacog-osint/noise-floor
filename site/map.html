@@ -9,14 +9,14 @@
 <meta property="og:description" content="Interactive world map of GNSS degradation from aircraft ADS-B reports, per H3 cell, updated daily.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=45589100d5">
+<link rel="stylesheet" href="/style.css?v=4f5fe3acaa">
 <link rel="stylesheet" href="/tic-time.css?v=be1aacdc20">
 <script defer src="/tic-time.js?v=17dab3051f"></script>
 <link rel="stylesheet" href="/tic-nav.css?v=7a0e56eae2">
 <script defer src="/tic-nav.js?v=642ad3d135" data-health="on"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=ef14b9c430"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=42bf0532de"></script>
 <script defer src="/tic-init.js?v=d888070c79"></script>
 </head>
 <body>
@@ -129,6 +129,14 @@
 <div id="ev-body">
 <label class="ctl check"><input type="checkbox" id="ev-show" checked> Outline these on the map <span class="ev-key" aria-hidden="true"><i class="ev-area"></i> anomaly <i class="ev-dot"></i> burst <i class="ev-test"></i> announced test</span></label>
 <div id="ev-tests" class="small"></div>
+
+<div id="nt-wrap" hidden>
+<h3 id="nt-h">GNSS notices to airmen (NOTAMs)</h3>
+<p class="small" id="nt-summary"></p>
+<label class="ctl check"><input type="checkbox" id="nt-show"> Draw their circles on the map <span class="ev-key" aria-hidden="true"><i class="ev-notam"></i> NOTAM area</span></label>
+<div id="nt-groups"></div>
+<p class="small" id="nt-note"></p>
+</div>
 
 <div id="ev-sbas-wrap" hidden>
 <h3>SBAS service flags</h3>

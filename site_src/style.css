@@ -37,7 +37,7 @@
   --map-quiet: rgba(95, 105, 120, 0.18); --map-low: rgba(95, 105, 120, 0.07);
   --surface-chart: #ffffff; --grid: #e6e9ee; --axis: #c9cfd7; --ink-3: #6b7480;
   --series-1: #2a6fcb; --series-2: #e0682f; --series-base: #8a93a0; --wash: rgba(42, 111, 203, 0.10); --band: rgba(224, 104, 47, 0.10);
-  --map-event: #2a6fcb; --map-spoof: #7e3fbf; --map-cyg: #0f766e; --map-nisar: #c2185b; --map-s6: #b45309; --map-smap: #4d7c0f; --map-c2: #4338ca; --map-s1: #0284c7; --map-ls4: #059669; --map-roti: #1e3a8a;
+  --map-event: #2a6fcb; --map-spoof: #7e3fbf; --map-cyg: #0f766e; --map-nisar: #c2185b; --map-s6: #b45309; --map-smap: #4d7c0f; --map-c2: #4338ca; --map-s1: #0284c7; --map-ls4: #059669; --map-roti: #1e3a8a; --map-notam: #155e75;
   --map-border: rgba(70, 80, 95, 0.5); --map-label: #2f3742; --map-halo: rgba(255, 255, 255, 0.9); --map-area: #6b5a8e; --map-thin: #4b5563;
   --sea-sanctioned: #b42318; --sea-state: #1f5fad; --sea-flag: #a16207; --sea-gnss: #6b5a8e;
 }
@@ -52,7 +52,7 @@
     --map-quiet: rgba(160, 170, 185, 0.20); --map-low: rgba(160, 170, 185, 0.08);
     --surface-chart: #161a21; --grid: #262c35; --axis: #353c47; --ink-3: #8e97a3;
     --series-1: #5b9bea; --series-2: #e5713a; --series-base: #8e97a3; --wash: rgba(91, 155, 234, 0.12); --band: rgba(229, 113, 58, 0.10);
-    --map-event: #5b9bea; --map-spoof: #b98ae6; --map-cyg: #4fd1c5; --map-nisar: #f06292; --map-s6: #f6ad55; --map-smap: #a3e635; --map-c2: #a5b4fc; --map-s1: #38bdf8; --map-ls4: #6ee7b7; --map-roti: #93c5fd;
+    --map-event: #5b9bea; --map-spoof: #b98ae6; --map-cyg: #4fd1c5; --map-nisar: #f06292; --map-s6: #f6ad55; --map-smap: #a3e635; --map-c2: #a5b4fc; --map-s1: #38bdf8; --map-ls4: #6ee7b7; --map-roti: #93c5fd; --map-notam: #67e8f9;
     --map-border: rgba(190, 196, 204, 0.42); --map-label: #d6dae0; --map-halo: rgba(14, 17, 22, 0.9); --map-area: #b39ddb; --map-thin: #aab2bd;
     --sea-sanctioned: #f08080; --sea-state: #8ab4f0; --sea-flag: #e0b54a; --sea-gnss: #b39ddb;
   }
@@ -298,6 +298,15 @@ dl.gloss dd { margin: .125rem 0 0; }
 .ev-key .ev-area { width: .95rem; height: .75rem; border: 2px solid var(--map-event); border-radius: 2px; margin-left: .2rem; }
 .ev-key .ev-dot { width: .65rem; height: .65rem; border-radius: 50%; background: var(--map-event); margin-left: .5rem; }
 .ev-key .ev-test { width: .8rem; height: .8rem; border-radius: 50%; border: 1.5px dashed var(--ink-2); margin-left: .5rem; }
+.ev-key .ev-notam { width: .8rem; height: .8rem; border-radius: 50%; border: 1.5px dotted var(--map-notam); margin-left: .5rem; }
+.nt-group { margin: .5rem 0; }
+.nt-group > summary { cursor: pointer; font-weight: 600; }
+.nt-item { padding: .45rem 0; border-top: 1px solid var(--line-2); }
+.nt-head { font-size: var(--fs-sm); color: var(--ink-2); }
+.nt-head b { color: var(--fg); }
+.nt-text { font-family: var(--mono); font-size: var(--fs-sm); white-space: pre-wrap; overflow-wrap: anywhere; max-width: 52rem; margin-top: .15rem; }
+.nt-text summary { cursor: pointer; font-family: inherit; }
+.nt-new { font-size: var(--fs-sm); font-weight: 600; color: var(--map-notam); }
 #ev-tests:not(:empty) { margin: .2rem 0 .4rem; }
 details.ev-how { margin: .4rem 0 1.6rem; font-size: var(--fs-sm); }
 details.ev-how summary { cursor: pointer; color: var(--acc); }
