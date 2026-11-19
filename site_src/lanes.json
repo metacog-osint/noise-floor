@@ -381,18 +381,18 @@
       "group": "satcom",
       "name": "GEO threat board",
       "status": "built",
-      "phase": "Built (Oct 2026)",
-      "summary": "Known inspector satellites near commercial comsats, with drift and manoeuvre flags.",
+      "phase": "Moved to Orbit (18 Nov 2026)",
+      "summary": "Moved to Orbit on 18 Nov 2026: the GEO belt, its drift, orbit changes and close pairs are on Orbit's GEO page.",
       "what": "Daily positions of known GEO inspector satellites, such as the Olymp-K (Luch) and Shijian series, against the communications satellites near them.",
       "how": "Longitude-drift and manoeuvre flags from public orbital elements. Proximity thresholds are no tighter than public element accuracy (about 50 km).",
       "data": [
         "CelesTrak orbital elements (USSPACECOM SSA data, redistribution allowed with citation)"
       ],
-      "notes": "Built 26 Oct 2026 (the GEO page): every active geosynchronous object from CelesTrak's public elements (USSPACECOM basic SSA data, used with citation), with its longitude, drift and class, pairs of different owners within 100 km, and manoeuvres between daily snapshots (from 26 Oct 2026). Public elements at GEO are good to tens of km, so no separation under about 50 km is claimed. Operators co-locate on purpose and servicing vehicles dock, so it shows proximity and behaviour, never intent. Not validated: a check against announced manoeuvres and published rendezvous comes next.",
+      "notes": "Built 26 Oct 2026 (the GEO page): every active geosynchronous object from CelesTrak's public elements (USSPACECOM basic SSA data, used with citation), with its longitude, drift and class, pairs of different owners within 100 km, and manoeuvres between daily snapshots (from 26 Oct 2026). Public elements at GEO are good to tens of km, so no separation under about 50 km is claimed. Operators co-locate on purpose and servicing vehicles dock, so it shows proximity and behaviour, never intent. Moved to Orbit on 18 Nov 2026, since Orbit covers objects in orbit and Noisefloor covers signals: Orbit's GEO page has the belt board, the globe and the callouts. Noisefloor's releases keep the GEO files to 18 Nov 2026.",
       "links": [
         [
-          "GEO board",
-          "/geo"
+          "GEO page (Orbit)",
+          "https://orbit.theintelligence.company/geo"
         ]
       ]
     },

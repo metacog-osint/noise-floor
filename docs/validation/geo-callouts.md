@@ -1,5 +1,9 @@
 # GEO callouts: frozen rules, published cases and scoring (G4)
 
+> **Moved to Orbit, 18 Nov 2026.** The GEO page, its code and its daily steps left Noisefloor (Orbit covers objects
+> in orbit, Noisefloor covers signals). The live page is https://orbit.theintelligence.company/geo. This file is kept
+> as history; the tools it names are no longer in this repo.
+
 Pre-registered 31 Oct 2026, before any rule was run on orbital history. This file is committed first; the scoring is
 added below it afterwards, and nothing above the "Results" heading changes once the results exist. If a rule turns out
 to need changing, the change is written as a new version (v2) with its reason, and scored again from scratch.
