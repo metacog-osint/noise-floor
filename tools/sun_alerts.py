@@ -243,8 +243,8 @@ def main():
     with open(a.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(res, f, indent=1, ensure_ascii=False)
     print(json.dumps({k: res[k] for k in ("generated", "pairs", "predicted_windows")} | {"alerts": len(res["alerts"]), "noaa": res["noaa"]}))
-    if a.archive:
-        archive_alerts(res)
+    if a.archive and archive_alerts(res) < 0:
+        sys.exit(1)   # the history was not written: fail the step (it runs after the deploy)
 
 
 if __name__ == "__main__":
