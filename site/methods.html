@@ -9,11 +9,13 @@
 <meta property="og:description" content="How Noisefloor measures GNSS degradation from ADS-B, finds L-band emitters in NISAR radar data, and predicts sun outages.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=2817299462">
+<link rel="stylesheet" href="/style.css?v=ae8bdb5f56">
 <link rel="stylesheet" href="/tic-time.css?v=2e1816584a">
 <script defer src="/tic-time.js?v=2e2e5f0829"></script>
 <link rel="stylesheet" href="/tic-nav.css?v=0be657c537">
 <script defer src="/tic-nav.js?v=f5c29baa8d" data-health="on"></script>
+<link rel="stylesheet" href="/tic-fold.css?v=9125ae73fa">
+<script defer src="/tic-fold.js?v=ce7ba5c99f"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 
@@ -35,7 +37,7 @@
 
 <h2 id="adsb">GNSS degradation from aircraft (ADS-B)</h2>
 <p>Aircraft broadcast their own position quality: NACp (accuracy) and NIC (integrity). When GNSS is jammed, spoofed or degraded by space weather, those numbers drop. The processor reads a full day of worldwide ADS-B and works out, for each H3 cell (resolution 4, about 1,770 km²), the share of aircraft whose accuracy degraded.</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Measure</th><th>Threshold</th><th>What it's for</th></tr></thead>
   <tbody>
     <tr><td>Gross</td><td>NACp below 8: uncertainty of 93 m or worse</td><td>Severe GPS error; directly comparable with GPSJam</td></tr>

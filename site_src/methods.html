@@ -4,7 +4,7 @@
 
 <h2 id="adsb">GNSS degradation from aircraft (ADS-B)</h2>
 <p>Aircraft broadcast their own position quality: NACp (accuracy) and NIC (integrity). When GNSS is jammed, spoofed or degraded by space weather, those numbers drop. The processor reads a full day of worldwide ADS-B and works out, for each H3 cell (resolution 4, about 1,770 km²), the share of aircraft whose accuracy degraded.</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Measure</th><th>Threshold</th><th>What it's for</th></tr></thead>
   <tbody>
     <tr><td>Gross</td><td>NACp below 8: uncertainty of 93 m or worse</td><td>Severe GPS error; directly comparable with GPSJam</td></tr>

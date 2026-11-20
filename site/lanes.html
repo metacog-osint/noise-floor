@@ -9,11 +9,13 @@
 <meta property="og:description" content="Every Noisefloor lane, built and planned: what it measures, how, which sources, and its limits.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=2817299462">
+<link rel="stylesheet" href="/style.css?v=ae8bdb5f56">
 <link rel="stylesheet" href="/tic-time.css?v=2e1816584a">
 <script defer src="/tic-time.js?v=2e2e5f0829"></script>
 <link rel="stylesheet" href="/tic-nav.css?v=0be657c537">
 <script defer src="/tic-nav.js?v=f5c29baa8d" data-health="on"></script>
+<link rel="stylesheet" href="/tic-fold.css?v=9125ae73fa">
+<script defer src="/tic-fold.js?v=ce7ba5c99f"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 
@@ -66,7 +68,7 @@
 <article class="lane" id="private-watch"><header><span class="chip st-running">Running</span><h3>Private watch</h3><span class="phase">Running</span></header><p><strong>Daily runs over private areas of interest, behind a login, kept apart from the public site.</strong></p><dl><dt>What</dt><dd><p>Watch areas, keywords and alert history are private. The NISAR work also publishes a private page behind Cloudflare Access, with alert history and lower-confidence detections; its repeat sites are public on the map.</p></dd><dt>How</dt><dd><p>Private configuration never enters the public repo; a check on every commit blocks private terms.</p></dd><dt>Data</dt><dd><ul><li>Same sources as the public pages</li></ul></dd><dt>Notes</dt><dd><p>Event and alert state will move to Cloudflare D1 (free tier).</p></dd></dl></article>
 <h2 id="build-order">Build order</h2>
 <p>Each phase is finished, validated and committed before the next starts.</p>
-<div class="tw"><table><thead><tr><th>Phase</th><th>Scope</th><th>Status</th></tr></thead><tbody>
+<div class="tw"><table data-tic-fold><thead><tr><th>Phase</th><th>Scope</th><th>Status</th></tr></thead><tbody>
 <tr><td>1. Foundation</td><td>Licence registry, GNSS processor, method card, validation against known events</td><td><span class="chip st-validated">Validated</span></td></tr>
 <tr><td>2. Daily and public</td><td>Daily pipeline and backfill, public map, declared-interference lane, home status board</td><td><span class="chip st-running">Running</span></td></tr>
 <tr><td>3. SATCOM v1</td><td>Sun outages with alerts (running; the interference register folded in), the GEO belt (moved to Orbit, 18 Nov 2026), satellite-internet health (parked until permissions); the L-band risk overlay was dropped</td><td><span class="chip st-running">Running</span> sun outages</td></tr>
