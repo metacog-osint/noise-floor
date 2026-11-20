@@ -229,11 +229,18 @@ def track(tdays, places=None):
     import h3
     days = sorted(tdays)
     tracked = []
+    bands = defaultdict(list)           # latitude band (0.2 degrees, wider than TRACK_KM) -> [(index, place)], so the
+                                        # nearest place within TRACK_KM is found without comparing every place (20 Nov 2026:
+                                        # a year of days made the all-pairs search take over 15 minutes)
     for d in days:
         for c in sorted(tdays[d]["clusters"], key=lambda c: -c["aircraft"]):
-            best = min(tracked, key=lambda t: km(c["lat"], c["lon"], t["lat"], t["lon"]), default=None)
+            band = math.floor(c["lat"] / 0.2)
+            near = [x for b in (band - 1, band, band + 1) for x in bands.get(b, ())]
+            best = min(near, key=lambda x: (km(c["lat"], c["lon"], x[1]["lat"], x[1]["lon"]), x[0]), default=None)
+            best = best[1] if best else None
             if best is None or km(c["lat"], c["lon"], best["lat"], best["lon"]) > TRACK_KM:
                 best = {"lat": c["lat"], "lon": c["lon"], "by_day": defaultdict(int), "victims": Counter()}
+                bands[math.floor(c["lat"] / 0.2)].append((len(tracked), best))
                 tracked.append(best)
             best["by_day"][d] += c["aircraft"]
             for cell, n, _ in c.get("victim_cells") or []:
