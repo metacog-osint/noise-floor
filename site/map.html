@@ -9,14 +9,16 @@
 <meta property="og:description" content="Interactive world map of GNSS degradation from aircraft ADS-B reports, per H3 cell, updated daily.">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=2817299462">
+<link rel="stylesheet" href="/style.css?v=ae8bdb5f56">
 <link rel="stylesheet" href="/tic-time.css?v=2e1816584a">
 <script defer src="/tic-time.js?v=2e2e5f0829"></script>
 <link rel="stylesheet" href="/tic-nav.css?v=0be657c537">
 <script defer src="/tic-nav.js?v=f5c29baa8d" data-health="on"></script>
+<link rel="stylesheet" href="/tic-fold.css?v=9125ae73fa">
+<script defer src="/tic-fold.js?v=ce7ba5c99f"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=42bf0532de"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=1b8f29f939"></script>
 <script defer src="/tic-init.js?v=d888070c79"></script>
 </head>
 <body>
@@ -145,12 +147,12 @@
 </div>
 
 <h3 id="ev-anom-h">Anomalies</h3>
-<div class="tw"><table id="ev-anom"><thead><tr><th>Level</th><th>Time</th><th>Where</th><th>Regions</th><th>Peak share</th><th>Above usual</th><th title="Share of the event's degraded aircraft that were A350s or A380s">A350/A380</th><th>Announced test</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="tw"><table data-tic-fold id="ev-anom"><thead><tr><th>Level</th><th>Time</th><th>Where</th><th>Regions</th><th>Peak share</th><th>Above usual</th><th title="Share of the event's degraded aircraft that were A350s or A380s">A350/A380</th><th>Announced test</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small"><span id="ev-anom-note"></span> <button type="button" class="linkish" id="ev-anom-more" hidden></button></p>
 
 <div id="ev-burst-wrap">
 <h3>Bursts</h3>
-<div class="tw"><table id="ev-burst"><thead><tr><th>Time</th><th>Where</th><th>Peak aircraft</th><th>Regions</th><th title="Share of the burst's degraded aircraft that were A350s or A380s">A350/A380</th><th>Announced test</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="tw"><table data-tic-fold id="ev-burst"><thead><tr><th>Time</th><th>Where</th><th>Peak aircraft</th><th>Regions</th><th title="Share of the burst's degraded aircraft that were A350s or A380s">A350/A380</th><th>Announced test</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small"><span id="ev-burst-note"></span> <button type="button" class="linkish" id="ev-burst-more" hidden></button></p>
 </div>
 <p class="small" id="ev-heavy-note"><strong>A350/A380:</strong> the share of an event's degraded aircraft that were A350s or A380s. These types flag their accuracy as poor far more readily than others and stay degraded longer, so an event resting mostly on them (shown in bold, 50% or more) is weaker evidence of interference on its own. Inside real jamming they are also among the best witnesses, because they keep reporting while other types go dark. Recorded from 25 Oct 2026; earlier days show "–". <a href="/methods#adsb">Method</a></p>
@@ -171,7 +173,7 @@
 
 <h2 id="map-table-h">Worst cells on this day</h2>
 <p class="small">Top 25 by share, cells with 5 or more aircraft. "Show" centres the map on the cell. <a id="map-download" href="#">Download</a></p>
-<div class="tw"><table id="map-table"><thead><tr><th>Where</th><th>Aircraft</th><th>Degraded</th><th>Share</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="tw"><table data-tic-fold id="map-table"><thead><tr><th>Where</th><th>Aircraft</th><th>Degraded</th><th>Share</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small" id="map-table-note"></p>
 
 <section id="howto" class="howto" aria-labelledby="howto-h">
