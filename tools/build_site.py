@@ -72,6 +72,8 @@ PAGE = """<!doctype html>
 <script defer src="/tic-time.js"></script>
 <link rel="stylesheet" href="/tic-nav.css">
 <script defer src="/tic-nav.js" data-health="on"></script>
+<link rel="stylesheet" href="/tic-fold.css">
+<script defer src="/tic-fold.js"></script>
 <script defer src="/site.js"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
 {head}
@@ -139,7 +141,7 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
-ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-nav.css", "tic-nav.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js")
+ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-nav.css", "tic-nav.js", "tic-fold.css", "tic-fold.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js")
 FONTS = os.path.join(SRC, "fonts")     # IBM Plex (SIL OFL 1.1, fonts/OFL.txt), served from this site so no visit contacts a font service
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
@@ -218,7 +220,7 @@ def lanes_page(data):
                 + (f"<dt>More</dt><dd><p>{links}</p></dd>" if links else "") + "</dl></article>")
     parts.append("""<h2 id="build-order">Build order</h2>
 <p>Each phase is finished, validated and committed before the next starts.</p>
-<div class="tw"><table><thead><tr><th>Phase</th><th>Scope</th><th>Status</th></tr></thead><tbody>
+<div class="tw"><table data-tic-fold><thead><tr><th>Phase</th><th>Scope</th><th>Status</th></tr></thead><tbody>
 <tr><td>1. Foundation</td><td>Licence registry, GNSS processor, method card, validation against known events</td><td>""" + chip("validated") + """</td></tr>
 <tr><td>2. Daily and public</td><td>Daily pipeline and backfill, public map, declared-interference lane, home status board</td><td>""" + chip("running") + """</td></tr>
 <tr><td>3. SATCOM v1</td><td>Sun outages with alerts (running; the interference register folded in), the GEO belt (moved to Orbit, 18 Nov 2026), satellite-internet health (parked until permissions); the L-band risk overlay was dropped</td><td>""" + chip("running") + """ sun outages</td></tr>
@@ -252,7 +254,7 @@ def sources_page(rows):
 <select id="use" aria-label="Use"><option value="">Any use</option>{use_opts}</select>
 </div>
 <p class="small" id="shown"></p>
-<div class="tw"><table id="reg"><thead><tr><th>Source</th><th>Topic</th><th>What it gives</th><th>Licence</th><th>Commercial use</th><th>How we use it</th><th>Roadmap phase</th></tr></thead>
+<div class="tw"><table data-tic-fold id="reg"><thead><tr><th>Source</th><th>Topic</th><th>What it gives</th><th>Licence</th><th>Commercial use</th><th>How we use it</th><th>Roadmap phase</th></tr></thead>
 <tbody>{''.join(body_rows)}</tbody></table></div>
 <p class="small">The registry is <a href="{REPO}/blob/main/registry/sources.csv">registry/sources.csv</a> in the repository, checked on every commit.</p>
 <script>
@@ -276,7 +278,7 @@ def _table(head, rows):
     th = "".join(f"<th>{e(h)}</th>" for h in head)
     body = "".join("<tr>" + "".join(f'<td{" class=\"num\"" if i else ""}>{e("–" if v is None else str(v))}</td>'
                                     for i, v in enumerate(r)) + "</tr>" for r in rows)
-    return f'<div class="tw"><table><thead><tr>{th}</tr></thead><tbody>{body}</tbody></table></div>'
+    return f'<div class="tw"><table data-tic-fold><thead><tr>{th}</tr></thead><tbody>{body}</tbody></table></div>'
 
 
 def chart_fills():

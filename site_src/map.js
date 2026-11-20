@@ -27,7 +27,7 @@
     return { main: main, routine: routine };
   }
   function emeasure() { return state.measure === "acc" ? "acc" : "jam"; }    // events and the strip follow 93 m for chg
-  var state = { day: null, measure: "jam", raw: false, ev: null, evShow: true, ntShow: false, ntAll: {}, nt: null, evAll: { anom: false, burst: false }, evFocus: null,
+  var state = { day: null, measure: "jam", raw: false, ev: null, evShow: true, ntShow: false, nt: null, evAll: { anom: false, burst: false }, evFocus: null,
                 iu: -1, iun: -1, playing: false, hist: null };
   var EV_ROWS = { anom: 15, burst: 10 };
   var TIER = { major: "Major", notable: "Notable", minor: "Minor" };
@@ -759,7 +759,7 @@
     b.textContent = state.evAll[kind] ? "Show fewer" : "Show all " + total + " " + label;
   }
   // ---------- GNSS NOTAMs in force that day (Launch's NMS-API files, archived by pipeline/gnss_notams.py)
-  var NT_OPEN = { test: true, interference: true }, NT_ROWS = 15;
+  var NT_OPEN = { test: true, interference: true };
   function ntTestUrl(id) {               // the FAA flight advisory for an announced test the NOTAM names, if that day has it
     var t = id && state.ev && (state.ev.tests || []).filter(function (x) { return x.id.replace(/ REV \d+$/, "") === id; })[0];
     return t ? t.url : null;
@@ -799,13 +799,15 @@
       if (!rows.length) return;
       var det = document.createElement("details"); det.className = "nt-group"; det.open = !!NT_OPEN[k];
       var sm = document.createElement("summary"); sm.textContent = nt.kinds[k] + " (" + rows.length + ")"; det.appendChild(sm);
-      var list = document.createElement("div"); list.className = "nt-list";
+      var list = document.createElement("div"); list.className = "nt-list"; list.id = "nt-list-" + k;
+      list.setAttribute("data-tic-fold", "");  // a window about ten notices tall, with "Show all N" (tic-fold.js)
+      list.setAttribute("aria-label", nt.kinds[k]);
       function span(parent, text, title, cls) {
         var e = document.createElement("span"); e.textContent = text; if (title) e.title = title; if (cls) e.className = cls;
         parent.appendChild(e); return e;
       }
       rows.forEach(function (r, i) {
-        var it = document.createElement("div"); it.className = "nt-item"; if (i >= NT_ROWS && !state.ntAll[k]) it.hidden = true;
+        var it = document.createElement("div"); it.className = "nt-item";
         var hd = document.createElement("div"); hd.className = "nt-head";
         var b = document.createElement("b"); b.textContent = r.number || "–";
         b.title = ({ N: "New notice", R: "Replaces an earlier notice", C: "Cancels an earlier notice" }[r.type] || "Notice") +
@@ -840,12 +842,6 @@
         list.appendChild(it);
       });
       det.appendChild(list);
-      if (rows.length > NT_ROWS) {
-        var more = document.createElement("button"); more.type = "button"; more.className = "linkish";
-        more.textContent = state.ntAll[k] ? "Show fewer" : "Show all " + rows.length;
-        more.addEventListener("click", function () { state.ntAll[k] = !state.ntAll[k]; renderNotams(); });
-        det.appendChild(more);
-      }
       box.appendChild(det);
     });
     var note = document.getElementById("nt-note"); note.textContent = nt.source_note + " ";

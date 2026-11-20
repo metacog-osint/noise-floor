@@ -85,7 +85,7 @@
 <section aria-labelledby="list-h">
 <h2 id="list-h">All vessels shown</h2>
 <p class="small" id="sea-shown" aria-live="polite"></p>
-<div class="tw"><table id="sea-table"><thead><tr><th>Name</th><th>Flag (by MMSI)</th><th>AIS type</th><th>Groups</th><th>MMSI</th><th>IMO</th><th>Sea zone</th><th>Destination</th><th>Last trusted position (UTC)</th><th>Failed spoofing tests</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="tw"><table data-tic-fold id="sea-table"><thead><tr><th>Name</th><th>Flag (by MMSI)</th><th>AIS type</th><th>Groups</th><th>MMSI</th><th>IMO</th><th>Sea zone</th><th>Destination</th><th>Last trusted position (UTC)</th><th>Failed spoofing tests</th><th></th></tr></thead><tbody></tbody></table></div>
 <p class="small">The table follows the filters above the map. Download the ships shown: <button type="button" class="linkish" id="dl-csv">CSV</button> · <button type="button" class="linkish" id="dl-geojson">GeoJSON</button> (last trusted positions, identifiers, listings, owners, zones and reporting; each file carries the sources' attribution, and the same licences apply).</p>
 </section>
 
@@ -94,10 +94,10 @@
 <p class="small">Ships whose receivers reported impossible positions or speeds, with no ship identities. "Where they were" uses each ship's last trusted position before or after the interference; "where they were shown" is the centre of its flagged positions. Method and first results: <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/ais-baltic.md">AIS validation notes</a>.</p>
 <p id="gnss-summary"></p>
 <div class="sea-two">
-  <div><h3>Where they were</h3><div class="tw"><table id="gnss-areas"><thead><tr><th>Sea area</th><th>Ships</th></tr></thead><tbody></tbody></table></div></div>
-  <div><h3>Where they were shown</h3><div class="tw"><table id="gnss-to"><thead><tr><th>Centre</th><th>Ships</th></tr></thead><tbody></tbody></table></div></div>
+  <div><h3>Where they were</h3><div class="tw"><table data-tic-fold id="gnss-areas"><thead><tr><th>Sea area</th><th>Ships</th></tr></thead><tbody></tbody></table></div></div>
+  <div><h3>Where they were shown</h3><div class="tw"><table data-tic-fold id="gnss-to"><thead><tr><th>Centre</th><th>Ships</th></tr></thead><tbody></tbody></table></div></div>
 </div>
-<details class="table-view"><summary>Ships affected per hour</summary><div class="tw"><table id="gnss-hours"><thead><tr><th>Hour (UTC)</th><th>Your time</th><th>Ships</th></tr></thead><tbody></tbody></table></div></details>
+<details class="table-view"><summary>Ships affected per hour</summary><div class="tw"><table data-tic-fold id="gnss-hours"><thead><tr><th>Hour (UTC)</th><th>Your time</th><th>Ships</th></tr></thead><tbody></tbody></table></div></details>
 </section>
 
 <section id="howto" class="howto" aria-labelledby="howto-h">
