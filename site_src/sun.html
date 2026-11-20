@@ -41,7 +41,7 @@
   <p><button type="submit" class="btn">Calculate</button> <span class="small" id="sun-busy" aria-live="polite"></span></p>
 </form>
 <p id="sun-summary" aria-live="polite"></p>
-<div class="tw" id="sun-table-wrap" hidden><table id="sun-table">
+<div class="tw" id="sun-table-wrap" hidden><table id="sun-table" data-tic-fold>
   <thead><tr><th>Date</th><th>Starts</th><th>Peak</th><th>Ends</th><th class="num">Minutes</th><th class="num">Closest, °</th><th>Peak, local</th><th>Peak, your time zone</th></tr></thead>
   <tbody></tbody>
 </table></div>
@@ -58,7 +58,7 @@
 
 <section aria-labelledby="tell-h">
 <h2 id="tell-h">Telling a sun outage from interference</h2>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th></th><th>Sun outage</th><th>Uplink (feeder-link) interference</th><th>Ground jamming near receivers</th></tr></thead>
   <tbody>
     <tr><td><strong>When</strong></td><td>Same time each day, give or take two minutes, for about six days. Predictable months ahead.</td><td>Any time. Often hours or days at a stretch.</td><td>Any time.</td></tr>

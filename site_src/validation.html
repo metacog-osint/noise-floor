@@ -4,7 +4,7 @@
 
 <h2 id="adsb">GNSS degradation from ADS-B</h2>
 <p><strong>Data:</strong> 20 worldwide days: 9–25 Oct 2025, 11–12 Nov 2025 and 22 Sep 2026.</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>Known hotspots appear</td><td>Southern Black Sea off Turkey 37–59% of aircraft-hexes degraded; Gulf of Finland and the Estonia–Russia border 30–41%; Kaliningrad 13–50%; Caucasus 14–39%</td><td><span class="chip st-validated">Pass</span></td></tr>
@@ -24,7 +24,7 @@
 
 <h3 id="year">A year of data (1 Oct 2025 – 21 Oct 2026)</h3>
 <p>The daily pipeline was backfilled to 1 October 2025, so leads from the test days could be checked against a whole year. Some checks also used the raw adsb.lol traces, following each aircraft through an area.</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>Was 23 Oct 2025 unusual for the southern Baltic?</td><td>12.9% degraded, 87th percentile of 383 days: a bad day, not an unusual one</td><td><span class="chip st-validated">Closed</span></td></tr>
@@ -45,7 +45,7 @@
 
 <h2 id="spoofing">GNSS spoofing from ADS-B (validated)</h2>
 <p>Spoofed aircraft report positions they can't physically have flown: near-zero ground speed at altitude, circles or a fixed point at altitude, jumps to another track and back. Tested on 22 days, Feb 2024 – May 2026, against public reporting of where and when aircraft were spoofed:</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>Places aircraft were shown match published spoofing points</td><td>Beirut airport within 1 km (early 2024), Amman 3 km (Oct 2024, up to 695 aircraft a day), Cairo 9 km, Smolensk 9 km, Moscow Sheremetyevo 2 km; Beirut gave way to Amman between the 2024 dates, as OPSGROUP reported</td><td><span class="chip st-validated">Pass</span></td></tr>
@@ -58,7 +58,7 @@
 <p>Spoofing and jamming are mostly separate: the Black Sea is mostly jammed, Egypt and Jordan mostly spoofed with clean accuracy values. Not on the public map yet: offset-track spoofing is missed, and a map layer needs Tom's go-ahead. <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/spoofing.md">Full spoofing report</a></p>
 
 <h2 id="nisar">L-band emitters from NISAR</h2>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>Image method on the published Shiraz case (GPS World, 18 May 2026; jammer on 8 and 20 Jan 2026). The article's coordinate (27.32°N 52.87°E) is 257 km south of Shiraz, though it also says "about 50 km SW of Shiraz", so the known answer itself is uncertain</td><td>56 detections over 6 passes, none within 50 km of the jammer; 21 on the date it was reported off</td><td><span class="chip st-failed">Fail</span></td></tr>
@@ -76,7 +76,7 @@
 
 <h2 id="cygnss">GNSS interference from orbit (CYGNSS)</h2>
 <p>NASA's CYGNSS satellites listen to GPS reflections from the sea. The noise in each measurement, ahead of any reflection, rises when a jammer is in the antenna beam. Tested on six days in 2026 against the aircraft map:</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>Separates aircraft-jammed areas (10% or more of aircraft degraded) from clean ones (under 2%)</td><td>AUC 0.98 over 11,463 cell-days; at a 1 dB threshold fixed in advance, 98% of jammed cells caught and 16% of clean cells flagged (5% at 2 dB). The positives come from four regions, three-quarters from the Gulf</td><td><span class="chip st-validated">Pass</span></td></tr>
@@ -94,7 +94,7 @@
 
 <h2 id="sentinel6">GPS interference from orbit (Sentinel-6A's own receiver)</h2>
 <p>The Sentinel-6A satellite (66° inclination, about 1,340 km up) tracks GPS for its own navigation. When a jammer is in view, every link it tracks weakens at once. Each second, Noisefloor compares each link's signal strength with what the receiver usually logs at that elevation, and takes the median across links. A cell about 300 km across is scored by how often the receiver lost strength while it could see the cell, from up to 3,800 km away. Method and pass marks were fixed on six days, then tested on 21 held-out days against the aircraft map:</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>Separates aircraft-jammed cells from clean ones (21 held-out days)</td><td>AUC 0.956 (407 jammed, 16,874 clean cell-days); 0.957 on the six tuning days</td><td><span class="chip st-validated">Pass</span></td></tr>
@@ -111,7 +111,7 @@
 
 <h2 id="cosmic2">GPS interference from orbit (COSMIC-2 receivers)</h2>
 <p>The six COSMIC-2 satellites (24° inclination, about 550 km up) track GPS on two navigation antennas each, one looking forward along the track and one backward. UCAR, which runs the mission's data centre, computes an interference index for each antenna every second. A cell about 300 km across is scored by how often that index was raised while a satellite could see the cell, from up to 2,500 km away, each antenna counting only its own side. Method and pass marks were fixed on six days, then tested on 21 held-out days against the aircraft map:</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>Separates aircraft-jammed cells from clean ones (21 held-out days)</td><td>AUC 0.919 (200 jammed, 13,092 clean cell-days); 0.922 on the six tuning days</td><td><span class="chip st-validated">Pass</span></td></tr>
@@ -128,7 +128,7 @@
 
 <h2 id="smap">L-band radars from orbit (SMAP)</h2>
 <p>NASA's SMAP satellite listens in the protected 1400–1427 MHz band and flags each look that carries interference. Long-range air-surveillance radars transmit just below the band and can spill into it. For each 36 km cell, Noisefloor counts the share of looks flagged over 7 days and how far it stands above the cells 100–300 km around.</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>US long-range radar sites from a 2010 FAA file (31 sites, one week, set in advance)</td><td>AUC 0.502: cells near the sites were flagged no more often than cells far away (6.7% against 7.1%)</td><td><span class="chip st-failed">Fail</span></td></tr>
@@ -142,7 +142,7 @@
 
 <h3>Ground reference stations</h3>
 <p>Permanent GNSS reference stations log every satellite's signal strength. Six European stations 110–486 km from the Kaliningrad coast were tested on six jammed days and two quiet days, with the rule fixed before any download.</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>Do stations near the southern Baltic see the interference that aircraft see?</td><td>No flagged minutes on any of 48 station-days, while aircraft within 150 km were degraded for 1,945 minutes. A ground antenna sees a coastal jammer only within about 35–60 km, against about 410 km for an aircraft at cruise</td><td><span class="chip st-planned">Null (expected)</span></td></tr>
@@ -152,7 +152,7 @@
 
 <h2 id="s1rfi">C-band interference from Sentinel-1 (prototype)</h2>
 <p>Sentinel-1 radar products carry the processor's own reports of radio interference in each burst. Read alone, without the imagery, they show where C-band emitters such as military radars were heard.</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check (set before any area was run)</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>Quiet control (Gibson Desert, Western Australia)</td><td>56 products, 3,276 bursts, none flagged, no sites</td><td><span class="chip st-validated">Pass</span></td></tr>
@@ -161,7 +161,7 @@
 </table></div>
 <p>Region-scale interference shows clearly: 82% of bursts were flagged over the Gulf, 21–35% in the two busy test areas, none in the control. Site positions stay private.</p>
 <p><strong>Worldwide, four weeks (2–29 Oct 2026; descriptive, not a test).</strong> Every IW product of each day, 563–1,000 a day, scored by region (cells about 110 km across):</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Measure</th><th>Result</th></tr></thead>
   <tbody>
     <tr><td>Cells with four or more passes</td><td>13,437 of 17,856 covered (75%)</td></tr>
@@ -175,7 +175,7 @@
 
 <h2 id="radar">Interference spokes in weather radar (prototype)</h2>
 <p>A transmitter in a weather radar's band paints a thin line along one bearing. One day of open German and Finnish radar data (23 Oct 2026, 29 radars):</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Check</th><th>Result</th><th>Verdict</th></tr></thead>
   <tbody>
     <tr><td>Finds a known source: the sun</td><td>Found in 43 of 54 sweeps with the sun in the beam, to within 0.23° of its computed bearing; 8 of the 11 misses were in rain</td><td><span class="chip st-validated">Pass</span></td></tr>

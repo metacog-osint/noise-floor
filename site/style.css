@@ -342,7 +342,6 @@ button.linkish { font: inherit; font-size: var(--fs-sm); color: var(--acc); back
 .trend-ctl { margin: .1rem 0 .9rem; font-size: var(--fs-sm); }
 details.table-view { margin-top: .5rem; }
 details.table-view summary { cursor: pointer; color: var(--acc); font-size: var(--fs-sm); }
-details.table-view .tw { max-height: 22rem; overflow: auto; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; margin: .8rem 0; }
 .tile { background: var(--surface-chart); border: 1px solid var(--line); border-radius: var(--r); padding: .875rem 1rem; }
 .tile .label { color: var(--mut); font-size: var(--fs-sm); }

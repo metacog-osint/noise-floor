@@ -3,7 +3,7 @@
 <p class="lede">Everything behind the map, the charts and the Sea page can be downloaded and reused under its licence. Nothing here needs an account.</p>
 
 <h2 id="licences">What you can use, and how to credit it</h2>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Data</th><th>Where</th><th>Licence</th><th>Credit</th></tr></thead>
   <tbody>
     <tr><td>GNSS degradation, every day since 1 Oct 2025 (per cell, hour and minute; anomalies, bursts, SBAS flags)</td><td><a href="#gnss">Monthly releases</a> on GitHub</td><td>ODbL 1.0</td><td rowspan="3">"Contains data derived from <a href="https://www.adsb.lol/">adsb.lol</a> (ODbL 1.0), processed by Noisefloor (noisefloor.theintelligence.company)." Share derived databases under ODbL too.</td></tr>
@@ -25,7 +25,7 @@
 <p>One GitHub release per month, named <code>pnt-data-YYYY-MM</code>, with one set of files per UTC day. A day's files appear the next morning, after the daily run at 05:40 UTC (about 12:40 AM CDT), with a second try at 12:40 UTC for late archives. Download one file directly with <code>https://github.com/metacog-osint/noise-floor/releases/download/pnt-data-YYYY-MM/&lt;file&gt;</code>.</p>
 <p id="data-months" class="small">All releases: <a href="https://github.com/metacog-osint/noise-floor/releases">github.com/metacog-osint/noise-floor/releases</a>.</p>
 <p class="small">Gaps are at the source: adsb.lol published no archive for 31 Dec 2025 or 6 May 2026, its 5 May 2026 archive holds no traces, and its 7 May 2026 archive covers about 6 hours.</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>File (per day)</th><th>What it holds</th><th>Typical size</th></tr></thead>
   <tbody>
     <tr><td><code>&lt;day&gt;.parquet</code></td><td>One row per H3 cell (resolution 4, about 1,770 km²) seen that day</td><td>0.7 MB</td></tr>
@@ -46,7 +46,7 @@
 
 <h3 id="columns">Columns in the per-cell table</h3>
 <p>"Bad" means an aircraft with half or more of its reports in that cell (or cell-hour) below the threshold. Reports are ADS-B version 2, the aircraft's own GNSS position only (type <code>adsb_icao</code>), airborne (1,000 ft or more), sampled at most every 30 s per aircraft. Aircraft whose avionics were faulty that day (bad where their neighbours were fine) are dropped. Full method: <a href="/methods#adsb">Methods</a> and the <a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/method-card.md">method card</a>.</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
   <tbody>
     <tr><td><code>h3</code>, <code>lat</code>, <code>lon</code></td><td>H3 cell (resolution 4) and its centre</td></tr>
@@ -65,7 +65,7 @@
 
 <h3 id="loss">Columns in the position-loss tables</h3>
 <p>Strong jamming can stop an aircraft sending any GNSS position, so it drops out of the tables above instead of counting as degraded. Multilateration (MLAT: receivers timing the same signal) can still place many of them. These tables count aircraft at 10,000 ft or more, any version, per H3 cell (resolution 4): <code>loss.parquet</code> per <code>hour</code> (0–23, UTC), <code>loss_daily.parquet</code> once per day with <code>lat</code> and <code>lon</code>. They exist only for days processed after the daily run started making them (late Oct 2026).</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
   <tbody>
     <tr><td><code>heard</code></td><td>Aircraft with an ADS-B or an MLAT position in the cell</td></tr>
@@ -118,7 +118,7 @@ print(len(features), "cells written to", f"{day}.geojson")</code></pre>
 
 <h2 id="site-files">Site files</h2>
 <p>The pages read small JSON files that you can use directly. They're refreshed after each daily run.</p>
-<div class="tw"><table>
+<div class="tw"><table data-tic-fold>
   <thead><tr><th>File</th><th>What it holds</th></tr></thead>
   <tbody>
     <tr><td><a href="/data/gnss/days.json"><code>/data/gnss/days.json</code></a></td><td>Every day on the map, with its cell counts (cells with 5 or more aircraft, cells with severe GPS error, cells with 10 m loss)</td></tr>
