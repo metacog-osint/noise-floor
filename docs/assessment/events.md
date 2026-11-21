@@ -196,7 +196,7 @@ each is a stated choice that a held-out test can later confirm or replace.
 2. **Ionospheric scintillation: rule N3.** A located 10 m-only effect is `benign_natural` when ESA's scintillation nowcast
    shows ICAO-moderate scintillation or worse (S4 ≥ 0.5 or sigma-phi ≥ 0.4 rad) in a cell within 300 km of it, in an hour
    from 1 h before it starts to 1 h after it ends. Unlike N1 and N2 it doesn't need a storm: post-sunset equatorial
-   scintillation happens at any Kp. Worse-than-93 m loss is never excused. The nowcast is archived privately from
+   scintillation happens at any Kp. Worse-than-93 m loss is never excused. The nowcast is archived from
    21 Oct 2026 (ESA keeps only the current hour), and so far only about one hour in five is kept, because GitHub runs the
    twice-hourly capture every 2–5 hours. No archived hour to 26 Oct reached moderate anywhere (highest S4 0.18, highest
    sigma-phi 0.19 rad), so N3 hasn't fired yet.
@@ -646,7 +646,7 @@ A full build takes about 4 minutes on this PC.
 
 ```
 python tools/events.py fetch                 # public inputs not on disk: the site's daily event files (~10 MB) and GFZ Kp;
-                                             # also clones or pulls the private scintillation archive when this machine can read it
+                                             # also clones or pulls the public scintillation archive
 python tools/cygnss_rfi.py grid <day>        # optional: CYGNSS grids (data/cygnss/grid/<day>.r3.parquet), read when present
 python tools/events.py build --all           # or --days 2026-03-01..2026-03-31
 python tools/events.py stats
@@ -670,8 +670,8 @@ ADS-B observations on CYGNSS days carry the local CYGNSS field median and cell c
 - NASA CYGNSS Level 1 Science Data Record V3.2 (PO.DAAC; NASA open data, which ESDIS treats as CC0; registry id `cygnss-l1`), through `tools/cygnss_rfi.py`.
 - FAA SPANS flight advisories (US government, public domain).
 - GFZ Potsdam Kp index (CC BY 4.0), `kp.gfz.de`.
-- ESA SWE ISM scintillation nowcast (ESA S2P Space Weather Data Terms; registry id `esa-swe-scint`), archived privately because the raw grids may be passed on only to people who accept the same terms. Published aggregates carry the credit: "Data provided by the European Space Agency (ESA) as part of its Space Safety Programme (S2P)", © ESA 2026.
+- ESA SWE ISM scintillation nowcast (ESA S2P Space Weather Data Terms; registry id `esa-swe-scint`), archived in the public `noise-floor-data` repo. ESA's terms allow passing on these free datasets to people who accept those terms; the repo's README states that condition and carries the required credits. Published aggregates carry the credit: "Data provided by the European Space Agency (ESA) as part of its Space Safety Programme (S2P)", © ESA 2026.
 - Official notices in `data/declared/notices.json`, each with its issuer's link; each issuer has a registry row first.
-- EASA, "GNSS outages and alterations": impacted-FIR tables (reproduction authorised with the source acknowledged; registry id `easa-gnss-firs`); earlier tables from Internet Archive copies of that page. Kept in the private archive with the other notice copies.
+- EASA, "GNSS outages and alterations": impacted-FIR tables (reproduction authorised with the source acknowledged; registry id `easa-gnss-firs`); earlier tables from Internet Archive copies of that page. Kept in the public `noise-floor-data` repo under `notices/easa/`.
 - Natural Earth admin-0 countries (public domain), as stand-ins for FIRs (`tools/fir_approx.py`).
 - Natural Earth populated places (public domain), used only to label `show` output.
