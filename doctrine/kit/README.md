@@ -133,12 +133,41 @@ gains an error (checked on the 16 registry feeds as read on 18 Nov 2026).
 - The fixtures link the public key; the 2.1 example's KEV item is graded A2 and corroborated by its issuer, and the
   strike is a reported party claim.
 
+**0.6.4 (19 Nov 2026): code licences in the program register.** `vocab/programs.json` `terms` now say "code GNU
+AGPL-3.0" for Blackout, Cordon, Elements, Headwind and Relief, which are AGPL-3.0 since 19 Nov 2026 (they read "code
+MIT"). Blackout's feed takes its licence line from here, so it changes at Blackout's next kit sync. No code change.
+
 **0.6.3 (18 Nov 2026): `history` takes the feed's own time.** Without `--now`, the run's time is the feed's
 `generated_at` (the wall clock when the feed has none, or when it is later than the clock), so `first_seen` and a
 filled `last_change_at` are never later than the items' `published_at`. Before, the step ran seconds after the build
 and stamped the wall clock, and the contract check "last_change_at is later than published_at" failed: it stopped
 every Blackout deploy on 18 Nov 2026 from 22:14 UTC until Blackout passed `--now` (PR #8). `--now` still wins.
 `history.run_time(feed)`.
+
+**0.6.4 (18 Nov 2026): Orbit's registry row names the GEO page.** `owns` adds the GEO page (globe, rendezvous and
+proximity pairs, callouts and the belt board), which moved from Noisefloor on 18 Nov 2026; Noisefloor's row already
+named no GEO lane. Registry text only.
+
+**0.6.5 (21 Nov 2026): Blackout's registry row names NetBlocks and the trend series.** `owns` adds NetBlocks' reports
+(from its public Bluesky posts: times, links, parsed fields and short excerpts) and the daily outage series per country
+(IODA, Cloudflare Radar and NetBlocks, for 7, 14 and 30-day trends). `terms` adds NetBlocks' terms word for word from
+Blackout's doctrine/sources.json: NetBlocks publishes no reuse licence (all rights reserved), so Blackout never
+republishes a post's full text. Registry text only.
+
+**0.6.6 (21 Nov 2026): Blackout's registry row names internet-user exposure.** `owns` adds internet users per
+country (ITU's share of people online times the population, via the World Bank's WDI) as an upper bound on exposure
+beside each country outage and in the trend series, never users affected. `terms` adds the ITU/World Bank terms word for
+word from Blackout's doctrine/sources.json. Registry text only.
+
+**0.6.7 (20 Nov 2026): Blackout's registry row names Viasat MSS.** `owns` adds Viasat MSS to the providers' own
+status feeds (Viasat's page for its mobile satellite services, the one satellite operator beyond Starlink found with a
+readable feed). `terms` adds its licence word for word from Blackout's doctrine/sources.json. Registry text only.
+
+**0.6.8 (20 Nov 2026): Blackout's registry row names satellite-network traffic drops.** `owns` adds satellite
+networks' traffic drops against their own weekday-matched normal (Blackout's BO-IND-21, read from Cloudflare Radar
+traffic by network). `terms` already credits Cloudflare Radar data CC BY-NC 4.0. Registry text only.
+
+**0.6.9 (20 Nov 2026): Relief's registry row matches relief-0.3.** `status_note` and `owns` name the HDX HAPI and ReliefWeb lanes (IPC stays planned); `terms` adds the HAPI and ReliefWeb terms. Registry text only.
 
 **Tests:** `python tests/test_kit.py`, `python tests/test_history.py` and `node tests/test_js.mjs`.
 
