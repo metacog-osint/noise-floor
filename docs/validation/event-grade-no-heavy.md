@@ -107,4 +107,66 @@ The rule, sets and marks above are unchanged. These details fix how the procedur
 
 ## Results
 
-Not yet scored.
+Scored 21 Nov 2026 on sets A and B, with 20 Nov reported: Actions run [44953511326](https://github.com/metacog-osint/noise-floor/actions/runs/44953511326) (142 jobs, all succeeded),
+`tools/event_no_heavy.py` at 6e59b4e, rule at 50161a1. The scorer's full output is
+[`event-grade-no-heavy-report.json`](event-grade-no-heavy-report.json), unedited. The tables below are built from it.
+
+**N fails P1, P4, P5 and P6. The grade stays V0.** Set D is not scored, because N had to pass sets A and B first.
+N's thresholds are not adjusted and N is not rerun on these days. Any changed rule needs its own pre-registration
+and new held-out days.
+
+V0's side reproduces `event-floor.md`: P1 n 10, P4 n 271, P5 n 40, P6 n 109, and 87 majors and 586 notables on the
+42 scored days.
+
+### Marks (value, n)
+
+| Mark | Set | Pass | N |
+|---|---|---|---|
+| P1 | A | ≥ 90% | 0.600, n 10: **fail** |
+| P2 | A | ≥ 95% | 1.000, n 10: pass |
+| P3 | A | all | not scored (n 0) |
+| P4 | B | ≥ 90% | 0.768, n 271: **fail** |
+| P5 | B | ≥ 75% | 0.650, n 40: **fail** |
+| P6 | B | ≥ 50% | 0.229, n 109: **fail** |
+
+### Events on the 42 scored days
+
+| Grade | Major | Notable |
+|---|---|---|
+| V0 | 87 | 586 |
+| N | 64 | 475 |
+
+Counts per day are in the report's `per_day`.
+
+### Region-hours not gradable
+
+| Group | Not gradable | Region-hours | Share |
+|---|---|---|---|
+| 20 Nov (no scored set) | 9 | 121 | 0.074 |
+| Set A | 87 | 1141 | 0.076 |
+| Set B | 164 | 1608 | 0.102 |
+| Caucasus | 10 | 49 | 0.204 |
+| Gulf of Finland / Estonia–Russia border | 0 | 4 | 0.000 |
+| Kaliningrad and approaches | 3 | 163 | 0.018 |
+| Southern Black Sea offshore Turkey | 3 | 4 | 0.750 |
+| Western Black Sea coast | 3 | 21 | 0.143 |
+
+### Reported cases (not scored)
+
+| Case | Day | Hours (UTC) | V0 | N | V0 excess | N excess | Gradable region-hours | A350/A380 share |
+|---|---|---|---|---|---|---|---|---|
+| Irish Sea notable, 04 UTC, heavy share 1.0 | 2026-11-13 | 04-04 | notable | minor | 10.2 | 0.0 | 1 of 1 | 1.0 |
+| Bay of Bengal notable, 17-18 UTC, heavy share 1.0 | 2026-11-13 | 17-18 | notable | minor | 15.2 | 0.0 | 3 of 3 | 1.0 |
+| Turkish-Georgian Black Sea coast majors, heavy share 0.80 and 0.70 | 2026-11-15 | 00-02 | major | notable | 42.6 | 22.7 | 3 of 3 | 0.8 |
+| Turkish-Georgian Black Sea coast majors, heavy share 0.80 and 0.70 | 2026-11-15 | 23-23 | major | major | 39.0 | 39.0 | 0 of 1 | 0.697 |
+| Turkish-Georgian Black Sea coast majors, heavy share 0.80 and 0.70 | 2026-11-15 | 04-04 | notable | notable | 16.4 | 13.0 | 1 of 1 | 0.421 |
+| Near Iceland major, 08 UTC | 2026-11-01 | 08-08 | major | major | 26.0 | 26.0 | 1 of 2 | 1.0 |
+| Quebec major, 12 UTC | 2026-11-06 | 12-12 | major | major | 30.4 | 30.4 | 2 of 3 | 1.0 |
+| 20 Nov central Europe major (noisefloor-event-2026-11-20-1) | 2026-11-20 | 02-06 | major | major | 40.4 | 40.4 | 27 of 29 | 0.516 |
+
+### Check made after scoring (not part of the test)
+
+The 20 Nov event stays major under N because of step 3. Two of its region-hours, region `821e0ffffffffff` at 03 and
+04 UTC, have 42 and 32 other aircraft, under the minimum of 50, so they keep their V0 excesses of 35.7 and 40.4
+points. The largest excess among its 27 gradable region-hours is 13.3 points, which is notable. This was computed
+from the same run's no-heavy tables for 20 Nov and its 14 baseline days. It changes no grade.
