@@ -1,0 +1,117 @@
+name: event-no-heavy
+# The pre-registered event grade with A350/A380 left out (docs/validation/event-grade-no-heavy.md, frozen in 50161a1).
+# Manual only. Each test day is reprocessed for V0; each test and baseline day gets a table without A359, A35K and A388.
+# Nothing is uploaded to the data releases: the files are workflow artifacts and hold counts only (no ICAO addresses).
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "A, B and/or YYYY-MM-DD or START:END, space-separated (held-out set D is refused until its case check)"
+        required: true
+        default: "A B 2026-11-20"
+permissions:
+  contents: read
+concurrency:
+  group: event-no-heavy
+  cancel-in-progress: false
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      days: ${{ steps.p.outputs.days }}
+      tests: ${{ steps.p.outputs.tests }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - id: p
+        env:
+          DAYS: ${{ inputs.days }}
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/event_no_heavy.py plan $DAYS >> "$GITHUB_OUTPUT"
+  tables:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        day: ${{ fromJSON(needs.plan.outputs.days) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Region-hour counts without A350/A380
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/event_no_heavy.py table ${{ matrix.day }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nh-${{ matrix.day }}
+          path: data/event_nh/tables/${{ matrix.day }}.noheavy.json
+          retention-days: 90
+  v0:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        day: ${{ fromJSON(needs.plan.outputs.tests) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Reprocess the day (no upload)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python pipeline/daily_job.py ${{ matrix.day }} --force --no-upload
+      - name: V0 gross events
+        run: python tools/event_no_heavy.py v0 ${{ matrix.day }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: v0-${{ matrix.day }}
+          path: data/event_nh/v0/${{ matrix.day }}.v0.json
+          retention-days: 90
+  score:
+    needs: [tables, v0]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: nh-*
+          merge-multiple: true
+          path: data/event_nh/tables
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: v0-*
+          merge-multiple: true
+          path: data/event_nh/v0
+      - name: Score against the frozen marks
+        run: |
+          set -o pipefail
+          python tools/event_no_heavy.py score --report data/event_nh/report.json | tee verdict.json
+          { echo '## Rule N verdicts'; echo '```'; cat verdict.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: event-no-heavy-report
+          path: data/event_nh/report.json
+          retention-days: 90
