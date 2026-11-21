@@ -95,6 +95,16 @@ These are `event-floor.md`'s marks and thresholds, with N in place of FH and set
 3. When all of set D is published, apply the case-count check, then score set D.
 4. Add the scorer's output below this section, unedited, with the run ids.
 
+## Implementation note (21 Nov 2026, after freezing, before any scoring)
+
+The rule, sets and marks above are unchanged. These details fix how the procedure runs:
+- `tools/event_no_heavy.py` applies N, and the manual workflow `.github/workflows/event-no-heavy.yml` runs it.
+- "At least 50 aircraft" is V0's own unit for `ANOM_MIN_AIRCRAFT`: the region-hour's aircraft summed over its res-4 cells.
+- N uses the baseline days listed in each V0 day's `anomalies.json`. A missing table stops the score. It is never counted
+  as "not gradable".
+- 20 Nov 2026 is processed only for the reported case. It belongs to no scored set.
+- The tool refuses set D until its case-count check has been added.
+
 ## Results
 
 Not yet scored.
