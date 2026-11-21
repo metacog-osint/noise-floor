@@ -66,6 +66,8 @@ def main():
     event_tiers()
     event_place_unit_time()
     same_titles_and_swx_names()
+    rev21_fields()
+    history_across_days()
     print("test_feed_v2: all passed")
 
 
@@ -154,6 +156,61 @@ def same_titles_and_swx_names():
     assert "Among the day's highest limb S4 readings from COSMIC-2, in Brazil, 350 km S of Marabá" in titles, titles
     assert "Ground ROTI in Gabon (station NKLG): the highest hour of 17 Nov 2026" in titles, titles
     assert "Ground ROTI at Malindi, Kenya: the highest hour of 17 Nov 2026" in titles, titles
+
+
+def rev21_fields():
+    """Contract revision 2.1 (feed-contract step 4.4): dateless subjects, event times, seas, place basis, lanes, health."""
+    feed = feed_v2.build(BOARD, DAYS, now=datetime(2026, 10, 30, 6, 12, tzinfo=timezone.utc))
+    assert feed["contract_rev"] == "2.1" and feed["kit"] and not feed_v2.check(feed)
+    by = {f["properties"]["id"]: f["properties"] for f in feed["features"]}
+    for i, p in by.items():
+        assert p["subject_id"].startswith("noisefloor:") and "2026" not in p["subject_id"], (i, p["subject_id"])
+        assert p["event_start"] and p["event_time_precision"] in ("hour", "day"), i
+    assert by["noisefloor-summary-2026-10-29"]["subject_id"] == "noisefloor:summary:daily"
+    new, below = by["noisefloor-new-821e07fffffffff-2026-10-29"], by["noisefloor-below-825367fffffffff-2026-10-29"]
+    assert new["subject_id"] == "noisefloor:region:821e07fffffffff" and new["last_change"] == "new"
+    assert new["last_change_at"] == "2026-10-29T00:00:00Z" and new["signal"]["expected"] == 0
+    assert below["last_change"] == "lowered" and "persian-gulf" in below["sea_areas"], below["sea_areas"]
+    assert below["place_basis"] == "location" and "signal" not in below
+    ev = next(p for i, p in by.items() if i.startswith("noisefloor-event-"))
+    assert ev["event_start"] == "2026-10-29T19:00:00Z" and ev["event_end"] == "2026-10-29T21:00:00Z"   # start of last hour
+    assert ev["event_time_precision"] == "hour" and ev["signal"]["value"] == 30
+    spoof = next(p for i, p in by.items() if i.startswith("noisefloor-spoof-new-"))
+    assert spoof["sources"][0]["lane"] == "spoofing" and spoof["signal"]["baseline_n"] == 10
+    assert "lane" not in new["sources"][0]                     # the shared source dict is not edited
+    h = feed["health"]
+    assert set(h) == {"adsblol-archive", "spoofing", "cosmic2-ro", "cors-igs", "milair"}
+    assert h["adsblol-archive"]["state"] == "fresh" and h["adsblol-archive"]["last_ok"] == h["adsblol-archive"]["checked_at"]
+    assert h["milair"]["state"] == "failing" and h["milair"]["last_ok"] is None
+
+
+def history_across_days():
+    """Two aircraft days: a recurring event is one subject, no new-and-ended burst; a stated change keeps its first time."""
+    import tempfile
+    from pathlib import Path
+    import feed_history
+
+    def board(day):
+        return {"freshness": {"aircraft_day": day},
+                "changes": {"day": day, "rule": "r", "new": [{"region": "821e07fffffffff", "near": "Bucharest", "days_in_last7": 3}]},
+                "top_events": {"day": day, "events": [{"tier": "major", "peak": 40, "excess": 30, "h0": 1, "h1": 2,
+                                                       "lat": 54.7, "lon": 20.5, "near": "Kaliningrad", "test": False}]}}
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        one = feed_v2.build(board("2026-11-01"), [], now=datetime(2026, 11, 2, 6, tzinfo=timezone.utc))
+        first = feed_history.apply(one, root, datetime(2026, 11, 2, 6, tzinfo=timezone.utc))
+        assert {x["change"] for x in first} == {"new"}, first
+        assert next(f for f in one["features"] if "event" in f["properties"]["id"])["properties"]["last_change"] == "none"
+        two = feed_v2.build(board("2026-11-02"), [], now=datetime(2026, 11, 3, 6, tzinfo=timezone.utc))
+        second = feed_history.apply(two, root, datetime(2026, 11, 3, 6, tzinfo=timezone.utc))
+        assert not second, [(x["change"], x.get("subject_id")) for x in second]    # same subjects: no lines at all
+        new = next(f for f in two["features"] if "-new-" in f["properties"]["id"])["properties"]
+        assert new["last_change"] == "new" and new["last_change_at"] == "2026-11-01T00:00:00Z", new["last_change_at"]
+        assert not feed_v2.check(two)
+    names = ["state.json", "log-2026-11-01.jsonl", "log-2026-11-01.jsonl.gz", "log-2026-11-02.jsonl"]
+    assert feed_history.wanted(names) == ["state.json", "log-2026-11-01.jsonl.gz", "log-2026-11-02.jsonl"]
+    assert feed_history.asset_path("log-2026-11-01.jsonl.gz") == "log/2026/11/01.jsonl.gz"
+    assert feed_history.asset_name("log/2026/11/01.jsonl.gz") == "log-2026-11-01.jsonl.gz"
 
 
 if __name__ == "__main__":

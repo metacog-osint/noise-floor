@@ -27,10 +27,13 @@ from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "doctrine", "kit", "python"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import tic_doctrine  # noqa: E402
 from tic_doctrine import CONTRACT, contract, geo, vocab  # noqa: E402
+import feed_rev21 as rev21  # noqa: E402
 
 SITE_URL = "https://noisefloor.theintelligence.company"
-METHOD = "noisefloor-feed-1.0"
+METHOD = "noisefloor-feed-1.1"
 NEW_SPOOF_ITEMS = 5                                   # new spoofed-to places per day, largest first
 ABOVE_SPOOF_ITEMS = 5                                 # spoofed-to places above their usual level, biggest rise first
 ABOVE_REGION_ITEMS = 5                                # regions (where aircraft were) above their usual level, biggest rise first
@@ -222,6 +225,8 @@ def build(board, days, now=None, milair=None):
 
     def add(geom, props):
         merged = {**base, **props}
+        if merged.get("signal", 0) is None:               # no number to state
+            merged.pop("signal")
         if merged.get("data_as_of_precision") is None:    # an item with a real time (an event) is not date-only
             merged.pop("data_as_of_precision", None)
         if "coverage_fraction" in props and props["coverage_fraction"] is None:   # not the GNSS day's coverage
@@ -229,7 +234,7 @@ def build(board, days, now=None, milair=None):
         feats.append({"type": "Feature", "geometry": geom, "properties": merged})
 
     add(None, {
-        "id": f"noisefloor-summary-{day}", "kind": "observation", "tier": "routine", "product_category": "current",
+        "id": f"noisefloor-summary-{day}", "subject_id": "noisefloor:summary:daily", "kind": "observation", "tier": "routine", "product_category": "current",
         "title": board.get("summary") or f"GPS interference picture for {day}",
         "summary": board.get("brief") or "", "countries": [], "precision_class": "none",
         "requirement_ids": ["NF-PIR-1", "NF-PIR-2"], "ncf": NCF, "sector": vocab.derive_sectors(NCF),
@@ -240,7 +245,9 @@ def build(board, days, now=None, milair=None):
     for r in ch.get("new") or []:
         geom, pts = h3_polygon(r["region"])
         add(geom, {
-            "id": f"noisefloor-new-{r['region']}-{day}", "kind": "observation", "tier": "anomaly",
+            "id": f"noisefloor-new-{r['region']}-{day}", "subject_id": f"noisefloor:region:{r['region']}",
+            "last_change": "new", "kind": "observation", "tier": "anomaly",
+            "signal": rev21.signal("days_at_jamming_scale_last7", r["days_in_last7"], "days of the last 7", 0, 30),
             "product_category": "current", "precision_class": "area",
             "title": f"GPS interference newly seen{where(r)}",
             "summary": f"At jamming scale on {r['days_in_last7']} of the last 7 days and on none of the 30 before.",
@@ -263,7 +270,8 @@ def build(board, days, now=None, milair=None):
                 title, says = "fell below jamming scale", (f"{seen}; that is not yet background level, or too few aircraft "
                                                            "were seen to tell, so this is not an end.")
             add(geom, {
-                "id": f"noisefloor-{key}-{r['region']}-{day}", "kind": "observation", "tier": "routine",
+                "id": f"noisefloor-{key}-{r['region']}-{day}", "subject_id": f"noisefloor:region:{r['region']}",
+                "last_change": "ended" if key == "ended" else "lowered", "kind": "observation", "tier": "routine",
                 "product_category": "current", "precision_class": "area",
                 "title": f"GPS interference {title}{where(r)}",
                 "summary": f"At jamming scale on {r['days_in_prior30']} of the 30 days before last week, and on none of "
@@ -276,6 +284,9 @@ def build(board, days, now=None, milair=None):
             continue
         add(box_polygon(a["box"]), {
             "id": f"noisefloor-rise-{a['name'].lower().replace(' ', '-').replace('/', '')}-{day}",
+            "subject_id": f"noisefloor:area:{a['name'].lower().replace(' ', '-').replace('/', '')}",
+            "signal": rev21.signal("severe_share_pct", a["today"], "percent of aircraft with severe GPS error",
+                                   a["median30"]),
             "kind": "observation", "tier": "anomaly", "product_category": "current", "precision_class": "area",
             "title": f"Severe GPS error rose over {a['name']}",
             "summary": f"{a['today']:g}% of aircraft with severe GPS error, against a 30-day median of {a['median30']:g}% "
@@ -300,6 +311,10 @@ def build(board, days, now=None, milair=None):
             place = {"precision_class": "approximate"}
         add(geom, {
             "id": f"noisefloor-event-{eday}-{i + 1}", "kind": "observation",
+            "subject_id": rev21.subject("event", rev21.cell_at(e.get("lat"), e.get("lon"), 2),
+                                        f"noisefloor-event-{eday}-{i + 1}"),
+            **({"signal": rev21.signal("excess_severe_share_points", e.get("excess"),
+                                       "percentage points over the same hour's usual share", 0)} if major else {}),
             "tier": "anomaly" if major else "routine", "product_category": "current", **place,
             "title": f"{e['tier'].capitalize()} GPS interference event{where(e)}",
             "summary": " ".join(x for x in [
@@ -334,6 +349,11 @@ def build(board, days, now=None, milair=None):
         far = t.get("km_from_aircraft")
         add(geom, {
             "id": f"noisefloor-spoof-new-{sp['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
+            "subject_id": rev21.subject("spoof-place", rev21.cell_at(t.get("lat"), t.get("lon"), 5),
+                                        f"noisefloor-spoof-new-{sp['day']}-{i + 1}"),
+            "last_change": "new",
+            "signal": rev21.signal("aircraft_shown_at_new_false_position", t["aircraft"], "aircraft", 0,
+                                   sp.get("history_days")),
             "product_category": "current", "precision_class": "area", "data_as_of": f"{sp['day']}T00:00:00Z",
             "title": f"Aircraft shown at a new false position {at}",
             "summary": (f"{t['aircraft']} aircraft over or near {over} had receivers showing them {at} on "
@@ -357,6 +377,10 @@ def build(board, days, now=None, milair=None):
         usual = f"{t['usual']:g}"
         add(geom, {
             "id": f"noisefloor-spoof-above-{lv['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
+            "subject_id": rev21.subject("spoof-place", rev21.cell_at(t.get("lat"), t.get("lon"), 5),
+                                        f"noisefloor-spoof-above-{lv['day']}-{i + 1}"),
+            "signal": rev21.signal("aircraft_shown_at_false_position", t["latest"], "aircraft", t["usual"],
+                                   lv.get("earlier_days")),
             "product_category": "current", "precision_class": "area", "data_as_of": f"{lv['day']}T00:00:00Z",
             "title": f"More aircraft than usual shown at the false position {at}",
             "summary": (f"{t['latest']} aircraft, mostly over or near {over}, had receivers showing them {at} on "
@@ -375,6 +399,9 @@ def build(board, days, now=None, milair=None):
         share = 100 * r["active_ah"] / r["aircraft_hours"] if r.get("aircraft_hours") else None
         add(geom, {
             "id": f"noisefloor-spoof-region-above-{rl['day']}-{i + 1}", "kind": "observation", "tier": "anomaly",
+            "subject_id": f"noisefloor:spoof-region:{r['region']}",
+            "signal": rev21.signal("spoofed_active_aircraft_hours", r["active_ah"], "aircraft-hours", r["usual"],
+                                   rl.get("earlier_days")),
             "product_category": "current", "precision_class": "area", "data_as_of": f"{rl['day']}T00:00:00Z",
             "title": f"More GPS spoofing than usual {at}",
             "summary": (f"Aircraft in the region about 300 km across {at} spent {r['active_ah']} aircraft-hours in "
@@ -395,17 +422,18 @@ def build(board, days, now=None, milair=None):
     milair_items(milair, add, published, now, days)
     tell_apart(feats)
 
-    return {
-        "type": "FeatureCollection", "contract": CONTRACT, "program": "noisefloor", "generated_at": published,
+    return rev21.finish({
+        "type": "FeatureCollection", "contract": CONTRACT, "contract_rev": "2.1",
+        "kit": tic_doctrine.__version__, "program": "noisefloor", "generated_at": published,
         "data_as_of": as_of, "method_version": METHOD,
         "licence": "ODbL 1.0 for items derived from adsb.lol; CC BY 4.0 for the space weather items (limb S4 from UCAR "
                    "COSMIC-2, ROTI from IGS stations); text CC BY 4.0",
         "attribution": "Noisefloor, The Intelligence Company. Aircraft data: adsb.lol contributors (ODbL). COSMIC-2 data: "
                        "UCAR COSMIC Program (CDAAC). GNSS station data: International GNSS Service (IGS) and the station "
                        "operators, via BKG.",
-        "language_key": "https://github.com/metacog-osint/noise-floor/blob/main/doctrine/kit/docs/language-key.md",
+        "language_key": "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md",
         "features": feats,
-    }
+    }, board, milair, now)
 
 
 def hour_span(day, hour):
@@ -472,6 +500,7 @@ def swx_items(sw, add, published):
         lst = solar(c.get("lst"))
         add(geom, {
             **SWX_TAGS, "id": f"noisefloor-limb-s4-{lm['day']}-{i + 1}", "precision_class": "area",
+            "subject_id": f"noisefloor:limb-s4:{c['cell']}",
             "title": f"Among the day's highest limb S4 readings from COSMIC-2, {at}",
             "summary": (f"{swx_site.LIMB_LABEL}: 95th percentile {c['p95']:.2f} from {c['n']} ten-second values on "
                         f"{c['links']} radio-occultation link{'s' if c['links'] != 1 else ''}, in the hour from "
@@ -503,6 +532,7 @@ def swx_items(sw, add, published):
         place = s.get("place") or s["id"]
         add({"type": "Point", "coordinates": [s["lon"], s["lat"]]}, {
             **SWX_TAGS, "id": f"noisefloor-roti-{ro['day']}-{s['id'].lower()}", "precision_class": "point",
+            "subject_id": f"noisefloor:roti:{s['id'].lower()}",
             "title": f"Ground ROTI {roti_at(s, place)}: the highest hour of {plain_day(ro['day'])}",
             "summary": (f"{swx_site.ROTI_LABEL}: at IGS station {s['id']} ({place}) the highest hourly 95th percentile on "
                         f"{plain_day(ro['day'])} was {s['max_p95']:.2f} TECU/min, in the hour from "
@@ -556,7 +586,8 @@ def milair_items(rd, add, published, now, days=()):
         pts = [(la0 + (la1 - la0) * (i + 0.5) / 12, lo0 + (lo1 - lo0) * (j + 0.5) / 12)   # finer than box_points:
                for la0, la1, lo0, lo1 in boxes for i in range(12) for j in range(12)]        # these boxes are large
         props = {
-            "id": f"noisefloor-milair-{rid}-{day}", "kind": "observation", "tier": "routine",
+            "id": f"noisefloor-milair-{rid}-{day}", "subject_id": f"noisefloor:milair:{rid}", "kind": "observation",
+            "tier": "routine",
             "product_category": "current", "precision_class": "area",
             "title": (f"Military aircraft seen over {meta['name']}: {a['distinct']:,} on {plain_day(day)}"
                       + (f", {milair.level_words(a)}" if milair.baseline_ok(r) else "") + " (a lower bound)"),
