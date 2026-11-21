@@ -52,7 +52,7 @@
     var h = b.hotspots, c = b.changes, day = (h && h.day) || (c && c.day) || "";
     // the bottom line
     if (day) set("brief-day", esc(dateline(day)) + " <span>(UTC data day)</span>");
-    set("brief-h", esc(b.brief || b.summary || "Today's numbers are below."));
+    set("brief-h", '<span class="tic-reading-k">Today\u2019s reading</span>' + esc(b.brief || b.summary || "Today's numbers are below."));
     set("brief-meta", "Updated " + esc(both(b.built_utc)) + " from aircraft, satellite and official sources.");
 
     // four numbers
