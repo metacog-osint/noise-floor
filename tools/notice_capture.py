@@ -4,15 +4,17 @@
   python tools/notice_capture.py [--no-push]
 
 1. EASA's tables of FIRs with GNSS interference reports (7 and 30 days, with the spoofing column), parsed by
-   tools/board.py's easa_firs(). EASA allows reproduction with the source acknowledged.
+   tools/board.py's easa_firs(). EASA allows reproduction with the source acknowledged. One file per UTC day goes into
+   the public data repo's clone (data/ism-archive, made by tools/events.py fetch or collectors/ism_local.py) under
+   notices/easa/, then commit and push.
 2. The Swedish Maritime Administration's page of Baltic navigational warnings in force (BALTICO): the page itself
-   (gzipped) and a parsed list of every warning, with the GNSS-related ones marked. The page states no terms, so the
-   copies stay in the private archive.
+   (gzipped) and a parsed list of every warning, with the GNSS-related ones marked. The page states no terms, so new
+   copies stay private: one pair of files per UTC day in data/notices/baltico/ (or NF_BALTICO_DIR), which the baltico
+   lane of tools/pc_archive.py copies to the private archive. Earlier copies remain in the public data repo; any file
+   only that repo holds is copied into the private folder too, so the private history is complete.
 
-Both go into the private data repo's clone (data/ism-archive, made by tools/events.py fetch or collectors/ism_local.py)
-under notices/easa/ and notices/baltico/, one file per UTC day, then commit and push. Run each morning from
-collectors/run_daily.cmd. A source that fails is logged and the other still runs. Git uses this machine's credential
-manager; nothing here reads or prints a credential.
+Run each morning from collectors/run_daily.cmd. A source that fails is logged and the other still runs. Git uses this
+machine's credential manager; nothing here reads or prints a credential.
 """
 import argparse
 import gzip
@@ -20,6 +22,7 @@ import html
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.request
@@ -28,6 +31,7 @@ from datetime import datetime, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 CLONE = os.environ.get("NF_ISM_DIR") or os.path.join(ROOT, "data", "ism-archive")
+BALTICO_DIR = os.environ.get("NF_BALTICO_DIR") or os.path.join(ROOT, "data", "notices", "baltico")
 BALTICO_URL = "https://navvarn.sjofartsverket.se/en/Navigationsvarningar/"
 UA = {"User-Agent": "noise-floor notices (github.com/metacog-osint/noise-floor)"}
 DTG = re.compile(r"(\d{6}) UTC ([A-Z]{3})(?: (\d{2,4}))?")
@@ -74,23 +78,68 @@ def main():
     now = datetime.now(timezone.utc)
     day = now.strftime("%Y-%m-%d")
     print(f"=== notice_capture {now:%Y-%m-%dT%H:%MZ}")
+    baltico_ok = capture_baltico(now, day)        # first, and outside the clone's lock: a busy clone can't cost a day
+    return 0 if capture_easa_locked(a, now, day) == 0 or baltico_ok else 1
+
+
+def seed_baltico(clone_dir, store):
+    """Copy every file only the public clone holds into the private store. Never moves, deletes or overwrites."""
+    os.makedirs(store, exist_ok=True)
+    copied = 0
+    if not os.path.isdir(clone_dir):
+        return copied
+    for name in sorted(os.listdir(clone_dir)):
+        src, dest = os.path.join(clone_dir, name), os.path.join(store, name)
+        if os.path.isfile(src) and not os.path.exists(dest):
+            shutil.copy2(src, dest + ".tmp")
+            os.replace(dest + ".tmp", dest)
+            copied += 1
+    return copied
+
+
+def capture_baltico(now, day):
+    """Today's BALTICO page and parsed warnings into the private folder. True when both files were written."""
+    try:
+        n = seed_baltico(os.path.join(CLONE, "notices", "baltico"), BALTICO_DIR)
+        if n:
+            print(f"BALTICO: copied {n} earlier files into the private folder")
+    except OSError as ex:
+        print(f"BALTICO: copying earlier files failed ({type(ex).__name__}: {ex}); the next run tries again")
+    try:
+        with urllib.request.urlopen(urllib.request.Request(BALTICO_URL, headers=UA), timeout=60) as r:
+            page = r.read()
+        os.makedirs(BALTICO_DIR, exist_ok=True)
+        with open(os.path.join(BALTICO_DIR, f"{day}.html.gz"), "wb") as f:
+            f.write(gzip.compress(page, mtime=0))
+        ws = baltico_parse(page.decode("utf-8", "replace"))
+        with open(os.path.join(BALTICO_DIR, f"{day}.json"), "w", encoding="utf-8", newline="\n") as f:
+            json.dump({"day": day, "fetched_utc": now.strftime("%Y-%m-%dT%H:%MZ"), "url": BALTICO_URL, "warnings": ws}, f,
+                      indent=1, ensure_ascii=False)
+        g = [w for w in ws if w["gnss"]]
+        print(f"BALTICO: {len(ws)} warnings in force, {len(g)} GNSS-related: {', '.join(w['id'] or '?' for w in g)}")
+        return True
+    except Exception as ex:
+        print(f"BALTICO: failed ({type(ex).__name__}: {ex})")
+        return False
+
+
+def capture_easa_locked(a, now, day):
     if not os.path.isdir(os.path.join(CLONE, ".git")):
-        print(f"no private archive clone at {CLONE}: run tools/events.py fetch first")
+        print(f"no data repo clone at {CLONE}: run tools/events.py fetch first")
         return 1
     sys.path.insert(0, os.path.join(ROOT, "collectors"))
     import ism_local
     if not ism_local.take_lock():
-        print("another task holds the private clone; skipped")
+        print("another task holds the data repo clone; EASA skipped")
         return 1
     try:
-        return capture(a, now, day)
+        return capture_easa(a, now, day)
     finally:
         ism_local.drop_lock()
 
 
-def capture(a, now, day):
+def capture_easa(a, now, day):
     git("pull", "--ff-only", "--quiet", check=False)
-    wrote = []
     try:
         import board
         e = board.easa_firs()
@@ -99,32 +148,14 @@ def capture(a, now, day):
         os.makedirs(os.path.dirname(p), exist_ok=True)
         with open(p, "w", encoding="utf-8", newline="\n") as f:
             json.dump(e, f, indent=1, ensure_ascii=False)
-        wrote.append(p)
         t = e["tables"][0]
         print(f"EASA: {t['days']}-day table of {t['date']}: {len(t['firs'])} FIRs, {sum(r['spoofing'] for r in t['firs'])} with spoofing")
     except Exception as ex:
         print(f"EASA: failed ({type(ex).__name__}: {ex})")
-    try:
-        with urllib.request.urlopen(urllib.request.Request(BALTICO_URL, headers=UA), timeout=60) as r:
-            page = r.read()
-        d = os.path.join(CLONE, "notices", "baltico")
-        os.makedirs(d, exist_ok=True)
-        with open(os.path.join(d, f"{day}.html.gz"), "wb") as f:
-            f.write(gzip.compress(page, mtime=0))
-        ws = baltico_parse(page.decode("utf-8", "replace"))
-        with open(os.path.join(d, f"{day}.json"), "w", encoding="utf-8", newline="\n") as f:
-            json.dump({"day": day, "fetched_utc": now.strftime("%Y-%m-%dT%H:%MZ"), "url": BALTICO_URL, "warnings": ws}, f,
-                      indent=1, ensure_ascii=False)
-        wrote += [os.path.join(d, f"{day}.html.gz"), os.path.join(d, f"{day}.json")]
-        g = [w for w in ws if w["gnss"]]
-        print(f"BALTICO: {len(ws)} warnings in force, {len(g)} GNSS-related: {', '.join(w['id'] or '?' for w in g)}")
-    except Exception as ex:
-        print(f"BALTICO: failed ({type(ex).__name__}: {ex})")
-    if not wrote:
         return 1
-    git("add", "notices")
-    if git("diff", "--cached", "--quiet", check=False).returncode:
-        git("commit", "--quiet", "-m", f"notices: {day} (local)")
+    git("add", "notices/easa")
+    if git("diff", "--cached", "--quiet", "--", "notices/easa", check=False).returncode:
+        git("commit", "--quiet", "-m", f"notices: {day} (local)", "--", "notices/easa")
         if not a.no_push:
             for _ in range(2):
                 if not git("push", "--quiet", check=False).returncode:

@@ -34,6 +34,8 @@ def make_tree(root):
         "data/sentinel_gnss/e1.csv": "a,b",
         "private/sentinel/area/trend.json": "{}",
         "private/watch/maritime.json": "{}",
+        "data/notices/baltico/2026-11-19.json": "{}",
+        "data/notices/baltico/2026-11-19.html.gz": "gz",
     }
     for rel, text in files.items():
         p = Path(root) / rel
@@ -48,7 +50,7 @@ def latest_paths(store, lane):
     return [f["path"] for f in doc["files"]]
 
 
-def test_both_lanes_archived_caches_left_out():
+def test_all_lanes_archived_caches_left_out():
     with tempfile.TemporaryDirectory() as td:
         make_tree(td)
         store = ta.DirStore(Path(td) / "store")
@@ -62,6 +64,8 @@ def test_both_lanes_archived_caches_left_out():
                      "ais/aisstream/2026-11-19.parquet", "sentinel-private/area/trend.json",
                      "watch-config/maritime.json"):
             assert want in coll, want
+        baltico = latest_paths(store, "baltico")
+        assert sorted(baltico) == ["baltico/2026-11-19.html.gz", "baltico/2026-11-19.json"], baltico
         assert not (Path(td) / "data/logs/ARCHIVE_FAILED.txt").exists()
 
 

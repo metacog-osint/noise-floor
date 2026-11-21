@@ -33,13 +33,14 @@ rem (map layer; Planetary Computer, no account; about 3 minutes a day)
 rem Sentinel-1/2/3 navigation receivers: newest days -> data\sentinel_gnss (E1 tables, E2 epochs) and private area
 rem products in private\sentinel (trend, map; private config private\watch\satgnss.json). Nothing is uploaded.
 .venv\Scripts\python.exe tools\sentinel_daily.py >> data\logs\sentinel_daily.log 2>&1
-rem EASA FIR tables and the Baltic warnings page: daily history in the private archive (both show only what is current)
+rem Daily history of two pages that show only what is current: EASA's FIR tables go to the public data repo, the Baltic
+rem warnings page to data\notices\baltico, which the private archive step below copies to tic-archive.
 .venv\Scripts\python.exe tools\notice_capture.py >> data\logs\notice_capture.log 2>&1
 rem Sentinel navigation files we hold: still in the Copernicus catalogue? Does its work once a month; an alert goes
 rem to data\logs\SENTINEL_CATALOG_ALERT.txt. No account.
 .venv\Scripts\python.exe tools\sentinel_catalog_check.py >> data\logs\sentinel_catalog.log 2>&1
 rem Private archive (metacog-osint/tic-archive, release assets): today's NISAR state, which holds the detections
-rem the public gate never publishes, and the D:-only collector data above. Last, so nothing waits on it; a failure
+rem the public gate never publishes, the D:-only collector data and the Baltic copies. Last, so nothing waits on it; a failure
 rem writes data\logs\ARCHIVE_FAILED.txt and makes this task's Last Run Result non-zero. Uses this PC's gh login.
 .venv\Scripts\python.exe tools\pc_archive.py >> data\logs\pc_archive.log 2>&1
 set "ARCHIVE_RC=%ERRORLEVEL%"
