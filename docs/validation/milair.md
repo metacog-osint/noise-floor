@@ -13,7 +13,7 @@ to role), `registry/plane_alert_mil.csv` (+ `.meta.json`), `tools/milair_regions
 **Sources:** `adsblol-archive` (adsb.lol daily archive, ODbL 1.0) and `plane-alert-db` (SDR-Enthusiasts, ODbL 1.0).
 The live endpoint `api.adsb.lol/v2/mil` (`adsblol-mil`) was probed once and is not used: like `adsblol-live`, its
 production use waits on permission, and the archive carries the same flag with the history a baseline needs.
-airplanes.live and adsb.fi are not used (their terms; see the register).
+The airplanes.live API is not used directly, and adsb.fi's terms rule it out (see the register).
 **Product:** `<day>.milair.json` on the release `milair-data-YYYY` (ODbL 1.0: a derived database, so share-alike, with
 attribution to adsb.lol contributors and plane-alert-db). Aggregates per region, role and UTC hour only: no aircraft
 identifiers leave the day scan.
