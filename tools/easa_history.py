@@ -7,10 +7,10 @@ EASA's page "GNSS outages and alterations" shows only its current tables of FIRs
 with spoofing and reported columns; "src: ads-b data and reports"). tools/notice_capture.py keeps a copy each day from
 26 Oct 2026. For the time before that, this reads the copies the Internet Archive holds (its CDX index, one copy per
 distinct page), parses each with tools/board.py's easa_parse(), and writes notices/easa/wayback-<timestamp>.json in the
-private archive clone (data/ism-archive), then commits and pushes. A copy already written is skipped; a copy without
+public data repo's clone (data/ism-archive), then commits and pushes. A copy already written is skipped; a copy without
 the tables (before EASA added them, or a page that didn't render) is noted and skipped.
 
-EASA allows reproduction with the source acknowledged; the copies stay in the private archive with the rest of the
+EASA allows reproduction with the source acknowledged; the copies sit in the public data repo with the rest of the
 notice history. tools/events.py reads them for rule D1 (load_easa_notices).
 """
 import argparse
@@ -58,7 +58,7 @@ def main():
     a = ap.parse_args()
     import board
     if not os.path.isdir(os.path.join(CLONE, ".git")):
-        sys.exit(f"no private archive clone at {CLONE}: run tools/events.py fetch first")
+        sys.exit(f"no data repo clone at {CLONE}: run tools/events.py fetch first")
     sys.path.insert(0, os.path.join(ROOT, "collectors"))
     import ism_local
     if not ism_local.take_lock():
