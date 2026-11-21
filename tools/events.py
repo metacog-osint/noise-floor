@@ -10,8 +10,8 @@ observations behind it. Method and rules: docs/assessment/events.md.
 Commands
   python tools/events.py fetch [--days A..B]      public inputs that aren't on disk: the site's daily event files
                                                    (about 25 KB a day) and GFZ Kp (one request), cached in data/events/;
-                                                   and the ESA scintillation archive (a git clone of the private data
-                                                   repo into data/ism-archive/, when this machine can read it)
+                                                   and the ESA scintillation archive (a git clone of the public data
+                                                   repo into data/ism-archive/)
   python tools/events.py build --days 2025-10-01..2026-10-21   (or --days D1,D2,... or --all)
   python tools/events.py show --day 2026-03-10 [--limit 40]    or   show --event EV-20260310-ab12cd
   python tools/events.py stats
@@ -28,7 +28,7 @@ Inputs per UTC day (first found wins):
   EASA FIR tables (rule D1, v1.1)       data/ism-archive/notices/easa/ (daily copies from tools/notice_capture.py and
                                         Internet Archive copies from tools/easa_history.py) placed with
                                         data/declared/fir_approx.json (tools/fir_approx.py); see load_easa_notices
-  scintillation nowcast (rule N3)       data/ism-archive/ism/ (ESA SWE ISM hourly grids; private archive, ESA S2P terms)
+  scintillation nowcast (rule N3)       data/ism-archive/ism/ (ESA SWE ISM hourly grids; public archive, ESA S2P terms)
 
 Output: data/events/register.sqlite (gitignored, like all of data/). Times are UTC.
 """
@@ -67,7 +67,7 @@ FAA_FILE = os.path.join(ROOT, "data", "declared", "faa_gps_tests.json")
 NOTICES_FILE = os.path.join(ROOT, "data", "declared", "notices.json")
 FIR_FILE = os.path.join(ROOT, "data", "declared", "fir_approx.json")
 ISM_DIR = os.environ.get("NF_ISM_DIR") or os.path.join(ROOT, "data", "ism-archive")
-ISM_REPO = "https://github.com/metacog-osint/noise-floor-data.git"   # private: ESA's terms bar passing the raw grids on
+ISM_REPO = "https://github.com/metacog-osint/noise-floor-data.git"   # public; its README states ESA's terms as a condition of use
 MONTHLY_OUT = os.path.join(ROOT, "site", "data", "events-monthly.json")
 CYGNSS_GRID = os.path.join(ROOT, "data", "cygnss", "grid")
 PLACES = os.path.join(ROOT, "site", "data", "places.json")
@@ -1324,7 +1324,7 @@ def cmd_build(a):
           f"({sum(1 for n in notices if n['class'] == 'jamming' and not n.get('easa'))} jamming); "
           f"{len(easa)} EASA FIR-week listing(s) from {len({n['easa']['table_date'] for n in easa})} table(s); "
           f"ESA scintillation nowcast: {len(ism.hours) if ism else 0} archived hours"
-          + ("" if ism else " (no archive: run `fetch` on a machine that can read the private data repo)"))
+          + ("" if ism else " (no archive: run `fetch` to clone the data repo)"))
 
 
 # ---------------------------------------------------------------- fetch
@@ -1365,7 +1365,7 @@ def cmd_fetch(a):
 
 
 def fetch_ism(root=ISM_DIR):
-    """Clone or update the private scintillation archive with git (this machine's GitHub credentials). Never fatal."""
+    """Clone or update the public scintillation archive with git. Never fatal."""
     try:
         if os.path.isdir(os.path.join(root, ".git")):
             r = subprocess.run(["git", "-C", root, "pull", "--ff-only", "--quiet"], capture_output=True, text=True,
