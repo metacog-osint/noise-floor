@@ -1,4 +1,4 @@
-/*! tic-fold.js v2.0 · The Intelligence Company: a long table or list opens in a scrolling window about ten rows
+/*! tic-fold.js v2.1 · The Intelligence Company: a long table or list opens in a scrolling window about ten rows
  *  tall, its header kept in view, with "Show all N" beside it ·
  *  canonical copy: the hub's site/shared/tic-fold.js (copy into each site with
  *  tic-fold.css; keep the version line).
@@ -34,6 +34,8 @@
  *  style-src 'self' allows; nothing is stored. Nothing moves.
  *  From 1.x: the default is 10 at every width (was 10 on phones, 15 wider); "Show the first N" is now
  *  "Show in a window"; the classes tic-fold-on and tic-fold-x are gone.
+ *  2.1: a row the site marks `hidden` (its own search or filter) is left out of the count and the window, and
+ *  hiding or showing one re-applies the window.
  */
 (function () {
   "use strict";
@@ -52,6 +54,8 @@
     return [v[0], v.length > 1 ? v[1] : v[0]];
   }
 
+  function shown(it) { return !it.hidden; }
+
   function items(el) {
     if (el.tagName === "TABLE") {
       var out = [];
@@ -60,9 +64,9 @@
       } else {
         for (var r = 0; r < el.rows.length; r++) if (!el.rows[r].closest("thead")) out.push(el.rows[r]);
       }
-      return out;
+      return out.filter(shown);
     }
-    return Array.prototype.slice.call(el.children);
+    return Array.prototype.slice.call(el.children).filter(shown);
   }
 
   function word(el) { return el.tagName === "TABLE" ? "rows" : "items"; }
@@ -207,7 +211,7 @@
       queued = true;
       requestAnimationFrame(function () { queued = false; apply(); fromHash(); });
     });
-    obs.observe(el, { childList: true, subtree: true });
+    obs.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
 
     // A window drawn later (a <details> opened, a group shown) or narrowed (rows wrap taller) measures again.
     if (window.ResizeObserver) {
@@ -281,6 +285,6 @@
     window.addEventListener("load", function () { all.forEach(function (s) { s.measure(); }); });
   }
 
-  window.TicFold = { version: "2.0", setup: setup, scan: scanNew };
+  window.TicFold = { version: "2.1", setup: setup, scan: scanNew };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
