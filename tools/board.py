@@ -40,7 +40,7 @@ EASA_URL = "https://www.easa.europa.eu/en/domains/air-operations/global-navigati
 ESA_URL = "https://swe.ssa.esa.int/assets/ism/ism_nowcast/{}_nowcast_grid.xml"
 ESA_REC = re.compile(r"<ns2:date>([^<]+)</ns2:date><ns2:stringValue>([^<]+)</ns2:stringValue><ns2:stringValue>([^<]+)"
                      r"</ns2:stringValue><ns2:stringValue>([^<]+)</ns2:stringValue><ns2:stringValue>([^<]+)</ns2:stringValue>")
-# date, lon, lat, value, error (the same parse as the private archive's capture script)
+# date, lon, lat, value, error (the same parse as the data repo's capture script)
 
 
 def load(path, default=None):

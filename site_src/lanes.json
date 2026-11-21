@@ -241,7 +241,7 @@
         "ESA Space Weather Service Network scintillation nowcast (ESA S2P terms)",
         "NOAA SWPC and GloTEC (US public domain)"
       ],
-      "notes": "The ESA terms allow derived products with attribution, but the raw grids may be passed on only to people who accept the same terms, so the archive itself stays private. 'Data provided by the European Space Agency (ESA) as part of its Space Safety Programme (S2P)'.",
+      "notes": "The ESA terms allow derived products with attribution, and allow passing on the free datasets to people who accept those terms. The archive is public, and its README states that condition and carries the required credits. 'Data provided by the European Space Agency (ESA) as part of its Space Safety Programme (S2P)'.",
       "links": []
     },
     {

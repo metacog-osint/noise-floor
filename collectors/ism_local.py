@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""ism_local.py: run the ESA scintillation capture from this PC and push each new hour to the private archive repo.
+"""ism_local.py: run the ESA scintillation capture from this PC and push each new hour to the public data repo.
 
 Why: ESA publishes only the current hour of its ionospheric scintillation nowcast. The archive repo's GitHub workflow is
 scheduled twice an hour, but GitHub ran it only every 2-5 hours (21-26 Oct 2026: 25 of about 120 hours kept). Windows
 Task Scheduler runs this every 30 minutes (task "noise-floor ESA scintillation capture", at :26 and :56, so it seldom
 overlaps the GitHub run, which stays on as the backup for when this PC is off).
 
-The clone (data/ism-archive, or NF_ISM_DIR; `tools/events.py fetch` makes it) is a working copy of the private repo,
+The clone (data/ism-archive, or NF_ISM_DIR; `tools/events.py fetch` makes it) is a working copy of the public data repo,
 where the capture script and ESA's terms live. Each run: fetch; commit any files an interrupted run left; rebase onto
 the remote (summary.csv merges by union, set in that repo's .gitattributes); capture (an hour already captured is
 skipped); commit; push. A run that can't reach GitHub or ESA exits non-zero and the next run tries again: an hour not
@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLONE = os.environ.get("NF_ISM_DIR") or os.path.join(ROOT, "data", "ism-archive")
-REPO = "https://github.com/metacog-osint/noise-floor-data.git"   # private: ESA's terms bar passing the raw grids on
+REPO = "https://github.com/metacog-osint/noise-floor-data.git"   # public; its README states ESA's terms as a condition of use
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)           # pythonw must not flash a console for each git call
 
 
