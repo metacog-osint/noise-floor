@@ -57,7 +57,7 @@ LANE = {"gnss-observed": "GNSS observed", "emitters": "Emitters", "maritime": "M
         "context": "Context", "satcom": "SATCOM", "lf-hf": "LF/HF", "community": "Community", "attribution": "Attribution"}
 
 PAGE = """<!doctype html>
-<html lang="en">
+<html lang="en" data-tic-layer="ems">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -73,6 +73,7 @@ PAGE = """<!doctype html>
 <link rel="stylesheet" href="/tic-nav.css">
 <script defer src="/tic-nav.js" data-health="on"></script>
 <link rel="stylesheet" href="/tic-fold.css">
+<link rel="stylesheet" href="/tic-shell.css">
 <script defer src="/tic-fold.js"></script>
 <script defer src="/site.js"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
@@ -83,7 +84,7 @@ PAGE = """<!doctype html>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site">
 <div class="wrap site-top">
-<a class="brand" href="/"><svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect class="mark-bg" x=".5" y=".5" width="27" height="27" rx="6"/><path class="mark-line" d="M5 17H9L10.6 10L12.4 20L14.2 12.5L15.8 17H23" fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg><span><b>Noisefloor</b><small>The Intelligence Company</small></span></a>
+<div class="brand-row"><a class="brand" href="/"><svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect class="mark-bg" x=".5" y=".5" width="27" height="27" rx="6"/><path class="mark-line" d="M5 17H9L10.6 10L12.4 20L14.2 12.5L15.8 17H23" fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg><span><b>Noisefloor</b><small>The Intelligence Company</small></span></a><a class="tic-layer" href="https://theintelligence.company/#layers">Spectrum layer</a></div>
 <div class="site-tools"><span class="clock" id="clock" aria-hidden="true"></span><span id="time-settings"></span></div>
 </div>
 <div class="wrap">{nav}</div>
@@ -141,7 +142,7 @@ def read_page(name):
     return json.loads(m.group(1)), raw[m.end():]
 
 
-ASSETS = ("style.css", "tic-time.css", "tic-time.js", "tic-nav.css", "tic-nav.js", "tic-fold.css", "tic-fold.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js")
+ASSETS = ("style.css", "tic-shell.css", "tic-time.css", "tic-time.js", "tic-nav.css", "tic-nav.js", "tic-fold.css", "tic-fold.js", "tic-init.js", "site.js", "map.js", "sea.js", "charts.js", "data.js", "imagery.js", "sunoutage.js", "sun.js", "dash.js", "board.js")
 FONTS = os.path.join(SRC, "fonts")     # IBM Plex (SIL OFL 1.1, fonts/OFL.txt), served from this site so no visit contacts a font service
 ASSET_V = {}            # file -> short content hash; pages ask for /file?v=hash, so browsers can cache assets for a year
 
