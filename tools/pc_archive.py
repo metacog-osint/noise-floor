@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """pc_archive.py: daily copy of the PC-only data into TIC's PRIVATE archive (metacog-osint/tic-archive).
 
-Rule (Tom, 18 Nov 2026): no program loses data. Two kinds of Noisefloor data exist only on this PC's D: drive
+Rule (Tom, 18 Nov 2026): no program loses data. These kinds of Noisefloor data exist only on this PC's D: drive
 (D: drops on sleep) and may not go public (watch configuration, private areas, licence terms):
 
   nisar       private/nisar: every detection, including LOW, widespread, ignored and private-area ones that
@@ -14,6 +14,8 @@ Rule (Tom, 18 Nov 2026): no program loses data. Two kinds of Noisefloor data exi
               vessel tables, Sentinel receiver tables and private area products, the private watch config.
               Left out: raw ESA ISM (its own store, the nf-ism Worker's R2 bucket) and the downloaded Sentinel
               navigation products in data/sentinel_gnss/raw/<year>/ (Copernicus open data, re-fetchable).
+  baltico     daily copies of the Swedish Maritime Administration's Baltic warnings page and its parsed warnings
+              (tools/notice_capture.py). The page states no terms, so new copies stay out of the public data repo.
 
 Sizes measured 19 Nov 2026: nisar about 270 MB kept of 40.8 GB; collectors about 3.6 GB (AIS 1.4 GB, Sentinel
 tables 2.1 GB, raw Bluesky 194 MB). First run uploads all of it; later runs upload what changed, about 100 MB a day.
@@ -23,7 +25,7 @@ and every snapshot can be restored. Uses this PC's gh login. Run last in collect
 waits on it; any failure exits 1 (the scheduled task's Last Run Result shows it) and writes
 data/logs/ARCHIVE_FAILED.txt, removed again by the next good run.
 
-    python tools/pc_archive.py              both lanes
+    python tools/pc_archive.py              all lanes
     python tools/pc_archive.py --lane nisar --dry-run
 """
 from __future__ import annotations
@@ -60,6 +62,7 @@ LANES = {
                     # Copernicus Sentinel navigation products as downloaded (12.8 GB on 19 Nov 2026), open data
                     # kept in the Copernicus archive; the derived tables and raw/index.jsonl are kept.
                     "sentinel-gnss/raw/20*"]),
+    "baltico": ([("baltico", "data/notices/baltico")], ["*.tmp", "*.partial"]),
 }
 
 
