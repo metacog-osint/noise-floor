@@ -76,6 +76,17 @@ jobs:
           python3 tools/site_layers.py "$RUNNER_TEMP/release-files" site || echo "::warning::map layers skipped"
           python3 tools/spoof_site.py "$RUNNER_TEMP/release-files" site || echo "::warning::spoofing places and history skipped; the map shows the top points only"
           python3 tools/map_thumb.py site || echo "::warning::home map thumbnail skipped; the home page hides its map panel"
+      # The feed's history log (release feed-history, contract rev 2.1): fills last_change. A failure leaves the feed as
+      # built, without it, and saves nothing, so a bad run cannot overwrite the log.
+      - name: Log the feed's changes (release feed-history)
+        id: feedhistory
+        if: steps.pick.outputs.sha != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 tools/feed_history.py pull "$RUNNER_TEMP/feed-history"
+          python3 tools/feed_history.py run site "$RUNNER_TEMP/feed-history"
       - name: Save the release-file cache
         if: steps.files.outputs.changed == 'true'
         uses: actions/cache/save@v6
@@ -95,6 +106,12 @@ jobs:
         run: |
           npx --yes wrangler@4.151.3 pages deploy site --project-name noise-floor --branch main \
             --commit-hash "$SHA" --commit-message "deploy-site $SHA" --commit-dirty=true
+
+      - name: Save the feed history (release feed-history)
+        if: steps.pick.outputs.sha != '' && steps.feedhistory.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/feed_history.py push "$RUNNER_TEMP/feed-history"
 
       # Retention (18 Nov 2026): the site shows 7 days of sun-outage alerts; every alert built is also appended to the
       # release history sun-alerts-YYYY. After the deploy, so the site never waits on it; a failure turns the run red.
