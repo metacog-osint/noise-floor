@@ -4,7 +4,7 @@ GPS/GNSS interference, spoofing, space-receiver RFI and space-weather measuremen
 program; product name **Noisefloor**, one word, Tom 27 Oct 2026; repo and folder stay `noise-floor`; public repo
 https://github.com/metacog-osint/noise-floor). Merged with Interference Watch 14 Oct.
 
-**State and open items: `.claude/HANDOFF.md`** in the main checkout (`D:\Projects\noise-floor`, gitignored); read
+**State and open items: `.claude/HANDOFF.md`** in the main checkout (this repo, gitignored); read
 it first, and `CLAUDE.local.md` if present (private notes). Pre-slim text: `.claude/notes-archive-2026-11-18.md`.
 History: `HISTORY.md`. Plan and open decisions: `docs/DESIGN.md` ("Merged plan" wins); sources, licences, methods:
 `docs/research/2026-10-06-sources.md`. Keep this file under 12 KB; state goes in the handoff, shas in git.
@@ -38,8 +38,8 @@ History: `HISTORY.md`. Plan and open decisions: `docs/DESIGN.md` ("Merged plan" 
 - Python; static site. `site/` is generated: edit `site_src/` (pages, `lanes.json`) and run
   `python tools/build_site.py`; Sources page from `registry/sources.csv`. CI fails if `site/` is out of step.
 - CI runs each `tests/test_*.py` as a plain script with only `requirements.txt` and `nisar/requirements.txt`.
-- Doctrine kit `doctrine/kit/` is vendored from `D:\Projects\tic-doctrine`: never edit here; change the kit and run
-  `python D:/Projects/tic-doctrine/tools/sync.py D:/Projects/noise-floor`. CI runs `doctrine/kit/tic.py kitcheck` and
+- Doctrine kit `doctrine/kit/` is vendored from `../tic-doctrine`: never edit here; change the kit and run
+  `python ../tic-doctrine/tools/sync.py .`. CI runs `doctrine/kit/tic.py kitcheck` and
   `registers doctrine`. Area-specific warning problems stay private.
 - `tools/heavy_lock.py`: machine-wide lock for heavy local jobs. Scheduled workflows stop after 60 days without a
   push; cron runs hours late, so tic-dispatch starts `cosmic2.yml` at :50 past 04-08 and 10-13 UTC.
