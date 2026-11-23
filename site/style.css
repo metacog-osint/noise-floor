@@ -243,6 +243,8 @@ dl.gloss dd { margin: .125rem 0 0; }
 .map-panel.closed .mp-body { display: none; }
 .map-panel.closed .mp-toggle span { display: inline-block; transform: rotate(-90deg); }
 .mp-body { padding: 0 .75rem .625rem; display: flex; flex-direction: column; gap: .5rem; }
+/* the interference map's panel holds more layers than the map is tall: keep it inside the map and let it scroll */
+#map .mp-body { max-height: calc(clamp(420px, 68vh, 760px) - 6rem); overflow-y: auto; overscroll-behavior: contain; }
 .mp-step { display: flex; align-items: center; gap: .4rem; }
 .mp-day { flex: 1; text-align: center; }
 .mp-group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
