@@ -19,7 +19,7 @@
 <script defer src="/tic-fold.js?v=91cc1e96b4"></script>
 <script defer src="/site.js?v=430c3e4cbc"></script>
 <link rel="alternate" type="application/atom+xml" title="Noisefloor: daily GNSS summary" href="/feed.xml">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=585198257f"></script><script defer src="/map.js?v=1b8f29f939"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script><script defer src="/imagery.js?v=b5f729a0c5"></script><script defer src="/map.js?v=a96d8cb1ff"></script>
 <script defer src="/tic-init.js?v=d888070c79"></script>
 </head>
 <body>
@@ -73,6 +73,7 @@
         <label><input type="checkbox" id="lyr-thin" checked> Thin coverage (few aircraft heard) <span class="lyr-key lyr-key-thin" aria-hidden="true"></span></label>
         <label><input type="checkbox" id="lyr-events" checked> Events and announced tests</label>
         <label id="lyr-imagery-opt" hidden><input type="checkbox" id="lyr-imagery"> Satellite imagery (Esri)</label>
+        <label id="lyr-radar-opt"><input type="checkbox" id="lyr-radar"> Radar imagery (Sentinel-1), this day</label>
         <label><input type="checkbox" id="lyr-spoof"> Spoofing (aircraft) <span class="lyr-key lyr-key-spoof" aria-hidden="true"></span></label>
         <label><input type="checkbox" id="lyr-sps"> Spoofed share of aircraft (regions) <span class="lyr-key lyr-key-sps" aria-hidden="true"></span></label>
         <label class="mp-sub"><input type="checkbox" id="lyr-sps7"> Pool the last 7 days</label>
@@ -86,6 +87,8 @@
         <label><input type="checkbox" id="lyr-nis"> L-band emitters (NISAR radar) <span class="lyr-key lyr-key-nisar" aria-hidden="true"></span><span class="lyr-key lyr-key-nisar-b" aria-hidden="true"></span></label>
         <p id="lyr-note" class="small"></p>
         <p id="map-img-note" class="img-note" aria-live="polite" hidden></p>
+        <p id="map-radar-note" class="img-note" aria-live="polite" hidden></p>
+        <p id="map-radar-scene" class="img-note" aria-live="polite" hidden></p>
       </fieldset>
       <label class="mp-group"><span>Jump to</span><select id="map-jump" aria-label="Jump to a region">
         <option value="">Choose a region…</option>
@@ -183,6 +186,7 @@
 <ul>
   <li><strong>Click a cell</strong> to see the history of the area around it (an H3 resolution-3 cell, about 12,000 km²): its share for every day since 1 October 2025, with the days an anomaly event covered it. Click a point on that chart to open the day.</li>
   <li><strong>Satellite imagery</strong> (Map options → Layers → Satellite imagery) puts Esri World Imagery under the cells: quiet cells turn faint, the coloured ones stay strong, and the map zooms closer (to zoom 10) to show what lies under a hotspot. It is offered only where Esri's terms allow (see the <a href="/terms#imagery">terms of use</a>) and stops if the site's free monthly allowance runs out.</li>
+  <li><strong>Radar imagery</strong> (Map options → Layers → Radar imagery) puts the Copernicus Sentinel-1 radar passes of the selected day under the cells, from zoom 10 (about 100 km across). Strong interference in the radar's own band shows as bright bands or stripes across a pass. Turn on <em>C-band radar activity (Sentinel-1)</em> too to see which areas the satellite itself flagged. Sentinel-1 passes most places every few days; when it missed the map centre that day, the note under the layers names the nearest passes. Free Copernicus data, read through Microsoft Planetary Computer, whose tile service is a preview and can be slow.</li>
   <li><strong>Change from usual</strong> colours each cell by how far today's share sits above its own median over its previous 14 days with traffic. Persistent hotspots fade, so new or growing activity stands out. Cells with fewer than 5 such days show as low coverage.</li>
   <li><strong>Fewer aircraft than usual</strong> compares each cell's aircraft count with its median over the previous 14 days. Strong jamming can stop aircraft sending a position at all, and then they vanish from the map instead of showing as degraded: on 9 May 2026 three in four aircraft crossing the southern Baltic lost their ADS-B position (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">validation notes</a>, verdict 34). Weekends, holidays, airspace closures and receiver outages lower counts too, so read it alongside the other views. Try 2026-05-09.</li>
   <li><strong>Spoofing</strong> (Map options → Measure → Spoofing) turns off the GPS-error colours and shades each region about 300 km across by the share of its aircraft-hours spent in active spoofing episodes, counted where the aircraft really were. A bold dashed outline marks a region above its own usual level: at least twice its median over up to 30 earlier days, and 5 or more spoofed aircraft-hours over it. That compares the region with its own normal; it is not a warning. Crosses mark where receivers were told they were. Hover a region to see where its aircraft were shown; click it to draw lines there. "Pool the last 7 days" adds up the week, which settles single-day noise in regions with little traffic. The table under the map then lists the regions with the most spoofing.</li>

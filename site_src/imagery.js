@@ -2,6 +2,8 @@
    NFImagery.linksHtml(lat, lon, day, zoom): links that open the providers' own viewers at a place (and a date where the
    viewer takes one). Nothing is loaded from those providers until a visitor clicks; links open in a new tab and send no
    referrer.
+   NFImagery.sentinel1Day(map, opts): the same Sentinel-1 radar, one UTC day at a time (.show(day)), for the interference
+   map's day picker; when no pass covers the map centre that day it names the nearest passes within a week.
    NFImagery.sentinel2(map, opts) / sentinel1(map, opts): one mosaic per month (or the last 30 days) from Microsoft
    Planetary Computer's anonymous tile service: Sentinel-2 true colour, least cloudy scenes first; Sentinel-1 radar (VV),
    latest pass first, which sees through cloud and shows ships as bright points. Copernicus Sentinel data is free for any
@@ -107,6 +109,17 @@
       .catch(function (e) { delete searches[key]; throw e; });
     return searches[key];
   }
+  function nearPasses(K, day, lat, lon) {   // UTC days with a pass over a point, within a week either side of a day
+    var w = { start: addDays(day, -7), end: addDays(day, 7) };
+    return post(STAC, { collections: [K.collection], intersects: { type: "Point", coordinates: [+lon, +lat] },
+                        "filter-lang": "cql2-json", filter: timeFilter(K, w), sortby: [{ field: "datetime", direction: "asc" }],
+                        limit: 40, fields: { include: ["properties.datetime"], exclude: ["assets", "links"] } })
+      .then(function (j) {
+        var seen = {};
+        (j.features || []).forEach(function (f) { if (f.properties && f.properties.datetime) seen[f.properties.datetime.slice(0, 10)] = 1; });
+        return Object.keys(seen).sort();
+      });
+  }
   function sceneAt(K, w, lat, lon) { // the scene the mosaic draws first at a point: same collection, filter and order
     return post(STAC, { collections: [K.collection], intersects: { type: "Point", coordinates: [+lon, +lat] },
                         "filter-lang": "cql2-json", filter: timeFilter(K, w), sortby: K.sortby, limit: 1,
@@ -115,7 +128,7 @@
   }
   // opts.status(text, isError): loading and failure messages; opts.scene(text): the date of the image at the map centre
   function mosaic(kind, map, opts) {
-    var K = KINDS[kind], wins = windows(), layer = null, want = null, sceneT = null, seq = 0;
+    var K = KINDS[kind], wins = windows(), layer = null, want = null, cur = null, sceneT = null, seq = 0;
     function credit(w) {
       var y = w.start.slice(0, 4) === w.end.slice(0, 4) ? w.end.slice(0, 4) : w.start.slice(0, 4) + "–" + w.end.slice(0, 4);
       return K.word + ': contains modified Copernicus Sentinel data ' + y + ', via <a href="https://planetarycomputer.microsoft.com/dataset/' +
@@ -125,17 +138,29 @@
       clearTimeout(sceneT);
       if (want === null || !opts.scene) return;
       if (map.getZoom() < MIN_ZOOM) { opts.scene(""); return; }
-      var w = wins[want], c = map.getCenter(), my = ++seq;
+      var w = cur, c = map.getCenter(), my = ++seq;
       sceneT = setTimeout(function () {
         sceneAt(K, w, c.lat, c.lng).then(function (p) {
-          if (my === seq && want !== null) opts.scene(p ? K.scene(p) : "No image of the map centre in this period.");
+          if (my !== seq || want === null) return;
+          if (p) { opts.scene(K.scene(p)); return; }
+          if (!w.day) { opts.scene("No image of the map centre in this period."); return; }
+          opts.scene("No radar pass over the map centre on " + w.day + ".");
+          nearPasses(K, w.day, c.lat, c.lng).then(function (ds) {
+            if (my !== seq || want === null) return;
+            opts.scene("No radar pass over the map centre on " + w.day + ". " + (ds.length ?
+              "Passes within a week: " + ds.join(", ") + "." : "None within a week either."));
+          }).catch(function () {});
         }).catch(function () { if (my === seq) opts.scene(""); });
       }, 600);
     }
     function onMove() { if (want !== null) { seq++; scene(); } }
-    function show(i) {
-      var w = wins[i];
-      want = i;
+    function show(i) { showWin(wins[i]); }
+    function showDay(day) {
+      showWin({ key: "day-" + day, day: day, start: day, end: day, label: day });
+    }
+    function showWin(w) {
+      var i = w.key;
+      want = i; cur = w;
       opts.status("Loading " + w.label + "…", false);
       if (opts.scene) opts.scene("");
       register(K, w).then(function (id) {
@@ -155,12 +180,12 @@
       });
     }
     function hide() {
-      want = null; seq++; clearTimeout(sceneT); map.off("moveend", onMove);
+      want = null; cur = null; seq++; clearTimeout(sceneT); map.off("moveend", onMove);
       if (layer) { map.removeLayer(layer); layer = null; }
       opts.status("", false);
       if (opts.scene) opts.scene("");
     }
-    return { windows: wins, show: show, hide: hide, windowFor: function (day) { return windowFor(wins, day); }, minZoom: MIN_ZOOM };
+    return { windows: wins, show: show, showDay: showDay, hide: hide, windowFor: function (day) { return windowFor(wins, day); }, minZoom: MIN_ZOOM };
   }
   // ---------- Esri World Imagery (ArcGIS Location Platform). The key comes from /api/imagery (functions/api/imagery.js),
   // which withholds it where Esri's terms bar access; with no key the pages keep the option hidden.
@@ -184,6 +209,8 @@
 
   function sentinel2(map, opts) { return mosaic("s2", map, opts); }
   function sentinel1(map, opts) { return mosaic("s1", map, opts); }
+  function sentinel1Day(map, opts) { return mosaic("s1", map, opts); }   // same layer; the page calls .showDay(day)
 
-  window.NFImagery = { links: links, linksHtml: linksHtml, sentinel2: sentinel2, sentinel1: sentinel1, esriKey: esriKey, esriLayer: esriLayer };
+  window.NFImagery = { links: links, linksHtml: linksHtml, sentinel2: sentinel2, sentinel1: sentinel1, sentinel1Day: sentinel1Day,
+                       esriKey: esriKey, esriLayer: esriLayer };
 })();
