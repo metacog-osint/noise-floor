@@ -15,11 +15,14 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import timedelta
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "doctrine", "kit", "python"))
 from tic_doctrine import contract, history  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import event_subjects  # noqa: E402
 
 TAG = "feed-history"
 REPO = os.environ.get("GITHUB_REPOSITORY", "metacog-osint/noise-floor")
@@ -88,6 +91,20 @@ def carry_stated(feed, state):
             p["last_change_at"] = min(was["last_change_at"], p["last_change_at"])
 
 
+def carry_events(feed, state, root, now):
+    """A moving event keeps its subject (tools/event_subjects.py, ideas#118). On any failure the keys stay as built."""
+    try:
+        ended = history.read_days(root, (now - timedelta(days=3)).strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d"))
+        moved = event_subjects.apply(feed, state, ended, now)
+    except Exception as e:                                    # noqa: BLE001 - the centre keys are still valid
+        print(f"feed_history: event subjects kept as built ({type(e).__name__}: {e})")
+        return {}
+    if moved:
+        print(f"feed_history: {len(moved)} events keep an earlier subject or a free key: "
+              + ", ".join(f"{k} -> {v[1]}" for k, v in sorted(moved.items())))
+    return moved
+
+
 def previous_failures(feed, root):
     """Failed checks in a row, across runs."""
     path = root / "health.json"
@@ -100,7 +117,9 @@ def previous_failures(feed, root):
 
 def apply(feed, root, now):
     """Log this build and fill last_change, in place. Separate from the file handling so a test can run it."""
-    carry_stated(feed, history.load_state(root))
+    state = history.load_state(root)
+    carry_events(feed, state, root, now)
+    carry_stated(feed, state)
     previous_failures(feed, root)
     lines = history.run(feed, root, now, feed.get("health"), fill=True)
     published = feed["generated_at"]

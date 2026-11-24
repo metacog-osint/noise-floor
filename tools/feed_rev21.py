@@ -6,6 +6,8 @@ the item as built: event times, countries by overlap, sea areas, place basis, so
 
 Decisions (Tom, 20 Nov 2026, "yes to defaults"):
 - A jamming event's subject is the res-2 region at its centre, so an event recurring over one area is one subject.
+  Since ideas#118 (Tom's yes 24 Nov 2026), tools/event_subjects.py then lets an event that shares regions with an
+  earlier one keep that subject while its centre moves; the centre key is for an event with no earlier ground.
 - last_change comes from the kit's history log, kept on the release `feed-history` (tools/feed_history.py).
 - Countries are the union of the kit's overlap helper and the sampled tags: islands the thinned outlines miss stay,
   and coasts that a box clips come in.
