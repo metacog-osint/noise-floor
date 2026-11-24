@@ -36,6 +36,10 @@ def make_tree(root):
         "private/watch/maritime.json": "{}",
         "data/notices/baltico/2026-11-19.json": "{}",
         "data/notices/baltico/2026-11-19.html.gz": "gz",
+        "data/radar/dwd/2026-11-19.h5": "radar",
+        "data/spoof_cache/2026-11-19.parquet": "PAR1",
+        "data/s6rfi/2026-11-19.json": "{}",
+        "data/cosmic2/2026-11-19.json": "{}",
     }
     for rel, text in files.items():
         p = Path(root) / rel
@@ -66,6 +70,10 @@ def test_all_lanes_archived_caches_left_out():
             assert want in coll, want
         baltico = latest_paths(store, "baltico")
         assert sorted(baltico) == ["baltico/2026-11-19.html.gz", "baltico/2026-11-19.json"], baltico
+        sensors = latest_paths(store, "sensors")
+        for want in ("radar/dwd/2026-11-19.h5", "spoof-cache/2026-11-19.parquet", "s6rfi/2026-11-19.json",
+                     "cosmic2/2026-11-19.json"):
+            assert want in sensors, want
         assert not (Path(td) / "data/logs/ARCHIVE_FAILED.txt").exists()
 
 
