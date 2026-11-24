@@ -7,7 +7,10 @@ A region or event is named, first that applies:
            covers no land: "near Zagreb"; when none is in reach, the nearest smaller listed place (rank 6 or 7,
            MINOR_RANKS) on the same terms: "near Batumi";
   country  the country its own point lies in; else, when at least LAND_MIN of its cells' sample points are on land,
-           the country most of that land lies in: "in Hungary, 160 km E of Budapest";
+           the country most of that land lies in: "in Hungary, 160 km E of Budapest". A point the kit's coarse
+           outlines put at sea but Natural Earth's 10 m coast puts on land (tools/coast.py) takes the nearest country
+           outline within COAST_KM as its own; a single point (point=True: a spoofed-to place) that the 10 m coast
+           puts at sea skips the cells' land and takes its sea;
   sea      the Natural Earth marine area its point lies in (tools/sea_areas.py): "in the Baltic Sea, 260 km S of
            Stockholm";
   offshore the nearest place within SEA_KM, the old limit, as a name only: "near Chennai" (only where no sea
@@ -28,6 +31,10 @@ coordinates, so it never adds a country tag. Why (18 Nov 2026, Tom's choice "B")
 on 17 Nov 2026 the brief said GPS interference started in Saudi Arabia and fell below jamming scale in Saudi Arabia,
 two areas about 500 km apart; "Saudi Arabia (330 km W of Abu Dhabi)" and "Saudi Arabia (210 km NW of Manama)" tell
 them apart. The Sentinel-6 card already words its peaks this way ("64 km N of Shostka").
+
+Why the 10 m coast (24 Nov 2026, Tom's yes): the kit's outlines are thinned to about 5 km, so a spoofed-to place
+0.5 km inland in Myanmar (14.63N 97.91E) read "in the Andaman Sea, 300 km W of Bangkok", and one 7 km out in the
+Gulf (25.79N 55.05E) read "in Iran" because its cell is half Iranian land. A false position is a point, not an area.
 
 Why smaller places and the reference's country (18 Nov 2026 evening CST, Tom's yes after the reader's review of the
 17 Nov feed): two Black Sea coast events read "in Turkey, 390 km E of Samsun" with Batumi (rank 6) in reach, and "in
@@ -55,6 +62,7 @@ LAND_MIN = 0.5    # an area whose point is at sea takes a country only when this
 SPREAD_MIN = 5    # an event whose cells reach this many countries is named "across N countries, centred ..."
 SPREAD_REGIONS = 10   # ... when it also covers this many regions (Tom, 18 Nov 2026: at 5 countries alone, 18 of
                       # 17 Nov's 152 events read so, a one-region burst "across 5 countries, centred near Brussels")
+COAST_KM = 10     # a point on 10 m land but outside the kit's outlines takes a country outline this close
 MINOR_RANKS = (6, 7)    # smaller listed places, tried only when no rank 5 or better place is within NAME_KM
 PLACES = os.path.join(ROOT, "site", "data", "places.json")
 IN_KINDS = ("country", "sea")    # these names follow "in"; a place (or offshore name) follows "near"
@@ -154,10 +162,10 @@ def spread(cells):
     return len(seen)
 
 
-def where(places, lat, lon, cells=(), event=False, limit=NAME_KM):
+def where(places, lat, lon, cells=(), event=False, limit=NAME_KM, point=False):
     """The full words for an area: phrase() of area_ref(); for an event (event=True) of SPREAD_REGIONS or more regions
     whose cells reach SPREAD_MIN or more countries, 'across 25 countries, centred near Zagreb'. None when unnamed."""
-    name, _, kind, ref = area_ref(places, lat, lon, cells, limit)
+    name, _, kind, ref = area_ref(places, lat, lon, cells, limit, point)
     w = phrase(name, kind, ref)
     if w and event and len(set(cells or [])) >= SPREAD_REGIONS:
         n = spread(cells)
@@ -179,7 +187,8 @@ def fingerprint(places):
     import hashlib
     h = hashlib.sha1()
     here = os.path.dirname(os.path.abspath(__file__))
-    for p in (os.path.join(here, "area_names.py"), os.path.join(here, "sea_areas.py"), CELLS,
+    for p in (os.path.join(here, "area_names.py"), os.path.join(here, "sea_areas.py"), os.path.join(here, "coast.py"),
+              os.path.join(here, "assets", "land10m.json.gz"), CELLS,
               os.path.join(ROOT, "site", "data", "seas.json"), PLACES):
         try:
             with open(p, "rb") as f:
@@ -260,31 +269,70 @@ def _count_countries(cell):
     return seen
 
 
-def area_name(places, lat, lon, cells=(), limit=NAME_KM):
+def area_name(places, lat, lon, cells=(), limit=NAME_KM, point=False):
     """(name, place [lat, lon] or None) for a jamming region or event at (lat, lon) covering H3 `cells`; (None, None)
     when neither a place nor a country is known."""
-    return area(places, lat, lon, cells, limit)[:2]
+    return area(places, lat, lon, cells, limit, point)[:2]
 
 
-def area(places, lat, lon, cells=(), limit=NAME_KM):
+def area(places, lat, lon, cells=(), limit=NAME_KM, point=False):
     """(name, place [lat, lon] or None, kind): kind "place", "country", "sea" (a named sea), "offshore" (open sea out
     of reach of any sea outline, a place name only) or None."""
-    return _area(places, lat, lon, cells, limit)[:3]
+    return _area(places, lat, lon, cells, limit, point)[:3]
 
 
-def area_ref(places, lat, lon, cells=(), limit=NAME_KM):
+def area_ref(places, lat, lon, cells=(), limit=NAME_KM, point=False):
     """area() plus a reference for a country or sea name ("220 km W of Tbilisi", ref()), else None."""
-    name, at, kind, cc = _area(places, lat, lon, cells, limit)
+    name, at, kind, cc = _area(places, lat, lon, cells, limit, point)
     return name, at, kind, (ref(places, lat, lon, cc) if kind in IN_KINDS else None)
 
 
-def _area(places, lat, lon, cells=(), limit=NAME_KM):
+def _coast_country(lat, lon, prefer=()):
+    """The kit country whose outline is nearest (lat, lon) within COAST_KM, those in `prefer` first; else None."""
+    import feed_v2
+    kx = math.cos(math.radians(lat)) * 111.32
+    py, px = COAST_KM / 111.32 + 0.01, COAST_KM / max(kx, 5.0) + 0.01     # the distance as degrees of lat, lon
+    best = {}
+    for c in feed_v2.geo._countries():
+        b = c["bbox"]
+        if not (b[0] - px <= lon <= b[2] + px and b[1] - py <= lat <= b[3] + py):
+            continue
+        for r in c["rings"]:
+            for (x0, y0), (x1, y1) in zip(r, r[1:] + r[:1]):
+                ax, ay, bx, by = (x0 - lon) * kx, (y0 - lat) * 111.32, (x1 - lon) * kx, (y1 - lat) * 111.32
+                dx, dy = bx - ax, by - ay
+                t = 0.0 if dx == dy == 0 else max(0.0, min(1.0, -(ax * dx + ay * dy) / (dx * dx + dy * dy)))
+                d = math.hypot(ax + t * dx, ay + t * dy)
+                if d <= COAST_KM and d < best.get(c["cc"], COAST_KM + 1):
+                    best[c["cc"]] = d
+    if not best:
+        return None
+    pick = [cc for cc in best if cc in prefer] or list(best)
+    return min(sorted(pick), key=best.get)
+
+
+def _on_land(lat, lon):
+    """tools/coast.py's 10 m land test: True, False, or None without its asset."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import coast
+        return coast.on_land(round(lat, 4), round(lon, 4))
+    except ImportError:
+        return None
+
+
+def _area(places, lat, lon, cells=(), limit=NAME_KM, point=False):
     import feed_v2
     seen = {}
     for c in dict.fromkeys(cells or []):
         for cc, k in _cell_countries(c).items():
             seen[cc] = seen.get(cc, 0) + k
     here = feed_v2.geo.country_at(lat, lon)
+    land = None
+    if not here:                                        # the kit's 5 km outlines miss some coastal points
+        land = _on_land(lat, lon)
+        if land:
+            here = _coast_country(lat, lon, seen)
     covered = set(seen) | ({here} if here else set())
     near = sorted((km((lat, lon), (p[1], p[2])), p[0], [p[1], p[2]]) for p in _band(places, lat, limit))
     for d, n, at in near:
@@ -302,7 +350,7 @@ def _area(places, lat, lon, cells=(), limit=NAME_KM):
         return country_name(here), None, "country", here
     cells = list(dict.fromkeys(cells or []))
     total = sum(_cell_samples(c) for c in cells)
-    if seen and (not total or sum(seen.values()) >= LAND_MIN * total):
+    if seen and (not total or sum(seen.values()) >= LAND_MIN * total) and not (point and land is False):
         cc = max(sorted(seen), key=seen.get)
         if country_name(cc):
             return country_name(cc), None, "country", cc
