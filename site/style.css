@@ -214,7 +214,7 @@ dl.gloss dd { margin: .125rem 0 0; }
 .map-line { margin: .2rem 0 .6rem; }
 .tagnote:not(:empty) { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 0 .55rem; margin-right: .4rem; color: var(--fg); }
 .map-frame { position: relative; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-#map { height: 68vh; min-height: 420px; max-height: 760px; background: var(--map-ocean); }
+#map { height: clamp(420px, calc(100vh - 345px), 760px); background: var(--map-ocean); }   /* the whole map in view on load */
 #map.loading { opacity: .6; transition: opacity .2s; }
 .leaflet-container { font: inherit; }
 .leaflet-control-attribution { font-size: var(--fs-xs); }
@@ -245,7 +245,38 @@ dl.gloss dd { margin: .125rem 0 0; }
 .mp-body { padding: 0 .75rem .625rem; display: flex; flex-direction: column; gap: .5rem; }
 /* the interference map's panel holds more layers than the map is tall: keep it inside the map, clear of the credit line,
    and let it scroll (as #sea-map below; #map's height is 68vh within 420-760 px) */
-#map .mp-body { max-height: calc(clamp(420px, 68vh, 760px) - 6rem); overflow-y: auto; overscroll-behavior: contain; }
+#map .mp-body { max-height: calc(clamp(420px, calc(100vh - 345px), 760px) - 7rem); overflow-y: auto; overscroll-behavior: contain; }
+/* the interference map: one bar above it (day, view, search), the options folded into groups */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.map-head { margin-bottom: .5rem; }
+.map-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; margin: 0 0 .5rem; }
+.mb-day { display: flex; align-items: center; gap: .35rem; }
+.mb-sel select, .mb-search input { font: inherit; font-size: var(--fs-md); height: 2.25rem; padding: 0 .5rem; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--card); color: var(--fg); }
+.mb-sel select { max-width: 16rem; }
+.mb-view { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-s); overflow: hidden; }
+.mb-seg { font: inherit; font-size: var(--fs-sm); height: 2.25rem; padding: 0 .85rem; border: 0; background: var(--card); color: var(--fg); cursor: pointer; }
+.mb-seg + .mb-seg { border-left: 1px solid var(--line); }
+.mb-seg[aria-checked="true"] { background: var(--fg); color: var(--card); font-weight: 600; }
+.mb-search { margin-left: auto; }
+.mb-search input { min-width: 14rem; }
+.mp-sum { display: block; font-weight: 400; color: var(--mut); font-size: .85em; margin-top: .1rem; }
+.mp-fold { border-top: 1px solid var(--line); padding-top: .35rem; }
+.mp-fold summary { cursor: pointer; font-weight: 600; color: var(--ink-2); padding: .1rem 0; }
+.mp-fold > label { display: block; padding: .12rem 0; }
+.mp-n { font-weight: 400; color: var(--mut); }
+#map .mp-group label.mp-sub { display: flex; align-items: flex-start; gap: .35rem; }
+#map .mp-group label.mp-sub input { margin-top: .2rem; }
+.tl-row .mut { color: var(--mut); }
+@media (max-width: 34rem) {
+  .map-head .page-sub { display: none; }               /* the map first on a phone; the same words are in How to read */
+  #map { height: clamp(340px, calc(100svh - 340px), 640px); }
+  #map .mp-body { max-height: calc(clamp(340px, calc(100svh - 340px), 640px) - 6rem); }
+  .mb-search { flex: 1 1 8rem; margin-left: 0; }
+  .mb-seg { padding: 0 .6rem; }
+  .map-head .howto-link { padding-bottom: 0; }
+  .mb-search input { width: 100%; min-width: 0; }
+  .mb-sel select { max-width: 9.5rem; }
+}
 .mp-step { display: flex; align-items: center; gap: .4rem; }
 .mp-day { flex: 1; text-align: center; }
 .mp-group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }

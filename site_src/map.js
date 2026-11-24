@@ -246,7 +246,7 @@
           if (p[3] > maxRank && !(p[4] && z >= 3.5)) return;
           var q = cp(p[1], p[2]);
           if (!inView(q)) return;
-          labels.push({ text: p[0], x: q.x + 5, y: q.y + 4, dot: q, cap: !!p[4], kind: "place" });
+          labels.push({ text: p[0], x: q.x + 5, y: q.y + 4, dot: q, at: { x: q.x, y: q.y, off: 5 }, cap: !!p[4], kind: "place" });
         });
       }
       if (state.smapShow && state.smap) {                           // SMAP: busy regions (faint) and stand-out emitter cells
@@ -387,6 +387,20 @@
             obs.circles.push([q.x, q.y, r, true]);
             if (state.spoofFocus === i) { g.save(); g.globalAlpha = 1; g.strokeStyle = colors.focus; g.lineWidth = 2; g.beginPath(); g.arc(q.x, q.y, r + 4, 0, 2 * Math.PI); g.stroke(); g.restore(); }
           });
+          var ft = state.spoofFocus !== null && state.spoofFocus !== undefined ? T[state.spoofFocus] : null;
+          if (ft && ft[9] && ft[9].length) {                         // the chosen place: bold lines to every region its aircraft were in
+            var fq = cp(ft[0], ft[1]);
+            g.save(); g.globalAlpha = 1; g.strokeStyle = colors.focus; g.lineWidth = 2.4; g.setLineDash([7, 4]);
+            ft[9].forEach(function (v) {
+              var c = h3.cellToLatLng(v[0]), b = cp(c[0], c[1]);
+              g.beginPath(); g.moveTo(fq.x, fq.y); g.lineTo(b.x, b.y); g.stroke(); obs.lines.push([fq.x, fq.y, b.x, b.y]);
+              g.setLineDash([]); g.beginPath(); g.arc(b.x, b.y, 4, 0, 2 * Math.PI); g.fillStyle = colors.focus; g.fill(); g.setLineDash([7, 4]);
+              obs.circles.push([b.x, b.y, 4, true]);
+              labels.unshift({ text: "Really here" + (v[2] ? ": near " + v[2] : ""), x: b.x + 9, y: b.y + 4, at: { x: b.x, y: b.y, off: 9 }, kind: "spoof" });
+            });
+            g.restore();
+            labels.unshift({ text: "Shown " + (ft[7] ? "near " + ft[7] : "at " + ll2(ft[0], ft[1])), x: fq.x + 16, y: fq.y + 4, at: { x: fq.x, y: fq.y, off: 16 }, kind: "spoof" });
+          }
         } else {
           g.globalAlpha = 1; g.lineWidth = 2;                       // older days: the top 10 places only
           (state.spoof.spoofed_to_top || []).forEach(function (p) {
@@ -425,7 +439,7 @@
             var t = state.sps.targets[s[0]], q = cp(t[0], t[1]), r = 5.5;
             g.beginPath(); g.moveTo(q.x - r, q.y - r); g.lineTo(q.x + r, q.y + r); g.moveTo(q.x + r, q.y - r); g.lineTo(q.x - r, q.y + r); g.stroke();
             obs.circles.push([q.x, q.y, r, true]);
-            if (k < SENT_LABELS) labels.unshift({ text: "Shown " + (t[7] ? "near " + t[7] : "at " + ll2(t[0], t[1])), x: q.x + 16, y: q.y + 4, kind: "spoof" });
+            if (k < SENT_LABELS) labels.unshift({ text: "Shown " + (t[7] ? "near " + t[7] : "at " + ll2(t[0], t[1])), x: q.x + 12, y: q.y + 4, at: { x: q.x, y: q.y, off: 12 }, kind: "spoof" });
           });
         }
         g.restore();
@@ -495,7 +509,7 @@
         }
       }
       // labels last, with a halo, skipping any that would overlap one already drawn or touch an outline or mark (obs);
-      // a place name that would moves to the left of its dot, and is left out if that touches too
+      // a label with a mark (at) tries right, left, below and above it, and is left out if all four touch
       if (labels.length) {
         var taken = [], font = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', hit = obstacleMask(obs);
         g.save(); g.lineJoin = "round"; g.textBaseline = "alphabetic";
@@ -504,9 +518,13 @@
           var w = g.measureText(l.text).width, r = [l.x - 2, l.y - 11, l.x + w + 2, l.y + 3];
           var clash = function (r) { return hit(r) || taken.some(function (t) { return r[0] < t[2] && r[2] > t[0] && r[1] < t[3] && r[3] > t[1]; }); };
           if (clash(r)) {
-            if (!l.dot) return;
-            l.x = l.dot.x - 5 - w; r = [l.x - 2, l.y - 11, l.x + w + 2, l.y + 3];
-            if (clash(r)) return;
+            if (!l.at) return;
+            var a = l.at, alt = [[a.x - a.off - w, a.y + 4], [a.x - w / 2, a.y + a.off + 11], [a.x - w / 2, a.y - a.off - 3]], k2;
+            for (k2 = 0; k2 < alt.length; k2++) {
+              r = [alt[k2][0] - 2, alt[k2][1] - 11, alt[k2][0] + w + 2, alt[k2][1] + 3];
+              if (!clash(r)) { l.x = alt[k2][0]; l.y = alt[k2][1]; break; }
+            }
+            if (k2 === alt.length) return;
           }
           taken.push(r);
           if (l.dot) {
@@ -1001,8 +1019,27 @@
       s2.appendChild(sw2); s2.appendChild(document.createTextNode("Above its usual level")); el.appendChild(s2);
     }
   }
+  var MEASURE_WORDS = { jam: "Severe error", acc: "Accuracy (10 m)", chg: "Change from usual", miss: "Fewer aircraft", spf: "Spoofing" };
+  function panelSummary() {                            // the closed panel says what the map shows; each group counts what is on
+    var body = document.getElementById("mp-body"); if (!body) return;
+    var on = 0;
+    body.querySelectorAll("details.mp-fold").forEach(function (f) {
+      var n = f.querySelectorAll('input[type="checkbox"]:checked').length; on += n;
+      var tag = f.querySelector(".mp-n"); if (tag) tag.textContent = n ? "(" + n + " on)" : "";
+    });
+    var sum = document.getElementById("mp-sum");
+    if (sum) sum.textContent = (MEASURE_WORDS[state.measure] || "") + " · " + on + " layer" + (on === 1 ? "" : "s");
+    var spf = state.measure === "spf";
+    document.getElementById("mb-gps").setAttribute("aria-checked", !spf);
+    document.getElementById("mb-spf").setAttribute("aria-checked", spf);
+  }
+  function pickMeasure(v) {                            // the view buttons above the map work the Measure radios
+    var r = document.querySelector('input[name="measure"][value="' + v + '"]');
+    if (r && !r.checked) { r.checked = true; r.dispatchEvent(new Event("change", { bubbles: true })); }
+  }
   function renderLegend() {
     var m = MEASURES[state.measure], el = document.getElementById("map-legend");
+    panelSummary();
     el.textContent = "";
     if (state.measure === "spf") {
       spsLegend(el, null);
@@ -1079,14 +1116,11 @@
     syncTimeline();
   }
   function syncTimeline() {
-    var sl = document.getElementById("tl-slider"); if (!sl || !days.length) return;
+    if (!days.length) return;                           // the bar above the map is the one day control; the strip follows it
     var i = dayIndex(state.day), d = days[i];
-    sl.max = days.length - 1; if (i >= 0) sl.value = i;
-    sl.setAttribute("aria-valuetext", fmtDay(state.day));
     document.getElementById("tl-day").textContent = fmtDay(state.day) + (d && d.daily ? "" : " · validated");
-    document.getElementById("tl-prev").disabled = document.getElementById("mp-prev").disabled = i <= 0;
-    document.getElementById("tl-next").disabled = document.getElementById("mp-next").disabled = i >= days.length - 1;
-    document.getElementById("mp-day").textContent = state.day ? fmtDay(state.day) : "";
+    document.getElementById("mp-prev").disabled = i <= 0;
+    document.getElementById("mp-next").disabled = i >= days.length - 1;
     var bars = document.querySelectorAll("#tl-strip .tl-bar");
     for (var k = 0; k < bars.length; k++) bars[k].setAttribute("class", k === i ? "tl-bar on" : "tl-bar");
   }
@@ -1211,6 +1245,17 @@
     return list;
   }
   var SPOOF_LINK_MIN = 3;                               // spoofed-to places with this many aircraft get a line to their aircraft
+  function focusTarget() {                             // a link's st=lat,lon (Trends' "Map"): that place, framed with its aircraft
+    var w = state.stWant; if (!w || !state.spoof || !state.spoof.targets) return;
+    state.stWant = null;
+    var best = null, bd = 15;
+    state.spoof.targets.forEach(function (t, i) { var d = h3.greatCircleDistance([t[0], t[1]], w, "km"); if (d < bd) { bd = d; best = i; } });
+    if (best === null) return;
+    state.spoofFocus = best;
+    var t = state.spoof.targets[best], pts = [[t[0], t[1]]];
+    (t[9] || []).forEach(function (v) { pts.push(h3.cellToLatLng(v[0])); });
+    if (pts.length > 1) map.fitBounds(pts, { padding: [60, 60], maxZoom: 6, animate: false });
+  }
   function spoofAt(pt) {                               // the spoofed-to place within 9 px of a container point, or null
     if (!state.spoofShow || !state.spoof || !state.spoof.targets) return null;
     var best = null, bd = 81;
@@ -1526,7 +1571,7 @@
     note.textContent = parts.join(" ");
   }
   function loadLayers(day) {
-    if (state.spoofShow) layerFor("spoof", day).then(function (j) { if (state.day !== day) return; state.spoof = j; layerNote(); layer.redraw(); });
+    if (state.spoofShow) layerFor("spoof", day).then(function (j) { if (state.day !== day) return; state.spoof = j; focusTarget(); layerNote(); layer.redraw(); });
     if (state.spsShow) layerFor("spoof", day).then(function (j) {
       if (state.day !== day) return;
       state.sps = j || false; layerNote(); renderLegend(); layer.redraw();
@@ -1727,7 +1772,7 @@
       if (!seen[m]) { seen[m] = []; groups.push([MONTHS[+m.slice(5, 7) - 1] + " " + m.slice(0, 4), seen[m]]); }
       seen[m].push(d);
     });
-    groups.push(["Validated test days", tested]);
+    groups.unshift(["Notable days (validated)", tested]);   // first, so they're easy to find among ~400 days
     groups.forEach(function (g) {
       if (!g[1].length) return;
       var og = document.createElement("optgroup"); og.label = g[0];
@@ -1752,6 +1797,9 @@
       imagery.want = hp.img === "esri";
       state.spoofShow = hp.sp === "1"; state.spsShow = hp.ss === "1" || state.measure === "spf"; state.sps7 = hp.s7 === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1"; state.s6Show = hp.s6 === "1"; state.smapShow = hp.sm === "1"; state.c2Show = hp.c2 === "1"; state.s1Show = hp.s1 === "1";
       state.lsShow = hp.ls === "1"; state.rtShow = hp.rt === "1";
+      var st = (hp.st || "").split(",").map(Number);
+      state.stWant = st.length === 2 && st.every(function (x) { return isFinite(x); }) ? st : null;
+      if (state.stWant) state.spoofShow = true;
       return d;
     }
     var day = fromHash();
@@ -1760,7 +1808,11 @@
       var d = fromHash(); renderLegend();
       setImagery(imagery.want);
       if (state.view) map.setView([state.view[0], state.view[1]], state.view[2], { animate: false });
-      if (d !== state.day) loadDay(d); else refresh();
+      if (d !== state.day) loadDay(d);
+      else {
+        refresh();
+        if (state.stWant) { if (state.spoof) { focusTarget(); layer.redraw(); } else loadLayers(d); }   // a new st= on the same day
+      }
     });
     sel.addEventListener("change", function () { loadDay(sel.value); });
     document.querySelectorAll('input[name="measure"]').forEach(function (r) {
@@ -1778,12 +1830,10 @@
     });
     document.getElementById("map-raw").addEventListener("change", function (e) { state.raw = e.target.checked; refresh(); });
     document.getElementById("ev-show").addEventListener("change", function (e) { state.evShow = e.target.checked; layer.redraw(); });
-    document.getElementById("nt-show").addEventListener("change", function (e) { state.ntShow = e.target.checked; layer.redraw(); });
-    var sl =document.getElementById("tl-slider");
-    sl.addEventListener("input", function () { stepTo(+sl.value, false); });
-    sl.addEventListener("change", function () { stepTo(+sl.value, true); });
-    document.getElementById("tl-prev").addEventListener("click", function () { stepTo(dayIndex(state.day) - 1, true); });
-    document.getElementById("tl-next").addEventListener("click", function () { stepTo(dayIndex(state.day) + 1, true); });
+    var ntBox = document.getElementById("lyr-notams"), ntBox2 = document.getElementById("nt-show");   // the panel and the list
+    function setNotams(on) { state.ntShow = on; ntBox.checked = ntBox2.checked = on; layer.redraw(); panelSummary(); }
+    ntBox.addEventListener("change", function () { setNotams(ntBox.checked); });
+    ntBox2.addEventListener("change", function () { setNotams(ntBox2.checked); });
     var tlResize;
     window.addEventListener("resize", function () { clearTimeout(tlResize); tlResize = setTimeout(renderTimeline, 150); });
     [["ev-anom-more", "anom"], ["ev-burst-more", "burst"]].forEach(function (p) {
@@ -1838,12 +1888,26 @@
     pctl.onAdd = function () { L.DomEvent.disableClickPropagation(panel); L.DomEvent.disableScrollPropagation(panel); return panel; };
     pctl.addTo(map);
     function setPanel(open) { panel.classList.toggle("closed", !open); ptoggle.setAttribute("aria-expanded", open); }
-    setPanel(window.innerWidth >= 700);
+    setPanel(false);                                     // closed on load: the map first; the button says what is on
     ptoggle.addEventListener("click", function () { setPanel(panel.classList.contains("closed")); });
+    panel.addEventListener("change", function () { setTimeout(panelSummary, 0); });
+    var spfAdded = [];                                   // spoofing layers the Spoofing button turned on, turned off again by GPS error
+    document.getElementById("mb-gps").addEventListener("click", function () {
+      if (state.measure !== "spf") return;
+      pickMeasure("jam");
+      spfAdded.forEach(function (id) { var b = document.getElementById(id); if (b.checked) { b.checked = false; b.dispatchEvent(new Event("change", { bubbles: true })); } });
+      spfAdded = [];
+    });
+    document.getElementById("mb-spf").addEventListener("click", function () {
+      if (state.measure === "spf") return;
+      spfAdded = ["lyr-spoof", "lyr-sps"].filter(function (id) { return !document.getElementById(id).checked; });
+      pickMeasure("spf");
+    });
+    panelSummary();
     document.getElementById("mp-prev").addEventListener("click", function () { setPlaying(false); stepTo(dayIndex(state.day) - 1, true); });
     document.getElementById("mp-next").addEventListener("click", function () { setPlaying(false); stepTo(dayIndex(state.day) + 1, true); });
     document.getElementById("tl-play").addEventListener("click", function () { setPlaying(!state.playing); });
-    ["tl-prev", "tl-next", "tl-slider", "map-day"].forEach(function (id) {
+    ["mp-prev", "mp-next", "map-day"].forEach(function (id) {
       document.getElementById(id).addEventListener("pointerdown", function () { setPlaying(false); });
     });
     [["spoof", "spoof"], ["sps", "sps"], ["cyg", "cyg"], ["nis", "nis"], ["s6", "s6"], ["smap", "smap"], ["c2", "c2"], ["s1", "s1"], ["ls", "ls"], ["rt", "rt"]].forEach(function (k) {
