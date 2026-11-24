@@ -853,6 +853,13 @@
     return name;
   }
   function ntDate(s) { return !s ? "–" : s === "PERM" ? "permanent" : fmtDay(s.slice(0, 10)); }
+  var ntIndex = null;                                 // the days with a NOTAM file (index.json); files start 18 Nov 2026
+  function notamDays() {
+    if (!ntIndex) ntIndex = fetch("/data/notams/index.json").then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { return j && j.days ? j.days.map(function (d) { return d.day; }) : null; })
+      .catch(function () { return null; });                   // no index: ask for the day's file as before
+    return ntIndex;
+  }
   function renderNotams() {
     var wrap = document.getElementById("nt-wrap"), nt = state.nt;
     if (!wrap) return;
@@ -1601,7 +1608,10 @@
     state.spoof = null; state.sps = null; state.spoofFocus = null; state.spsFocus = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; state.s1 = null; state.ls = null; state.rt = null; state.rtFocus = null; loadLayers(day);
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
     state.nt = null; renderNotams();
-    fetch("/data/notams/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    notamDays().then(function (days) {
+      if (days && days.indexOf(day) < 0) return null;  // no file for this day: don't ask (and log a 404)
+      return fetch("/data/notams/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; });
+    }).catch(function () { return null; })
       .then(function (nt) { if (state.day !== day) return; state.nt = nt; renderNotams(); if (state.ntShow) layer.redraw(); });
     syncTimeline();
     fetch("/data/events/" + day + ".json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })

@@ -91,12 +91,12 @@ class Places:
         import area_names
         return area_names.area_ref(self.pl, lat, lon, cells)
 
-    def where(self, lat, lon, cells=(), event=False):
+    def where(self, lat, lon, cells=(), event=False, point=False):
         """The full words: 'near Doha', 'in the Baltic Sea, 260 km S of Stockholm', for an event 'across 25
         countries, centred near Zagreb' (area_names.where)."""
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import area_names
-        return area_names.where(self.pl, lat, lon, cells, event=event)
+        return area_names.where(self.pl, lat, lon, cells, event=event, point=point)
 
 
 def _countries(rows):
