@@ -1891,8 +1891,18 @@
     setPanel(false);                                     // closed on load: the map first; the button says what is on
     ptoggle.addEventListener("click", function () { setPanel(panel.classList.contains("closed")); });
     panel.addEventListener("change", function () { setTimeout(panelSummary, 0); });
-    document.getElementById("mb-gps").addEventListener("click", function () { if (state.measure === "spf") pickMeasure("jam"); });
-    document.getElementById("mb-spf").addEventListener("click", function () { if (state.measure !== "spf") pickMeasure("spf"); });
+    var spfAdded = [];                                   // spoofing layers the Spoofing button turned on, turned off again by GPS error
+    document.getElementById("mb-gps").addEventListener("click", function () {
+      if (state.measure !== "spf") return;
+      pickMeasure("jam");
+      spfAdded.forEach(function (id) { var b = document.getElementById(id); if (b.checked) { b.checked = false; b.dispatchEvent(new Event("change", { bubbles: true })); } });
+      spfAdded = [];
+    });
+    document.getElementById("mb-spf").addEventListener("click", function () {
+      if (state.measure === "spf") return;
+      spfAdded = ["lyr-spoof", "lyr-sps"].filter(function (id) { return !document.getElementById(id).checked; });
+      pickMeasure("spf");
+    });
     panelSummary();
     document.getElementById("mp-prev").addEventListener("click", function () { setPlaying(false); stepTo(dayIndex(state.day) - 1, true); });
     document.getElementById("mp-next").addEventListener("click", function () { setPlaying(false); stepTo(dayIndex(state.day) + 1, true); });
