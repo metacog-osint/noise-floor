@@ -78,6 +78,23 @@
   function ll(lat, lon) {
     return Math.abs(lat).toFixed(3) + "°" + (lat >= 0 ? "N" : "S") + " " + Math.abs(lon).toFixed(3) + "°" + (lon >= 0 ? "E" : "W");
   }
+  var places = [];                       // Natural Earth places (/data/places.json), to name points in words
+  function placeWords(lat, lon) {        // "about 230 km SE of Pskov": the nearest well-known place within 600 km, else coordinates
+    var best = 600, hit = null, r = Math.PI / 180;
+    places.forEach(function (p) {
+      if (p.length > 3 && p[3] > 5) return;
+      var h = Math.pow(Math.sin((p[1] - lat) * r / 2), 2) + Math.cos(lat * r) * Math.cos(p[1] * r) * Math.pow(Math.sin((p[2] - lon) * r / 2), 2);
+      var d = 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
+      if (d < best) { best = d; hit = p; }
+    });
+    if (!hit) return ll(lat, lon);
+    if (best < 25) return "near " + hit[0];
+    var y = Math.sin((lon - hit[2]) * r) * Math.cos(lat * r),
+        x = Math.cos(hit[1] * r) * Math.sin(lat * r) - Math.sin(hit[1] * r) * Math.cos(lat * r) * Math.cos((lon - hit[2]) * r),
+        b = (Math.atan2(y, x) / r + 360) % 360;
+    return "about " + Math.round(best / 10) * 10 + " km " + ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(b / 45) % 8] + " of " + hit[0];
+  }
+  function areaWords(a) { return String(a).replace(/(\d)-(\d)/g, "$1–$2").replace(/(\d+(?:\.\d+)?)E\b/g, "$1°E"); }
   function num(x, unit) { return x === null || x === undefined ? "–" : x + (unit || ""); }
   function pct(x) { return x === null || x === undefined ? "–" : Math.round(100 * x) + "%"; }
   function owners(v) { return v.owners || []; }
@@ -225,7 +242,7 @@
     gnss.spoofed_to.forEach(function (s) {
       L.circleMarker([s.lat, s.lon], { renderer: canvas, radius: 5 + 2.2 * Math.sqrt(s.vessels), color: colors.gnss, weight: 2,
         fillColor: colors.gnss, fillOpacity: 0.25 })
-        .bindTooltip(s.vessels + (s.vessels === 1 ? " ship was" : " ships were") + " shown here by spoofed GNSS (" + ll(s.lat, s.lon) + ")", { sticky: true })
+        .bindTooltip(s.vessels + (s.vessels === 1 ? " ship was" : " ships were") + " shown here by spoofed GNSS (" + placeWords(s.lat, s.lon) + "; " + ll(s.lat, s.lon) + ")", { sticky: true })
         .addTo(gnssLayer);
     });
   }
@@ -562,10 +579,11 @@
     document.getElementById("gnss-summary").textContent = gnss.affected_vessels + " ships showed GNSS interference between " +
       utc(gnss.window.start) + " and " + utc(gnss.window.end) + (hrs ? ", in " + hrs + " of the hours collected." : ".");
     document.querySelector("#gnss-areas tbody").innerHTML = gnss.by_area.map(function (a) {
-      return "<tr><td>" + esc(a.area) + '</td><td class="num">' + a.vessels + "</td></tr>";
+      return "<tr><td>" + esc(areaWords(a.area)) + '</td><td class="num">' + a.vessels + "</td></tr>";
     }).join("");
     document.querySelector("#gnss-to tbody").innerHTML = gnss.spoofed_to.map(function (s) {
-      return "<tr><td>" + esc(ll(s.lat, s.lon)) + '</td><td class="num">' + s.vessels + "</td></tr>";
+      var w = placeWords(s.lat, s.lon);
+      return '<tr><td title="' + esc(ll(s.lat, s.lon)) + '">' + esc(w.charAt(0).toUpperCase() + w.slice(1)) + '</td><td class="num">' + s.vessels + "</td></tr>";
     }).join("") || '<tr><td colspan="2">None</td></tr>';
     document.querySelector("#gnss-hours tbody").innerHTML = gnss.by_hour.map(function (h) {
       return "<tr><td>" + esc(utc(h.t)) + "</td><td>" + esc(TZ === "UTC" ? utc(h.t) : local(h.t, true)) + '</td><td class="num">' + h.vessels + "</td></tr>";
@@ -582,6 +600,7 @@
     landLayer.bringToBack();
     styleBase();
   }).catch(function () { /* markers still work without land */ });
+  getJson("/data/places.json").then(function (j) { places = j.places || []; renderGnss(); }).catch(function () { /* coordinates stay */ });
   getJson("/data/borders.json").then(function (j) {
     var lines = j.lines.filter(function (l) {
       return l[1].some(function (p) { return p[1] > 52 && p[1] < 70 && p[0] > 5 && p[0] < 40; });
@@ -596,6 +615,9 @@
     var counts = { sanctioned: 0, state: 0, flag: 0 };
     vessels.forEach(function (v) { counts[group(v)]++; });
     var gen = d.generated;
+    var asof = document.getElementById("sea-asof");
+    if (asof) asof.textContent = "One collection, built " + (+gen.slice(8, 10)) + " " + MON[+gen.slice(5, 7) - 1] + " " + gen.slice(0, 4) +
+      " and refreshed by hand, not daily: what is shown here is that collection, not today's ships.";
     document.getElementById("sea-data").textContent = "Data from " + (+gen.slice(8, 10)) + " " + MON[+gen.slice(5, 7) - 1] + " " + gen.slice(0, 4) + ", " +
       gen.slice(11, 16) + " UTC" + (TZ === "UTC" ? "" : " (" + local(gen) + ")");
     document.getElementById("sea-stats").textContent = vessels.length + " vessels: " + counts.sanctioned + " sanctioned, " + counts.state +

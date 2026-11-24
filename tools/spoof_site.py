@@ -130,6 +130,17 @@ def _where(places, lat, lon, cell=None):
         return None
 
 
+def _country(lat, lon):
+    """The plain name of the country a point lies in ('Peru'), for places far from their aircraft; None at sea or
+    when the kit's borders are not to hand."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import area_names
+        return area_names.plain_country(area_names._place_country(lat, lon))
+    except Exception:
+        return None
+
+
 def victims(cells, places, top=3):
     """Res-4 victim cells [[cell, episodes, aircraft], ...] -> the res-2 regions holding most of them."""
     import h3
@@ -256,12 +267,15 @@ def track(tdays, places=None):
         total = sum(t["by_day"].values())
         if total < TABLE_MIN_AIRCRAFT_DAYS and len(seen) < TABLE_MIN_DAYS:
             continue
-        vic = []
+        vic, dist = [], None
         for r, n in t["victims"].most_common(3):
             la, lo = h3.cell_to_latlng(r)
-            vic.append(_near(places, la, lo, 350) or f"{la:.1f}, {lo:.1f}")
+            if dist is None:            # to the region holding most of its aircraft, as new_targets() measures it
+                dist = round(km(t["lat"], t["lon"], la, lo))
+            vic.append(_near(places, la, lo, 350) or _where(places, la, lo) or f"{la:.1f}, {lo:.1f}")
         row = {"lat": t["lat"], "lon": t["lon"], "near": _near(places, t["lat"], t["lon"], NEAR_KM),
-               "where": _where(places, t["lat"], t["lon"]),
+               "where": _where(places, t["lat"], t["lon"]), "country": _country(t["lat"], t["lon"]),
+               "km_from_aircraft": dist,
                "first": seen[0], "last": seen[-1], "days": len(seen), "aircraft_days": total,
                "latest": t["by_day"].get(days[-1], 0), "series": [t["by_day"].get(d, 0) for d in recent],
                "victims": list(dict.fromkeys(vic)), "usual": t["usual"], "level": t["level"]}
