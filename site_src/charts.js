@@ -479,7 +479,8 @@
       var tds = document.createElement("td"); tds.appendChild(spark(r.series || [], cssVar("--series-1"))); tr.appendChild(tds);
       var tdv = document.createElement("td"); tdv.textContent = (r.victims || []).join("; ") || "not located"; tr.appendChild(tdv);
       var tdl = document.createElement("td"), a = document.createElement("a");
-      a.href = "/map#day=" + r.last + "&m=jam&sp=1&v=" + r.lat.toFixed(2) + "," + r.lon.toFixed(2) + ",5"; a.textContent = "Map"; tdl.appendChild(a); tr.appendChild(tdl);
+      a.href = "/map#day=" + r.last + "&m=spf&ss=1&sp=1&st=" + r.lat.toFixed(3) + "," + r.lon.toFixed(3) + "&v=" + r.lat.toFixed(2) + "," + r.lon.toFixed(2) + ",5";   // the map frames it with its aircraft
+      a.textContent = "Map: shown vs real"; a.title = "Open the Spoofing view with lines from this place to where its aircraft really were"; tdl.appendChild(a); tr.appendChild(tdl);
       tb2.appendChild(tr);
     });
     places.appendChild(tb2);
