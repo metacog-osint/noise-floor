@@ -4,7 +4,7 @@
 Runs on this PC from collectors/run_daily.cmd (the daily collectors task), because CYGNSS needs an Earthdata Login token
 (EARTHDATA_TOKEN, a user environment variable that Tom set; never printed). CYGNSS L1 files for a day arrive over several
 days, so a day counts as complete when NASA CMR lists files for at least MIN_SC spacecraft, or MIN_SC_LATE once it is
-LATE_DAYS old. For the newest complete day not yet summarised (looking back up to LOOKBACK days), it runs
+LATE_DAYS old. For each complete day not yet summarised (looking back up to LOOKBACK days, at most MAX_DAYS_PER_RUN a run), it runs
 `cygnss_rfi.py fetch` and `grid` (the validated method, unchanged), writes data/cygnss/daily/<day>.cygnss.json and
 uploads it to this repo's release `cygnss-data`, which the site deploy reads (tools/board.py).
 
@@ -30,6 +30,7 @@ OUT = os.path.join(ROOT, "data", "cygnss", "daily")
 REPO = "metacog-osint/noise-floor"
 TAG = "cygnss-data"
 LOOKBACK, MIN_SC, MIN_SC_LATE, LATE_DAYS = 10, 7, 5, 6
+MAX_DAYS_PER_RUN = 3                      # each day can take an hour or more; the rest wait for the next run
 MIN_DDM, RAISED_DB, TOP = 20, 1.0, 10
 NOTES = ("Daily summaries of GNSS L1 interference seen from orbit by NASA CYGNSS (noise floor of the delay-Doppler maps), "
          "made by tools/cygnss_rfi.py and tools/cygnss_daily.py. Aggregates only. Source: NASA CYGNSS Level 1 Science Data "
@@ -99,7 +100,7 @@ def resummarise(no_upload):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--day", help="summarise this day (default: the newest complete day not yet done)")
+    ap.add_argument("--day", help="summarise this day (default: every complete day not yet done)")
     ap.add_argument("--no-upload", action="store_true")
     ap.add_argument("--resummarise", action="store_true", help="rewrite the summary of every gridded day (adds map cells)")
     a = ap.parse_args()
@@ -111,42 +112,64 @@ def main():
         return 0
     today = datetime.now(timezone.utc).date()
     os.makedirs(OUT, exist_ok=True)
-    days = [a.day] if a.day else [(today - timedelta(days=k)).isoformat() for k in range(2, LOOKBACK + 1)]
-    for day in days:
-        out = os.path.join(OUT, f"{day}.cygnss.json")
-        if os.path.exists(out) and not a.day:
-            print(f"{day}: done already; nothing newer is complete")
-            return 0
-        if not a.day:
-            ok, n = complete(day, today)
-            if not ok:
-                print(f"{day}: {n} spacecraft files so far, not complete")
-                continue
-        if not os.path.exists(os.path.join(GRID, f"{day}.r3.parquet")):
-            for cmd in ("fetch", "grid"):
-                r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "cygnss_rfi.py"), cmd, day],
-                                   capture_output=True, text=True, timeout=7200)
-                if r.returncode:
-                    print(f"{day}: cygnss_rfi {cmd} failed: {(r.stderr or r.stdout).strip()[-400:]}")
-                    return 1
-        s = summarise(day)
-        tmp = out + ".part"                       # kept as <day>.cygnss.json only once uploaded: a failed upload retries
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(s, f, separators=(",", ":"))
-        print(f"{day}: {s['raised_cells']} of {s['judged_cells']} judged cells raised {RAISED_DB:g} dB or more")
-        if not a.no_upload:
-            final = os.path.join(os.path.dirname(tmp), f"{day}.cygnss.json")
-            os.replace(tmp, final)
-            try:
-                upload(final)
-            except Exception:
-                os.replace(final, tmp)
-                raise
-            print(f"{day}: uploaded to release {TAG}")
-        else:
-            os.replace(tmp, out)
+    if a.day:
+        return process_day(a.day, a.no_upload)
+    days = pending_days(today)
+    if not days:
+        print("no complete undone day in the last", LOOKBACK, "days")
         return 0
-    print("no complete day in the last", LOOKBACK, "days")
+    for day in days[:MAX_DAYS_PER_RUN]:
+        rc = process_day(day, a.no_upload)
+        if rc:
+            return rc
+    if len(days) > MAX_DAYS_PER_RUN:
+        print(f"{len(days) - MAX_DAYS_PER_RUN} more complete days wait for the next run")
+    return 0
+
+
+def pending_days(today, exists=os.path.exists, is_complete=None):
+    """Every complete day in LOOKBACK with no summary, newest first. A finished day never ends the search: stopping
+    there is how CYGNSS lost a day whenever two days became complete between runs (database review, 23 Nov 2026)."""
+    is_complete = is_complete or complete
+    out = []
+    for k in range(2, LOOKBACK + 1):
+        day = (today - timedelta(days=k)).isoformat()
+        if exists(os.path.join(OUT, f"{day}.cygnss.json")):
+            continue
+        ok, n = is_complete(day, today)
+        if ok:
+            out.append(day)
+        else:
+            print(f"{day}: {n} spacecraft files so far, not complete")
+    return out
+
+
+def process_day(day, no_upload):
+    """Fetch, grid, summarise and upload one day. Returns 0, or 1 if the fetch or grid failed."""
+    out = os.path.join(OUT, f"{day}.cygnss.json")
+    if not os.path.exists(os.path.join(GRID, f"{day}.r3.parquet")):
+        for cmd in ("fetch", "grid"):
+            r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "cygnss_rfi.py"), cmd, day],
+                               capture_output=True, text=True, timeout=7200)
+            if r.returncode:
+                print(f"{day}: cygnss_rfi {cmd} failed: {(r.stderr or r.stdout).strip()[-400:]}")
+                return 1
+    s = summarise(day)
+    tmp = out + ".part"                       # kept as <day>.cygnss.json only once uploaded: a failed upload retries
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(s, f, separators=(",", ":"))
+    print(f"{day}: {s['raised_cells']} of {s['judged_cells']} judged cells raised {RAISED_DB:g} dB or more")
+    if not no_upload:
+        final = os.path.join(os.path.dirname(tmp), f"{day}.cygnss.json")
+        os.replace(tmp, final)
+        try:
+            upload(final)
+        except Exception:
+            os.replace(final, tmp)
+            raise
+        print(f"{day}: uploaded to release {TAG}")
+    else:
+        os.replace(tmp, out)
     return 0
 
 
