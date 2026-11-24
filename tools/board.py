@@ -347,7 +347,8 @@ def spoofing(release, places):
         vic.append({**r, "near": places.near(la, lo) if la is not None else None})
     out = {"day": last["day"], "version": last.get("version"), "active": last.get("active"),
             "episodes": last.get("episodes"), "aircraft": last.get("aircraft_with_episodes"), "victims": vic,
-            "spoofed_to": (last.get("spoofed_to_top") or [])[:5],
+            "spoofed_to": [p for p in (last.get("spoofed_to_top") or [])        # 0°, 0° is a default, not a place
+                           if abs(p.get("lat") or 0) > 0.9 or abs(p.get("lon") or 0) > 0.9][:5],
             "series": [{"day": s["day"], "active": s.get("active")} for s in days],
             "new_places": _new_places(release, places),
             "place_levels": _place_levels(release, places),

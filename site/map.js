@@ -123,6 +123,32 @@
     return { x: m[0] * vw.k + vw.ox, y: m[1] * vw.k + vw.oy };
   }
 
+  var maskCanvas = null;
+  function obstacleMask(obs) {                         // draws obs at half size with a 3 px margin; returns rect -> touches?
+    if (!obs.polys.length && !obs.circles.length && !obs.lines.length) return function () { return false; };
+    var W = Math.ceil(vw.w / 2), H = Math.ceil(vw.h / 2);
+    if (W < 1 || H < 1) return function () { return false; };   // a map not laid out yet
+    maskCanvas = maskCanvas || document.createElement("canvas");
+    maskCanvas.width = W; maskCanvas.height = H;
+    var mg = maskCanvas.getContext("2d", { willReadFrequently: true });
+    mg.setTransform(0.5, 0, 0, 0.5, 0, 0); mg.strokeStyle = mg.fillStyle = "#000"; mg.lineWidth = 8; mg.lineJoin = "round";
+    mg.beginPath();
+    obs.polys.forEach(function (pm) { pm.forEach(function (loops) { loops.forEach(function (loop) { trace(mg, loop, true); }); }); });
+    obs.lines.forEach(function (ln) { mg.moveTo(ln[0], ln[1]); mg.lineTo(ln[2], ln[3]); });
+    mg.stroke();
+    obs.circles.forEach(function (c) {
+      mg.beginPath(); mg.arc(c[0], c[1], c[2], 0, 2 * Math.PI);
+      if (c[3]) mg.fill(); mg.stroke();
+    });
+    var data = mg.getImageData(0, 0, W, H).data;
+    return function (r) {
+      var x0 = Math.max(0, Math.floor(r[0] / 2)), x1 = Math.min(W - 1, Math.ceil(r[2] / 2));
+      var y0 = Math.max(0, Math.floor(r[1] / 2)), y1 = Math.min(H - 1, Math.ceil(r[3] / 2));
+      for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) if (data[(y * W + x) * 4 + 3]) return true;
+      return false;
+    };
+  }
+
   var Canvas = L.Layer.extend({
     onAdd: function (m) {
       this._c = L.DomUtil.create("canvas", "nf-canvas leaflet-zoom-hide");
@@ -179,11 +205,11 @@
       if (layersOn.thin && state.thin && state.measure !== "spf") {   // thin coverage: diagonal hatching over the area
         if (!thinPattern) {                                          // one pattern, anchored to the canvas: no seams
           var pc = document.createElement("canvas"); pc.width = pc.height = 8;
-          var pg = pc.getContext("2d"); pg.strokeStyle = colors.thin; pg.lineWidth = 1.2;
+          var pg = pc.getContext("2d"); pg.strokeStyle = colors.thin; pg.lineWidth = 1;
           pg.beginPath(); pg.moveTo(0, 8); pg.lineTo(8, 0); pg.moveTo(-2, 2); pg.lineTo(2, -2); pg.moveTo(6, 10); pg.lineTo(10, 6); pg.stroke();
           thinPattern = g.createPattern(pc, "repeat");
         }
-        g.save(); g.fillStyle = thinPattern; g.globalAlpha = 0.7; g.beginPath();
+        g.save(); g.fillStyle = thinPattern; g.globalAlpha = m.getZoom() < 3.5 ? 0.3 : 0.45; g.beginPath();   // light: a caveat, not data
         Object.keys(state.thin).forEach(function (r) {
           var sh = shapeOf(r);
           if (!sh.wrap && onScreen(sh.mb)) trace(g, sh.m, true);
@@ -194,7 +220,7 @@
         g.strokeStyle = colors.focus; g.lineWidth = 2; g.beginPath();
         trace(g, cells[state.focus].s.m, true); g.stroke();
       }
-      var labels = [];
+      var labels = [], obs = { polys: [], circles: [], lines: [] };   // obs: outlines and marks that labels must not touch
       if (layersOn.borders && borders.length) {
         g.save(); g.lineWidth = 0.9; g.strokeStyle = colors.border;
         [0, 1].forEach(function (cls) {
@@ -351,13 +377,14 @@
             if (t[2] < SPOOF_LINK_MIN || !t[9] || !t[9].length) return;
             var c = h3.cellToLatLng(t[9][0][0]), a = cp(t[0], t[1]), b = cp(c[0], c[1]);
             if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < 14) return;
-            g.beginPath(); g.moveTo(b.x, b.y); g.lineTo(a.x, a.y); g.stroke();
+            g.beginPath(); g.moveTo(b.x, b.y); g.lineTo(a.x, a.y); g.stroke(); obs.lines.push([b.x, b.y, a.x, a.y]);
           });
           g.setLineDash([]);
           T.forEach(function (t, i) {
             var q = cp(t[0], t[1]), r = Math.min(10, 2.5 + 1.5 * Math.sqrt(t[2]));
             g.globalAlpha = t[2] >= 2 ? 1 : 0.55; g.lineWidth = t[2] >= SPOOF_LINK_MIN ? 2 : 1.2;
             g.beginPath(); g.moveTo(q.x - r, q.y - r); g.lineTo(q.x + r, q.y + r); g.moveTo(q.x + r, q.y - r); g.lineTo(q.x - r, q.y + r); g.stroke();
+            obs.circles.push([q.x, q.y, r, true]);
             if (state.spoofFocus === i) { g.save(); g.globalAlpha = 1; g.strokeStyle = colors.focus; g.lineWidth = 2; g.beginPath(); g.arc(q.x, q.y, r + 4, 0, 2 * Math.PI); g.stroke(); g.restore(); }
           });
         } else {
@@ -392,12 +419,13 @@
           var to = sentFrom(state.spsFocus).slice(0, SENT_DRAW);
           g.globalAlpha = 1; g.strokeStyle = colors.focus; g.lineWidth = 2.6; g.beginPath(); trace(g, fsh.m, true); g.stroke();
           g.strokeStyle = colors.spoof; g.lineWidth = 1.6; g.setLineDash([5, 4]);
-          to.forEach(function (s) { var t = state.sps.targets[s[0]], b = cp(t[0], t[1]); g.beginPath(); g.moveTo(a0.x, a0.y); g.lineTo(b.x, b.y); g.stroke(); });
+          to.forEach(function (s) { var t = state.sps.targets[s[0]], b = cp(t[0], t[1]); g.beginPath(); g.moveTo(a0.x, a0.y); g.lineTo(b.x, b.y); g.stroke(); obs.lines.push([a0.x, a0.y, b.x, b.y]); });
           g.setLineDash([]); g.lineWidth = 2.2;
           to.forEach(function (s, k) {
             var t = state.sps.targets[s[0]], q = cp(t[0], t[1]), r = 5.5;
             g.beginPath(); g.moveTo(q.x - r, q.y - r); g.lineTo(q.x + r, q.y + r); g.moveTo(q.x + r, q.y - r); g.lineTo(q.x - r, q.y + r); g.stroke();
-            if (k < SENT_LABELS) labels.unshift({ text: "Shown " + (t[7] ? "near " + t[7] : "at " + ll2(t[0], t[1])), x: q.x + 8, y: q.y + 4, kind: "spoof" });
+            obs.circles.push([q.x, q.y, r, true]);
+            if (k < SENT_LABELS) labels.unshift({ text: "Shown " + (t[7] ? "near " + t[7] : "at " + ll2(t[0], t[1])), x: q.x + 16, y: q.y + 4, kind: "spoof" });
           });
         }
         g.restore();
@@ -430,7 +458,7 @@
         state.ev.tests.forEach(function (t) {
           var nm = t.radii_nm.FL250 || Math.max.apply(null, Object.keys(t.radii_nm).map(function (k) { return t.radii_nm[k]; }).concat([0]));
           var ctr = cp(t.centre[0], t.centre[1]), top = cp(t.centre[0] + nm * 1.852 / 111.32, t.centre[1]);
-          g.beginPath(); g.arc(ctr.x, ctr.y, Math.abs(ctr.y - top.y), 0, 2 * Math.PI); g.stroke();
+          g.beginPath(); g.arc(ctr.x, ctr.y, Math.abs(ctr.y - top.y), 0, 2 * Math.PI); g.stroke(); obs.circles.push([ctr.x, ctr.y, Math.abs(ctr.y - top.y), false]);
         });
         g.restore();
       }
@@ -438,7 +466,7 @@
         g.save(); g.setLineDash([2, 4]); g.strokeStyle = colors.notam; g.lineWidth = 1.5;
         ntCircles().forEach(function (r) {
           var ctr = cp(r.lat, r.lon), top = cp(r.lat + r.radius_nm * 1.852 / 111.32, r.lon);
-          g.beginPath(); g.arc(ctr.x, ctr.y, Math.max(3, Math.abs(ctr.y - top.y)), 0, 2 * Math.PI); g.stroke();
+          g.beginPath(); g.arc(ctr.x, ctr.y, Math.max(3, Math.abs(ctr.y - top.y)), 0, 2 * Math.PI); g.stroke(); obs.circles.push([ctr.x, ctr.y, Math.max(3, Math.abs(ctr.y - top.y)), false]);
         });
         g.restore();
       }
@@ -448,7 +476,7 @@
           if (!e.polyM) e.polyM = poly(e).map(function (loops) { return loops.map(mercArr); });
           g.beginPath();
           e.polyM.forEach(function (loops) { loops.forEach(function (loop) { trace(g, loop, true); }); });
-          g.stroke();
+          g.stroke(); obs.polys.push(e.polyM);
         };
         g.strokeStyle = colors.event; g.lineWidth = 2;
         rows.anom.forEach(function (e) { if (e !== state.evFocus) outline(e); });
@@ -456,24 +484,30 @@
           if (e === state.evFocus) return;
           var q = cp(e.lat, e.lon);
           g.beginPath(); g.arc(q.x, q.y, 5, 0, 2 * Math.PI); g.fillStyle = colors.event; g.fill();
-          g.lineWidth = 2; g.strokeStyle = colors.ring; g.stroke(); g.strokeStyle = colors.event;
+          g.lineWidth = 2; g.strokeStyle = colors.ring; g.stroke(); g.strokeStyle = colors.event; obs.circles.push([q.x, q.y, 6, true]);
         });
         if (state.evFocus) {
           g.strokeStyle = colors.focus; g.lineWidth = 3;
           if (state.evFocus.t0) {
             var q = cp(state.evFocus.lat, state.evFocus.lon);
-            g.beginPath(); g.arc(q.x, q.y, 7, 0, 2 * Math.PI); g.fillStyle = colors.event; g.fill(); g.stroke();
+            g.beginPath(); g.arc(q.x, q.y, 7, 0, 2 * Math.PI); g.fillStyle = colors.event; g.fill(); g.stroke(); obs.circles.push([q.x, q.y, 8, true]);
           } else outline(state.evFocus);
         }
       }
-      // labels last, with a halo, skipping any that would overlap one already drawn
+      // labels last, with a halo, skipping any that would overlap one already drawn or touch an outline or mark (obs);
+      // a place name that would moves to the left of its dot, and is left out if that touches too
       if (labels.length) {
-        var taken = [], font = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        var taken = [], font = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', hit = obstacleMask(obs);
         g.save(); g.lineJoin = "round"; g.textBaseline = "alphabetic";
         labels.forEach(function (l) {
           g.font = (l.kind === "area" ? "italic 11px " : l.kind === "spoof" ? "600 11.5px " : l.cap ? "600 11.5px " : "11px ") + font;
           var w = g.measureText(l.text).width, r = [l.x - 2, l.y - 11, l.x + w + 2, l.y + 3];
-          if (taken.some(function (t) { return r[0] < t[2] && r[2] > t[0] && r[1] < t[3] && r[3] > t[1]; })) return;
+          var clash = function (r) { return hit(r) || taken.some(function (t) { return r[0] < t[2] && r[2] > t[0] && r[1] < t[3] && r[3] > t[1]; }); };
+          if (clash(r)) {
+            if (!l.dot) return;
+            l.x = l.dot.x - 5 - w; r = [l.x - 2, l.y - 11, l.x + w + 2, l.y + 3];
+            if (clash(r)) return;
+          }
           taken.push(r);
           if (l.dot) {
             g.fillStyle = colors.label;
@@ -495,7 +529,8 @@
     var c = cells[h]; if (!c) return null;
     var e = evaluate(c.d), d = c.d, ll = h3.cellToLatLng(h);
     var lines = [];
-    lines.push(["", (Math.abs(ll[0]).toFixed(1) + "°" + (ll[0] >= 0 ? "N" : "S") + " " + Math.abs(ll[1]).toFixed(1) + "°" + (ll[1] >= 0 ? "E" : "W"))]);
+    var ref = placeRef(ll[0], ll[1]);                 // a place first, coordinates after it (or alone, far from any place)
+    lines.push(["", ref ? ref + " · " + ll2(ll[0], ll[1]) : ll2(ll[0], ll[1])]);
     if (state.measure !== "acc") {
       lines.push(["Aircraft", d[1]]);
       lines.push(["Worse than 93 m", (state.raw ? d[3] : d[2]) + (state.raw ? "" : " (live)")]);
@@ -512,7 +547,7 @@
       lines.push(["Usual (14-day median)", e.usual.toFixed(1) + "%"]);
       lines.push(["Change", (e.share >= 0 ? "+" : "") + e.share.toFixed(1) + " points"]);
     } else {
-      lines.push(["Share", e && e.share !== null ? e.share.toFixed(1) + "%" :
+      lines.push(["Share", e && e.share !== null ? e.share.toFixed(1) + "%" + (e.bad > 0 ? " (" + (e.bad - 1) + " of " + e.n + ": one degraded aircraft is not counted, so a single faulty receiver can't colour a cell)" : "") :
         (e && e.nobase ? "no usual level yet (fewer than 5 earlier days)" : e ? "low coverage (3–4 aircraft)" : "too few aircraft")]);
     }
     var tr2 = state.thin ? state.thin[h3.cellToParent(h, 2)] : undefined;
@@ -550,7 +585,7 @@
     if (state.evShow && state.ev) {
       var r2 = h3.cellToParent(h, 2);
       evRows().anom.forEach(function (a) {
-        if (a.cells.indexOf(r2) >= 0) lines.push(["Anomaly", TIER[a.tier] + ", " + pad(a.h0) + ":00–" + pad(a.h1) + ":59Z"]);
+        if (a.cells.indexOf(r2) >= 0) lines.push(["Anomaly", TIER[a.tier] + ", " + pad(a.h0) + ":00–" + pad(a.h1) + ":59Z, in the surrounding region (about 300 km), not only this cell"]);
       });
       (state.ev.tests || []).forEach(function (t) {
         var nm = t.radii_nm.FL250 || 0, d = h3.greatCircleDistance(ll, t.centre, "km");
@@ -770,6 +805,21 @@
     return nt.notices.filter(function (r) {
       return r.lat != null && r.radius_nm > 0 && r.radius_nm < 999 && !(r.kind === "test" && ntTestUrl(r.test));
     });
+  }
+  function placeRef(lat, lon) {          // "Near Riga" within 150 km (the event-name rule), "220 km W of Riga" within 500 km
+    var best = 500, p0 = null, r = Math.PI / 180;
+    places.forEach(function (p) {
+      if (p.length > 3 && p[3] > 5) return;
+      var h = Math.pow(Math.sin((p[1] - lat) * r / 2), 2) + Math.cos(lat * r) * Math.cos(p[1] * r) * Math.pow(Math.sin((p[2] - lon) * r / 2), 2);
+      var d = 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
+      if (d < best) { best = d; p0 = p; }
+    });
+    if (!p0) return null;
+    if (best <= 150) return "Near " + p0[0];
+    var y = Math.sin((lon - p0[2]) * r) * Math.cos(lat * r),
+        x = Math.cos(p0[1] * r) * Math.sin(lat * r) - Math.sin(p0[1] * r) * Math.cos(lat * r) * Math.cos((lon - p0[2]) * r);
+    var dir = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(((Math.atan2(y, x) / r + 360) % 360) / 45) % 8];
+    return Math.round(best / 10) * 10 + " km " + dir + " of " + p0[0];
   }
   function nearName(lat, lon) {          // a listed place within 150 km, as for event names
     var best = 150, name = null, r = Math.PI / 180;
@@ -1389,6 +1439,9 @@
       txt += " A further " + n + " aircraft reported a spoofed speed but none of their false positions reached the archive, so they can't be " +
         "placed; most reported about " + top[0] + " kt" + (over.length ? ", in regions near " + over.join(", ") : "") + ".";
     }
+    var z = s.zero_position;                           // left out at deploy (tools/spoof_site.py ZERO_KM)
+    if (z && z.aircraft) txt += " " + z.aircraft + " aircraft reported a position of 0°, 0°, a default some receivers give without a fix rather " +
+      "than a place, so it isn't drawn.";
     return txt;
   }
   function layerNote() {
