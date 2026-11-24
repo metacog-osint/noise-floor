@@ -81,6 +81,27 @@ def test_track_and_compact():
     assert "icao" not in json.dumps([rows_c, un])
 
 
+def test_zero_position_left_out():
+    """A cluster at 0°, 0° is a default position, not a place: out of every list, counted in zero_position."""
+    tmp = tempfile.mkdtemp()
+    try:
+        day = "2026-11-23"
+        with open(os.path.join(tmp, f"{day}.spoof-targets.json"), "w", encoding="utf-8") as f:
+            json.dump(tfile(day, [cluster(*LIMA, 6, day=day), cluster(-0.0095, -0.0672, 3, day=day),
+                                  cluster(0.09, 0.39, 2, day=day)]), f)
+        td = SP.target_days(tmp)
+        t = td[day]
+        assert [c["aircraft"] for c in t["clusters"]] == [6], t["clusters"]
+        assert t["zero_position"] == {"aircraft": 5, "episodes": 5}, t["zero_position"]
+        d = {"day": day}
+        SP.add_regions(d, t, {}, Places())
+        assert len(d["targets"]) == 1 and d["targets"][0][7] == "Lima" and d["zero_position"]["aircraft"] == 5
+        assert all(i == 0 for r in d["sent2"].values() for i, _a in r)     # sent2 indexes the kept rows
+        assert not SP.is_zero(cluster(1.5, 0.0, 1)) and SP.is_zero(cluster(0.3, -0.7, 1))
+    finally:
+        shutil.rmtree(tmp)
+
+
 def test_place_levels():
     """Each followed place against its own usual level (median of earlier days, 0 when not shown), and all places
     together; a place not used on any earlier day is "new", left to new_targets()."""

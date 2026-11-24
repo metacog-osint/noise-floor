@@ -131,6 +131,16 @@ def day_parts(raw_dir, day):
     raise FileNotFoundError(f"no {stem}[.aa ...] in {raw_dir}")
 
 
+def check_input_read(chain, parts):
+    """Fail the day if the tar reader stopped before the end of its input. Three published days read 2.0 GB of 3.2 to
+    3.6 GB and looked like ordinary days with fewer aircraft (database review, 23 Nov 2026)."""
+    total = sum(os.path.getsize(p) for p in parts)
+    if chain.nbytes < total:
+        raise IOError(f"input read short: {chain.nbytes:,} of {total:,} bytes across {len(parts)} file(s); "
+                      "no output written for this day")
+    return total
+
+
 def km(lat1, lon1, lat2, lon2):
     p1, p2 = math.radians(lat1), math.radians(lat2)
     a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
@@ -248,10 +258,24 @@ def work(args):
     return recs, dict(st)
 
 
-def batches(stream, day0):
-    with tarfile.open(fileobj=stream, mode="r|") as tf:
+def batches(stream, day0, skipped=None):
+    """Yield trace files in batches. ignore_zeros reads past an unreadable stretch to the next valid header instead of
+    stopping there, as the plain reader did on 2025-10-15, 2026-04-30 and 2026-05-04: each upstream tar has one damaged
+    stretch of 26 to 66 KB just after byte 2,000,000,000, with valid members after it (ideas#238). skipped, a dict, gets
+    the bytes and stretches passed over between members."""
+    if skipped is not None:
+        skipped.update(bytes=0, stretches=0, at=[])
+    end = None
+    with tarfile.open(fileobj=stream, mode="r|", ignore_zeros=True) as tf:
         cur = []
         for m in tf:
+            if skipped is not None:
+                if end is not None and m.offset > end:
+                    skipped["bytes"] += m.offset - end
+                    skipped["stretches"] += 1
+                    if len(skipped["at"]) < 8:
+                        skipped["at"].append([end, m.offset - end])
+                end = m.offset_data + ((m.size + 511) // 512) * 512
             if m.isfile() and "/traces/" in "/" + m.name.lstrip("./") and "trace_full_" in m.name:
                 cur.append(tf.extractfile(m).read())
                 if len(cur) >= BATCH:
@@ -514,7 +538,8 @@ def run(day, raw_dir, out_dir, workers, heavy_apart=False, also=None, position_l
     stream = io.BufferedReader(Chain(parts), buffer_size=8 << 20)
     recs, st = [], defaultdict(int)
     hh, dd, n_pl = defaultdict(lambda: [0, 0, 0, 0]), defaultdict(lambda: [0, 0, 0, 0]), 0
-    jobs = ((b, d0, True) for b, d0 in batches(stream, day0)) if position_loss else batches(stream, day0)
+    skipped = {}
+    jobs = ((b, d0, True) for b, d0 in batches(stream, day0, skipped)) if position_loss else batches(stream, day0, skipped)
     with Pool(workers) as pool:
         for res in pool.imap_unordered(work, jobs, chunksize=1):
             r, s = res[0], res[1]
@@ -529,6 +554,8 @@ def run(day, raw_dir, out_dir, workers, heavy_apart=False, also=None, position_l
                 for key, v in d.items():
                     c = dd[key]; c[0] += v[0]; c[1] += v[1]; c[2] += v[2]; c[3] += v[3]
     chain = stream.raw
+    chain.skipped = skipped
+    check_input_read(chain, parts)
     t_read = time.time() - t0
     pl = write_position_loss(day, out_dir, hh, dd, n_pl) if position_loss else None
     s = finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, workers, pl)
@@ -640,6 +667,9 @@ def finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, worker
     summary = {
         "day": day, "method_version": "1.5" if heavy_apart else (METHOD_VERSION + "-noheavy" if mode == "drop" else METHOD_VERSION), "inputs": [os.path.basename(p) for p in parts],
         "input_bytes": chain.nbytes, "input_sha256": chain.sha.hexdigest(),
+        "input_skipped_bytes": getattr(chain, "skipped", {}).get("bytes", 0),
+        "input_skipped_stretches": getattr(chain, "skipped", {}).get("stretches", 0),
+        "input_skipped_at": getattr(chain, "skipped", {}).get("at", []),
         "seconds": round(secs, 1), "seconds_read": round(t_read, 1), "workers": workers,
         "hexes": len(rows), "hex_hours": len(hrows), "aircraft": len(recs), "avionics_suspects": len(drop),
         "reports_used": sum(m[0] for _, m, _ in recs), "bad_hex_minutes": len(minute),

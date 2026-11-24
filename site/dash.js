@@ -180,8 +180,12 @@
     if (!g) return;
     var top = (g.by_area || []).slice().sort(function (a, b) { return b.vessels - a.vessels; })[0];
     var box = $("sea-text");
-    if (box) box.textContent = g.affected_vessels + " ships in Finnish waters showed GNSS interference in the last collection" +
-      (top ? ", most in " + top.area + " (" + top.vessels + ")" : "") + ".";
+    var w = g.window || {}, a = w.start ? new Date(w.start) : null, b = w.end ? new Date(w.end) : null;
+    var span = !a || !b ? "In the last collection" : dayText(a) === dayText(b) ? "On " + dayText(b)
+      : "On " + a.getUTCDate() + (a.getUTCMonth() === b.getUTCMonth() ? "" : " " + MON[a.getUTCMonth()]) + "–" + dayText(b);
+    var place = top ? String(top.area).replace(/(\d)-(\d)/g, "$1–$2").replace(/(\d+(?:\.\d+)?)E\b/g, "$1°E") : "";
+    if (box) box.textContent = span + " (the latest collection, refreshed by hand), " + g.affected_vessels +
+      " ships in Finnish waters showed GNSS interference" + (top ? ", most in " + place + " (" + top.vessels + ")" : "") + ".";
   });
 
   // ---------- load

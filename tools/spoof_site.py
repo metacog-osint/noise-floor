@@ -19,7 +19,10 @@
   share2, the regions above their usual level and all regions together (regions_now()).
 
 Everything is aggregates of the published files: no aircraft identifiers (ODbL 1.0, derived from adsb.lol). Spoofed-to
-points are where receivers were shown, not where a transmitter is. Needs h3.
+points are where receivers were shown, not where a transmitter is. Clusters within ZERO_KM of 0°, 0° are left out of
+every list here (target_days()) and counted in each day file's `zero_position` {aircraft, episodes}: a position of
+0°, 0° is a default some receivers report without a fix, not a place a spoofer sent them. The release files keep them.
+Needs h3.
 """
 import ast
 import glob
@@ -31,6 +34,7 @@ from collections import Counter, defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LICENCE = "ODbL 1.0; derived from adsb.lol"
+ZERO_KM = 100.0          # a spoofed-to cluster this close to 0°, 0° (open sea) is a default position, not a place (target_days())
 TRACK_KM = 10.0          # a day's cluster belongs to a followed place if its centre is within this of the place's
 NEW_MIN_AIRCRAFT = 3     # a new place needs this many aircraft on the day
 NEW_LOOKBACK = 30        # ... and no cluster within TRACK_KM on any earlier day with a targets file, up to this many back
@@ -130,6 +134,17 @@ def _where(places, lat, lon, cell=None):
         return None
 
 
+def _country(lat, lon):
+    """The plain name of the country a point lies in ('Peru'), for places far from their aircraft; None at sea or
+    when the kit's borders are not to hand."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import area_names
+        return area_names.plain_country(area_names._place_country(lat, lon))
+    except Exception:
+        return None
+
+
 def victims(cells, places, top=3):
     """Res-4 victim cells [[cell, episodes, aircraft], ...] -> the res-2 regions holding most of them."""
     import h3
@@ -155,11 +170,21 @@ def compact(targets, places):
     return rows, un
 
 
+def is_zero(c):
+    """A cluster at 0°, 0° (within ZERO_KM): a default position some receivers report without a fix."""
+    return km(c["lat"], c["lon"], 0.0, 0.0) <= ZERO_KM
+
+
 def target_days(release):
+    """{day: targets file}, with clusters at 0°, 0° moved out of `clusters` into `zero_position` (see the docstring)."""
     out = {}
     for f in sorted(glob.glob(os.path.join(release, "*.spoof-targets.json"))):
         t = load(f)
         if t and isinstance(t.get("clusters"), list):
+            z = [c for c in t["clusters"] if is_zero(c)]
+            if z:
+                t = {**t, "clusters": [c for c in t["clusters"] if not is_zero(c)],
+                     "zero_position": {"aircraft": sum(c["aircraft"] for c in z), "episodes": sum(c["episodes"] for c in z)}}
             out[os.path.basename(f)[:10]] = t
     return out
 
@@ -256,12 +281,15 @@ def track(tdays, places=None):
         total = sum(t["by_day"].values())
         if total < TABLE_MIN_AIRCRAFT_DAYS and len(seen) < TABLE_MIN_DAYS:
             continue
-        vic = []
+        vic, dist = [], None
         for r, n in t["victims"].most_common(3):
             la, lo = h3.cell_to_latlng(r)
-            vic.append(_near(places, la, lo, 350) or f"{la:.1f}, {lo:.1f}")
+            if dist is None:            # to the region holding most of its aircraft, as new_targets() measures it
+                dist = round(km(t["lat"], t["lon"], la, lo))
+            vic.append(_near(places, la, lo, 350) or _where(places, la, lo) or f"{la:.1f}, {lo:.1f}")
         row = {"lat": t["lat"], "lon": t["lon"], "near": _near(places, t["lat"], t["lon"], NEAR_KM),
-               "where": _where(places, t["lat"], t["lon"]),
+               "where": _where(places, t["lat"], t["lon"]), "country": _country(t["lat"], t["lon"]),
+               "km_from_aircraft": dist,
                "first": seen[0], "last": seen[-1], "days": len(seen), "aircraft_days": total,
                "latest": t["by_day"].get(days[-1], 0), "series": [t["by_day"].get(d, 0) for d in recent],
                "victims": list(dict.fromkeys(vic)), "usual": t["usual"], "level": t["level"]}
@@ -437,6 +465,8 @@ def add_regions(d, targets, sdays, places=None, tests=None):
     GPS test (region_tests())."""
     if targets:
         d["targets"], d["unplaced"] = compact(targets, places)
+        if targets.get("zero_position"):
+            d["zero_position"] = targets["zero_position"]
         d["sent2"], d["unplaced2"] = sent(targets)
     day = d.get("day")
     if day in sdays:
