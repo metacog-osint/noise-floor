@@ -19,7 +19,10 @@
   share2, the regions above their usual level and all regions together (regions_now()).
 
 Everything is aggregates of the published files: no aircraft identifiers (ODbL 1.0, derived from adsb.lol). Spoofed-to
-points are where receivers were shown, not where a transmitter is. Needs h3.
+points are where receivers were shown, not where a transmitter is. Clusters within ZERO_KM of 0°, 0° are left out of
+every list here (target_days()) and counted in each day file's `zero_position` {aircraft, episodes}: a position of
+0°, 0° is a default some receivers report without a fix, not a place a spoofer sent them. The release files keep them.
+Needs h3.
 """
 import ast
 import glob
@@ -31,6 +34,7 @@ from collections import Counter, defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LICENCE = "ODbL 1.0; derived from adsb.lol"
+ZERO_KM = 100.0          # a spoofed-to cluster this close to 0°, 0° (open sea) is a default position, not a place (target_days())
 TRACK_KM = 10.0          # a day's cluster belongs to a followed place if its centre is within this of the place's
 NEW_MIN_AIRCRAFT = 3     # a new place needs this many aircraft on the day
 NEW_LOOKBACK = 30        # ... and no cluster within TRACK_KM on any earlier day with a targets file, up to this many back
@@ -166,11 +170,21 @@ def compact(targets, places):
     return rows, un
 
 
+def is_zero(c):
+    """A cluster at 0°, 0° (within ZERO_KM): a default position some receivers report without a fix."""
+    return km(c["lat"], c["lon"], 0.0, 0.0) <= ZERO_KM
+
+
 def target_days(release):
+    """{day: targets file}, with clusters at 0°, 0° moved out of `clusters` into `zero_position` (see the docstring)."""
     out = {}
     for f in sorted(glob.glob(os.path.join(release, "*.spoof-targets.json"))):
         t = load(f)
         if t and isinstance(t.get("clusters"), list):
+            z = [c for c in t["clusters"] if is_zero(c)]
+            if z:
+                t = {**t, "clusters": [c for c in t["clusters"] if not is_zero(c)],
+                     "zero_position": {"aircraft": sum(c["aircraft"] for c in z), "episodes": sum(c["episodes"] for c in z)}}
             out[os.path.basename(f)[:10]] = t
     return out
 
@@ -451,6 +465,8 @@ def add_regions(d, targets, sdays, places=None, tests=None):
     GPS test (region_tests())."""
     if targets:
         d["targets"], d["unplaced"] = compact(targets, places)
+        if targets.get("zero_position"):
+            d["zero_position"] = targets["zero_position"]
         d["sent2"], d["unplaced2"] = sent(targets)
     day = d.get("day")
     if day in sdays:
