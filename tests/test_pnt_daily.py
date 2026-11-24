@@ -274,7 +274,26 @@ def test_short_read_fails_the_day():
         shutil.rmtree(tmp)
 
 
+def test_damaged_stretch_is_skipped_and_recorded():
+    import io, tarfile
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w", format=tarfile.USTAR_FORMAT) as tf:
+        for i in range(3):
+            data = f"trace {i}".encode()
+            ti = tarfile.TarInfo(f"./traces/0{i}/trace_full_a0000{i}.json")
+            ti.size = len(data)
+            tf.addfile(ti, io.BytesIO(data))
+    raw = bytearray(buf.getvalue())
+    raw[1024:1536] = b"\xff" * 512                   # the second member's header, made unreadable
+    skipped = {}
+    got = [f for b, _ in P.batches(io.BytesIO(bytes(raw)), 0, skipped) for f in b]
+    assert got == [b"trace 0", b"trace 2"], got
+    assert skipped["stretches"] == 1 and skipped["bytes"] == 1024 and skipped["at"] == [[1024, 1024]], skipped
+
+
 if __name__ == "__main__":
+    test_damaged_stretch_is_skipped_and_recorded()
+    print("PASS test_damaged_stretch_is_skipped_and_recorded")
     test_short_read_fails_the_day()
     print("PASS test_short_read_fails_the_day")
     test_day()
