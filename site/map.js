@@ -38,6 +38,9 @@
   var THIN_MIN = 10, thinPattern = null;
   var imagery = { on: false, want: false, key: null, layer: null };   // Esri World Imagery under the hexes (not remembered between visits)
   var BASE_MAX_ZOOM = 7, IMG_MAX_ZOOM = 10;                            // imagery is worth a closer look
+  // Sentinel-1 radar imagery for the selected day (imagery.js); its tiles start at zoom 10 and are 10 m pixels
+  var radar = { on: false, want: false, M: null }, RADAR_MAX_ZOOM = 13;
+  function underImagery() { return imagery.on || radar.on; }
   try { var savedLayers = JSON.parse(localStorage.getItem("nf-map-layers") || "null"); if (savedLayers) layersOn = Object.assign(layersOn, savedLayers); } catch (e) { /* defaults */ }
   var mapEl = document.getElementById("map");
   if (!mapEl || !window.L || !window.h3) return;
@@ -170,7 +173,7 @@
       L.DomUtil.setPosition(c, m.containerPointToLayerPoint([0, 0]));
       var g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
       setView(m);
-      if (!imagery.on) {                               // under satellite imagery the land fill would hide it
+      if (!underImagery()) {                           // under satellite imagery the land fill would hide it
         g.fillStyle = colors.land; g.strokeStyle = colors.coast; g.lineWidth = 0.6;
         g.beginPath();
         land.forEach(function (ring) { if (onScreen(ring.mb)) trace(g, ring.m, true); });
@@ -189,7 +192,7 @@
         .forEach(function (pair) {
           g.fillStyle = pair[1]; g.beginPath();
           // over imagery: quiet and low-coverage hexes faint, the interference classes still strong
-          g.globalAlpha = !imagery.on ? 1 : pair[0] === "low" || pair[0] === "quiet" ? 0.22 : 0.72;
+          g.globalAlpha = !underImagery() ? 1 : pair[0] === "low" || pair[0] === "quiet" ? 0.22 : 0.72;
           var small = [];
           byCls[pair[0]].forEach(function (cl) {
             if (useRects) small.push(cl);              // hexes a few pixels across: rectangles look the same
@@ -1160,7 +1163,7 @@
   }
   function hashFor() {
     var c = map.getCenter();
-    return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") + (imagery.on ? "&img=esri" : "") +
+    return "#day=" + state.day + "&m=" + state.measure + (state.raw ? "&raw=1" : "") + (imagery.on ? "&img=esri" : "") + (radar.on ? "&rad=1" : "") +
            (state.spoofShow ? "&sp=1" : "") + (state.spsShow ? "&ss=1" : "") + (state.sps7 ? "&s7=1" : "") + (state.cygShow ? "&cy=1" : "") + (state.nisShow ? "&ni=1" : "") + (state.s6Show ? "&s6=1" : "") + (state.smapShow ? "&sm=1" : "") + (state.c2Show ? "&c2=1" : "") + (state.s1Show ? "&s1=1" : "") +
            (state.lsShow ? "&ls=1" : "") + (state.rtShow ? "&rt=1" : "") + "&v=" + c.lat.toFixed(2) + "," + c.lng.toFixed(2) + "," + map.getZoom();
   }
@@ -1546,6 +1549,10 @@
       "and other C-band transmitters, and it shows regions, not sites (a check against known radar sites failed; see Validation). " +
       "Source: Copernicus Sentinel-1, read through Microsoft Planetary Computer; contains modified Copernicus Sentinel data " + state.s1.day.slice(0, 4) + "."
       : "No Sentinel-1 file within 7 days of this day (each covers 28 days and runs about two days behind)." + nearest("s1", state.day));
+    if (radar.on && state.day) parts.push("Radar imagery, " + fmtDay(state.day) + ": the Copernicus Sentinel-1 radar passes of that UTC day (VV, grey), " +
+      "latest pass on top. Strong interference in the radar's own band (C-band, 5.4 GHz) shows as bright bands or stripes across a pass; " +
+      "ships show as bright points. Sentinel-1 passes most places every few days, so many days have no pass over a given spot. " +
+      "Source: Copernicus Sentinel-1 GRD, read through Microsoft Planetary Computer; contains modified Copernicus Sentinel data " + state.day.slice(0, 4) + ".");
     if (state.smapShow) parts.push(state.smap ? "SMAP, 7 days to " + fmtDay(state.smap.day) + ": " + (state.smap.sources || []).length +
       " stand-out cells (solid) where NASA's SMAP satellite flagged interference in the protected 1400–1427 MHz band on at least half its looks, " +
       "at least 50 points more often than the cells 100–300 km around, which are themselves quiet. Many are likely L-band radars: tested against the North Warning System's " +
@@ -1590,6 +1597,7 @@
 
   function loadDay(day) {
     state.day = day; state.focus = null; state.pinned = false; tip.hidden = true; state.nisFocus = null;
+    if (radar.on && radar.M) radar.M.showDay(day);
     state.spoof = null; state.sps = null; state.spoofFocus = null; state.spsFocus = null; state.cyg = null; state.nis = null; state.s6 = null; state.smap = null; state.c2 = null; state.s1 = null; state.ls = null; state.rt = null; state.rtFocus = null; loadLayers(day);
     state.ev = null; state.evFocus = null; state.evAll = { anom: false, burst: false }; state.evLoading = true;
     state.nt = null; renderNotams();
@@ -1794,7 +1802,7 @@
       if (hp.m === "chg") state.measure = "chg";
       var v = (hp.v || "").split(",").map(Number);
       state.view = v.length === 3 && v.every(function (x) { return isFinite(x); }) ? v : null;
-      imagery.want = hp.img === "esri";
+      imagery.want = hp.img === "esri"; radar.want = hp.rad === "1";
       state.spoofShow = hp.sp === "1"; state.spsShow = hp.ss === "1" || state.measure === "spf"; state.sps7 = hp.s7 === "1"; state.cygShow = hp.cy === "1"; state.nisShow = hp.ni === "1"; state.s6Show = hp.s6 === "1"; state.smapShow = hp.sm === "1"; state.c2Show = hp.c2 === "1"; state.s1Show = hp.s1 === "1";
       state.lsShow = hp.ls === "1"; state.rtShow = hp.rt === "1";
       var st = (hp.st || "").split(",").map(Number);
@@ -1806,7 +1814,7 @@
     window.addEventListener("hashchange", function () {
       if (location.hash === hashFor()) return;         // our own replaceState
       var d = fromHash(); renderLegend();
-      setImagery(imagery.want);
+      setImagery(imagery.want); setRadar(radar.want);
       if (state.view) map.setView([state.view[0], state.view[1]], state.view[2], { animate: false });
       if (d !== state.day) loadDay(d);
       else {
@@ -1860,17 +1868,51 @@
       if (on === imagery.on) return;
       imagery.on = on; imgBox.checked = on;
       if (on) {
+        setRadar(false);                               // one imagery layer at a time
         imagery.layer = NFImagery.esriLayer(imagery.key, function () {
           imgNote.textContent = "Esri imagery isn't loading (the free monthly allowance may be used up).";
           imgNote.hidden = false;
         }).addTo(map);
-        map.setMaxZoom(IMG_MAX_ZOOM);
       } else {
         if (imagery.layer) { map.removeLayer(imagery.layer); imagery.layer = null; }
         imgNote.hidden = true;
-        map.setMaxZoom(BASE_MAX_ZOOM);
       }
-      layer.redraw(); writeHash();
+      setMaxZoomNow(); layer.redraw(); writeHash(); panelSummary();
+    }
+    function setMaxZoomNow() { map.setMaxZoom(radar.on ? RADAR_MAX_ZOOM : imagery.on ? IMG_MAX_ZOOM : BASE_MAX_ZOOM); }
+    // Sentinel-1 radar imagery for the selected day: Microsoft Planetary Computer, anonymous (imagery.js)
+    var radBox = document.getElementById("lyr-radar"), radNote = document.getElementById("map-radar-note");
+    var radScene = document.getElementById("map-radar-scene"), radMsg = "", radErr = false;
+    function radarNote() {
+      var low = radar.on && radar.M && map.getZoom() < radar.M.minZoom, t = radMsg || (low ? "Radar imagery shows from zoom " + radar.M.minZoom + ", about 100 km across. " : "");
+      radNote.textContent = t; radNote.hidden = !t;
+      radNote.classList.toggle("img-err", !!(radMsg && radErr));
+      if (low && !radMsg) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "linkish"; b.textContent = "Zoom in";
+        b.addEventListener("click", function () { map.setZoom(radar.M.minZoom); });
+        radNote.appendChild(b);
+      }
+      radScene.hidden = !radar.on || !radScene.textContent;
+    }
+    function setRadar(on) {
+      on = !!(on && window.NFImagery && NFImagery.sentinel1Day);
+      if (on === radar.on) return;
+      if (on && !radar.M) radar.M = NFImagery.sentinel1Day(map, {
+        status: function (t, isErr) { radMsg = t; radErr = isErr; radarNote(); },
+        scene: function (t) { radScene.textContent = t; radarNote(); }
+      });
+      radar.on = on; radBox.checked = on;
+      if (on) { if (imagery.on) setImagery(false); if (state.day) radar.M.showDay(state.day); }   // else loadDay shows it
+      else if (radar.M) radar.M.hide();
+      setMaxZoomNow(); radarNote(); layerNote(); layer.redraw(); writeHash(); panelSummary();
+    }
+    radBox.addEventListener("change", function () { setRadar(radBox.checked); });
+    map.on("zoomend", radarNote);
+    if (!window.NFImagery || !NFImagery.sentinel1Day) document.getElementById("lyr-radar-opt").hidden = true;
+    if (radar.want) {
+      setRadar(true);
+      if (state.view && state.view[2] > BASE_MAX_ZOOM) map.setView([state.view[0], state.view[1]], state.view[2], { animate: false });
     }
     imgBox.addEventListener("change", function () { setImagery(imgBox.checked); });
     if (window.NFImagery) NFImagery.esriKey().then(function (k) {
