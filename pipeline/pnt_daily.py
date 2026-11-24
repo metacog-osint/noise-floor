@@ -131,6 +131,16 @@ def day_parts(raw_dir, day):
     raise FileNotFoundError(f"no {stem}[.aa ...] in {raw_dir}")
 
 
+def check_input_read(chain, parts):
+    """Fail the day if the tar reader stopped before the end of its input. Three published days read 2.0 GB of 3.2 to
+    3.6 GB and looked like ordinary days with fewer aircraft (database review, 23 Nov 2026)."""
+    total = sum(os.path.getsize(p) for p in parts)
+    if chain.nbytes < total:
+        raise IOError(f"input read short: {chain.nbytes:,} of {total:,} bytes across {len(parts)} file(s); "
+                      "no output written for this day")
+    return total
+
+
 def km(lat1, lon1, lat2, lon2):
     p1, p2 = math.radians(lat1), math.radians(lat2)
     a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
@@ -529,6 +539,7 @@ def run(day, raw_dir, out_dir, workers, heavy_apart=False, also=None, position_l
                 for key, v in d.items():
                     c = dd[key]; c[0] += v[0]; c[1] += v[1]; c[2] += v[2]; c[3] += v[3]
     chain = stream.raw
+    check_input_read(chain, parts)
     t_read = time.time() - t0
     pl = write_position_loss(day, out_dir, hh, dd, n_pl) if position_loss else None
     s = finish(day, out_dir, heavy_apart, recs, st, chain, parts, t0, t_read, workers, pl)

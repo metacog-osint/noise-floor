@@ -252,7 +252,31 @@ def test_position_loss():
         shutil.rmtree(tmp)
 
 
+def test_short_read_fails_the_day():
+    tmp = tempfile.mkdtemp()
+    try:
+        parts = [os.path.join(tmp, n) for n in ("a.tar.aa", "a.tar.ab")]
+        for p in parts:
+            with open(p, "wb") as f:
+                f.write(b"x" * 1000)
+        chain = P.Chain(parts)
+        chain.readinto(bytearray(1000))                 # the reader stops after the first part
+        try:
+            P.check_input_read(chain, parts)
+        except IOError as e:
+            assert "1,000 of 2,000" in str(e), e
+        else:
+            raise AssertionError("a short read passed")
+        chain.readinto(bytearray(1000))
+        assert P.check_input_read(chain, parts) == 2000
+        chain.f.close()
+    finally:
+        shutil.rmtree(tmp)
+
+
 if __name__ == "__main__":
+    test_short_read_fails_the_day()
+    print("PASS test_short_read_fails_the_day")
     test_day()
     print("PASS test_day")
     test_heavy_apart()
