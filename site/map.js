@@ -1665,13 +1665,13 @@
     });
     readColors();
     var sel = document.getElementById("map-day");
-    var daily = days.filter(function (d) { return d.daily; }).reverse();        // newest first
+    var daily = days.slice().reverse();         // every day in its own month, newest first; the validated days also have a group
     var tested = days.filter(function (d) { return !d.daily; });
     var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     var groups = [], seen = {};
     daily.forEach(function (d) {
       var m = d.day.slice(0, 7);
-      if (!seen[m]) { seen[m] = []; groups.push([MONTHS[+m.slice(5, 7) - 1] + " " + m.slice(0, 4) + " · daily", seen[m]]); }
+      if (!seen[m]) { seen[m] = []; groups.push([MONTHS[+m.slice(5, 7) - 1] + " " + m.slice(0, 4), seen[m]]); }
       seen[m].push(d);
     });
     groups.push(["Validated test days", tested]);
