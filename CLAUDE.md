@@ -75,7 +75,8 @@ History: `HISTORY.md`. Plan and open decisions: `docs/DESIGN.md` ("Merged plan" 
   `place_country` (rings to 25 km for coastal towns).
 - **Names (Tom 17-18 Nov; rule in `tools/area_names.py`):** a listed place within 150 km in a country the area
   covers (rank 6-7 places when no rank <= 5 one); else the point's country, or the land-majority one when half the cells' samples are land; else its
-  Natural Earth sea (`tools/sea_areas.py`). Countries and seas carry `near_ref` ("220 km W of Tbilisi"; "of Doha, Qatar" across a border); events
+  Natural Earth sea (`tools/sea_areas.py`). Coastal points the kit's 5 km outlines miss go by the 10 m coast
+  (`tools/coast.py`); a spoofed-to point at sea takes its sea, not its cell's land (24 Nov). Countries and seas carry `near_ref` ("220 km W of Tbilisi"; "of Doha, Qatar" across a border); events
   of 10+ regions over 5+ countries read "across N countries, centred ...". Full words in `where` (board rows, map
   events files, spoofing rows). Cell countries: `site/data/cell_countries.json` (rebuild on kit border changes).
 - Spoofing items: up to five new places and up to five `noisefloor-spoof-region-above-<day>-<n>`; ids
