@@ -65,7 +65,7 @@
                  label: a.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }) });
     }
     var today = iso(now);
-    out.push({ key: "recent", start: addDays(today, -30), end: today, label: "Last 30 days (to " + today + ")" });
+    out.push({ key: "recent", start: addDays(today, -30), end: today, label: "Last 30 days (to " + dayWords(today) + ")" });
     return out;
   }
   function windowFor(wins, day) {   // the window holding a UTC day, or null
@@ -73,7 +73,22 @@
     return null;
   }
   var STAC = "https://planetarycomputer.microsoft.com/api/stac/v1/search";
-  function utc(t) { return t ? t.slice(0, 10) + " " + t.slice(11, 16) + " UTC" : ""; }
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function dayWords(d) { return d ? +d.slice(8, 10) + " " + MON[+d.slice(5, 7) - 1] + " " + d.slice(0, 4) : ""; }   // "16 Nov 2026"
+  function utc(t) {                 // "16 Nov 2026, 15:27 UTC (9:27 AM CST)": UTC first, then the viewer's zone (tic-time.js), named
+    if (!t) return "";
+    var out = dayWords(t.slice(0, 10)) + ", " + t.slice(11, 16) + " UTC", d = new Date(t.slice(0, 16) + ":00Z");
+    try {
+      var T = window.TicTime, z = T ? T.zone() : undefined;
+      if (z === "UTC" || isNaN(d)) return out;
+      var x = {};
+      new Intl.DateTimeFormat("en-US", { timeZone: z, month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+                                         hourCycle: T && !T.hour12() ? "h23" : "h12", timeZoneName: "short" })
+        .formatToParts(d).forEach(function (q) { x[q.type] = q.value; });
+      var time = x.hour + ":" + x.minute + (x.dayPeriod ? " " + x.dayPeriod : ""), other = +x.day !== d.getUTCDate();
+      return out + " (" + time + (other ? " " + x.day + " " + x.month : "") + " " + x.timeZoneName + ")";
+    } catch (e) { return out; }
+  }
   // Two Planetary Computer collections, both Copernicus data (free for any use with attribution), both anonymous.
   var KINDS = {
     s2: { collection: "sentinel-2-l2a", word: "Imagery",
@@ -82,7 +97,7 @@
           sortby: [{ field: "eo:cloud_cover", direction: "asc" }],
           fields: ["properties.datetime", "properties.eo:cloud_cover"],
           scene: function (p) {
-            return "Image at the map centre: " + p.datetime.slice(0, 10) +
+            return "Image at the map centre: " + dayWords(p.datetime.slice(0, 10)) +
                    (p["eo:cloud_cover"] !== undefined ? " (" + Math.round(p["eo:cloud_cover"]) + "% cloud over that whole scene)" : "");
           } },
     s1: { collection: "sentinel-1-grd", word: "Radar",
@@ -144,11 +159,11 @@
           if (my !== seq || want === null) return;
           if (p) { opts.scene(K.scene(p)); return; }
           if (!w.day) { opts.scene("No image of the map centre in this period."); return; }
-          opts.scene("No radar pass over the map centre on " + w.day + ".");
+          opts.scene("No radar pass over the map centre on " + dayWords(w.day) + ".");
           nearPasses(K, w.day, c.lat, c.lng).then(function (ds) {
             if (my !== seq || want === null) return;
-            opts.scene("No radar pass over the map centre on " + w.day + ". " + (ds.length ?
-              "Passes within a week: " + ds.join(", ") + "." : "None within a week either."));
+            opts.scene("No radar pass over the map centre on " + dayWords(w.day) + ". " + (ds.length ?
+              "Passes within a week: " + ds.map(dayWords).join(", ") + "." : "None within a week either."));
           }).catch(function () {});
         }).catch(function () { if (my === seq) opts.scene(""); });
       }, 600);
@@ -156,7 +171,7 @@
     function onMove() { if (want !== null) { seq++; scene(); } }
     function show(i) { showWin(wins[i]); }
     function showDay(day) {
-      showWin({ key: "day-" + day, day: day, start: day, end: day, label: day });
+      showWin({ key: "day-" + day, day: day, start: day, end: day, label: dayWords(day) });
     }
     function showWin(w) {
       var i = w.key;

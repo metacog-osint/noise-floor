@@ -1,5 +1,5 @@
 <!--{"title": "Map · Noisefloor", "description": "Interactive world map of GNSS degradation from aircraft ADS-B reports, per H3 cell, updated daily.", "nav": "map", "layout": "wide", "head": "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css\"><script defer src=\"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js\"></script><script defer src=\"https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js\"></script><script defer src=\"/imagery.js\"></script><script defer src=\"/map.js\"></script>"}-->
-<div class="page-head">
+<div class="page-head map-head">
   <div>
     <h1>Where aircraft lost GPS</h1>
     <p class="page-sub">Every day since 1 October 2025, from aircraft position reports. A new day appears each morning by about <span data-utc-daily="06:00">06:00 UTC</span>.</p>
@@ -7,56 +7,67 @@
   <a class="howto-link" href="#howto">How to read this map ↓</a>
 </div>
 
-<div class="controls" role="group" aria-label="Map controls">
-  <label class="ctl"><span>Day</span><select id="map-day" aria-label="Day"></select></label>
-  <label class="ctl search"><span>Find a place</span><input type="search" id="map-search" list="map-search-list" placeholder="City or monitored area" autocomplete="off" aria-label="Find a place or monitored area"></label>
+<div class="map-bar" role="group" aria-label="Map controls">
+  <div class="mb-day">
+    <button type="button" class="tl-btn" id="mp-prev" aria-label="Previous day">‹</button>
+    <label class="mb-sel"><span class="sr-only">Day</span><select id="map-day" aria-label="Day"></select></label>
+    <button type="button" class="tl-btn" id="mp-next" aria-label="Next day">›</button>
+  </div>
+  <div class="mb-view" role="radiogroup" aria-label="What the map shows">
+    <button type="button" class="mb-seg" id="mb-gps" role="radio" aria-checked="true">GPS error</button>
+    <button type="button" class="mb-seg" id="mb-spf" role="radio" aria-checked="false">Spoofing</button>
+  </div>
+  <label class="mb-search"><span class="sr-only">Find a place</span><input type="search" id="map-search" list="map-search-list" placeholder="Find a place" autocomplete="off" aria-label="Find a place or monitored area"></label>
   <datalist id="map-search-list"></datalist>
-  <label class="ctl check" id="map-raw-wrap"><input type="checkbox" id="map-raw"> Include aircraft still degraded from earlier interference</label>
 </div>
-
 
 <div class="map-frame">
   <div id="map" role="img" aria-label="World map of cells coloured by the share of aircraft with degraded GNSS on the selected day. A table of the worst cells follows the map."></div>
   <div id="map-tip" class="map-tip" hidden></div>
-  <div id="map-panel" class="map-panel">
-    <button type="button" class="mp-toggle" id="mp-toggle" aria-expanded="true" aria-controls="mp-body">Map options <span aria-hidden="true">▾</span></button>
+  <div id="map-panel" class="map-panel closed">
+    <button type="button" class="mp-toggle" id="mp-toggle" aria-expanded="false" aria-controls="mp-body">Map options <span aria-hidden="true">▾</span><small id="mp-sum" class="mp-sum"></small></button>
     <div id="mp-body" class="mp-body">
-      <div class="mp-step">
-        <button type="button" class="tl-btn" id="mp-prev" aria-label="Previous day">‹</button>
-        <span id="mp-day" class="mp-day"></span>
-        <button type="button" class="tl-btn" id="mp-next" aria-label="Next day">›</button>
-      </div>
       <fieldset class="mp-group"><legend>Measure</legend>
         <label><input type="radio" name="measure" value="jam" checked> Severe error (93 m)</label>
+        <label class="mp-sub" id="map-raw-wrap"><input type="checkbox" id="map-raw"> Also count aircraft still degraded from interference they left earlier</label>
         <label><input type="radio" name="measure" value="acc"> Accuracy (10 m)</label>
         <label id="mp-chg-wrap"><input type="radio" name="measure" value="chg"> Change from usual (93 m)</label>
         <label id="mp-miss-wrap"><input type="radio" name="measure" value="miss"> Fewer aircraft than usual</label>
         <label><input type="radio" name="measure" value="spf"> Spoofing (regions)</label>
       </fieldset>
-      <fieldset class="mp-group"><legend>Layers</legend>
+      <details class="mp-fold" open><summary>Base map <span class="mp-n"></span></summary>
         <label><input type="checkbox" id="lyr-borders" checked> Country borders</label>
         <label><input type="checkbox" id="lyr-places" checked> Place names</label>
         <label><input type="checkbox" id="lyr-areas"> Monitored areas</label>
         <label><input type="checkbox" id="lyr-thin" checked> Thin coverage (few aircraft heard) <span class="lyr-key lyr-key-thin" aria-hidden="true"></span></label>
-        <label><input type="checkbox" id="lyr-events" checked> Events and announced tests</label>
         <label id="lyr-imagery-opt" hidden><input type="checkbox" id="lyr-imagery"> Satellite imagery (Esri)</label>
-        <label id="lyr-radar-opt"><input type="checkbox" id="lyr-radar"> Radar imagery (Sentinel-1), this day</label>
-        <label><input type="checkbox" id="lyr-spoof"> Spoofing (aircraft) <span class="lyr-key lyr-key-spoof" aria-hidden="true"></span></label>
+      </details>
+      <details class="mp-fold" open><summary>Events and notices <span class="mp-n"></span></summary>
+        <label><input type="checkbox" id="lyr-events" checked> Events and announced tests</label>
+        <label><input type="checkbox" id="lyr-notams"> GNSS NOTAM circles</label>
+      </details>
+      <details class="mp-fold"><summary>Spoofing <span class="mp-n"></span></summary>
+        <label><input type="checkbox" id="lyr-spoof"> Where receivers were told they were <span class="lyr-key lyr-key-spoof" aria-hidden="true"></span></label>
         <label><input type="checkbox" id="lyr-sps"> Spoofed share of aircraft (regions) <span class="lyr-key lyr-key-sps" aria-hidden="true"></span></label>
         <label class="mp-sub"><input type="checkbox" id="lyr-sps7"> Pool the last 7 days</label>
-        <label><input type="checkbox" id="lyr-cyg"> CYGNSS noise floor (from orbit) <span class="lyr-key lyr-key-cyg" aria-hidden="true"></span></label>
-        <label><input type="checkbox" id="lyr-c2"> COSMIC-2 GPS receivers (from orbit) <span class="lyr-key lyr-key-c2" aria-hidden="true"></span></label>
-        <label><input type="checkbox" id="lyr-s6"> Sentinel-6 GPS receiver (from orbit) <span class="lyr-key lyr-key-s6" aria-hidden="true"></span></label>
+      </details>
+      <details class="mp-fold"><summary>From orbit <span class="mp-n"></span></summary>
+        <label><input type="checkbox" id="lyr-cyg"> CYGNSS noise floor <span class="lyr-key lyr-key-cyg" aria-hidden="true"></span></label>
+        <label><input type="checkbox" id="lyr-c2"> COSMIC-2 GPS receivers <span class="lyr-key lyr-key-c2" aria-hidden="true"></span></label>
+        <label><input type="checkbox" id="lyr-s6"> Sentinel-6 GPS receiver <span class="lyr-key lyr-key-s6" aria-hidden="true"></span></label>
         <label><input type="checkbox" id="lyr-smap"> L-band radars and other emitters (SMAP) <span class="lyr-key lyr-key-smap" aria-hidden="true"></span></label>
         <label><input type="checkbox" id="lyr-s1"> C-band radar activity (Sentinel-1) <span class="lyr-key lyr-key-s1" aria-hidden="true"></span></label>
+        <label id="lyr-radar-opt"><input type="checkbox" id="lyr-radar"> Radar imagery (Sentinel-1), this day</label>
+        <label><input type="checkbox" id="lyr-nis"> L-band emitters (NISAR radar) <span class="lyr-key lyr-key-nisar" aria-hidden="true"></span><span class="lyr-key lyr-key-nisar-b" aria-hidden="true"></span></label>
+      </details>
+      <details class="mp-fold"><summary>Space weather <span class="mp-n"></span></summary>
         <label><input type="checkbox" id="lyr-ls"> Ionospheric scintillation: limb S4 (COSMIC-2) <span class="lyr-key lyr-key-ls4" aria-hidden="true"></span></label>
         <label><input type="checkbox" id="lyr-rt"> Ionospheric irregularities: ground ROTI (IGS stations) <span class="lyr-key lyr-key-roti" aria-hidden="true"></span></label>
-        <label><input type="checkbox" id="lyr-nis"> L-band emitters (NISAR radar) <span class="lyr-key lyr-key-nisar" aria-hidden="true"></span><span class="lyr-key lyr-key-nisar-b" aria-hidden="true"></span></label>
-        <p id="lyr-note" class="small"></p>
-        <p id="map-img-note" class="img-note" aria-live="polite" hidden></p>
-        <p id="map-radar-note" class="img-note" aria-live="polite" hidden></p>
-        <p id="map-radar-scene" class="img-note" aria-live="polite" hidden></p>
-      </fieldset>
+      </details>
+      <p id="lyr-note" class="small"></p>
+      <p id="map-img-note" class="img-note" aria-live="polite" hidden></p>
+      <p id="map-radar-note" class="img-note" aria-live="polite" hidden></p>
+      <p id="map-radar-scene" class="img-note" aria-live="polite" hidden></p>
       <label class="mp-group"><span>Jump to</span><select id="map-jump" aria-label="Jump to a region">
         <option value="">Choose a region…</option>
         <option value="30,10,2">World</option>
@@ -87,11 +98,9 @@
   <div class="tl-head small"><span id="tl-title"></span><span id="tl-range" class="mut"></span></div>
   <div class="tl-strip" id="tl-strip"></div>
   <div class="tl-row">
-    <button type="button" class="tl-btn" id="tl-prev" aria-label="Previous day">‹</button>
-    <input type="range" id="tl-slider" min="0" max="0" step="1" value="0" aria-label="Day">
-    <button type="button" class="tl-btn" id="tl-next" aria-label="Next day">›</button>
     <button type="button" class="tl-btn tl-play" id="tl-play" aria-label="Play through the days" aria-pressed="false">▶</button>
-    <span class="tl-day" id="tl-day" aria-live="polite"></span>
+    <span class="tl-day small" id="tl-day" aria-live="polite"></span>
+    <span class="small mut">Click a bar to open that day.</span>
   </div>
 </div>
 
@@ -149,21 +158,21 @@
 
 <section id="howto" class="howto" aria-labelledby="howto-h">
 <h2 id="howto-h">How to read this map</h2>
-<p>The share of aircraft in each cell whose own GPS accuracy degraded that day, from their ADS-B position-quality reports. It shows effects, not who caused them. A new day appears each morning: adsb.lol publishes each UTC day at about 03:30 UTC the next day, and the map updates by about 06:00 UTC (1 am CDT, midnight CST). The map covers every day since 1 October 2025: drag the slider or click the strip to move through it. Daily runs are automatic and not reviewed by a person; the 20 validated test days are marked.</p>
+<p>The share of aircraft in each cell whose own GPS accuracy degraded that day, from their ADS-B position-quality reports. It shows effects, not who caused them. A new day appears each morning: adsb.lol publishes each UTC day at about 03:30 UTC the next day, and the map updates by about 06:00 UTC (1 am CDT, midnight CST). The map covers every day since 1 October 2025: use ‹ and › beside the day, pick a day from the list (notable days first), or click a bar in the strip under the map. Daily runs are automatic and not reviewed by a person; the 20 validated test days are marked.</p>
 <ul>
   <li><strong>Click a cell</strong> to see the history of the area around it (an H3 resolution-3 cell, about 12,000 km²): its share for every day since 1 October 2025, with the days an anomaly event covered it. Click a point on that chart to open the day.</li>
-  <li><strong>Satellite imagery</strong> (Map options → Layers → Satellite imagery) puts Esri World Imagery under the cells: quiet cells turn faint, the coloured ones stay strong, and the map zooms closer (to zoom 10) to show what lies under a hotspot. It is offered only where Esri's terms allow (see the <a href="/terms#imagery">terms of use</a>) and stops if the site's free monthly allowance runs out.</li>
-  <li><strong>Radar imagery</strong> (Map options → Layers → Radar imagery) puts the Copernicus Sentinel-1 radar passes of the selected day under the cells, from zoom 10 (about 100 km across). Strong interference in the radar's own band shows as bright bands or stripes across a pass. Turn on <em>C-band radar activity (Sentinel-1)</em> too to see which areas the satellite itself flagged. Sentinel-1 passes most places every few days; when it missed the map centre that day, the note under the layers names the nearest passes. Free Copernicus data, read through Microsoft Planetary Computer, whose tile service is a preview and can be slow.</li>
+  <li><strong>Satellite imagery</strong> (Map options → Base map → Satellite imagery) puts Esri World Imagery under the cells: quiet cells turn faint, the coloured ones stay strong, and the map zooms closer (to zoom 10) to show what lies under a hotspot. It is offered only where Esri's terms allow (see the <a href="/terms#imagery">terms of use</a>) and stops if the site's free monthly allowance runs out.</li>
+  <li><strong>Radar imagery</strong> (Map options → From orbit → Radar imagery) puts the Copernicus Sentinel-1 radar passes of the selected day under the cells, from zoom 10 (about 100 km across). Strong interference in the radar's own band shows as bright bands or stripes across a pass. Turn on <em>C-band radar activity (Sentinel-1)</em> too to see which areas the satellite itself flagged. Sentinel-1 passes most places every few days; when it missed the map centre that day, the note under the options names the nearest passes. Radar imagery and Esri imagery take turns: turning one on turns the other off. Free Copernicus data, read through Microsoft Planetary Computer, whose tile service is a preview and can be slow.</li>
   <li><strong>Change from usual</strong> colours each cell by how far today's share sits above its own median over its previous 14 days with traffic. Persistent hotspots fade, so new or growing activity stands out. Cells with fewer than 5 such days show as low coverage.</li>
   <li><strong>Fewer aircraft than usual</strong> compares each cell's aircraft count with its median over the previous 14 days. Strong jamming can stop aircraft sending a position at all, and then they vanish from the map instead of showing as degraded: on 9 May 2026 three in four aircraft crossing the southern Baltic lost their ADS-B position (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/phase1.md">validation notes</a>, verdict 34). Weekends, holidays, airspace closures and receiver outages lower counts too, so read it alongside the other views. Try 2026-05-09.</li>
-  <li><strong>Spoofing</strong> (Map options → Measure → Spoofing) turns off the GPS-error colours and shades each region about 300 km across by the share of its aircraft-hours spent in active spoofing episodes, counted where the aircraft really were. A bold dashed outline marks a region above its own usual level: at least twice its median over up to 30 earlier days, and 5 or more spoofed aircraft-hours over it. That compares the region with its own normal; it is not a warning. Crosses mark where receivers were told they were. Hover a region to see where its aircraft were shown; click it to draw lines there. "Pool the last 7 days" adds up the week, which settles single-day noise in regions with little traffic. The table under the map then lists the regions with the most spoofing.</li>
-  <li><strong>Limb S4</strong> (Map options → Layers): limb S4 measured along radio-occultation paths, which reads higher than a ground receiver's S4. The COSMIC-2 satellites compute S4, a scintillation index, every 10 seconds for GPS signals that pass edge-on through the ionosphere below them. Each cell, about 840 km across, shows its highest hourly 95th percentile that UTC day; hover for the hour, the local solar time and how many values it rests on. Along the ray the place is uncertain by up to about 2,000 km. The shading steps are display choices: limb S4 is never compared with the alert levels used for ground S4. A dashed outline means most of that hour's values came while UCAR's interference index was raised, so interference, not the ionosphere, may have raised them. About 45°S to 45°N; only some COSMIC-2 satellites deliver these files, and the note says which. Checked against INGV ground scintillation receivers on 25 held-out days (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/cosmic2-limb-s4.md">validation</a>, AUC 0.834). Full hourly files: the swx-data <a href="https://github.com/metacog-osint/noise-floor/releases">releases</a>, CC BY 4.0, from UCAR COSMIC-2 (CDAAC).</li>
-  <li><strong>Ground ROTI</strong> (Map options → Layers): ROTI, a measured TEC fluctuation index at fixed stations, in TECU per minute. It measures how fast the electron content along each GPS and Galileo path changes, a proxy for ionospheric irregularities; it is not an S4 value and is never read against S4 alert levels. Each dot is an IGS station with its highest hourly 95th percentile that day; the dashed ring shows roughly where its paths above 30° cross 350 km. Hover for the hour and the station's other high hours. Irregularities at these latitudes usually follow sunset, so check the local solar time. Checked against INGV ground scintillation receivers on 25 held-out days (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/ground-roti.md">validation</a>, AUC 0.887). Full hourly files: the swx-data releases, CC BY 4.0, from IGS station data via BKG (credit the IGS and the station operators).</li>
-  <li><strong>Play</strong> (▶ under the strip) steps through the days one by one; any other control stops it.</li>
+  <li><strong>Spoofing</strong> (the Spoofing button above the map, or Map options → Measure → Spoofing) turns off the GPS-error colours and shades each region about 300 km across by the share of its aircraft-hours spent in active spoofing episodes, counted where the aircraft really were. A bold dashed outline marks a region above its own usual level: at least twice its median over up to 30 earlier days, and 5 or more spoofed aircraft-hours over it. That compares the region with its own normal; it is not a warning. Crosses mark where receivers were told they were. Hover a region to see where its aircraft were shown; click it to draw lines there. "Pool the last 7 days" adds up the week, which settles single-day noise in regions with little traffic. The table under the map then lists the regions with the most spoofing.</li>
+  <li><strong>Limb S4</strong> (Map options → Space weather): limb S4 measured along radio-occultation paths, which reads higher than a ground receiver's S4. The COSMIC-2 satellites compute S4, a scintillation index, every 10 seconds for GPS signals that pass edge-on through the ionosphere below them. Each cell, about 840 km across, shows its highest hourly 95th percentile that UTC day; hover for the hour, the local solar time and how many values it rests on. Along the ray the place is uncertain by up to about 2,000 km. The shading steps are display choices: limb S4 is never compared with the alert levels used for ground S4. A dashed outline means most of that hour's values came while UCAR's interference index was raised, so interference, not the ionosphere, may have raised them. About 45°S to 45°N; only some COSMIC-2 satellites deliver these files, and the note says which. Checked against INGV ground scintillation receivers on 25 held-out days (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/cosmic2-limb-s4.md">validation</a>, AUC 0.834). Full hourly files: the swx-data <a href="https://github.com/metacog-osint/noise-floor/releases">releases</a>, CC BY 4.0, from UCAR COSMIC-2 (CDAAC).</li>
+  <li><strong>Ground ROTI</strong> (Map options → Space weather): ROTI, a measured TEC fluctuation index at fixed stations, in TECU per minute. It measures how fast the electron content along each GPS and Galileo path changes, a proxy for ionospheric irregularities; it is not an S4 value and is never read against S4 alert levels. Each dot is an IGS station with its highest hourly 95th percentile that day; the dashed ring shows roughly where its paths above 30° cross 350 km. Hover for the hour and the station's other high hours. Irregularities at these latitudes usually follow sunset, so check the local solar time. Checked against INGV ground scintillation receivers on 25 held-out days (<a href="https://github.com/metacog-osint/noise-floor/blob/main/docs/validation/ground-roti.md">validation</a>, AUC 0.887). Full hourly files: the swx-data releases, CC BY 4.0, from IGS station data via BKG (credit the IGS and the station operators).</li>
+  <li><strong>Play</strong> (▶ beside the strip) steps through the days one by one; any other control stops it.</li>
   <li><strong>Cells</strong> are H3 resolution 4, about 1,770 km² each. A cell is coloured only when 5 or more aircraft were in it that day; 3–4 show as low coverage, and 1–2 are left out.</li>
   <li><strong>Thin coverage</strong> (grey diagonal hatching, on by default under Layers) marks areas about 300 km across (H3 resolution 2) where fewer than 10 of their 49 cells had 3 or more aircraft that day. Few aircraft were heard there, so the area can look quieter than it is. Areas with no cells at all are left blank. The same flag is published each day as <code>&lt;day&gt;.coverage.json</code> with the day's data files in the GitHub releases.</li>
   <li><strong>Share</strong> follows the formula GPSJam publishes: one bad aircraft is subtracted, so a single faulty receiver never colours a cell.</li>
-  <li><strong>Severe GPS error</strong> means a reported position uncertainty of 93 m or worse (NACp below 8). "Live" leaves out aircraft still degraded after leaving interference elsewhere; tick the box to include them.</li>
+  <li><strong>Severe GPS error</strong> means a reported position uncertainty of 93 m or worse (NACp below 8). "Live" leaves out aircraft still degraded after leaving interference elsewhere; tick "Also count aircraft still degraded…" under Map options → Measure to include them.</li>
   <li><strong>Accuracy</strong> counts only aircraft that showed 10 m accuracy at least once that day. Storms and SBAS outages show here, rarely on the 93 m measure.</li>
   <li><strong>Days to try:</strong> 2025-10-14 (EGNOS outage; accuracy measure over Europe), 2025-11-12 (G4 storm; accuracy measure over North America), 2026-09-22 (California GPS loss).</li>
 </ul>
