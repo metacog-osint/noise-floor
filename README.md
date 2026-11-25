@@ -78,3 +78,7 @@ under it. Libraries the code uses (Python packages, Leaflet, h3-js) keep their o
 
 **Fonts:** IBM Plex Sans and IBM Plex Mono, SIL Open Font License 1.1 ([`site_src/fonts/OFL.txt`](site_src/fonts/OFL.txt)),
 served from the site itself.
+
+## AI assistance
+
+This repository is built with AI coding assistance (Anthropic's Claude Code). The Intelligence Company is responsible for everything published here.
