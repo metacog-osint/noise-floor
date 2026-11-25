@@ -22,6 +22,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "site_src")
 OUT = os.path.join(ROOT, "site")
 REPO = "https://github.com/metacog-osint/noise-floor"
+SITE = "https://noisefloor.theintelligence.company"   # absolute URLs for link previews (Open Graph)
 e = html.escape
 
 STATUS = {  # key: (label, css class, one-line meaning)
@@ -63,8 +64,16 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <meta name="description" content="{description}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Noisefloor">
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{description}">
+<meta property="og:url" content="{og_url}">
+<meta property="og:image" content="{site}/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Noisefloor, from The Intelligence Company: a daily, open picture of interference with satellite navigation and communications.">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="color-scheme" content="light dark">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
@@ -166,11 +175,12 @@ def data_version(folder):
     return h.hexdigest()[:10]
 
 
-def render(meta, body, updated, narrow=False):
+def render(meta, body, updated, narrow=False, path=""):
     layout = meta.get("layout")
     cls = f' class="{layout}"' if layout in ("wide", "home") else (' class="narrow"' if narrow else "")
     html = PAGE.format(title=e(meta["title"]), description=e(meta["description"]), nav=nav_html(meta.get("nav", "")),
-                       subnav=subnav_html(meta.get("nav", "")), body=body, repo=REPO, main_class=cls, head=meta.get("head", ""))
+                       subnav=subnav_html(meta.get("nav", "")), body=body, repo=REPO, main_class=cls, head=meta.get("head", ""),
+                       site=SITE, og_url=f"{SITE}/{path}")
     for f, v in ASSET_V.items():
         html = html.replace(f'"/{f}"', f'"/{f}?v={v}"')
     return html
@@ -359,14 +369,15 @@ def main():
         if "{{" in body:
             sys.exit(f"{name}: unfilled placeholder")
         open(os.path.join(OUT, name), "w", encoding="utf-8", newline="\n").write(
-            render(meta, body, updated, narrow=name in ("guide.html", "methods.html", "terms.html", "404.html")))
+            render(meta, body, updated, narrow=name in ("guide.html", "methods.html", "terms.html", "404.html"),
+                   path="" if name == "index.html" else name[:-5]))
         written.append(name)
     open(os.path.join(OUT, "lanes.html"), "w", encoding="utf-8", newline="\n").write(render(
         {"title": "Roadmap · Noisefloor", "description": "Every Noisefloor lane, built and planned: what it measures, how, which sources, and its limits.",
-         "nav": "lanes"}, lanes_page(data), updated))
+         "nav": "lanes"}, lanes_page(data), updated, path="lanes"))
     open(os.path.join(OUT, "sources.html"), "w", encoding="utf-8", newline="\n").write(render(
         {"title": "Sources and licences · Noisefloor", "description": "Noisefloor's licence registry: every source, its licence and how it may be used.",
-         "nav": "sources"}, sources_page(rows), updated))
+         "nav": "sources"}, sources_page(rows), updated, path="sources"))
     written += ["lanes.html", "sources.html"]
     for f in ASSETS:
         open(os.path.join(OUT, f), "wb").write(asset_bytes(f))
@@ -375,13 +386,14 @@ def main():
         open(os.path.join(OUT, "fonts", f), "wb").write(open(os.path.join(FONTS, f), "rb").read())
     open(os.path.join(OUT, "robots.txt"), "w", newline="\n").write("User-agent: *\nAllow: /\n")
     open(os.path.join(OUT, "favicon.ico"), "wb").write(open(os.path.join(SRC, "favicon.ico"), "rb").read())   # the TIC mark; browsers ask for /favicon.ico
+    open(os.path.join(OUT, "og-card.png"), "wb").write(open(os.path.join(SRC, "og-card.png"), "rb").read())   # link preview; source tools/og-card.html
     year, day, hour, short = ("public, max-age=31536000, immutable", "public, max-age=86400, stale-while-revalidate=604800",
                               "public, max-age=3600, stale-while-revalidate=86400", "public, max-age=300, stale-while-revalidate=3600")
     rules = [("/*", "X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n"
                     "  Strict-Transport-Security: max-age=31536000")]   # HTTPS only from the first visit on (one year, this host)
     rules += [(f"/{f}", f"Cache-Control: {year}") for f in ASSETS]              # always requested as /file?v=<content hash>
     rules += [("/fonts/*", f"Cache-Control: {year}")]                         # font files never change in place
-    rules += [("/favicon.ico", f"Cache-Control: {day}")]
+    rules += [(f"/{f}", f"Cache-Control: {day}") for f in ("favicon.ico", "og-card.png")]
     rules += [(f"/data/{f}", f"Cache-Control: {day}") for f in ("land.json", "borders.json", "places.json")]
     rules += [(p, f"Cache-Control: {hour}") for p in ("/data/gnss/2*", "/data/events/*", "/data/history/*")]   # day files
     rules += [("/data/vessels/*", f"Cache-Control: {hour}")]                  # Sea map data, refreshed by hand
@@ -395,7 +407,7 @@ def main():
         dup = sorted({i for i in ids if ids.count(i) > 1})
         if dup:
             sys.exit(f"{name}: duplicate ids {dup}")
-    expected = set(written) | set(ASSETS) | {"robots.txt", "favicon.ico", "_headers", "data", "fonts", "feed.xml"}   # feed.xml: written at deploy (site_days.py)
+    expected = set(written) | set(ASSETS) | {"robots.txt", "favicon.ico", "og-card.png", "_headers", "data", "fonts", "feed.xml"}   # feed.xml: written at deploy (site_days.py)
     stray = sorted(set(os.listdir(OUT)) - expected)
     if stray:
         sys.exit(f"unexpected files in site/: {stray} (remove them, or add them to the build)")
