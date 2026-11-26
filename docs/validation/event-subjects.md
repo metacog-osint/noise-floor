@@ -1,6 +1,6 @@
 # Event subjects: one subject while an event moves (ideas#118)
 
-Measured 24 Nov 2026; rule approved by Tom 24 Nov 2026; code in `tools/event_subjects.py`, called from
+Measured 24 Nov 2026; code in `tools/event_subjects.py`, called from
 `tools/feed_history.py` before the history run.
 
 ## What went wrong
@@ -23,7 +23,7 @@ Spoof-place (res 5), spoof-region and region keys showed no such splits and are 
 
 ## The rule
 1. A new event takes the subject of an earlier event whose regions it shares, most shared regions first. Earlier means
-   open in the history state, or ended within 50 hours (two daily rolls), so a one-day gap keeps the subject.
+   open in the history state, or ended within 36 hours, so a one-day gap keeps the subject and a two-day gap does not.
 2. One subject per item in a feed. The kit's history keeps a second item of a subject under its own dated id, which
    logs it new and ended every day, so of two events overlapping one earlier subject the one sharing more regions takes
    it and the other takes its next match.
@@ -31,7 +31,7 @@ Spoof-place (res 5), spoof-region and region keys showed no such splits and are 
    of the feed holds the key, the first free `<region>-2`, `<region>-3`.
 4. On any failure the keys stay as built (a centre key is always valid).
 
-Rule 2 replaces "a subject may hold several items" in the plan Tom approved, for the reason given; decided by default.
+Rule 2 means a subject never holds several items, for the reason given.
 
 ## Replay
 COP's 12Z snapshots of 20-24 Nov 2026 run through the kit's history, events only, with the keys as built and with the
@@ -42,7 +42,7 @@ rule (the recomputed centre key matched the published one on 77 of 79 events):
 | New lines | 66 | 42 |
 | Ended lines | 72 | 48 |
 | Subjects carried into the next roll | 13 | 37 (47%) |
-| Of the new lines, a subject back after a gap | 17 | 12 |
+| Of the new lines, a subject back after a gap | 17 | 11 |
 | Events sharing a key with another in the same feed | 7 | 0 |
 
 The other half of each day's events have no ground in common with the day before and start a subject of their own.

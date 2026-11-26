@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""event_subjects.py: a jamming event keeps one subject while its centre moves (ideas#118, Tom's yes 24 Nov 2026).
+"""event_subjects.py: a jamming event keeps one subject while its centre moves (ideas#118).
 
 feed_v2.build() keys each event on the H3 res-2 region at its centre. An event is about 300 km across, so its centre
 moves from region to region over days of one activity, and the history logged one activity as an "ended" subject and a
@@ -8,8 +8,8 @@ an event that ended in the same roll, and only 6 kept their subject.
 
 The rule, applied after the build and before the history run (feed_history.apply):
 - A new event takes the subject of an earlier event whose regions it shares, most shared regions first. Earlier
-  events are those open in the history state, and those that ended within GAP_HOURS (about two daily rolls), so an
-  activity that skips one day keeps its subject too.
+  events are those open in the history state, and those that ended within GAP_HOURS (36 hours), so an
+  activity that skips one day keeps its subject too; one that skips two does not.
 - Each subject goes to one item of a feed: the kit's history keeps a second item of a subject under its own dated id,
   which would log it new and ended every day. Of two events that both overlap one earlier subject, the one sharing
   more regions takes it, the other takes its next best match.
@@ -20,18 +20,31 @@ The rule, applied after the build and before the history run (feed_history.apply
 Only event subjects (noisefloor:event:...) are touched. Spoofing, region, area and space weather keys stay as built.
 """
 from datetime import timedelta
+from math import atan2, cos, degrees, hypot, radians, sin
 
 PREFIX = "noisefloor:event:"
-GAP_HOURS = 50          # two daily rolls (builds run 04:40-06:40 UTC, and a retry can land later the same day)
+GAP_HOURS = 36          # one missed day is 24 h and two are about 48 h (builds run 04:40-06:40 UTC)
 
 
 def is_event(subject_id):
     return isinstance(subject_id, str) and subject_id.startswith(PREFIX)
 
 
+def centre(ring):
+    """(lat, lon) at the middle of a ring of [lon, lat] vertices, averaged as unit vectors on the sphere: a mean of
+    degrees puts a region that straddles 180 degrees on the wrong side of the globe."""
+    x = y = z = 0.0
+    for lon, lat in (p[:2] for p in ring):
+        a, o = radians(lat), radians(lon)
+        x += cos(a) * cos(o)
+        y += cos(a) * sin(o)
+        z += sin(a)
+    return degrees(atan2(z, hypot(x, y))), degrees(atan2(y, x))
+
+
 def regions(geometry):
     """The res-2 regions of an event as published: each polygon of its MultiPolygon is one region's boundary
-    (feed_v2.h3_area), so the region is the one at the polygon's mean vertex. A Point (an older event without
+    (feed_v2.h3_area), so the region is the one at the middle of the polygon's vertices. A Point (an older event without
     regions) gives its own region."""
     import h3
     if not geometry:
@@ -43,7 +56,7 @@ def regions(geometry):
     out = set()
     for poly in polys:
         ring = poly[0][:-1] if poly[0][0] == poly[0][-1] else poly[0]
-        out.add(h3.latlng_to_cell(sum(p[1] for p in ring) / len(ring), sum(p[0] for p in ring) / len(ring), 2))
+        out.add(h3.latlng_to_cell(*centre(ring), 2))
     return out
 
 

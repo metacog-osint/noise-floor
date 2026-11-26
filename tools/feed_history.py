@@ -97,7 +97,8 @@ def carry_events(feed, state, root, now):
         ended = history.read_days(root, (now - timedelta(days=3)).strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d"))
         moved = event_subjects.apply(feed, state, ended, now)
     except Exception as e:                                    # noqa: BLE001 - the centre keys are still valid
-        print(f"feed_history: event subjects kept as built ({type(e).__name__}: {e})")
+        # "::warning::" marks the line on the workflow run's page, so a standing failure is seen
+        print(f"::warning::feed_history: event subjects kept as built ({type(e).__name__}: {e})")
         return {}
     if moved:
         print(f"feed_history: {len(moved)} events keep an earlier subject or a free key: "

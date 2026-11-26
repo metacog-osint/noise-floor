@@ -42,6 +42,14 @@ def regions_round_trip():
     assert es.regions(None) == set()
 
 
+def every_region_round_trips():
+    """All 5,882 res-2 regions, with the feed's own outlines, including those that straddle 180 degrees."""
+    every = [c for base in h3.get_res0_cells() for c in h3.cell_to_children(base, 2)]
+    assert len(every) == 5882
+    wrong = [c for c in every if es.regions(feed_v2.h3_area([c])[0]) != {c}]
+    assert not wrong, (len(wrong), wrong[:5])
+
+
 def moves_one_cell():
     """Yesterday centred on A over A and B; today centred on B over B and C: the same subject."""
     today = item("e-2", B, [B, C])
@@ -57,10 +65,12 @@ def one_roll_gap():
     today = item("e-3", B, [B])
     es.apply(feed(today), {"open": {}}, [line], NOW)
     assert sid(today) == es.PREFIX + A, sid(today)
-    old = dict(line, ended_at="2026-10-31T06:00:00Z")      # older than GAP_HOURS: not continued
-    today = item("e-3", B, [B])
-    es.apply(feed(today), {"open": {}}, [old], NOW)
-    assert sid(today) == es.PREFIX + B, sid(today)
+    for ended_at, kept in (("2026-11-01T19:00:00Z", A),     # 35 h before NOW: inside GAP_HOURS
+                           ("2026-11-01T17:00:00Z", B),     # 37 h: outside
+                           ("2026-11-01T06:00:00Z", B)):    # two missed days
+        today = item("e-3", B, [B])
+        es.apply(feed(today), {"open": {}}, [dict(line, ended_at=ended_at)], NOW)
+        assert sid(today) == es.PREFIX + kept, (ended_at, sid(today))
 
 
 def one_subject_per_item():
@@ -132,7 +142,7 @@ def failure_keeps_built_keys():
 
 
 def main():
-    for t in (regions_round_trip, moves_one_cell, one_roll_gap, one_subject_per_item, no_overlap,
+    for t in (regions_round_trip, every_region_round_trips, moves_one_cell, one_roll_gap, one_subject_per_item, no_overlap,
               other_keys_untouched, history_lines_for_a_moving_event, failure_keeps_built_keys):
         t()
         print("ok", t.__name__)
