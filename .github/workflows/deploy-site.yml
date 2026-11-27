@@ -104,8 +104,16 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           SHA: ${{ steps.pick.outputs.sha }}
         run: |
-          npx --yes wrangler@4.151.3 pages deploy site --project-name noise-floor --branch main \
-            --commit-hash "$SHA" --commit-message "deploy-site $SHA" --commit-dirty=true
+          # Cloudflare's API fails now and then with nothing wrong here ("An unknown error occurred ... [code: 8000000]"),
+          # which failed the run and mailed an alert. Try three times, 20 s and 60 s apart.
+          for wait in 0 20 60; do
+            if [ "$wait" != 0 ]; then echo "::warning::Cloudflare deploy failed; trying again in ${wait} s"; sleep "$wait"; fi
+            if npx --yes wrangler@4.151.3 pages deploy site --project-name noise-floor --branch main \
+                 --commit-hash "$SHA" --commit-message "deploy-site $SHA" --commit-dirty=true; then
+              exit 0
+            fi
+          done
+          echo "::error::Cloudflare Pages deploy failed three times"; exit 1
 
       - name: Save the feed history (release feed-history)
         if: steps.pick.outputs.sha != '' && steps.feedhistory.outcome == 'success'
