@@ -17,6 +17,8 @@ Rule (Tom, 18 Nov 2026): no program loses data. These kinds of Noisefloor data e
   baltico     daily copies of the Swedish Maritime Administration's Baltic warnings page and its parsed warnings
               (tools/notice_capture.py). The page states no terms, so new copies stay out of the public data repo.
   sensors     DWD radar (not re-fetchable), the spoofing cache, and the Sentinel-6 and COSMIC-2 working grids.
+  science     the day files this PC publishes to cygnss-data, smap-data and s1-data, which a remake replaces
+              there; a second copy of each version (about 32 MB on 27 Nov 2026).
 
 Sizes measured 19 Nov 2026: nisar about 270 MB kept of 40.8 GB; collectors about 3.6 GB (AIS 1.4 GB, Sentinel
 tables 2.1 GB, raw Bluesky 194 MB). First run uploads all of it; later runs upload what changed, about 100 MB a day.
@@ -69,6 +71,12 @@ LANES = {
                  ("spoof-cache", "data/spoof_cache"),
                  ("s6rfi", "data/s6rfi"),
                  ("cosmic2", "data/cosmic2")],
+                ["*.tmp", "*.partial", "*.lock"]),
+    # The PC's other public releases are copied by the lanes above: nisar-data from private/nisar/public (nisar),
+    # s6-data and cosmic2-data from data/s6rfi and data/cosmic2 (sensors).
+    "science": ([("cygnss", "data/cygnss/daily"),
+                 ("smap", "data/smap/daily"),
+                 ("s1", "data/s1rfi/global/daily")],
                 ["*.tmp", "*.partial", "*.lock"]),
 }
 

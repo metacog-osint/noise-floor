@@ -48,6 +48,7 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Process and publish new days
         id: run
+        timeout-minutes: 315
         env:
           GH_TOKEN: ${{ github.token }}
           DAYS: ${{ inputs.days }}
@@ -59,6 +60,7 @@ jobs:
         id: tests
         if: ${{ !cancelled() }}
         continue-on-error: true
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -71,9 +73,47 @@ jobs:
         id: notams
         if: ${{ !cancelled() }}
         continue-on-error: true
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
         run: python pipeline/gnss_notams.py archive --upload
+      # Private archive: what this run wrote also goes to the PRIVATE repo metacog-osint/tic-archive
+      # (tools/tic_archive.py; release noisefloor-<lane>-YYYY-MM, a snapshot per run, only new content uploaded,
+      # nothing replaced or deleted). The public releases stay as they are; this is a second copy that keeps every
+      # version. data/ is not in git, so each folder holds only what this run wrote or read.
+      #   pnt       data/pnt: the day files this run published to pnt-data-YYYY-MM (a forced rerun, --reanalyse or
+      #             --spoof-only replaces them there), a day whose upload failed among them, and the earlier days it
+      #             read for the baselines. Empty when no day was processed.
+      #   declared  data/declared: faa_gps_tests.json and the GNSS NOTAM files, which declared-data replaces.
+      # The steps above stop at their own limits, inside the job's, so a run that runs out of time still gets here.
+      # Each lane is tried even if the other failed; a missing token or a failed put turns the run red.
+      - name: Private archive (this run's PNT and declared files, to tic-archive)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 15
+        env:
+          GH_TOKEN: ${{ secrets.TIC_ARCHIVE_TOKEN }}
+        run: |
+          has() { [ -n "$(find "$1" -type f -print -quit 2>/dev/null)" ]; }
+          if ! has data/pnt && ! has data/declared; then
+            echo "no PNT or declared file this run, so nothing was archived"; exit 0
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::secret TIC_ARCHIVE_TOKEN is not set, so this run's files did not reach the private archive"; exit 1
+          fi
+          failed=0
+          if has data/pnt; then
+            python tools/tic_archive.py put --program noisefloor --lane pnt --src data/pnt || failed=1
+          else
+            echo "pnt: no day was processed this run, so nothing was archived"
+          fi
+          if has data/declared; then
+            python tools/tic_archive.py put --program noisefloor --lane declared --src data/declared || failed=1
+          else
+            echo "declared: no declared file this run, so nothing was archived"
+          fi
+          if [ "$failed" != 0 ]; then
+            echo "::error::a lane did not reach the private archive this run (see above)"; exit 1
+          fi
   deploy:
     needs: process
     if: ${{ !cancelled() && (needs.process.outputs.changed == 'true' || needs.process.outputs.tests_changed == 'true') }}
