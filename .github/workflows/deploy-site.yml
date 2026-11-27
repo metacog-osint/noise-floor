@@ -128,3 +128,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/sun_alerts.py --archive --out "$RUNNER_TEMP/alerts.json"
+
+      # Private archive: the feed history log as this run left it ($RUNNER_TEMP/feed-history) also goes to the PRIVATE
+      # repo metacog-osint/tic-archive (tools/tic_archive.py, lane feedlog: release noisefloor-feedlog-YYYY-MM, a
+      # snapshot per run, only new content uploaded, nothing replaced or deleted). The release feed-history replaces
+      # state.json, health.json and today's open log each run; the archive keeps every version, also when the push
+      # above failed. Only when the log step ran. A missing token or a failed put turns the run red, after the deploy.
+      - name: Private archive (feed history log, to tic-archive)
+        if: ${{ !cancelled() && steps.pick.outputs.sha != '' && steps.feedhistory.outcome == 'success' }}
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ secrets.TIC_ARCHIVE_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::secret TIC_ARCHIVE_TOKEN is not set, so the feed history log did not reach the private archive"; exit 1
+          fi
+          python3 tools/tic_archive.py put --program noisefloor --lane feedlog --src "$RUNNER_TEMP/feed-history"

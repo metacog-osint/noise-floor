@@ -44,7 +44,10 @@ jobs:
           cache: pip
       # hatanaka decompresses the compact (Hatanaka) RINEX files
       - run: pip install -r requirements.txt "hatanaka>=2.8"
+      # The step stops at its own limit, inside the job's, so a run that runs out of time still reaches the private
+      # archive step below with the files it made (a step that times out fails; it is not cancelled).
       - name: Ground ROTI day files
+        timeout-minutes: 320
         env:
           GH_TOKEN: ${{ github.token }}
           # NASA Earthdata token: files BKG can't deliver come from CDDIS instead (unset: BKG only)
@@ -52,3 +55,23 @@ jobs:
           DAYS: ${{ inputs.days }}
           FORCE: ${{ inputs.force && '--force' || '' }}
         run: python tools/ground_roti_job.py $DAYS $FORCE --wait-minutes 30 --publish-hour 9 --deadline-hour 13 --refresh-days 2
+      # Private archive: the ROTI day files this run wrote (data/swx) also go to the PRIVATE repo
+      # metacog-osint/tic-archive (tools/tic_archive.py, lane roti: release noisefloor-roti-YYYY-MM, a snapshot per run
+      # that made a file, only new content uploaded, nothing replaced or deleted). swx-data-YYYY-MM holds one copy
+      # of each day, which the two-day refresh and a forced remake replace; the archive keeps every version. Not the
+      # RINEX files the job read (data/stations/raw), which BKG and CDDIS keep. data/ is not in git, so the folder
+      # holds only this run's files. A missing token or a failed put turns the run red.
+      - name: Private archive (day files made this run, to tic-archive)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
+        env:
+          GH_TOKEN: ${{ secrets.TIC_ARCHIVE_TOKEN }}
+        run: |
+          mkdir -p data/swx
+          if [ -z "$(find data/swx -type f -name '*.json' -print -quit)" ]; then
+            echo "roti: this run made no day file, so nothing was archived"; exit 0
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::secret TIC_ARCHIVE_TOKEN is not set, so this run's day files did not reach the private archive"; exit 1
+          fi
+          python tools/tic_archive.py put --program noisefloor --lane roti --src data/swx --exclude 'raw/*'

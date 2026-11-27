@@ -49,10 +49,34 @@ jobs:
           cache: pip
       # scipy reads the netCDF link files; shapely and pyproj name places in the interference file (nisar_rfi.places)
       - run: pip install -r requirements.txt scipy shapely pyproj
+      # The step stops at its own limit, inside the job's, so a run that runs out of time still reaches the private
+      # archive step below with the files it made (a step that times out fails; it is not cancelled).
       - name: COSMIC-2 day files
+        timeout-minutes: 320
         env:
           GH_TOKEN: ${{ github.token }}
           DAYS: ${{ inputs.days }}
           FORCE: ${{ inputs.force && '--force' || '' }}
           S4_ONLY: ${{ inputs.s4_only && '--s4-only' || '' }}
         run: python tools/cosmic2_job.py $DAYS $FORCE $S4_ONLY --wait-minutes 45 --deadline-hour 13
+      # Private archive: the day files this run wrote also go to the PRIVATE repo metacog-osint/tic-archive
+      # (tools/tic_archive.py, lane limbs4: release noisefloor-limbs4-YYYY-MM, a snapshot per run that made a file,
+      # only new content uploaded, nothing replaced or deleted): the limb S4 files (data/swx, for swx-data-YYYY-MM)
+      # and the interference files (data/cosmic2/daily, for cosmic2-data), which a forced remake replaces there.
+      # Not the UCAR link files the job read (data/cosmic2/days), which UCAR keeps. data/ is not in git, so the
+      # folders hold only this run's files. A missing token or a failed put turns the run red.
+      - name: Private archive (day files made this run, to tic-archive)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
+        env:
+          GH_TOKEN: ${{ secrets.TIC_ARCHIVE_TOKEN }}
+        run: |
+          mkdir -p data/swx data/cosmic2/daily
+          if [ -z "$(find data/swx data/cosmic2/daily -type f -name '*.json' -print -quit)" ]; then
+            echo "limbs4: this run made no day file, so nothing was archived"; exit 0
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::secret TIC_ARCHIVE_TOKEN is not set, so this run's day files did not reach the private archive"; exit 1
+          fi
+          python tools/tic_archive.py put --program noisefloor --lane limbs4 --src swx=data/swx \
+            --src cosmic2=data/cosmic2/daily --exclude 'swx/raw/*'

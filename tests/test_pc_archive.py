@@ -40,6 +40,11 @@ def make_tree(root):
         "data/spoof_cache/2026-11-19.parquet": "PAR1",
         "data/s6rfi/2026-11-19.json": "{}",
         "data/cosmic2/2026-11-19.json": "{}",
+        "data/cygnss/daily/2026-11-13.cygnss.json": "{}",
+        "data/smap/daily/2026-11-18.smap.json": "{}",
+        "data/s1rfi/global/daily/2026-11-18.s1.json": "{}",
+        "data/s1rfi/global/2026-11-18.parquet": "PAR1",
+        "private/nisar/public/2026-11-18.nisar.json": "{}",
     }
     for rel, text in files.items():
         p = Path(root) / rel
@@ -74,6 +79,11 @@ def test_all_lanes_archived_caches_left_out():
         for want in ("radar/dwd/2026-11-19.h5", "spoof-cache/2026-11-19.parquet", "s6rfi/2026-11-19.json",
                      "cosmic2/2026-11-19.json"):
             assert want in sensors, want
+        science = latest_paths(store, "science")
+        # the day files the PC publishes; the S1 working grids beside them are not part of the lane
+        assert sorted(science) == ["cygnss/2026-11-13.cygnss.json", "s1/2026-11-18.s1.json",
+                                   "smap/2026-11-18.smap.json"], science
+        assert "nisar/public/2026-11-18.nisar.json" in latest_paths(store, "nisar")      # nisar-data's source
         assert not (Path(td) / "data/logs/ARCHIVE_FAILED.txt").exists()
 
 
