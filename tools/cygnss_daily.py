@@ -2,7 +2,7 @@
 """cygnss_daily.py: the newest complete CYGNSS day -> a small public summary for the home board.
 
 Runs on this PC from collectors/run_daily.cmd (the daily collectors task), because CYGNSS needs an Earthdata Login token
-(EARTHDATA_TOKEN, a user environment variable that Tom set; never printed). CYGNSS L1 files for a day arrive over several
+(EARTHDATA_TOKEN, a user environment variable that the owner set; never printed). CYGNSS L1 files for a day arrive over several
 days, so a day counts as complete when NASA CMR lists files for at least MIN_SC spacecraft, or MIN_SC_LATE once it is
 LATE_DAYS old. For each complete day not yet summarised (looking back up to LOOKBACK days, at most MAX_DAYS_PER_RUN a run), it runs
 `cygnss_rfi.py fetch` and `grid` (the validated method, unchanged), writes data/cygnss/daily/<day>.cygnss.json and

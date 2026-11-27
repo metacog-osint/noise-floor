@@ -8,7 +8,7 @@ measurement (kind observation): regions that newly reached jamming scale this we
 whose severe share rose 5 points or more above their 30-day median, the day's major and notable events (majors
 anomaly, notables routine; each drawn as its H3 res-2 regions, stamped with its own hours), and up to five
 places where aircraft were newly shown at a false position (spoofing; tools/spoof_site.py new_targets(), placed where
-the aircraft really were), plus one daily summary. From 16 Nov 2026 (Tom's yes) also the space weather files
+the aircraft really were), plus one daily summary. From 16 Nov 2026 (approved) also the space weather files
 (tools/swx_site.py, board section "swx"): the day's highest limb S4 cells (H3 res-1 polygons) and every ground ROTI
 station (points), each at its highest UTC hour. Those are routine observations with no baseline: no tier above routine
 is used for them until a baseline is set and stated, and neither is read against S4 alert levels. Military air
@@ -455,7 +455,7 @@ SWX_TAGS = {"ncf": SWX_NCF, "sector": vocab.derive_sectors(SWX_NCF), "pmesii_pt"
 
 
 def roti_at(s, place):
-    """'in Gabon (station NKLG)' when a station's place is its country's name alone (Tom's yes 18 Nov 2026 evening
+    """'in Gabon (station NKLG)' when a station's place is its country's name alone (18 Nov 2026 evening
     CST: "at Gabon" read badly), else 'at Malindi, Kenya', 'at Saba'."""
     import area_names
     cc = geo.country_at(s["lat"], s["lon"])
@@ -475,7 +475,7 @@ def hours_words(period):
 
 
 def tell_apart(feats):
-    """Two items whose titles read the same take their UTC hours (Tom's yes 18 Nov 2026 evening CST: 17 Nov had two
+    """Two items whose titles read the same take their UTC hours (18 Nov 2026 evening CST: 17 Nov had two
     "near Bhubaneswar" events, two "in Turkey, 390 km E of Samsun" and two in the Persian Gulf)."""
     from collections import Counter
     seen = Counter(f["properties"].get("title") for f in feats)

@@ -17,7 +17,7 @@ note records what was checked on 26 Oct 2026, what went into the curated notices
   the joint Estonia–Finland warning of 17 Jun 2025. Neither gives coordinates, so their positions are approximate
   circles along the named sea areas, flagged as drawn by us.
 - **EASA's weekly table of affected FIRs is the one official source found that marks spoofing by area.** Whether a
-  weekly FIR-wide spoofing mark should set `deliberate_suspected` is a decision for Tom, and it needs FIR boundaries
+  weekly FIR-wide spoofing mark should set `deliberate_suspected` is a decision for the owner, and it needs FIR boundaries
   from a licence-clean source. Recorded as a candidate (`easa-gnss-firs`, use `later`).
 
 ## Sources checked
@@ -29,9 +29,9 @@ note records what was checked on 26 Oct 2026, what went into the curated notices
 | Joint Estonia–Finland navigation warning, 17 Jun 2025 | Gulf of Finland, both countries' territorial waters and EEZs; a danger zone in ENCs | "GNSS interference", "disruptions" | named waters (ENC zone not public) | news item | In the file (S2) |
 | Finnish Notices to Mariners (Traficom) | *165/2026 (10 Jun 2026), *182/2026 (30 Jun 2026): GNSS and AIS interference in the Gulf of Finland, begun spring 2024, continuing | "interference" | named waters | PDF | Cited as evidence the joint warning still applies |
 | Swedish Notices to Mariners (UFS 1131/2026) | A GNSS disturbance notice, not tied to an area, until further notice | "disturbance" | none | PDF | Can't be placed |
-| EASA SIB 2022-02R4 (3 Jul 2026) and FIR tables | FIRs with interference reports in the last 7 and 30 days, with a spoofing column. 7-day table of 14 Oct 2026: spoofing marked for Ankara, Sofia, Yangon, Nicosia, Istanbul, Lahore, Cairo, Bangkok, Delhi, Damascus, Amman; reports without a spoofing mark for Bucharest, Warsaw, Tallinn, Vilnius, Tbilisi, Helsinki, Riga, Asmara, Kabul | defines jamming as intentional; spoofing column | FIR names | HTML tables, current only | Candidate for D1: Tom's decision |
+| EASA SIB 2022-02R4 (3 Jul 2026) and FIR tables | FIRs with interference reports in the last 7 and 30 days, with a spoofing column. 7-day table of 14 Oct 2026: spoofing marked for Ankara, Sofia, Yangon, Nicosia, Istanbul, Lahore, Cairo, Bangkok, Delhi, Damascus, Amman; reports without a spoofing mark for Bucharest, Warsaw, Tallinn, Vilnius, Tbilisi, Helsinki, Riga, Asmara, Kabul | defines jamming as intentional; spoofing column | FIR names | HTML tables, current only | Candidate for D1: open decision |
 | Traficom satellite-navigation interference statistics | Aggregated official picture of interference in Finland (page updated 8 May 2026) | — | Finland | web page | An observation source, not a notice: worth a look for a later corroboration lane |
-| FAA NOTAM API, EUROCONTROL EAD | NOTAMs | varies; US GPS NOTAMs are mostly announced tests, already covered by FAA SPANS | coordinates | API or web, account needed | Later; needs an account Tom would hold |
+| FAA NOTAM API, EUROCONTROL EAD | NOTAMs | varies; US GPS NOTAMs are mostly announced tests, already covered by FAA SPANS | coordinates | API or web, account needed | Later; needs an account the owner would hold |
 
 ## How the two notices were entered
 
@@ -47,7 +47,7 @@ Both are class `interference`. Their effect on the register is in the method doc
 
 ## Open
 
-1. **EASA spoofing marks as a D1 driver** (Tom's decision). If yes: archive the weekly table from now on (it isn't
+1. **EASA spoofing marks as a D1 driver** (open decision). If yes: archive the weekly table from now on (it isn't
    archived anywhere we found), read EASA's copyright notice, and find FIR boundaries under a licence that allows
    reuse.
 2. **NOTAMs** (later): the FAA NOTAM API needs a free key; GNSS NOTAMs outside the US could come through EUROCONTROL

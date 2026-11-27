@@ -4,7 +4,7 @@
 > in orbit, Noisefloor covers signals). The live page is https://orbit.theintelligence.company/geo. This file is kept
 > as history; the tools it names are no longer in this repo.
 
-Drafted 27 Oct 2026 after Tom approved every idea in the proposal. This plan decides the build order; anything marked
+Drafted 27 Oct 2026 after every idea in the proposal was approved. This plan decides the build order; anything marked
 *to check* is not verified yet. The GEO board (`tools/geo.py`, the /geo page) stays; the globe becomes the tool at the
 top of that page, with the board's tables below it as the text view.
 
@@ -15,7 +15,7 @@ catalogue) once or twice a day into `<day>.geo.json` on the `pnt-data-YYYY-MM` r
 replaces the first, so element sets are lost. CelesTrak's documentation doesn't state the group's membership rules,
 so inactive payloads, rocket bodies, debris and the graveyard orbit are outside what we can see today.
 
-**Space-Track (Tom has an account).** The elements CelesTrak serves come from Space-Track, which also keeps every
+**Space-Track (the owner has an account).** The elements CelesTrak serves come from Space-Track, which also keeps every
 element set ever published (`gp_history`). With it:
 
 - **Backfill.** One `gp_history` pull per object list and date range recovers every element set, including the ones
@@ -28,7 +28,7 @@ element set ever published (`gp_history`). With it:
   space-track.org's own documentation and user agreement before the first automated run. The collector makes one
   daily query and a chunked one-off backfill, far under either limit.
 - **Credentials.** `SPACETRACK_USER` and `SPACETRACK_PASSWORD`: GitHub secrets for the daily workflow and Windows
-  user variables on this PC, set by Tom. Never printed or stored in the repo.
+  user variables on this PC, set by the owner. Never printed or stored in the repo.
 - **Licence.** Basic SSA data may be redistributed and used in published analysis with citation (terms re-read
   26 Oct 2026). Cite "Orbital data: USSPACECOM (space-track.org)". The source goes into `registry/sources.csv` first.
 
@@ -198,7 +198,7 @@ be new rules on new cases.
   internal-use KML licence).
 - **Published footprints**: not drawn. Registry rows `satbeams` (exclude: proprietary; KML internal use only),
   `operator-coverage` (exclude), `fcc-space-filings` (later: public records, applicants' work, no reuse terms stated:
-  Tom to decide after a format and access check) and `itu-space-filings` (later: GIMS beam data comes with the paid BR IFIC).
+  to be decided after a format and access check) and `itu-space-filings` (later: GIMS beam data comes with the paid BR IFIC).
 - "Fly to it" now parks the camera on the line from the Earth's centre through the satellite, so the Earth sits behind
   it and can be clicked to aim.
 
@@ -206,7 +206,7 @@ be new rules on new cases.
 
 | Step | What | Needs |
 |---|---|---|
-| G1 | Space-Track collector: daily GEO-region pull, membership events, 90-day backfill; registry entry | Tom sets the two credentials |
+| G1 | Space-Track collector: daily GEO-region pull, membership events, 90-day backfill; registry entry | The owner sets the two credentials |
 | G2 | Globe and belt strip: positions, select, search, filter, detail panel, links, time slider, trails | Data from the current snapshots, then G1's history |
 | G3 | Relative motion, close-approach chart, look angles, sun direction and outage windows, board overlays, CSV | G2 |
 | G4 | Callouts: freeze the rules, write the published-case list, score on history, then switch on | G1 history |

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """sentinel_daily.py: the daily Sentinel navigation-receiver job (step E of docs/space-sensors-plan.md), run from the
-06:30 collectors task (collectors/run_daily.cmd). Private: nothing is uploaded or published (plan step E4 waits on Tom).
+06:30 collectors task (collectors/run_daily.cmd). Private: nothing is uploaded or published (plan step E4 waits on the owner).
 
   python tools/sentinel_daily.py [--max-days 4] [--weeks 8] [--map-days 28] [--no-fetch] [--index e21|e2]
 
@@ -14,7 +14,7 @@
 4. For each focus area in the private config (private/watch/satgnss.json): the daily and weekly trend over the last
    --weeks weeks of held days, the cell map over the last --map-days days and the trend chart, written to
    private/sentinel/<area>/ (tools/sentinel_trend.py), on GPS L1 and again on GPS L2C (files named <area>_l2c*).
-   The index is E2.1 (Tom's yes 16 Nov 2026; docs/validation/sentinel-gnss-e21.md section 3); --index e2 writes the
+   The index is E2.1 (16 Nov 2026; docs/validation/sentinel-gnss-e21.md section 3); --index e2 writes the
    uncorrected E2 products instead, named <area>_e2* and <area>_l2c_e2*, beside them for comparison.
 
 Raw product files are kept (about 27 GB a year); raw/index.jsonl holds each one's source and SHA-256. A failure in one

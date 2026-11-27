@@ -278,7 +278,7 @@ The first run kept DDMs flagged `incorrect_ddmi_antenna_selection`, because the 
 3. **Localisation.** Fit an emitter position from the antenna gain pattern and pass geometry (beam-weighted back-projection) instead of gridding by point, as Chew et al. did with boresight positions.
 4. **Dropouts.** Find the cause (CYGNSS team, data notes), and check whether the zenith navigation signal (`zenith_sig_i2q2`) collapses before each gap.
 5. **Region-held-out test.** Done (section 9.3): lowest leave-one-out AUC 0.959.
-6. **Daily run.** CMR search and subset fetch are cheap (about 36 MB a day). Output would go to the site only after Tom's review, with the CYGNSS citation and the location caveat on the map.
+6. **Daily run.** CMR search and subset fetch are cheap (about 36 MB a day). Output would go to the site only after review, with the CYGNSS citation and the location caveat on the map.
 7. **Registry.** `registry/sources.csv` row `cygnss-l1` still says "later". Update it when the lane is adopted.
 
 ## 7. Reproduce

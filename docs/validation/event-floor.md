@@ -19,7 +19,7 @@ apart by type on the 20 validated days. Every type-based variant cost real detec
 hex-hours apart cut major events from 35 to 13 and erased the Estonia–Russia border hotspot (94.3% to 5.0%), because
 few other aircraft fly there. A350s and A380s carry a median 71% of degraded aircraft-minutes in Black Sea and
 Caucasus bursts. The method stayed v1.4, and any detector change waits for a held-out check. This test is that check
-for the two changes Tom approved on 16 Nov 2026. The risk it has to rule out is verdict 48's: demoting real events in
+for the two changes approved on 16 Nov 2026. The risk it has to rule out is verdict 48's: demoting real events in
 real hotspots because the aircraft there are mostly A350s and A380s.
 
 ## Variants (frozen when this file is committed)
@@ -67,7 +67,7 @@ Every other major or notable event is **uncorroborated**.
 ## Pass marks
 
 FH is adopted only if every mark passes on sets A and B, and then again on set C. If FH fails but F or H alone passes
-every mark, that variant goes to Tom with the results, and nothing changes without his yes. If none passes, the grade
+every mark, that variant goes to the owner with the results, and nothing changes without approval. If none passes, the grade
 stays V0, and the results are reported here.
 
 | # | Set | Mark | Pass |

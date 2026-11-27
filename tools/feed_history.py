@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""feed_history.py: Noisefloor's feed history log, kept on the GitHub release `feed-history` (Tom's yes, 20 Nov 2026).
+"""feed_history.py: Noisefloor's feed history log, kept on the GitHub release `feed-history` (20 Nov 2026).
 
   python tools/feed_history.py pull DIR         download the log and state; a missing release is a first run
   python tools/feed_history.py run SITE DIR     log this build's changes and fill last_change in SITE/data/feed.geojson

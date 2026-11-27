@@ -18,7 +18,7 @@ number of episodes located in a control box with a baseline output folder made f
       in the six control boxes, against the baseline                                         lower
   C2  the same in the spoofing groups (Middle East, Black Sea, Baltic and W Russia)           >= 90% of the baseline
 C1 and C2 are reported whenever there is a baseline; only the carried-over pre-registration gates on them.
-With --tests (a folder holding faa_gps_tests.json, the declared-data release file), H6 also reports, NOT gating (Tom,
+With --tests (a folder holding faa_gps_tests.json, the declared-data release file), H6 also reports, NOT gating (
 18 Nov 2026), how many control-box episodes fall inside an announced US GPS test: a window overlapping the episode and
 the advisory's widest radius reaching one of its victim cells. The FAA list starts in Sep 2025, so only the held-out
 days from then on can match; the days it covers are listed.

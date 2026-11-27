@@ -1466,7 +1466,7 @@
         return w.id + ", " + w.activity.toLowerCase() + ", " + fmtDay((w.issued || "").slice(0, 10)) + " (" + w.km + " km)";
       }).join("; ") + (s.declared.length > 3 ? "; and " + (s.declared.length - 3) + " more" : "")]);
     }
-    if (s.community && s.community.length) {          // public posts Tom approved (links are in the data file)
+    if (s.community && s.community.length) {          // public posts approved (links are in the data file)
       lines.push(["Community reports", s.community.map(function (c) {
         return c.author + ", " + fmtDay(c.date) + (c.same_sensor ? " (NISAR imagery)" : "");
       }).join("; ")]);

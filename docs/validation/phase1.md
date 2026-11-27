@@ -160,7 +160,7 @@ Sources for the leads (retrieved 22 Oct 2026):
 
 1. **Per-aircraft latching tag.** Mark aircraft that degraded in a known hotspot and stayed degraded, so downstream "events" made of latched aircraft are labelled rather than counted as new interference. This tests lead 3.
 2. **Leads 1 and 2.** New Mexico is verified against the FAA test schedule (22 Oct 2026). The Baltic lead found no date-specific reporting. **Tested against the year (22 Oct 2026): not unusual** (verdict 28).
-3. **FAA NOTAM API access** (Tom's request, decision 4). Planned-test exclusion now runs from the FAA's public flight advisories (`pipeline/faa_gps_tests.py`), which also closed the Bay Area case; the NOTAM API would add short-notice and non-advisory NOTAMs.
+3. **FAA NOTAM API access** (requested, decision 4). Planned-test exclusion now runs from the FAA's public flight advisories (`pipeline/faa_gps_tests.py`), which also closed the Bay Area case; the NOTAM API would add short-notice and non-advisory NOTAMs.
 4. **Backfill to the present.** About 365 days at roughly 3.5 GB of raw data a day (about 1.3 TB) is too much to keep locally. Run it in GitHub Actions on the public repo, downloading, processing and discarding each day, and keep only the outputs (about 2 MB a day).
 
 ---

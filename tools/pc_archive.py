@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """pc_archive.py: daily copy of the PC-only data into TIC's PRIVATE archive (metacog-osint/tic-archive).
 
-Rule (Tom, 18 Nov 2026): no program loses data. These kinds of Noisefloor data exist only on this PC's D: drive
+Rule (18 Nov 2026): no program loses data. These kinds of Noisefloor data exist only on this PC's D: drive
 (D: drops on sleep) and may not go public (watch configuration, private areas, licence terms):
 
   nisar       private/nisar: every detection, including LOW, widespread, ignored and private-area ones that
@@ -64,7 +64,7 @@ LANES = {
                     # kept in the Copernicus archive; the derived tables and raw/index.jsonl are kept.
                     "sentinel-gnss/raw/20*"]),
     "baltico": ([("baltico", "data/notices/baltico")], ["*.tmp", "*.partial"]),
-    # DWD radar cannot be fetched again; the others are costly to rebuild (Tom, 23 Nov 2026; 7.1 GB first run).
+    # DWD radar cannot be fetched again; the others are costly to rebuild (23 Nov 2026; 7.1 GB first run).
     "sensors": ([("radar", "data/radar"),
                  ("spoof-cache", "data/spoof_cache"),
                  ("s6rfi", "data/s6rfi"),

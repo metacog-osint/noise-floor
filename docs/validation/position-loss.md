@@ -1,6 +1,6 @@
 # Position loss: aircraft heard but sending no GNSS position (prototype, 25 Oct 2026)
 
-**Code:** `tools/position_loss.py` (outputs in `data/position_loss/`, aggregates only, ODbL 1.0). **Status:** prototype and a pipeline option, set in the daily workflow from late Oct 2026; not on the map. Written by Claude overnight; not yet reviewed by Tom.
+**Code:** `tools/position_loss.py` (outputs in `data/position_loss/`, aggregates only, ODbL 1.0). **Status:** prototype and a pipeline option, set in the daily workflow from late Oct 2026; not on the map. Not yet reviewed.
 
 ## Why
 
@@ -159,7 +159,7 @@ earlier days don't, and filling them needs a `--force` rerun of each day.
 - Tests: `tests/test_pnt_daily.py` (`test_position_loss`): option off leaves the outputs and summary unchanged; option on
   counts ADS-B (any version), MLAT-only, and ignores ground, next-day, non-ICAO and sub-10,000 ft points.
 
-Switching it on in the daily workflow is a deploy-setting change (Tom's call). Putting it on the map needs a layer design
+Switching it on in the daily workflow is a deploy-setting change (the owner's call). Putting it on the map needs a layer design
 that shows MLAT coverage, so that a blank hex isn't read as clean.
 
 ## What follows

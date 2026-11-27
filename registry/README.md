@@ -38,7 +38,7 @@ anything that couldn't be read is marked UNVERIFIED in the row. Rows tagged `cla
 ## Rules (checked)
 
 - `use=ingest` requires known terms: `commercial=yes` or `commercial=no`. Rows marked `ask` or `unverified` wait.
-- Non-commercial licences are allowed (Tom, 29 Oct 2026): Noisefloor is an unpaid, non-commercial research project. Only
+- Non-commercial licences are allowed (29 Oct 2026): Noisefloor is an unpaid, non-commercial research project. Only
   sources whose terms forbid republishing stay out (`exclude`, or `cite-only` for facts with a link). Rows that were
   `visual-only` because of the old rule keep that value until each is reviewed.
 - Every row needs a licence statement and an assessment tag.

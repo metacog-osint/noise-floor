@@ -38,7 +38,7 @@ Method v1.0 (docs/validation/milair.md):
       below: ratio <= 0.5 and the usual distinct aircraft >= the floor (World Monitor's stand-down)
       near: anything else; building: fewer baseline days than the minimum.
     Floors (distinct aircraft): transport 5, fighter 4, tanker 3, isr 3, bomber 2, all military 5.
-  Feed items stay at tier routine whatever the level (Tom's rule: no tier above routine without his yes).
+  Feed items stay at tier routine whatever the level (rule: no tier above routine without approval).
 """
 import argparse
 import csv

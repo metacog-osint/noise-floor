@@ -70,7 +70,7 @@ called a lower bound.
    Floors (distinct aircraft): transport 5, fighter 4, tanker 3, ISR 3, bomber 2, all military 5 (World Monitor's
    transport 5 and fighter 4; the rest set here).
 9. **Feed:** one item per region with aircraft seen that day or usually, kind observation, **tier routine whatever the
-   level** (no tier above routine without Tom's yes), measure `military_aircraft_hours` with the usual level as
+   level** (no tier above routine without approval), measure `military_aircraft_hours` with the usual level as
    `expected` and a `baseline_ref` once the baseline has its minimum days, the role break-down in `measures.by_role`, and the
    lane's `health` on each item (`fresh` up to 2 days behind, `late` to 4, `stale` after; items are withheld after 7).
    Requirements `NF-PIR-6`, `NF-EEI-6` under `NF-SQ-1` (the suite's SQ1, "Is a zone escalating?").

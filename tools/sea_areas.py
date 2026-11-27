@@ -1,5 +1,5 @@
 """sea_areas.py: which named sea, gulf, bay, strait or ocean a point lies in, for area names at sea
-(tools/area_names.py; Tom's choice 18 Nov 2026).
+(tools/area_names.py; 18 Nov 2026).
 
 Source: Natural Earth 10m marine areas (ne_10m_geography_marine_polys, v5.1.0, public domain, registry row
 `natural-earth`), cut by `build` into site/data/seas.json: English names, outlines simplified to about 2 km and

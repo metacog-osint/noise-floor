@@ -133,7 +133,7 @@ def limb_card(d, places=None):
         ll = h3.cell_to_latlng(c[0])
         if any(_km(ll, (t["lat"], t["lon"])) < LIMB_SPACING_KM for t in top):
             continue
-        # Named on the jamming areas' rule (tools/area_names.py, Tom's yes 18 Nov 2026 evening CST): "near Recife",
+        # Named on the jamming areas' rule (tools/area_names.py, approved 18 Nov 2026 evening CST): "near Recife",
         # "in Brazil, 350 km S of Marabá", "in the South Atlantic Ocean"; a place's point only for a place name.
         name, at, kind, rf = places.area_kind(ll[0], ll[1], []) if places else (None, None, None, None)
         top.append({"cell": c[0], "lat": round(ll[0], 2), "lon": round(ll[1], 2), "p95": c[1], "hour": c[2],

@@ -1,6 +1,6 @@
 # NISAR on the public map: plan
 
-Approved by Tom on 28 Oct 2026, with decisions D1-D7 as recommended (below). Lane details: `nisar/README.md`. Validation: `docs/validation/nisar.md`.
+Approved on 28 Oct 2026, with decisions D1-D7 as recommended (below). Lane details: `nisar/README.md`. Validation: `docs/validation/nisar.md`.
 
 ## Why
 
@@ -37,20 +37,20 @@ Published as leads with that status beside them, the sites are useful and honest
 | N2 | `run_daily.cmd` runs the export after the area runs and uploads it to the `nisar-data` release | Done 28 Oct (branch). Release created 28 Oct with the first file: 161 sites (153 Baltic, 8 Novaya Zemlya), 362 KB |
 | N3 | `tools/site_layers.py` gains a `nisar` kind (`site/data/nisar/<day>.json`, `index.json`); `site_src/map.html` and `map.js`: checkbox, loader, drawing, tooltip, note | Done 28 Oct (branch) |
 | N4 | Pages: Methods (the layer), Validation (pointer to the layer, results unchanged), Guide (replace "its maps stay private until it passes"), Data (download and licence), `lanes.json`, `registry/sources.csv` | Done 28 Oct (branch) |
-| N5 | Local build and look; CI; merge to `main`; check the live map | Local build checked 28 Oct (light, dark, phone width); merge waits for Tom |
+| N5 | Local build and look; CI; merge to `main`; check the live map | Local build checked 28 Oct (light, dark, phone width); merge waits for the owner |
 
 The deploy at 12:40 UTC picks up the file from the 12:00 UTC (7:00 AM CDT) run the same day.
 
-## Decisions (Tom, 28 Oct 2026)
+## Decisions (28 Oct 2026)
 
 | # | Decision |
 |---|---|
-| D1 | The NISAR areas are public coverage: the Baltic and Nordic region (9-31°E, 53-66°N) and the Novaya Zemlya test sites (51.0-57.5°E, 70.8-74.2°N); from 28 Oct 2026 (Tom: all nine, 30-day backfill) also Kola/Barents (20-45°E, 66-71.5°N), Ukraine front and western Russia (30-41°E, 48-53°N), Black Sea and Crimea (27-42°E, 40.5-48°N), Caucasus (42-50°E, 40-44.5°N), Eastern Mediterranean (29-37.5°E, 30-37.5°N), Persian Gulf and Hormuz (47-60°E, 23-31°N), Red Sea and Bab el-Mandeb (36-46°E, 11-20°N), Korean peninsula (124-131°E, 33.5-43°N) and Taiwan Strait (117-123°E, 21.5-27°N). Boxes don't overlap, so each pass is read once per area. Any future narrow area stays private with `"public": false`. |
+| D1 | The NISAR areas are public coverage: the Baltic and Nordic region (9-31°E, 53-66°N) and the Novaya Zemlya test sites (51.0-57.5°E, 70.8-74.2°N); from 28 Oct 2026 (all nine, 30-day backfill) also Kola/Barents (20-45°E, 66-71.5°N), Ukraine front and western Russia (30-41°E, 48-53°N), Black Sea and Crimea (27-42°E, 40.5-48°N), Caucasus (42-50°E, 40-44.5°N), Eastern Mediterranean (29-37.5°E, 30-37.5°N), Persian Gulf and Hormuz (47-60°E, 23-31°N), Red Sea and Bab el-Mandeb (36-46°E, 11-20°N), Korean peninsula (124-131°E, 33.5-43°N) and Taiwan Strait (117-123°E, 21.5-27°N). Boxes don't overlap, so each pass is read once per area. Any future narrow area stays private with `"public": false`. |
 | D2 | All sites are published the same way, allied radars included (the Baltic set has repeat sites at Trondheim/Værnes, north of Jena and offshore NE of Umeå), with effect-only wording. Filtering by country would read as attribution. |
 | D3 | Gate as above. Tighten to two viewing geometries if the map looks noisy. |
 | D4 | New release `nisar-data` in this repo. |
 | D5 | Licence line: "Derived from NASA-ISRO NISAR (ASF DAAC), NASA open data, CC0". |
-| D6 | Built on branch `nisar/novaya-zemlya`, merged to `main` after Tom has looked at a local build. |
+| D6 | Built on branch `nisar/novaya-zemlya`, merged to `main` after a look at a local build. |
 | D7 | The Baltic area reads every pass. Its QA screen (read only if the processor's score is at least 10, or every 3rd pass) was dropped, and the state was rebuilt with every pass read. |
 
 **Why D7.** Passes scoring under 10 that were read anyway had a MEDIUM/HIGH detection 40% of the time (30 of 75), against 48% (142 of 297) for passes scoring 10 or more. The score is a frame-wide maximum of the interference-to-signal ratio and barely predicts emitters. The 114 passes it skipped would have hidden about 45 passes with detections.

@@ -1,7 +1,7 @@
 # SMOS browse brightness temperatures: known-answer test against long-range radars (pre-registration, 31 Oct 2026)
 
 **Tool:** `tools/smos_rfi.py` (ESA's SMOS Level 1C browse product `MIR_BWLF1C`, from the Copernicus Data Space Ecosystem
-with the CDSE keys already held). **Plan:** `docs/space-sensors-plan.md`, developed on Tom's 30 Oct request for every
+with the CDSE keys already held). **Plan:** `docs/space-sensors-plan.md`, developed on the 30 Oct request for every
 satellite option.
 
 Sections 1–3 were written and committed before any data from either test week was fetched.

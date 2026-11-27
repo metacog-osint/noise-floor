@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """watch.py — daily trigger pollers: official warnings, planned GPS tests, user reports, space weather, GEO channel
-listings, Chayka status and sun transit. Ported from Tom's emso-watch trigger board (14 Oct 2026 live fixes) to run
+listings, Chayka status and sun transit. Ported from the earlier emso-watch trigger board (14 Oct 2026 live fixes) to run
 once a day on this PC from collectors/run_daily.cmd, writing a private digest. No phone pushes.
 
 Each trigger is a lead for triage, not a finding, and carries a grade:
@@ -24,7 +24,7 @@ Sources (licence and use: registry/sources.csv, verified 22 Oct 2026)
                                                                 (Starlink by default); token CLOUDFLARE_RADAR_TOKEN
   Page watch                  itu-rrb, kratos-public, opsgroup-blog (cite-only): new links on listed pages;
                                                                 robots.txt obeyed; the first read is the baseline
-Not ported: IODA (ask first), GPSJam (visual comparison only), ntfy pushes (need Tom's OK). FAA NOTAMs wait on NMS API
+Not ported: IODA (ask first), GPSJam (visual comparison only), ntfy pushes (need approval). FAA NOTAMs wait on NMS API
 credentials (requested 30 Oct 2026); the public NOTAM Search site refuses automated clients.
 
 Config (private, gitignored): private/watch/pollers.json holds the watch lists (pagewatch pages, cfradar ASNs,

@@ -40,7 +40,7 @@ NORTH_TIER = (43.0, 55.0, -125.0, -65.0)      # validation case A (tools/validat
 BAY = (35.5, 38.5, -123.5, -119.5)            # validation case B
 # Areas on the charts page's daily trend: the validation areas plus ones added for the daily run. Kept apart from
 # SUBREGIONS, which the validation scripts treat as the known hotspots (changing it would change their results).
-# Strait of Hormuz / Gulf of Oman added 22 Oct 2026 (Tom): sized to the 7-21 Oct 2026 events; leaves out the
+# Strait of Hormuz / Gulf of Oman added 22 Oct 2026 : sized to the 7-21 Oct 2026 events; leaves out the
 # Dubai/Sharjah approaches and Muscat.
 DAILY_AREAS = {**{k: v for k, v in SUBREGIONS.items() if not k.startswith("High latitude")},
                "Strait of Hormuz / Gulf of Oman": (24.0, 27.0, 56.0, 60.0),

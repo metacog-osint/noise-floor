@@ -8,7 +8,7 @@ A post links to a site when:
 
 Links are leads for an analyst, not corroboration by themselves. A post built on NISAR imagery is the same sensor as
 ours, so it is flagged "same_sensor". Post text stays private (data/ and private/ are gitignored). The public export
-carries only posts listed in private/watch/community_public.txt (one post URL per line, Tom's approval), and then
+carries only posts listed in private/watch/community_public.txt (one post URL per line, approval), and then
 only the link, author and date.
 """
 import json
@@ -121,7 +121,7 @@ def build_links(cfgs, repo):
 
 
 def approved(path):
-    """Post URLs Tom approved for the public map (one per line, '#' comments)."""
+    """Post URLs approved for the public map (one per line, '#' comments)."""
     if not os.path.exists(path):
         return set()
     return {l.strip() for l in open(path, encoding="utf-8") if l.strip() and not l.startswith("#")}

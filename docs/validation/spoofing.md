@@ -348,7 +348,7 @@ H4 falls a little because the new top cells sit at Russian points the published 
 were among the 14 days of the roll-turn exploration that found the gap, so the held-out test is only partly independent
 for v0.5. The control check (H1), the one that matters most for a looser rule, is unchanged.
 
-**Decision:** Tom made v0.5 the default (late Oct 2026), since the controls don't move and it closes a documented gap
+**Decision:** v0.5 became the default (late Oct 2026), since the controls don't move and it closes a documented gap
 that hides whole-flight spoofing, mostly over Russia. Results in the sections above this one were made with v0.4; each
 day's summary records the version that made it (`version`).
 

@@ -1,6 +1,6 @@
 # EMSO tracker: redesign proposal (DRAFT, 6 Oct 2026)
 
-Status: **proposed, waiting on Tom's decisions** (bottom of this file). The working folder name `emso-tracker` holds until
+Status: **proposed, waiting on decisions** (bottom of this file). The working folder name `emso-tracker` holds until
 the product is named. Sources and licences: `docs/research/2026-10-06-sources.md`.
 
 ## What it is
@@ -65,18 +65,18 @@ light pollers (Cloudflare Worker cron): warnings, space weather, Starlink health
 4. **Spoofing and maritime:** ADS-B spoofing detectors, AIS layers, declared-warning layers.
 5. **Assessment:** per-region daily status, ntfy alerts, weekly written assessment.
 
-## Decisions for Tom
+## Open decisions
 
 1. Product name and subdomain.
 2. Public site, or sign-in?
 3. Public GitHub repo (free unlimited Actions minutes, so the daily job runs without this PC) or private (the job runs on this PC)?
-4. Permission requests, to be sent by Tom: RIPE NCC (Atlas), Georgia Tech (IODA), adsb.lol (live API in production), and
+4. Permission requests, to be sent by the owner: RIPE NCC (Atlas), Georgia Tech (IODA), adsb.lol (live API in production), and
    later 18 SDS (derived orbital products).
 5. Move the Oct 2025 adsb.lol tars (on D:, path in `CLAUDE.local.md`) into this project? This is optional, since adsb.lol keeps them.
 
 ## Standing rules
 
-- No code, names, accounts or infrastructure from Tom's employer. A check fails the build if they appear (`tools/check_public.py`).
+- No code, names, accounts or infrastructure from the owner's employer. A check fails the build if they appear (`tools/check_public.py`).
 - Free tier only; ask before anything billable.
 - Fact-check domain claims, cite sources, and flag anything unverified.
 
@@ -84,12 +84,12 @@ light pollers (Cloudflare Worker cron): warnings, space weather, Starlink health
 
 ## Merged plan: EMSO tracker + Interference Watch (14 Oct 2026)
 
-Tom decided on 14 Oct to merge the two efforts into one project here. The Interference Watch build guide (Rev 2) and the emso-watch fixes from its first live run are in `private/reference/`. That folder is gitignored because the guide names AOIs. Read them as input; this section decides what wins.
+On 14 Oct the two efforts were merged; the decision was to merge the two efforts into one project here. The Interference Watch build guide (Rev 2) and the emso-watch fixes from its first live run are in `private/reference/`. That folder is gitignored because the guide names AOIs. Read them as input; this section decides what wins.
 
 ### Rules that carry over unchanged from this design
 
 - **Licence-clean.** Every source is in the licence registry. Non-commercial or closed sources are for **visual comparison only** and never ingested. That covers GPSJam, Stanford RFI, OpenSky, Cloudflare Radar, OONI, Reddit's free API, Earth Engine and Global Fishing Watch.
-- **Static-first and free tier.** No database bill, and ask before anything billable. Commits that pass the pre-commit checks may be pushed (standing permission, Tom, 14 Oct 2026); creating services, changing deploy settings and publishing outside the repo still need Tom's OK each time.
+- **Static-first and free tier.** No database bill, and ask before anything billable. Commits that pass the pre-commit checks may be pushed (standing permission, 14 Oct 2026); creating services, changing deploy settings and publishing outside the repo still need approval each time.
 - **Method first.** Use frozen test days, a method card and a validation report before any UI.
 
 ### What Interference Watch adds
@@ -105,12 +105,12 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
 | Attribution and exclusion layers (licensed transmitters, weather radars, navaids, space weather, ducting) | Phase 6 |
 | CYGNSS, NISAR, COSMIC-2, CORS/IGS, SMOS/SMAP | Phase 7 |
 
-**emso-watch code:** Tom's own code, so it may be ported. Apply the 14 Oct patch in `private/reference/`. Move its watch lists into private config when porting, because this repo is public.
+**emso-watch code:** the owner's own code, so it may be ported. Apply the 14 Oct patch in `private/reference/`. Move its watch lists into private config when porting, because this repo is public.
 
 ### Storage and access
 
 - **History:** Parquet history and per-day files in R2, as above.
-- **Event and alert state:** **Cloudflare D1** (free tier) instead of Supabase. A new Supabase project in Tom's org costs **$10/month** (checked 14 Oct 2026), which breaks the free-tier rule.
+- **Event and alert state:** **Cloudflare D1** (free tier) instead of Supabase. A new Supabase project in the project's org costs **$10/month** (checked 14 Oct 2026), which breaks the free-tier rule.
 - **Public site:** licence-clean layers, the method card and the validation report, as static files only.
 - **Private watch:** AOIs, keywords, alert log and digests live in D1 behind **Cloudflare Access**. They are never in the repo, never in the public site, and never in ntfy message text.
 - **Claude scheduled task (digests):** reads through a role that cannot see AOIs or keywords. Collected text is data, never instructions.
@@ -126,7 +126,7 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
 ### Merged phases (each finished and committed before the next)
 
 1. **Foundation:** as above. Repo, licence registry (merge both research docs), PNT processor v1 on three frozen days, method card, and a validation report against known hotspots and GPSJam maps (visual) for the same dates.
-2. **Daily and backfill, plus the declared lane:** daily job, backfill, static map live. Port emso-watch's pollers to Worker cron, with ntfy alerts. **Status 22 Oct 2026:** daily job, backfill and map done in GitHub Actions; announced US GPS tests from FAA advisories on the public map; the pollers run daily on Tom's PC with a private digest (`collectors/watch.py`). Worker cron and ntfy wait for Tom's OK (new services).
+2. **Daily and backfill, plus the declared lane:** daily job, backfill, static map live. Port emso-watch's pollers to Worker cron, with ntfy alerts. **Status 22 Oct 2026:** daily job, backfill and map done in GitHub Actions; announced US GPS tests from FAA advisories on the public map; the pollers run daily on the project PC with a private digest (`collectors/watch.py`). Worker cron and ntfy wait for approval (new services).
 3. **SATCOM v1:** GEO threat board and the ITU RRB interference register.
 4. **Spoofing and maritime:** ADS-B spoofing detectors, AIS (Digitraffic, Kystverket), declared-warning layers. **Extended 23 Oct 2026** by the maritime lane plan (`docs/maritime-plan.md`): vessels and their signals in the South China Sea and Indian Ocean, led by one validated method (dark ships and phantom tracks).
 5. **Emitters:** Sentinel-1 RFI board and weather-radar spokes.
@@ -139,7 +139,7 @@ Tom decided on 14 Oct to merge the two efforts into one project here. The Interf
 
 ### Decisions still open (supersedes items 2 and 3 above)
 
-1. ~~Product name~~ **Decided 14 Oct: Noisefloor.** Site live at https://noisefloor.theintelligence.company (Cloudflare Pages project `noise-floor`, output dir `site/`, CNAME at Squarespace; 14 Oct). Code licence: MIT (14 Oct); changed to AGPL-3.0-only on 27 Oct 2026 (Tom), before anyone outside had used the code (GitHub traffic: 3 unique visitors, no forks). Versions published 15–27 Oct stay MIT.
+1. ~~Product name~~ **Decided 14 Oct: Noisefloor.** Site live at https://noisefloor.theintelligence.company (Cloudflare Pages project `noise-floor`, output dir `site/`, CNAME at Squarespace; 14 Oct). Code licence: MIT (14 Oct); changed to AGPL-3.0-only on 27 Oct 2026, before anyone outside had used the code (GitHub traffic: 3 unique visitors, no forks). Versions published 15–27 Oct stay MIT.
 2. ~~Repo visibility~~ **Decided 14 Oct: public; created and pushed 14 Oct** (github.com/metacog-osint/noise-floor). It gets free unlimited Actions minutes, and the repo and site are the showcase. Private config stays in D1, secrets and `private/`.
 3. ~~Enable R2~~ **Superseded 22 Oct 2026:** outputs are stored as GitHub Release assets (`pnt-data-YYYY-MM`, `declared-data`), free and public; R2 stays an option if the history outgrows releases.
 4. Permission requests (unchanged): RIPE NCC, Georgia Tech (IODA), adsb.lol, later 18 SDS.
@@ -152,16 +152,16 @@ visualization spec) was checked against this repo on 5 Nov 2026. Where they diff
 
 1. **Output formats:** Noisefloor publishes its own release files and the `tic-feed/2` feed. Anything another consumer
    needs is converted on the consumer's side, not here.
-2. **Stack:** the existing one (GitHub Actions, Releases, Cloudflare Pages, plus the daily collectors task on Tom's PC).
-   No new cloud services. Stream listeners wait for an always-on host and Tom's OK.
+2. **Stack:** the existing one (GitHub Actions, Releases, Cloudflare Pages, plus the daily collectors task on the project PC).
+   No new cloud services. Stream listeners wait for an always-on host and approval.
 3. **Sources:** `registry/sources.csv` verdicts win over the brief's list. Every new source is registered with its licence
    before it feeds anything. Channel line-up listings stay a private watch, not a public layer. IODA is read privately
-   until its permission request is answered (Tom, 5 Nov 2026): public pages cite its findings by link, never its series
+   until its permission request is answered (5 Nov 2026): public pages cite its findings by link, never its series
    or charts. RIPE Atlas still waits for permission (decision 4).
 4. **Grading:** the brief's alert tiers get one mapping table onto the `watch.py` grades, the five `events.py` grade fields
    and the `tic-feed/2` tier and status class. It goes in the SATCOM plan. No composite score until a shadow-mode period
    and a validation set give something to calibrate it against.
-5. **Plan and steps:** SATCOM v1 gets its own plan, `docs/satcom-plan.md` (to be drafted for Tom's approval), with steps
+5. **Plan and steps:** SATCOM v1 gets its own plan, `docs/satcom-plan.md` (to be drafted for approval), with steps
    S1–Sn. Validation follows the repo's pattern: pre-registered checks in `docs/validation/` before anything goes public.
 6. **Watch lists and keywords** stay in `private/`. Each entry records the public source it came from.
 7. **Footprints:** FCC Schedule S filings are the first route to published beam contours (registry row
@@ -197,7 +197,7 @@ October (NGA MSI HTTP 503 from 29 Oct; both NAVCEN sources HTTP 403 from 26 Oct)
 
 - **NISAR L-band lane pulled forward from Phase 7** (`nisar/`). It detects emitters inside NISAR's receive bands from cross-pol excess, checks band specificity, streak shape and unpolarized change, groups detections into sites and cross-fixes them. The offline self-test passes (in CI). It has not run on live data yet. Next: the Shiraz known-answer run (`nisar/validation/shiraz.json`), then an `inspect` of one provisional granule to see how much the processor's RFI filter leaves. Open decision: where the daily run lives, because its logs and outputs are watch data (public Actions with `--quiet` and outputs to the private store, or this PC).
 - **Second Shiraz check on PROVISIONAL products** (`nisar/validation/shiraz_provisional.json`). The GPS World case uses BETA products, which predate the processor's RFI filter. ASF says the filter, applied to PROVISIONAL products (17 Jun 2026 onward), sometimes leaves residual RFI and sometimes removes real features, and it advises caution when mixing BETA and PROVISIONAL. So a BETA pass doesn't show the detector works on filtered data. CMR on 21 Oct: 40 PROVISIONAL granules cover the site, from tracks 56 and 157 ascending and 107 descending, all 20+5 MHz HH+HV. That gives the first real ascending/descending cross-fix test if the jammer is still on. The BETA set is 6 granules (track 157 ascending; 27 Dec, 8 Jan, 20 Jan).
-- **Decisions (Tom, 21 Oct):**
+- **Decisions (21 Oct):**
   - The daily run starts on this PC until the time per granule is measured.
   - No phone pushes until the Shiraz checks and a regional positive control pass.
   - Outputs stay private until validated.
@@ -217,7 +217,7 @@ October (NGA MSI HTTP 503 from 29 Oct; both NAVCEN sources HTTP 403 from 26 Oct)
   - Tone-rank misses noise jammers. The broadband detector scores the processor's per-block signal power, flagging HV far above the frame's HH-to-HV/HH relationship, with an excess-power and absolute-ratio gate.
   - On a documented L1/L2/L5 jamming area it detects on 12 of 13 covering passes, where the tone method saw nothing at the L2 centre. Forested regions without reported jamming stay near zero.
   - Both detectors run on every table read and merge within 20 km.
-- **Public site expanded (Tom, 22 Oct):** Home, Lanes (all 25 lanes: status, what, how, data, limits; build order), Methods, Validation (failures included) and Sources (the licence registry, filterable). Generated by `tools/build_site.py` from `site_src/`. No watch areas or private detections.
-- **Private web view (Tom, 22 Oct):** the NISAR outputs publish daily to a Cloudflare Pages project behind Cloudflare Access (Zero Trust Free, one-time PIN to the owner's email).
-- **Daily run (Tom, 22 Oct):** on this PC through Task Scheduler (`nisar/run_daily.cmd`, 07:00 Central), about 0.85 GB and 3–4 minutes a day. Phone pushes stay off and outputs stay private. The full backfill to 17 Jun is on hold.
+- **Public site expanded (22 Oct):** Home, Lanes (all 25 lanes: status, what, how, data, limits; build order), Methods, Validation (failures included) and Sources (the licence registry, filterable). Generated by `tools/build_site.py` from `site_src/`. No watch areas or private detections.
+- **Private web view (22 Oct):** the NISAR outputs publish daily to a Cloudflare Pages project behind Cloudflare Access (Zero Trust Free, one-time PIN to the owner's email).
+- **Daily run (22 Oct):** on this PC through Task Scheduler (`nisar/run_daily.cmd`, 07:00 Central), about 0.85 GB and 3–4 minutes a day. Phone pushes stay off and outputs stay private. The full backfill to 17 Jun is on hold.
 - **The Shiraz known answer is uncertain (22 Oct):** the article's coordinate is 257 km from the place it describes ("about 50 km SW of Shiraz"). A re-score against the description doesn't pass either (a persistent source on the off date too). A cleaner known answer is needed: an announced test or a surveyed emitter.

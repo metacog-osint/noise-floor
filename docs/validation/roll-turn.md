@@ -1,7 +1,7 @@
 # Roll against turn rate: an inertial check on GNSS tracks (pre-registered 25 Oct 2026)
 
 **Status:** pre-registration, written and committed before any residual was computed. Results will be added below the
-line, without changing anything above it. Written by Claude while Tom was at drill; not yet reviewed by him.
+line, without changing anything above it. Not yet reviewed.
 
 ## Why
 
@@ -103,7 +103,7 @@ mostly from January and February (19–42 aircraft-hours a day) and are rarer fr
   Petersburg and at Sheremetyevo. That makes it a candidate spoofing indicator, not a jamming indicator.
 - Next, as a new pre-registration on held-out days: check 3 redefined to exclude aircraft-hours whose positions sit at a
   shared fixed point (the spoofing detector's own shared-point rule), with MLAT disagreement as independent truth where it
-  exists. Nothing here goes on the site until that passes and Tom has reviewed it.
+  exists. Nothing here goes on the site until that passes and it has been reviewed.
 
 ---
 
@@ -129,7 +129,7 @@ truncated). Spoofing episodes from v0.4 (`data/spoofing_v04/`).
    Baltic (53–61N, 14–32E): at most 3 times the control rate, or at most 0.05% if 3 times the control is lower.
 4. **Exploratory:** aircraft-hours with spread under 10 km and a run, outside episodes, by place (the fixed points).
 
-A pass on all three would make roll-turn mismatch a candidate spoofing indicator for review by Tom; any failure of check
+A pass on all three would make roll-turn mismatch a candidate spoofing indicator for review; any failure of check
 1 or 3 ends it.
 
 ### Second test: results (run 25 Oct 2026, about 16:20 UTC; code 61a2a69): all three checks pass, with a caveat

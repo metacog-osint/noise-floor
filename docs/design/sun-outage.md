@@ -1,6 +1,6 @@
 # Sun outages: calculator, status board and alerts (26 Oct 2026)
 
-Tom asked (26 Oct 2026) for the sun-outage calculator to work both ways: **manually**, whenever someone wants it, and
+A request (26 Oct 2026) asked for the sun-outage calculator to work both ways: **manually**, whenever someone wants it, and
 **automatically**, as a heads-up display on the home page that raises alerts when satellites or parts of the
 geostationary arc are **predicted and observed** to be in blackout conditions. His choices: observed evidence from NOAA's
 solar radio data, our own aircraft GNSS data and outage reports; coverage by a broad public list and by the whole arc;
