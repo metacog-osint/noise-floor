@@ -4,7 +4,7 @@
   python tools/ops_tally.py cosmic2 [--log data/logs/cosmic2_daily.log] [--since 2026-11-16]
       Each day this PC's COSMIC-2 run found GitHub's file already published and compared it ("Compared with it:
       {...}" in the log): match true/false per day, and the tally. A clean week of match: true is the case for
-      retiring the PC run (CLAUDE.md, Space weather files).
+      retiring the PC run.
 
   python tools/ops_tally.py landing [--since 2026-11-16] [--until 2026-11-23]
       When each adsb.lol day's <day>.map.json (the daily job's done marker) reached its pnt-data-YYYY-MM release:

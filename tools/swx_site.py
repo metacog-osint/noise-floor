@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""swx_site.py: the space weather files on the site, the home page and the feed (Tom approved 16 Nov 2026).
+"""swx_site.py: the space weather files on the site, the home page and the feed.
 
 Two day files from the swx-data-YYYY-MM releases:
 - <day>.cosmic2-limb-s4.json (tools/cosmic2_s4.py, docs/validation/cosmic2-limb-s4.md): limb S4 measured along
@@ -7,7 +7,7 @@ Two day files from the swx-data-YYYY-MM releases:
 - <day>.ground-roti.json (tools/ground_roti.py, docs/validation/ground-roti.md): ROTI, a measured TEC fluctuation
   index at fixed stations. Per IGS station and UTC hour, in TECU/min. A proxy for irregularities, never an S4 value.
 
-Label rule (CLAUDE.md, "Space weather files"): limb S4 is never compared with the ground S4 alert levels, and ROTI is
+Label rule: limb S4 is never compared with the ground S4 alert levels, and ROTI is
 never read against S4 alert levels; neither has an alert level here. Every number below is a measurement with no
 baseline, so the board card and the feed items built from it are routine observations: the day's highest values,
 not departures from a usual level.
