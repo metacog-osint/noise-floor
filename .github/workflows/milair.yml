@@ -37,9 +37,32 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+      # The step stops at its own limit, before the job's, so a long backfill that runs out of time still reaches the
+      # private archive step below with the day files it made (a step that times out fails; it is not cancelled).
       - name: Military air day files
+        id: days
+        timeout-minutes: 320
         env:
           GH_TOKEN: ${{ github.token }}
           DAYS: ${{ inputs.days }}
           FORCE: ${{ inputs.force && '--force' || '' }}
         run: python tools/milair_job.py $DAYS $FORCE
+      # Private archive: every day file this run made also goes to the PRIVATE repo metacog-osint/tic-archive
+      # (tools/tic_archive.py, lane milair: release noisefloor-milair-YYYY-MM, one snapshot per run that made a file,
+      # only new content uploaded, nothing replaced or deleted). The public release holds one copy of each day, which
+      # a forced remake replaces (--clobber); the archive keeps every version. data/ is not in git, so data/milair
+      # holds only the files this run wrote, a day whose public upload failed among them. A run that made no file
+      # archives nothing; a missing token or a failed put turns the run red.
+      - name: Private archive (day files made this run, to tic-archive)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
+        env:
+          GH_TOKEN: ${{ secrets.TIC_ARCHIVE_TOKEN }}
+        run: |
+          if ! ls data/milair/*.milair.json > /dev/null 2>&1; then
+            echo "milair: this run made no day file, so nothing was archived"; exit 0
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::secret TIC_ARCHIVE_TOKEN is not set, so this run's day files did not reach the private archive"; exit 1
+          fi
+          python tools/tic_archive.py put --program noisefloor --lane milair --src data/milair
