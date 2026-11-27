@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """check_registry.py — validate registry/sources.csv and enforce the licence rule.
 
-Rule (CLAUDE.md; Tom, 29 Oct 2026): Noisefloor is non-commercial, so a source feeds a public layer once its licence
+Rule: Noisefloor is non-commercial, so a source feeds a public layer once its licence
 is recorded and allows republishing, commercial or not. Sources whose terms forbid republishing are excluded or kept to
 citation.
   use=ingest            requires commercial=yes or commercial=no (terms known); ask or unverified must wait

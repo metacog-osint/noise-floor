@@ -60,10 +60,37 @@ def test_worktree_finds_main_term_list():
         assert r.returncode == 0 and "check_public: OK (1 file(s), 1 terms)" in r.stdout, r.stdout + r.stderr
 
 
+NOTES_FILES = ("CLAUDE.md", "HISTORY.md", "HANDOFF.md")
+
+
+def test_no_pointer_to_untracked_notes():
+    """Contributor notes files are not part of this repository, so no tracked file may send a reader to one: a rule a
+    comment relies on is stated in the comment itself."""
+    tracked = set(subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True).stdout.splitlines())
+    names = [n for n in NOTES_FILES if n not in tracked]
+    assert names, "every notes file is tracked; nothing to check"
+    bad = []
+    for path in sorted(tracked):
+        if path == "tests/test_check_public.py":
+            continue
+        full = os.path.join(ROOT, path)
+        if not os.path.isfile(full) or os.path.getsize(full) > 2_000_000:
+            continue
+        try:
+            text = open(full, encoding="utf-8").read()
+        except UnicodeDecodeError:
+            continue
+        for i, line in enumerate(text.splitlines(), 1):
+            if any(n in line for n in names):
+                bad.append(f"{path}:{i}")
+    assert not bad, "points at a notes file the repo does not hold: " + ", ".join(bad)
+
+
 def main():
     test_found()
     test_worktree_finds_main_term_list()
-    print("test_check_public: ok (2 tests)")
+    test_no_pointer_to_untracked_notes()
+    print("test_check_public: ok (3 tests)")
 
 
 if __name__ == "__main__":
