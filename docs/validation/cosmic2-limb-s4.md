@@ -164,6 +164,6 @@ its values are not on the same scale. One season and eight stations; no mid- or 
 **Interference file from the same pass.** On 7, 9, 10 and 13 Nov the job's `<day>.cosmic2.json` matched the file this
 PC had published, cell for cell (score difference 0.0). The job filled 11 and 12 Nov, which the PC had missed.
 
-## 7. What waits on Tom
+## 7. What waits on review
 
 Adding the layer to the public map or to the `tic-feed/2` feed, after this validation, as for every earlier layer.

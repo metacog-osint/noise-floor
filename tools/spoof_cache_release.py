@@ -11,7 +11,7 @@ Each day's cache folder (tools/spoof_day.py run --cache) becomes one uncompresse
 become baseline-<name>.tar. manifest.json records each asset's bytes and sha256, and fetch refuses an asset that
 doesn't match. The tar holds only the cache's own files; nothing is written outside the destination on extract.
 
-The caches and events hold ICAO addresses, so the release lives in a PRIVATE repository (Tom, 16 Nov 2026). Uploads
+The caches and events hold ICAO addresses, so the release lives in a PRIVATE repository (16 Nov 2026). Uploads
 use the local gh login; the workflow reads with a read-only token (GH_TOKEN). Never upload these to a public release.
 """
 import argparse

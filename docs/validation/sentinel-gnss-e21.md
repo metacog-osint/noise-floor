@@ -90,7 +90,7 @@ the two South Atlantic Anomaly boxes stay reported only.
 - The code that computes L and D′ is committed before any held-out result is seen, and its hash is recorded with the
   results.
 - No mark, window or definition changes after a result is seen. If a bug turns up, the frozen result is reported first.
-- E2.1 replaces E2 in products only if checks 1–5 hold or are weakened, with none failed, and Tom agrees.
+- E2.1 replaces E2 in products only if checks 1–5 hold or are weakened, with none failed, and it is approved.
 
 ## 2. Results (run 4 Nov 2026, 23:03 UTC)
 
@@ -157,13 +157,13 @@ Check 4 by box: central Pacific 0.0% (D 0.08%), southern Africa interior 0.0% (D
 
 ### 2.4 What follows
 
-- By section 1.5, E2.1 may replace E2 in products once Tom agrees, since every check held.
+- By section 1.5, E2.1 may replace E2 in products once approved, since every check held.
 - Before it does: remove the offset (2.3) as a stated new definition, and take the load from a merged file that carries
   every BeiDou-3 satellite. Neither changes this result.
 
 ## 3. E2.1 in the products (16 Nov 2026)
 
-Tom agreed on 16 Nov 2026 that E2.1 replaces E2 in the private Sentinel products (`private/sentinel/`, the GPS L1 and
+It was agreed on 16 Nov 2026 that E2.1 replaces E2 in the private Sentinel products (`private/sentinel/`, the GPS L1 and
 L2C area products). Sections 1 and 2 are unchanged; this section states the product definition, written before any
 product-day result was seen. Code: `tools/sentinel_e21.py` (`product`; the frozen `day` and `checks` are untouched).
 

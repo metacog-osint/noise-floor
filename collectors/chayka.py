@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """chayka.py — Loran-C / Chayka on-air status from the DF6NM DL0AO monitor image (private watch).
 
-Ported from Tom's emso-watch Chayka logger (chayka_lib.py + chayka_log.py, 14 Oct 2026 live fixes). Called by
+Ported from the earlier emso-watch Chayka logger (chayka_lib.py + chayka_log.py, 14 Oct 2026 live fixes). Called by
 collectors/watch.py once a day; it can also run on its own.
 
 The image (DL0AO grabber, Amberg DE, 88-112 kHz, updated every 15 min by DF6NM):

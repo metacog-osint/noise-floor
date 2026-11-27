@@ -20,27 +20,27 @@ from a borrowed city. Countries read as in a sentence ("the United States", "the
 of SPREAD_REGIONS or more regions whose cells reach SPREAD_MIN or more countries says so: "across 25 countries,
 centred near Zagreb" (where()).
 
-Why point first and sea names (18 Nov 2026, Tom's choice): on 17 Nov 2026 a burst whose point lies in Hungary read
+Why point first and sea names (18 Nov 2026): on 17 Nov 2026 a burst whose point lies in Hungary read
 "in Ukraine" (most of its five cells' land), and areas at sea took a country from a sliver of coast: "in Italy, 320
 km S of Marseille" from 1 of 56 sample points on Sardinia, "in Turkey, 160 km W of Nicosia" west of Cyprus.
 
 A country name also carries a reference point, "220 km W of Tbilisi" (ref()): the nearest listed place within REF_KM
 in that country, unless a place across a border is under 1/REF_SAME of its distance, when that one is used, and then
 named with its country: "in Saudi Arabia, 220 km S of Doha, Qatar". The reference is words only: no place
-coordinates, so it never adds a country tag. Why (18 Nov 2026, Tom's choice "B"):
+coordinates, so it never adds a country tag. Why (18 Nov 2026, option "B"):
 on 17 Nov 2026 the brief said GPS interference started in Saudi Arabia and fell below jamming scale in Saudi Arabia,
 two areas about 500 km apart; "Saudi Arabia (330 km W of Abu Dhabi)" and "Saudi Arabia (210 km NW of Manama)" tell
 them apart. The Sentinel-6 card already words its peaks this way ("64 km N of Shostka").
 
-Why the 10 m coast (24 Nov 2026, Tom's yes): the kit's outlines are thinned to about 5 km, so a spoofed-to place
+Why the 10 m coast (24 Nov 2026, approved): the kit's outlines are thinned to about 5 km, so a spoofed-to place
 0.5 km inland in Myanmar (14.63N 97.91E) read "in the Andaman Sea, 300 km W of Bangkok", and one 7 km out in the
 Gulf (25.79N 55.05E) read "in Iran" because its cell is half Iranian land. A false position is a point, not an area.
 
-Why smaller places and the reference's country (18 Nov 2026 evening CST, Tom's yes after the reader's review of the
+Why smaller places and the reference's country (18 Nov 2026 evening CST, approved after the reader's review of the
 17 Nov feed): two Black Sea coast events read "in Turkey, 390 km E of Samsun" with Batumi (rank 6) in reach, and "in
 Saudi Arabia, 220 km S of Doha" read as if Doha were in Saudi Arabia.
 
-Why (17 Nov 2026, Tom's yes): with 350 km, the two 15 Nov 2026 majors on the Turkish-Georgian Black Sea coast
+Why (17 Nov 2026, approved): with 350 km, the two 15 Nov 2026 majors on the Turkish-Georgian Black Sea coast
 (41.26N 41.05E) were "near Sochi" (281 km) and tagged RU. On 3-16 Nov 2026, 82 of 256 major and notable events were
 named after a place 150-350 km away, some across a border (a point in Greece "near Tirana").
 """
@@ -60,7 +60,7 @@ REF_KM = 500      # a country name's reference place: within this distance of th
 REF_SAME = 1.5    # ... in the named country, unless the nearest place elsewhere is closer by more than this factor
 LAND_MIN = 0.5    # an area whose point is at sea takes a country only when this share of its sample points is land
 SPREAD_MIN = 5    # an event whose cells reach this many countries is named "across N countries, centred ..."
-SPREAD_REGIONS = 10   # ... when it also covers this many regions (Tom, 18 Nov 2026: at 5 countries alone, 18 of
+SPREAD_REGIONS = 10   # ... when it also covers this many regions (18 Nov 2026: at 5 countries alone, 18 of
                       # 17 Nov's 152 events read so, a one-region burst "across 5 countries, centred near Brussels")
 COAST_KM = 10     # a point on 10 m land but outside the kit's outlines takes a country outline this close
 MINOR_RANKS = (6, 7)    # smaller listed places, tried only when no rank 5 or better place is within NAME_KM

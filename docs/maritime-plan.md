@@ -106,7 +106,7 @@ below are starting points, to be fixed on known cases before any test (Section 1
 
 ## 7. Database
 
-A private store first (SQLite or DuckDB on Tom's PC under `private/`, gitignored), with public outputs derived from
+A private store first (SQLite or DuckDB on the project PC under `private/`, gitignored), with public outputs derived from
 licence-clean inputs only.
 
 | Table | Holds |
@@ -126,11 +126,11 @@ lists live in private config, never in tracked files.
 
 - **GitHub Actions (public, licence-clean):** Sentinel-1 and Sentinel-2 searches and ship detection over the focus
   areas, VIIRS products if licensed, declared warnings, weather context. Outputs go to release assets, as for the GNSS lane.
-- **Tom's PC (private):** the AIS stream (a long-lived websocket, which Actions can't hold) and scheduled KiwiSDR sessions,
+- **the project PC (private):** the AIS stream (a long-lived websocket, which Actions can't hold) and scheduled KiwiSDR sessions,
   writing to the private store. Same pattern as the NISAR lane.
 - **Public site:** a separate **Sea** map page reusing the GNSS map's engine (pre-projected geometry, caching, events
   panel, "usual level" logic).
-- **Private view:** behind Cloudflare Access, like the NISAR view. New services (D1, Workers cron, ntfy) still need Tom's OK.
+- **Private view:** behind Cloudflare Access, like the NISAR view. New services (D1, Workers cron, ntfy) still need approval.
 - **Shared with existing lanes:** the GNSS map (coastal South China Sea and the Hormuz trend area), the NISAR lane (a
   private coastal watch area can be added), the radio-horizon localizer (jammers on ships), the declared lane.
 
@@ -212,7 +212,7 @@ dark).
 | M4 | Context: weather (D10, Section 6), declared warnings, sanctions, EEZs, ports, cables (D8) | Layers in the private view |
 | M5 | RF and HF: Sentinel-1 and NISAR interference at sea, CYGNSS, DSC and TDoA (D11, D12) | Each with a known case |
 | M6 | Public **Sea** map with licence-clean layers; private view for the rest | Live page; method card |
-| M7 | Optional feeder kit (AIS, VHF and DSC on one Raspberry Pi) for partners | Tom's decision |
+| M7 | Optional feeder kit (AIS, VHF and DSC on one Raspberry Pi) for partners | The owner's decision |
 
 **Progress (23 Oct 2026).** M1 detection is built (`tools/ship_detect.py`), ahead of the M0 accounts. Microsoft's
 Planetary Computer serves Sentinel-1 GRD anonymously, so no Copernicus account was needed.
@@ -233,16 +233,16 @@ Planetary Computer serves Sentinel-1 GRD anonymously, so no Copernicus account w
 - **Fixed against moving:** across the four full passes, 382 detections recur within 60 m on 60% or more of passes. These
   are fixed structures, moorings and long-stay anchored ships. Another 1,770–3,200 per pass are movers.
 - **Not done yet:**
-  - AIS (needs Tom's aisstream key), so detection rate and false alarms aren't calibrated.
+  - AIS (needs the aisstream key), so detection rate and false alarms aren't calibrated.
   - Make the recommended flags the default, then rerun `persist` (the fixed-site set would change).
   - A clutter-aware CFAR to replace the contrast floor, tested on held-out passes.
   - Outputs stay private.
 
-## 14. Open decisions for Tom
+## 14. Open decisions
 
 1. Go ahead now, or wait on the open question of pausing new lanes until NISAR passes a ground-truth test? (Recommendation:
    go ahead, with one validated method first.)
-2. Accounts and requests only Tom can make: a Copernicus Data Space account (Sentinel-1 and -2 downloads, free with quotas);
+2. Accounts and requests only the owner can make: a Copernicus Data Space account (Sentinel-1 and -2 downloads, free with quotas);
    Earth Observation Group registration (night lights); an email to aisstream about their terms.
 3. Which focus area first (recommendation: Singapore Strait and Johor).
 4. Whether to pursue a volunteer feeder network (M7), with its people and legal risks.

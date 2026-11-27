@@ -45,7 +45,7 @@ This follows a private list of RSS and Atom feeds in `private/watch/feeds.txt` (
 
 ## Watch pollers (`watch.py`, `chayka.py`)
 
-Daily trigger pollers, ported from Tom's emso-watch trigger board on 22 Oct 2026. Each trigger is a lead for triage, graded WARNING (an official notice), EFFECT (a report or a measured change) or NATURAL (space weather, to rule out first). Each fires once.
+Daily trigger pollers, ported from the earlier emso-watch trigger board on 22 Oct 2026. Each trigger is a lead for triage, graded WARNING (an official notice), EFFECT (a report or a measured change) or NATURAL (space weather, to rule out first). Each fires once.
 
 | Source | Registry row | Use |
 |---|---|---|
@@ -63,7 +63,7 @@ Daily trigger pollers, ported from Tom's emso-watch trigger board on 22 Oct 2026
 
 **Outputs** (all under `data/`, gitignored): `data/watch/digest_*.md`, `alerts.jsonl` (every trigger, append-only), `state.json`, `navcen_gps_tests.json`, `chayka/`, and raw responses under `data/raw/watch/YYYY-MM-DD/`.
 
-**Not ported:** IODA (ask first), Cloudflare Radar and GPSJam (visual comparison only), and phone pushes through ntfy (a new service, so Tom's OK first). Announced US GPS tests for the public map come separately from the FAA's flight advisories (`pipeline/faa_gps_tests.py`, in the daily GitHub workflow).
+**Not ported:** IODA (ask first), Cloudflare Radar and GPSJam (visual comparison only), and phone pushes through ntfy (a new service, so approval first). Announced US GPS tests for the public map come separately from the FAA's flight advisories (`pipeline/faa_gps_tests.py`, in the daily GitHub workflow).
 
 ## aisstream AIS (`aisstream_ais.py`) — private
 
@@ -98,7 +98,7 @@ This collects live AIS from [aisstream.io](https://aisstream.io/documentation)'s
 
 - runs daily at 06:30 local time
 - catches up after the PC was off
-- runs only while Tom is signed in
+- runs only while the owner is signed in
 - its 30-minute limit is generous
 
 The project is on the D: USB drive, so the task fails if the drive isn't connected (the log shows nothing new).

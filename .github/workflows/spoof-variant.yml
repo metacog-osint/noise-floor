@@ -4,7 +4,7 @@ name: spoof-variant
 # (tools/spoof_cache_release.py, repo metacog-osint/noise-floor-archive), read with the read-only token
 # SPOOF_CACHE_TOKEN. The reruns' outputs hold ICAO addresses, so they never leave the job: only aggregate scores and
 # per-day counts go to the job summary and the report artifact. The Lima check (tools/spoof_compare.py) needs local
-# outside files and stays on the PC. Run it from Actions -> spoof-variant -> Run workflow (each run is Tom's call).
+# outside files and stays on the PC. Run it from Actions -> spoof-variant -> Run workflow (each run is the owner's call).
 on:
   workflow_dispatch:
     inputs:

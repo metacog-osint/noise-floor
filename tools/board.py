@@ -28,7 +28,7 @@ from datetime import datetime, timedelta, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UA = {"User-Agent": "noise-floor board (github.com/metacog-osint/noise-floor)"}
 JAM_MIN_AIRCRAFT, JAM_SCORE, REGION_HEXES = 5, 10.0, 3        # the map's colouring rule and the events level check
-# "Ended" needs more than falling below jamming scale (suite review 15 Nov 2026, Mistake 2; Tom's choice 16 Nov):
+# "Ended" needs more than falling below jamming scale (suite review 15 Nov 2026, Mistake 2; decided 16 Nov):
 # coverage on each of the last 7 days (aircraft-cells >= ENDED_MIN_AIRCRAFT and >= half the region's own median over
 # the 30 days before) and a pooled 7-day severe-error share at background level. In regions never at jamming scale,
 # 95% of 7-day windows with 500+ aircraft-cells a day pooled to 0.92% or less (live day maps 10 Oct-15 Nov 2026).
@@ -562,11 +562,11 @@ def brief(b):
        none of the last 7 "fell below jamming scale"; it "ended" only when it also passes ended_check() (enough
        aircraft on each of the last 7 days and a background-level severe-error share), because a region can drop
        under the 3-cell mark while degraded aircraft and graded events go on (suite review 15 Nov 2026, Mistake 2;
-       Tom replaced "has stopped" on 16 Nov). "Fell" appears only in "fell below jamming scale". Neither says "this
+       it replaced "has stopped" on 16 Nov). "Fell" appears only in "fell below jamming scale". Neither says "this
        week", since it may have happened before the week began. Up to two new areas and one area of each other kind
        are named by tools/area_names.py: a listed place within 150 km, else the country most of the area lies in
        ("in Turkey" when every name is a country, "near Doha" otherwise); a country carries its reference in
-       brackets, "Saudi Arabia (330 km W of Abu Dhabi)" (area_names.ref, Tom's choice 18 Nov 2026).
+       brackets, "Saudi Arabia (330 km W of Abu Dhabi)" (area_names.ref, 18 Nov 2026).
     A section that is missing leaves its sentence out."""
     out = []
     areas = [a for a in ((b.get("hotspots") or {}).get("areas") or [])

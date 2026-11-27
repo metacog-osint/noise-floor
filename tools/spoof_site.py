@@ -45,7 +45,7 @@ USUAL_DAYS, USUAL_MIN_DAYS = 30, 7    # a place's usual level: median of its dai
                                       # a targets file (0 on days it wasn't shown), from at least 7 of them
 LEVEL_RATIO, LEVEL_MIN_DIFF = 2.0, 3  # above: at least 2x usual and 3 or more aircraft over it; below: at most half
                                       # and 3 or more under it; otherwise near
-REGION_MIN_OVER = 5      # regions read above only 5 or more spoofed aircraft-hours over usual (Tom, 16 Nov 2026;
+REGION_MIN_OVER = 5      # regions read above only 5 or more spoofed aircraft-hours over usual (16 Nov 2026;
                          # pre-registered test in docs/spoofing-light-plan.md); below keeps LEVEL_MIN_DIFF
 ABOVE_ROWS = 10
 NEAR_KM = 200            # a spoofed-to place is named after the nearest listed place within this
@@ -124,7 +124,7 @@ def _near(places, lat, lon, limit):
 def _where(places, lat, lon, cell=None, point=False):
     """The jamming rule's words for a spoofing place (tools/area_names.py through board.Places.where): 'near Doha',
     'in Oman, 330 km W of Muscat'; None without places. A false position is judged by its own H3 res-2 cell
-    (Tom's yes, 18 Nov 2026: titles read 'near 22.7°N, 55.5°E' before). point=True for a spoofed-to place, which
+    (18 Nov 2026: titles read 'near 22.7°N, 55.5°E' before). point=True for a spoofed-to place, which
     is a point: at sea by the 10 m coast it takes its sea, not its cell's land (area_names, 24 Nov 2026)."""
     try:
         if not places or not hasattr(places, "where"):

@@ -1,10 +1,10 @@
 # Interference seen from orbit, beyond NISAR: plan
 
-Written 30 Oct 2026 at Tom's request ("what can we do to bring in potential observed interference from satellites other
+Written 30 Oct 2026 on request ("what can we do to bring in potential observed interference from satellites other
 than NISAR, such as Sentinel and others?"). Nothing here is built yet. Registry rows: `cosmic2-ro`, `hydrognss-l1`,
 `sentinel6-ro`, `metop-gras`, `smap-rfi`, `sentinel1-rfi`, `alos2-scansar`, `saocom-l1`, `biomass-l1`, `smos-rfi`,
 `sentinel-gnss-rinex`, `sat-jam`. Step E (the Sentinel navigation receivers) and the collectors section were merged in
-the same day from a separate build note of Tom's.
+the same day from a separate build note.
 
 ## Why
 
@@ -24,7 +24,7 @@ the same day from a separate build note of Tom's.
 | Source | What it receives | Ground it can see | Access and terms | Verdict |
 |---|---|---|---|---|
 | **COSMIC-2** radio occultation (6 satellites, 24° inclination, about 550 km) | GPS L1 C/A and L2 directly, on its navigation (POD) antennas and occultation antennas | Receiver within ±24°. An emitter is in view up to about 45° latitude at the horizon (geometry, not measured), so the Gulf, Levant, Iraq, Iran, Red Sea, Africa and South Asia, but not the Baltic | UCAR CDAAC, anonymous HTTPS. UCAR data terms (CC BY 4.0) | **Build first** |
-| **HydroGNSS** (ESA Scout, 2 satellites, sun-synchronous, about 550 km; launched 28 Nov 2025) | Reflected GPS and Galileo at L1/E1 and L5/E5a, both circular polarizations, plus a measured noise power | Near-polar: the Baltic, Kola and the Arctic | Open since 31 Jul 2026 after registration at hydrognss.org (ESA owns the data, SSTL runs it). No terms found on the pages read | **Build after Tom registers** |
+| **HydroGNSS** (ESA Scout, 2 satellites, sun-synchronous, about 550 km; launched 28 Nov 2025) | Reflected GPS and Galileo at L1/E1 and L5/E5a, both circular polarizations, plus a measured noise power | Near-polar: the Baltic, Kola and the Arctic | Open since 31 Jul 2026 after registration at hydrognss.org (ESA owns the data, SSTL runs it). No terms found on the pages read | **Build after the owner registers** |
 | **Sentinel-6A** and **Metop GRAS** radio occultation | GPS L1/L2 directly | Near-polar orbits, so Eastern Europe and the Baltic | Sentinel-6 L1B at NASA GES DISC (Earthdata token, which we have). Metop through the EUMETSAT Data Store (account). Terms not read for either | **Probe, then decide** |
 | **SMAP** radiometer | 1400–1427 MHz (the protected passive band), with on-board RFI detection | Global | NSIDC, Earthdata login. NASA open data (CC0), citation required | **Build as an emitter layer** |
 | **Sentinel-1** RFI annotation | C-band, 5.405 GHz | Global | Built (`tools/s1_rfi.py`). Copernicus terms allow republishing | **Decide: public region layer or keep private** |
@@ -47,7 +47,7 @@ the same day from a separate build note of Tom's.
 
 ## Build steps
 
-COSMIC-2 first, because it needs no account and its index already exists. HydroGNSS as soon as Tom has access. Each
+COSMIC-2 first, because it needs no account and its index already exists. HydroGNSS as soon as the owner has access. Each
 lane writes its checks into `docs/validation/` with a timestamp before any test day is fetched, as CYGNSS did.
 
 ### C: COSMIC-2 (GPS L1/L2, low latitudes)
@@ -57,16 +57,16 @@ lane writes its checks into `docs/validation/` with a timestamp before any test 
 | C1 | `tools/cosmic2_rfi.py` (commands `fetch` and `day`): stream a day's `podTc2` archive, keep per-link rows (time, receiver position, link direction, elevation, RFI index, L1 and L2 SNR), drop the rest. About 458 MB in, a few MB out. **Built 30 Oct:** the index turned out to be per antenna and second (every link of one antenna carries the same value), so a day reduces to one row per satellite, antenna and second (about 9 MB). The two navigation antennas look forward and backward along the track. On 19 Oct only three of the six satellites delivered data |
 | C2 | **Locate.** The receiver hears an emitter anywhere within about 2,500 km, so one link says little. Back-project each flagged and unflagged sample along its link's ground-facing view, as `s1_rfi.py` does with stripes. Score cells by flagged share over all samples that could see them. Test it offline with synthetic emitters first. Freeze the method and the threshold (start from UCAR's 1e-4) before C3. **Built 30 Oct.** The offline test changed the score: the plain flagged share drifts toward the edge of coverage, so cells are scored by a matched filter (correlation across bins). For an emitter poleward of the orbit, latitude trades off against detection range; longitude holds. A fore/aft option lets each antenna see only its half |
 | C3 | **Checks, pre-registered:** (1) place: score against the aircraft map's jammed and clean cells on the CYGNSS validation days, with AUC reported at region scale (stated before running); (2) change: the March 2026 Gulf surge must show, as it did for aircraft and CYGNSS; (3) quiet controls (central Pacific, South Atlantic, Australia) stay below a stated share; (4) agreement with CYGNSS on the same days and cells |
-| C3b | **Held 31 Oct 2026:** all five pre-registered checks on 21 held-out days (`docs/validation/space-receivers.md` §5.2): AUC 0.919, lowest region-held-out 0.920, no control cell-days raised, Spearman 0.265 with CYGNSS, Gulf spring rise +0.059 (narrowly). **C4 live 31 Oct 2026 (Tom approved):** the map's "COSMIC-2 GPS receivers (from orbit)" layer; `tools/cosmic2_daily.py` runs daily from the 06:30 collectors task and fills the `cosmic2-data` release |
+| C3b | **Held 31 Oct 2026:** all five pre-registered checks on 21 held-out days (`docs/validation/space-receivers.md` §5.2): AUC 0.919, lowest region-held-out 0.920, no control cell-days raised, Spearman 0.265 with CYGNSS, Gulf spring rise +0.059 (narrowly). **C4 live 31 Oct 2026 (approved):** the map's "COSMIC-2 GPS receivers (from orbit)" layer; `tools/cosmic2_daily.py` runs daily from the 06:30 collectors task and fills the `cosmic2-data` release |
 | C4 | If C3 passes: a daily job (GitHub Actions; global, so no watch configuration) uploading `<day>.cosmic2.json` to a `cosmic2-data` release, and a map layer, "GPS interference seen from orbit (COSMIC-2)". If it fails: the write-up says so and the data stay out of the map |
 | C5 | Optional: the Wu (2024) indicator from `conPhs` (2.67 GB a day) as a second, independent COSMIC-2 measure |
-| C6 | **Limb S4, built and validated 15 Nov 2026:** the same `podTc2` files carry UCAR's on-board S4 (one value per 10 s). `tools/cosmic2_s4.py` keeps GPS links below the receiver's horizon with tangent points 150–500 km up and publishes limb S4 measured along radio-occultation paths, which reads higher than a ground receiver's S4, per H3 res-1 cell and UTC hour (`<day>.cosmic2-limb-s4.json`, releases `swx-data-YYYY-MM`). It runs on GitHub (`.github/workflows/cosmic2.yml`, `tools/cosmic2_job.py`), which also makes the C4 interference file in the same pass. Held-out check against INGV eSWua receivers: AUC 0.834 (`docs/validation/cosmic2-limb-s4.md`). Map and feed wait on Tom |
+| C6 | **Limb S4, built and validated 15 Nov 2026:** the same `podTc2` files carry UCAR's on-board S4 (one value per 10 s). `tools/cosmic2_s4.py` keeps GPS links below the receiver's horizon with tangent points 150–500 km up and publishes limb S4 measured along radio-occultation paths, which reads higher than a ground receiver's S4, per H3 res-1 cell and UTC hour (`<day>.cosmic2-limb-s4.json`, releases `swx-data-YYYY-MM`). It runs on GitHub (`.github/workflows/cosmic2.yml`, `tools/cosmic2_job.py`), which also makes the C4 interference file in the same pass. Held-out check against INGV eSWua receivers: AUC 0.834 (`docs/validation/cosmic2-limb-s4.md`). Map and feed wait on the owner |
 
 ### H: HydroGNSS (GPS/Galileo L1 and L5, high latitudes)
 
 | # | Step |
 |---|---|
-| H0 | **Tom:** register at hydrognss.org and read the terms. Record them in `hydrognss-l1`. **Done 30 Oct:** registered, and the ESA terms are recorded; credentials pending |
+| H0 | **Owner:** register at hydrognss.org and read the terms. Record them in `hydrognss-l1`. **Done 30 Oct:** registered, and the ESA terms are recorded; credentials pending |
 | H1 | Probe one Level 1 file: whether users get delay-Doppler maps with delay rows ahead of the reflection (the noise rows the CYGNSS method reads), at L1 and L5, and how the measured noise power is reported |
 | H2 | Port the CYGNSS indicator (noise floor over gain against a same-day baseline per spacecraft and antenna), for L1 and, new, L5 |
 | H3 | **Checks, pre-registered:** the Baltic, Kola and Finnmark against the aircraft map; quiet controls; and the overlap band (35–38°) against CYGNSS on the same days |
@@ -77,12 +77,12 @@ lane writes its checks into `docs/validation/` with a timestamp before any test 
 | # | Step |
 |---|---|
 | P0 | Probe Sentinel-6A L1B at GES DISC: whether SNR profiles are present, or only bending angles. Read its terms. **Done 30 Oct:**
-- GES DISC returns "EULA Acceptance Failure" until the Earthdata account approves its app. That one click is Tom's;
+- GES DISC returns "EULA Acceptance Failure" until the Earthdata account approves its app. That one click is the owner's;
   it would also open the occultation files.
 - PO.DAAC's `JASON_CS_S6A_L1B_GNSS_RO_POD_HOURLY` works with our token: 1 Hz RINEX from the receiver's RO-POD antenna,
   GPS S1C/S1W/S2W/S2X, about 195 MB a day, about 3 days behind.
 - So step P reads the receiver's own signal strength, as step E does, rather than occultation profiles. |
-| P1 | Only if P0 has no SNR: Tom opens a EUMETSAT Data Store account for Metop GRAS. **Not needed for Sentinel-6.** Metop GRAS still needs the account if wanted |
+| P1 | Only if P0 has no SNR: the owner opens a EUMETSAT Data Store account for Metop GRAS. **Not needed for Sentinel-6.** Metop GRAS still needs the account if wanted |
 | P2 | Indicators: missed and degraded occultations per region (the EUMETSAT approach) and deep-occultation SNR (Wu's). **Built 31 Oct, as a receiver index instead:**
 - `tools/s6_rfi.py` (PO.DAAC files, geometry from `tools/sentinel_gnss.py`);
 - `tools/rx_rfi.py`: the median residual across links against a 5° elevation-bin baseline, shared with step E;
@@ -91,7 +91,7 @@ lane writes its checks into `docs/validation/` with a timestamp before any test 
 Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-registered in
 `docs/validation/space-receivers.md` (S1–S4) |
 | P3 | **Check:** EUMETSAT reports a rise in missed and degraded GRAS occultations from 2021 to 2024, "particularly in Eastern Europe" (Parra Ortega, 13 Sep 2024). Reproduce that, then test against the Baltic aircraft map |
-| P4 | **Live 31 Oct 2026 (Tom approved):** the map's "Sentinel-6 GPS receiver (from orbit)" layer. `tools/s6_daily.py` runs daily from the 06:30 collectors task and fills the `s6-data` release. Cells are shaded by score from the frozen threshold (0.24) up, and outlined at 0.4. The note states the limits: regions not sites, and the Gulf change not shown |
+| P4 | **Live 31 Oct 2026 (approved):** the map's "Sentinel-6 GPS receiver (from orbit)" layer. `tools/s6_daily.py` runs daily from the 06:30 collectors task and fills the `s6-data` release. Cells are shaded by score from the frozen threshold (0.24) up, and outlined at 0.4. The note states the limits: regions not sites, and the Gulf change not shown |
 | P5 | **Sentinel-6B, checked 31 Oct 2026:** NASA's catalogue (CMR) lists Sentinel-6B altimeter and radiometer collections from 17 Nov 2025, but no receiver files like Sentinel-6A's `JASON_CS_S6A_L1B_GNSS_RO_POD_HOURLY`. If they appear, `s6_rfi.py` should take them with a new unit entry and double the layer's coverage |
 
 ### R: SMAP (1400–1427 MHz emitters)
@@ -105,7 +105,7 @@ Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-
 - Isolated always-flagged cells sit in quiet regions; they are unidentified. |
 | R2b | **Second known answer, held 31 Oct 2026:** the 14 active North Warning System long-range radars (AN/FPS-117) on two unseen weeks: AUC 0.988, 10 of 14 sites heard in both weeks, 1.2% of far cells flagged (`docs/validation/smap-rfi.md` §5). SMAP finds L-band radars where the background is quiet |
 | R3 | If R2 passes: add to the map's emitter layer beside NISAR, labelled by band. It shows radars, not GPS jammers |
-| R3b | **Live 31 Oct 2026 (Tom approved):** the map's "L-band radars and other emitters (SMAP)" layer. `tools/smap_daily.py` runs daily from the 06:30 collectors task and fills the `smap-data` release. Stand-out cells are those flagged on half the looks or more, 0.5 above a quiet ring (0.10 or less); busy regions are drawn faintly. The note says the band isn't GPS, so the layer shows radars and other emitters, not jammers |
+| R3b | **Live 31 Oct 2026 (approved):** the map's "L-band radars and other emitters (SMAP)" layer. `tools/smap_daily.py` runs daily from the 06:30 collectors task and fills the `smap-data` release. Stand-out cells are those flagged on half the looks or more, 0.5 above a quiet ring (0.10 or less); busy regions are drawn faintly. The note says the band isn't GPS, so the layer shows radars and other emitters, not jammers |
 
 ### S: Sentinel-1 (C-band)
 
@@ -121,7 +121,7 @@ Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-
     (`docs/validation/s1-rfi.md` §9).
   - **Four weeks (2–29 Oct):** 13,437 res-3 cells with four or more passes (75%); every control reads 0.00 and the Gulf
     1.00; against the aircraft map AUC 0.747 (§10).
-  - **Live 31 Oct 2026 (Tom approved):** the map's "C-band radar activity (Sentinel-1)" layer. `tools/s1_daily.py` runs
+  - **Live 31 Oct 2026 (approved):** the map's "C-band radar activity (Sentinel-1)" layer. `tools/s1_daily.py` runs
     daily from the 06:30 collectors task and fills the `s1-data` release (28-day windows, res-3 cells with 4+ passes,
     shaded at a quarter, half and three quarters of passes). The note says the band isn't GPS and shows regions, not sites.
 
@@ -152,7 +152,7 @@ Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-
 - **Access:**
   - Catalogue: anonymous OData.
   - Download: the S3 endpoint `eodata.dataspace.copernicus.eu`, with keys in the user variables `CDSE_S3_ACCESS_KEY` and
-    `CDSE_S3_SECRET_KEY` (Tom, 30 Oct). A signed download worked that day.
+    `CDSE_S3_SECRET_KEY` (30 Oct). A signed download worked that day.
   - The free quota is 12 TB a month.
 - **Terms:** Copernicus Sentinel data are free, including for commercial use. Credit: "Contains modified Copernicus
   Sentinel data 2026".
@@ -177,7 +177,7 @@ Six tuning days: pooled AUC 0.957 against the aircraft map. Held-out checks pre-
 | E1 | **Built 31 Oct:** `tools/sentinel_gnss.py` (`fetch`, `day`, `latest`; tests in `tests/test_sentinel_gnss.py`). It writes one row per link and epoch: time, unit, satellite, signal strength by signal, the GNSS satellite's elevation and azimuth in the spacecraft frame (zenith-pointing antenna assumed), and the spacecraft's position. Spacecraft positions come from Space-Track elements and SGP4; GNSS positions from broadcast navigation (`station_cn0.parse_nav`, `sat_xyz`). Results below |
 | E2 | **Built 31 Oct** as frozen in `docs/validation/sentinel-gnss.md`: `tools/sentinel_rfi.py epochs` (tests in `tests/test_sentinel_rfi.py`). Per unit-day baseline in 5° bins from 10°; per epoch, the median residual over 4+ links (step P's `tools/rx_rfi.py`); three passes keep degraded res-2 cells out of the baseline. SAT-JAM's indicator, back-projection (`cosmic2_rfi.py`), Galileo E1 and GPS L2 are computed beside it |
 | E3 | **Run 31 Oct: four checks hold, two fail** (`docs/validation/sentinel-gnss.md` section 2). Pooled AUC 0.862, region-held-out 0.827, Baltic 0.917, CYGNSS ρ 0.557 hold. The Gulf change (−0.34 dB; the Gulf read −1.2 dB or lower in every week) and the controls (10.8% degraded, all from inland Australia) fail. Clean cells within 2,000 km of jammed ones are mostly called degraded: a regional sensor, about 2,000 km across |
-| E4 | **Waiting on Tom.** By the pre-registered rule nothing goes on the map. If wanted: a weekly regional product (not cells), captioned with the footprint and the Australia caveat, in a `sentinel-gnss-data` release |
+| E4 | **Waiting on the owner.** By the pre-registered rule nothing goes on the map. If wanted: a weekly regional product (not cells), captioned with the footprint and the Australia caveat, in a `sentinel-gnss-data` release |
 | E5 | **Built 31 Oct:** `tools/sentinel_trend.py` (`series`, `map`, `chart`; tests in `tests/test_sentinel_trend.py`) turns the E2 epochs into a daily and weekly box trend against quiet references, and a cell map, for any area in a private config. Watch areas, references, places and events stay in `private/watch/`; outputs stay private. No areas go in this repo |
 
 **E1 results (24 Oct 2026, all six units, measured 31 Oct):**
@@ -219,7 +219,7 @@ plain z-score a little worse (0.849). The Baltic box deepened from −3.2 dB (Oc
 **E2.1 (pre-registered 1 Nov; run 4 Nov on eight held-out weeks: all five checks hold).** Quiet-band flatness
 0.43 dB (uncorrected 1.13), pooled AUC 0.858 (0.855), Baltic 0.919 (0.918), controls degraded 0.12% (10.0%; inland
 Australia 0.66% against 56%), within-place r −0.022 (`docs/validation/sentinel-gnss-e21.md` section 2; code
-`tools/sentinel_e21.py`). Products switch only when Tom agrees, after removing the correction's positive offset and
+`tools/sentinel_e21.py`). Products switch only when approved, after removing the correction's positive offset and
 taking the load from a fuller broadcast file. A quick test on the E3 days supported the
 hypothesis: over the quiet southern band the index falls steadily with the number of BeiDou and SBAS
 geosynchronous satellites overhead (-0.05 dB with 0-1, -0.72 dB with 20-21), and an elevation-weighted load
@@ -235,35 +235,35 @@ Same build note. These give the orbital layers something to check against: offic
 |---|---|---|
 | NGA MSI navigation warnings | Running in `collectors/watch.py` (the `smaps` endpoint; the older `broadcast-warn` endpoint froze on 10 May 2024) | Tag warnings that cross test and range areas from a private list |
 | FAA GPS test notices | Running (`pipeline/faa_gps_tests.py`) | None |
-| FAA NOTAM Management Service (`faa-notam`) | Not built. Tom requested API credentials on 30 Oct; no reply by 31 Oct evening. The public NOTAM Search site refuses automated clients (403 from its CDN, robots.txt included), so there is no credential-free route | Build when the credentials arrive; GNSS NOTAMs then enter events as declared items |
+| FAA NOTAM Management Service (`faa-notam`) | Not built. API credentials were requested on 30 Oct; no reply by 31 Oct evening. The public NOTAM Search site refuses automated clients (403 from its CDN, robots.txt included), so there is no credential-free route | Build when the credentials arrive; GNSS NOTAMs then enter events as declared items |
 | Cloudflare Radar (`cloudflare-radar`) | **Running from 31 Oct** in `watch.py` (`src_cfradar`): verified outage annotations and automatic traffic anomalies, last 7 days, for the watched countries and satellite-ISP networks (Starlink AS14593 by default); false positives dropped. Private digest. Terms: CC BY-NC 4.0 | A public layer needs its own check (D8) |
 | IODA (`ioda`) | Not built: responses say "All Rights Reserved" | Permission request (DESIGN decision 4) |
 | KingOfSat (`kingofsat`) | Running privately in `watch.py`; the pages its robots.txt disallows are never fetched | Nothing published. A listing change is not a reception report |
 | ITU RRB, Kratos public posts (`kratos-public`), OPSGROUP, operators | **Running from 31 Oct** in `watch.py` (`src_pagewatch`): new links on listed pages, each with a link pattern so navigation churn doesn't fire; robots.txt obeyed; the first read is the baseline. Pages are in the private config. Left out on 31 Oct: Sweden's PTS (bot challenge), France's ANFR (request rejected), Eutelsat's newsroom (robots.txt disallows) | An analyst reads each new link. Cite only |
 
-## Decisions for Tom
+## Open decisions
 
-**Tom, 30 Oct 2026:**
+**30 Oct 2026:**
 - **Every option is to be developed,** including those listed under "Not pursued now", where access allows.
-- **Tom registered at hydrognss.org the same day;** credentials are due within a few working days.
+- **Registered at hydrognss.org the same day;** credentials are due within a few working days.
 - **ESA's terms** (ESA-EOPG-PDGS-PR-1, issue 1.1, 20 Sep 2023, with the ESA Data Policy) cover HydroGNSS, SMOS and
   Biomass:
   - Results may be published, with the credit "Data provided by the European Space Agency (ESA)" and "© ESA" plus the
     year of reception.
   - The data themselves may not be republished.
   - ESA asks for a copy of any publication, sent to eopi@esa.int.
-- **Publishing:** each lane still stops before the public map. A layer goes live only after its checks pass and Tom
+- **Publishing:** each lane still stops before the public map. A layer goes live only after its checks pass and the owner
   says yes.
 
 | # | Decision | Recommendation |
 |---|---|---|
 | D1 | Order | C, then H once registered, then R, then P |
-| D2 | HydroGNSS registration | Tom registers (accounts are Tom's) |
+| D2 | HydroGNSS registration | The owner registers (accounts are the owner's) |
 | D3 | Where COSMIC-2 runs | GitHub Actions, daily, with a new `cosmic2-data` release in this repo. No credentials are needed and nothing is watch configuration |
 | D4 | Sentinel-1 public layer | Later, after C. It shows radars, while the site's headline is GPS interference |
 | D5 | EUMETSAT account | Only if Sentinel-6 L1B lacks SNR (P0) |
-| D6 | Where E runs | **Decided 31 Oct (Tom: complete the planned items): this PC, daily,** from the 06:30 collectors task (`tools/sentinel_daily.py`; private products only, nothing uploaded) |
-| D7 | SAT-JAM | **Decided 31 Oct (Tom): no contact.** Replicate the method and do better for our purposes; see "Against SAT-JAM" below |
+| D6 | Where E runs | **Decided 31 Oct (complete the planned items): this PC, daily,** from the 06:30 collectors task (`tools/sentinel_daily.py`; private products only, nothing uploaded) |
+| D7 | SAT-JAM | **Decided 31 Oct : no contact.** Replicate the method and do better for our purposes; see "Against SAT-JAM" below |
 | D8 | Cloudflare Radar | **Private digest first (built 31 Oct).** A public layer needs its own check that a traffic drop means a service outage |
 
 ## Not pursued now
@@ -271,9 +271,9 @@ Same build note. These give the orbital layers something to check against: offic
 | Source | Why |
 |---|---|
 | **ALOS-2 PALSAR-2 ScanSAR** (1257.5 MHz) | JAXA's dataset page says its free L2.2 data run Aug 2014 – Jul 2025, but the open AWS bucket held 236,196 scenes from 4 Aug 2014 to 30 Sep 2026 when listed on 31 Oct, so recent months are covered too. Terms are "per platform", and ASF's EULA is non-commercial (allowed since 29 Oct if republishing derived maps is permitted; unread). No RFI tables, so interference must be found in the images. **Built 31 Oct:** `tools/alos2_rfi.py`, a probe of the open AWS bucket (anonymous). It reads HH and HV at 200 m, about 17 s a scene, and profiles HV − HH along the track, so interference shows as lines across the swath. A quiet scene flags 0 of 867 lines. **Known-answer test failed 31 Oct** (`docs/validation/alos2.md`): 0 of 32 scenes over North Warning System radars flagged, against 0 of 32 controls (AUC 0.503). The open L2.2 products appear not to carry the radars' signal, so ALOS-2 stays a probe |
-| **SAOCOM** (1275 MHz) | Access depends on ASI or CONAE approving a project; not open data. **Tom's step if wanted:** a project application |
-| **Biomass** (P-band, 435 MHz) | Open since 26 Jan 2026, but switched off over Europe and North America to protect US space-tracking radars. It might show UHF radars elsewhere: exploratory. **Checked 31 Oct:** the ESA MAAP catalogue lists L1b products through 30 Oct 2026 without an account. Product files return HTTP 401 (only quicklooks are open), so **Tom's step** is an ESA account. Each product has an annotation XML that may carry RFI reports, as Sentinel-1's does |
-| **SMOS** (1400–1427 MHz) | Same band as SMAP. ESA's terms allow publishing derived results with credit, but not the data themselves (row `smos-rfi`). **Access solved 31 Oct:** SMOS L1C is also on the Copernicus Data Space Ecosystem, and Tom's existing CDSE keys download it (listing and a ranged read checked). Land L1C is about 306 MB a half-orbit (8.24 GB on 29 Oct). The land browse product `MIR_BWLF1C` is 0.13 GB a day (28 products), so it's the practical input. Its flags need a reader for SMOS's binary format (HDR plus DBL), which isn't written yet. The public RFI portal timed out from this PC (31 Oct). SMAP's result in the same band (radar check failed; Europe and East Asia saturated) makes SMOS a low priority. **Built 31 Oct:** `tools/smos_rfi.py` reads the browse product (its own RFI flags are set on about 63% of points, so the measure is the share of looks above 320 K). **North Warning System test failed 31 Oct** (`docs/validation/smos-rfi.md`): AUC 0.535 and 2 of 14 sites heard in both weeks (Cape Dyer, Cape Parry), against SMAP's 10 of 14; the background stayed quiet (0.19%). SMOS stays a probe |
+| **SAOCOM** (1275 MHz) | Access depends on ASI or CONAE approving a project; not open data. **The owner's step if wanted:** a project application |
+| **Biomass** (P-band, 435 MHz) | Open since 26 Jan 2026, but switched off over Europe and North America to protect US space-tracking radars. It might show UHF radars elsewhere: exploratory. **Checked 31 Oct:** the ESA MAAP catalogue lists L1b products through 30 Oct 2026 without an account. Product files return HTTP 401 (only quicklooks are open), so **the owner's step** is an ESA account. Each product has an annotation XML that may carry RFI reports, as Sentinel-1's does |
+| **SMOS** (1400–1427 MHz) | Same band as SMAP. ESA's terms allow publishing derived results with credit, but not the data themselves (row `smos-rfi`). **Access solved 31 Oct:** SMOS L1C is also on the Copernicus Data Space Ecosystem, and the existing CDSE keys download it (listing and a ranged read checked). Land L1C is about 306 MB a half-orbit (8.24 GB on 29 Oct). The land browse product `MIR_BWLF1C` is 0.13 GB a day (28 products), so it's the practical input. Its flags need a reader for SMOS's binary format (HDR plus DBL), which isn't written yet. The public RFI portal timed out from this PC (31 Oct). SMAP's result in the same band (radar check failed; Europe and East Asia saturated) makes SMOS a low priority. **Built 31 Oct:** `tools/smos_rfi.py` reads the browse product (its own RFI flags are set on about 63% of points, so the measure is the share of looks above 320 K). **North Warning System test failed 31 Oct** (`docs/validation/smos-rfi.md`): AUC 0.535 and 2 of 14 sites heard in both weeks (Cape Dyer, Cape Parry), against SMAP's 10 of 14; the background stayed quiet (0.19%). SMOS stays a probe |
 | **Spire, PlanetiQ, Yunyao** radio occultation | Commercial, paid. EUMETSAT's 2024 comparison includes them |
 
 ## Sources

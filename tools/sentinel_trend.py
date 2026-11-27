@@ -17,7 +17,7 @@ Commands
                                                     X3 band files (tools/sentinel_bands.py bands). Any signal but l1
                                                     adds _<signal> to every output name.
   --index e21 (default) | e2                        E2.1, the index corrected for regional navigation satellites
-                                                    overhead (tools/sentinel_e21.py product files; Tom's yes 16 Nov
+                                                    overhead (tools/sentinel_e21.py product files; approved 16 Nov
                                                     2026), or the uncorrected E2 index, which adds _e2 to every output
                                                     name so the two can be compared. A day without a product file is
                                                     left out of an E2.1 product.

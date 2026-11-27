@@ -1,7 +1,7 @@
 # ALOS-2 PALSAR-2 ScanSAR: known-answer test against long-range radars (pre-registration, 31 Oct 2026)
 
 **Tool:** `tools/alos2_rfi.py` (JAXA's open ScanSAR Level 2.2 archive on AWS, bucket `jaxaalos2`; HH and HV read at the
-200 m overview). **Plan:** `docs/space-sensors-plan.md`, "Not pursued now" (ALOS-2), developed on Tom's 30 Oct request.
+200 m overview). **Plan:** `docs/space-sensors-plan.md`, "Not pursued now" (ALOS-2), developed on the 30 Oct request.
 
 Everything in sections 1–3 was written and committed before any scene covering a radar site, or any control scene, was
 scored. One scene had been scored before: a quiet Chukotka scene from 4 Aug 2014, used to build the tool.

@@ -5,7 +5,7 @@ Coverage: the Norwegian economic zone, the fishery protection zone at Svalbard a
 so the Norwegian coast to Finnmark and the western Barents Sea. The open data leave out fishing vessels under 15 m
 and leisure craft under 45 m (developer.barentswatch.no, read 28 Oct 2026).
 
-Access: free, but needs a BarentsWatch user and an API client (MyPage -> API clients; state the purpose). Tom creates
+Access: free, but needs a BarentsWatch user and an API client (MyPage -> API clients; state the purpose). The owner creates
 it and stores the two values as user environment variables BARENTSWATCH_CLIENT_ID and BARENTSWATCH_CLIENT_SECRET;
 they never pass through Claude. Token: POST https://id.barentswatch.no/connect/token (client_credentials, scope ais).
 API: https://live.ais.barentswatch.no/live (OpenAPI at /live/openapi/ais/openapi.json).

@@ -210,7 +210,7 @@ def test_brief_watched_areas():
 
 def test_brief_started_stopped():
     """Sentence 2: areas where GPS interference started this week (new), fell below jamming scale (below) or ended
-    (below, plus enough aircraft and a background-level share: suite review Mistake 2, Tom 16 Nov 2026)."""
+    (below, plus enough aircraft and a background-level share: suite review Mistake 2, 16 Nov 2026)."""
     near = BRIEF_NEAR
     two = lambda new, n, ended, m, below=(), k=0: B.brief({"changes": {  # noqa: E731
         "new": new, "new_count": n, "ended": ended, "ended_count": m, "below": list(below), "below_count": k}})
@@ -271,7 +271,7 @@ def test_area_names():
         assert p.area(-10.0, -30.0, []) == ("the South Atlantic Ocean", None)          # mid-ocean: its sea
         p = _places(tmp, [["Doha", 25.29, 51.53, 2, 0], ["Yalta", 44.5, 34.17, 5, 0]])
         assert p.area(23.35, 51.33, ["82534ffffffffff"]) == ("Saudi Arabia", None)    # Doha is 217 km off; the land is Saudi
-        # a reference across the border names its country (Tom's yes, 18 Nov 2026 evening CST)
+        # a reference across the border names its country (18 Nov 2026 evening CST)
         assert p.area_kind(23.35, 51.33, ["82534ffffffffff"])[3] == "220 km S of Doha, Qatar"
         assert p.where(23.35, 51.33, ["82534ffffffffff"]) == "in Saudi Arabia, 220 km S of Doha, Qatar"
         assert p.area(43.0, 34.0, []) == ("the Black Sea", None)                      # open sea: its sea (18 Nov 2026)
@@ -280,7 +280,7 @@ def test_area_names():
 
 
 def test_area_point_first_and_seas():
-    """Tom's choice, 18 Nov 2026, on 17 Nov 2026's events: a point on land takes its own country; a point at sea takes
+    """Decided 18 Nov 2026, on 17 Nov 2026's events: a point on land takes its own country; a point at sea takes
     a country only when half its cells' sample points are land, else its Natural Earth sea; countries read as in a
     sentence; an event over 5+ countries says so."""
     import area_names as A
@@ -316,7 +316,7 @@ def test_area_point_first_and_seas():
 
 
 def test_area_reference():
-    """A country name carries "220 km S of Doha" (Tom's option B, 18 Nov 2026): the nearest listed place, preferring
+    """A country name carries "220 km S of Doha" (option B, 18 Nov 2026): the nearest listed place, preferring
     one in the named country unless a place elsewhere is closer by more than 1.5 times. A place name carries none."""
     tmp = tempfile.mkdtemp()
     try:

@@ -121,7 +121,7 @@ fresh run from the raw archive.
 (`data/spoof_cache/`, local). After that, a variant's held-out score is 18 reruns and `tools/spoof_heldout.py` on their
 output, with no raw archive. `tools/spoof_compare.py --cache-root` reads the Lima flights' traces from the caches
 (candidates only; a flight whose aircraft is not a candidate had no slow, near-stationary or jumping position at
-altitude, so it can't be placed or counted anyway). Whether to delete the raw archives once the caches exist is Tom's
+altitude, so it can't be placed or counted anyway). Whether to delete the raw archives once the caches exist is the owner's
 decision; the caches can't rebuild a day for settings outside the envelope.
 
 **Scoring a variant in one command (16 Nov 2026).** `python tools/spoof_variant.py --set NAME=VALUE ... --label L --out DIR
@@ -214,7 +214,7 @@ five regions above their usual level go to the COP feed (`noisefloor-spoof-regio
 together read near usual (487 spoofed aircraft-hours against 442).
 
 **Region floor (pre-registered 16 Nov 2026, before any scoring).** On 15 Nov 2026 the three regions read above stood
-on 9, 6 and 3 spoofed aircraft-hours, against usual levels of 1, 2.5 and 0. Tom agreed (16 Nov 2026) that a region
+on 9, 6 and 3 spoofed aircraft-hours, against usual levels of 1, 2.5 and 0. It was agreed (16 Nov 2026) that a region
 should read **above** only when it is at least twice its usual level **and 5 or more** spoofed aircraft-hours over it
 (was 3). The **below** rule, the places' rule (section 3 above) and the all-regions total keep 3. The test, written
 before it is run:
@@ -230,7 +230,7 @@ before it is run:
 - P2 (signal kept): the new rule keeps at least half of the old rule's readings in the spoofing groups.
 - P3 (persistence, at the 30-day run only): readings the new rule drops are above again the next day less often than
   readings it keeps.
-- Decision: the new rule goes live now. If P2 or P3 fails at the 30-day run, the result goes to Tom with the old rule
+- Decision: the new rule goes live now. If P2 or P3 fails at the 30-day run, the result goes to the owner with the old rule
   as the alternative; nothing is changed back without his call.
 
 First scoring (16 Nov 2026, after the commit above; 9 published days with `share2`, 7-15 Nov, so levels on 14 and 15
@@ -271,7 +271,7 @@ days, so the October days rest on fewer. Scored with the same code as above (`sp
   (14 Nov 16 → 11, 15 Nov 5 → 2).
 - Decision: the new rule (`REGION_MIN_OVER = 5`) stays, as pre-registered. The 7 Dec recheck is no longer needed for
   the verdict; run then, it is an out-of-sample check on the 21 days after this one.
-- **Announced tests, reported and not gating (Tom, 18 Nov 2026).** From now on, P1 and H6 also report how many
+- **Announced tests, reported and not gating (18 Nov 2026).** From now on, P1 and H6 also report how many
   control-box readings or episodes fall inside an announced US GPS test, and P1 with those set aside. The pass marks
   don't change.
   - **For P1:** a reading counts as inside when it is tagged by `spoof_site.region_tests()`.
@@ -384,10 +384,10 @@ Reported, not gating:
 - C2 on the region-group active aircraft-hours in the shadow files.
 
 **Decision.**
-- Adoption needs both the held-out score and the shadow score to pass, and then Tom's call. If adopted, the default
+- Adoption needs both the held-out score and the shadow score to pass, and then the owner's call. If adopted, the default
   becomes `CARRY_MAX_S = 10800`, `CARRY_TRUSTED_S = 1800` (v0.6.2), and the region levels in section 3 rest on it from
   the day it goes live.
-- A failed gate goes to Tom with the numbers. Nothing changes in the published output until he decides.
+- A failed gate goes to the owner with the numbers. Nothing changes in the published output until a decision.
 
 **Limits known in advance.**
 - The rule sees one UTC day at a time. An exposure before 00:00 UTC is invisible to it. On 15 Oct 2026, two of the three
@@ -456,4 +456,4 @@ v0.6.1 → under R3, against the published usual level:
   - 7-12 Nov, in sample: control 157 of 298 kept (−47.3%), spoofing groups 97.7% kept. That is the description's R3
     figure exactly, which confirms that the code and the description apply the same rule.
 - **Next:** the shadow listing (`carry-r3`, 19 Nov-17 Dec 2026) starts once this reaches `main`. Adoption waits for at
-  least 14 shadow days and Tom's call.
+  least 14 shadow days and the owner's call.

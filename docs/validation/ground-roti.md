@@ -222,7 +222,7 @@ pairs suggest that station ROTI tracks receivers 1,000–1,600 km away in the sa
 not the measure. One season (Oct–Nov 2026), nine tested pairs, low latitudes only (about 27°S to 26°N); no mid- or
 high-latitude test, and no test of L-band scintillation other than L1.
 
-## 7. What waits on Tom
+## 7. What waits on review
 
 - Adding the layer to the public map or to the `tic-feed/2` feed, after this validation, as for every earlier layer.
 - The tic-dispatch schedule for `ground-roti.yml` (starts at :30 past 09–13, 16 and 22 UTC), prepared in the hub but not

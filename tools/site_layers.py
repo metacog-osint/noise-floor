@@ -20,7 +20,7 @@ Copies RELEASE_DIR/<day>.<kind>.json -> SITE/data/<folder>/<day>.json and writes
 - s1 -> data/s1 (files with a "cells" list, even an empty one). tools/s1_daily.py, from the s1-data release (derived
   from Copernicus Sentinel-1 RFI annotations; C-band radar activity by region, docs/validation/s1-rfi.md).
 - cosmic2-limb-s4 -> data/limbs4 and ground-roti -> data/roti (files with "hours"), slimmed for the map by
-  tools/swx_site.py (limb_map, roti_map), from the swx-data releases (Tom approved 16 Nov 2026). Limb S4 is measured
+  tools/swx_site.py (limb_map, roti_map), from the swx-data releases (approved 16 Nov 2026). Limb S4 is measured
   along radio-occultation paths and reads higher than a ground receiver's S4; ROTI is a measured TEC fluctuation index
   at fixed stations, never an S4 value. Neither is read against S4 alert levels.
 Standard library only.

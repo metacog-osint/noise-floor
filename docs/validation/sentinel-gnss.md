@@ -138,7 +138,7 @@ Between the two marks the result is "weakened".
 - No threshold, box, window or definition above changes after any result is seen. If a bug turns up, the result with
   the frozen code is reported first, and the fixed result beside it.
 - The code's commit hash is recorded with the results.
-- Nothing from this lane goes on the public map until checks 1–6 are reported and Tom says yes (plan step E4).
+- Nothing from this lane goes on the public map until checks 1–6 are reported and it is approved (plan step E4).
 
 ## 2. Results (31 Oct 2026, 22:00 UTC)
 
@@ -288,7 +288,7 @@ The judged controls changed by +0.16 dB between the two Gulf windows, below the 
 - **It is a working regional sensor** where nothing else in orbit reaches at GPS L1: the Baltic AUC is 0.917, and the
   Baltic deepened over the year.
 - **Inland Australia** needs its own look before any reading in a quiet area is trusted.
-- **Plan step E4** (a public layer) waits on Tom. A regional weekly product, captioned with the footprint and the
+- **Plan step E4** (a public layer) waits on the owner. A regional weekly product, captioned with the footprint and the
   Australia caveat, is the realistic form.
 
 ### 2.5 After the run (31 Oct 2026, evening; descriptive, not pre-registered)

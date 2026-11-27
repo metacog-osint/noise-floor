@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""feed_rev21.py: feed contract revision 2.1 for Noisefloor (feed-contract migration step 4.4, Tom's yes 20 Nov 2026).
+"""feed_rev21.py: feed contract revision 2.1 for Noisefloor (feed-contract migration step 4.4, approved 20 Nov 2026).
 
 feed_v2.build() states each item's subject_id, signal and any change it knows itself. finish() adds what follows from
 the item as built: event times, countries by overlap, sea areas, place basis, source lanes, and the header's health.
 
-Decisions (Tom, 20 Nov 2026, "yes to defaults"):
+Decisions (20 Nov 2026, "yes to defaults"):
 - A jamming event's subject is the res-2 region at its centre, so an event recurring over one area is one subject.
 - last_change comes from the kit's history log, kept on the release `feed-history` (tools/feed_history.py).
 - Countries are the union of the kit's overlap helper and the sampled tags: islands the thinned outlines miss stay,

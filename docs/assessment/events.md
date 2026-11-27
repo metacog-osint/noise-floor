@@ -1,6 +1,6 @@
 # Events and grading (v1.1)
 
-**Date:** 27 Oct 2026 (v1.1; v1.0: 26 Oct; v0.2: 24 Oct; v0.1: 23 Oct) · **Status:** rules frozen as v1.0 on 26 Oct 2026 (Tom approved the five open choices with the recommended defaults); v1.1 (27 Oct, Tom approved) adds EASA's FIR tables as a D1 source and changes nothing else; the rules are stated choices, not yet validated against held-out cases · **Public output:** monthly counts by grade only (`site/data/events-monthly.json`, Validation page); the register is never published · **Code:** `tools/events.py` · **Tests:** `tests/test_events.py` · **Register:** `data/events/register.sqlite` (gitignored)
+**Date:** 27 Oct 2026 (v1.1; v1.0: 26 Oct; v0.2: 24 Oct; v0.1: 23 Oct) · **Status:** rules frozen as v1.0 on 26 Oct 2026 (the five open choices approved with the recommended defaults); v1.1 (27 Oct, approved) adds EASA's FIR tables as a D1 source and changes nothing else; the rules are stated choices, not yet validated against held-out cases · **Public output:** monthly counts by grade only (`site/data/events-monthly.json`, Validation page); the register is never published · **Code:** `tools/events.py` · **Tests:** `tests/test_events.py` · **Register:** `data/events/register.sqlite` (gitignored)
 
 ## Bottom line
 
@@ -46,7 +46,7 @@ The run covers 385 days (1 Oct 2025 – 22 Oct 2026, UTC): 94,651 observations f
 
 ## v1.2 candidate: orbital GNSS receivers as a sensor family (pre-registration, 31 Oct 2026)
 
-Written and committed before any comparison below was run. Tom asked on 31 Oct 2026 for Sentinel-6A and COSMIC-2 to be
+Written and committed before any comparison below was run. A request on 31 Oct 2026 asked for Sentinel-6A and COSMIC-2 to be
 added as corroborating sources, once pre-registered and checked.
 
 **What would change.** A new sensor family, `orbit_rx` (GNSS receivers on satellites: Sentinel-6A, COSMIC-2). It would
@@ -135,7 +135,7 @@ now.
 
 ## v1.1: EASA's FIR tables drive D1 (27 Oct 2026)
 
-Tom approved the change on 26 Oct 2026 ("EASA spoofing marks setting deliberate_suspected"). Every other rule is as frozen
+The change was approved on 26 Oct 2026 ("EASA spoofing marks setting deliberate_suspected"). Every other rule is as frozen
 in v1.0.
 
 **The source.** EASA's page "GNSS outages and alterations" lists the FIRs "mainly affected" by GNSS jamming and spoofing in
@@ -185,7 +185,7 @@ the evidence of intent, at the listing's scale.
 
 ## v1.0: what was frozen (26 Oct 2026)
 
-Five choices were open in v0.2. Tom approved the recommended default for each on 26 Oct 2026. None of them is validated;
+Five choices were open in v0.2. The recommended default for each was approved on 26 Oct 2026. None of them is validated;
 each is a stated choice that a held-out test can later confirm or replace.
 
 1. **Announced-test radius: FL250.** Rule P1 now uses the FL250 ring, the one the public map draws, instead of the widest
@@ -211,7 +211,7 @@ each is a stated choice that a held-out test can later confirm or replace.
    Two official notices are on file from 26 Oct 2026: BALTIC SEA NAV WARN 030/26 (from 12 Oct 2026) and the joint
    Estonia–Finland Gulf of Finland warning (from 17 Jun 2025). Both say "interference", not jamming, so they corroborate
    (S2) and D1 hasn't fired; the sources checked are in `docs/research/2026-10-26-official-gnss-notices.md`. EASA's weekly
-   FIR table, which marks spoofing by area, is the open candidate for D1 (Tom's decision). The watch collector now
+   FIR table, which marks spoofing by area, is the open candidate for D1 (open decision). The watch collector now
    reports NGA as an error while its feed stays frozen.
 5. **The 600 km event cap and the 3-hex level threshold stay**, flagged as unvalidated. **Publication:** monthly counts by
    grade (`python tools/events.py publish`), never the register.

@@ -186,7 +186,7 @@ NAME_BUDGET_S = 240     # seconds of new naming per deploy (the job's limit is 1
 
 def name_all(events_dir, places, cache_path=None, budget_s=NAME_BUDGET_S):
     """Write each event's words ("where", the board's rule) into every events file, so the map's tables say what the
-    Today page and the feeds say (Tom's yes, 18 Nov 2026; map.js falls back to its own nearest-place name). Names are
+    Today page and the feeds say (18 Nov 2026; map.js falls back to its own nearest-place name). Names are
     kept in cache_path (the deploy's cached release-file folder) under area_names.fingerprint, so a deploy names only
     new events (about 13 ms an event, 400 days). New naming stops after budget_s seconds, newest days first; the
     rest keep map.js's own name until a later deploy reaches them. Returns the number of events named."""

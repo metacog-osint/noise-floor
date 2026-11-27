@@ -1,6 +1,6 @@
 # Interference on every constellation and band: plan
 
-Written 1 Nov 2026 (UTC) at Tom's request ("explore ways to identify and document observed interference of BeiDou,
+Written 1 Nov 2026 (UTC) on request ("explore ways to identify and document observed interference of BeiDou,
 GLONASS, QZSS, and the other GNSS freqs"). Step X1, the station tool for every signal, was built the same day
 (`tools/station_bands.py`, results below); the first probe was run from scratch scripts before it. No watch areas appear here; area work stays in private config.
 
@@ -66,7 +66,7 @@ What this means for detection:
 | **CYGNSS** | GPS L1 | ±38° latitude | In use |
 | **NISAR** | 1219–1239 MHz (GPS and QZSS L2) and 1291–1296 MHz (the top of the Galileo E6 band) | Passes in a mode that hears the signal | In use (`nisar/README.md`) |
 | **COSMIC-2** | GPS L1/L2; its receivers are reported to track GLONASS too (**unverified** for the files we read) | ±24° receiver latitude | Step C of the space-sensors plan; GLONASS links: step X5 |
-| **HydroGNSS** | Reflected GPS/Galileo L1/E1 and L5/E5a | Near-polar | Waits on Tom's registration |
+| **HydroGNSS** | Reflected GPS/Galileo L1/E1 and L5/E5a | Near-polar | Waits on registration |
 | **FY-3 GNOS** (Chinese weather satellites) | GPS and BeiDou occultation | Near-polar | Access through China's National Satellite Meteorological Centre; registration and terms **not checked** (step X5) |
 
 ## Telling interference from everything else
@@ -213,12 +213,12 @@ Each step writes its checks into `docs/validation/` before results are read, as 
 - **QZSS and BeiDou GEO/IGSO are regional.** European stations see QZSS rarely, if at all.
 - **No attribution.** The band pattern describes the effect. It doesn't identify a source. Each detection is a lead.
 
-## Decisions for Tom
+## Open decisions
 
 | # | Decision | Recommendation |
 |---|---|---|
-| D1 | Build X1 now | **Decided 1 Nov (Tom: "Yes, build X1").** Built the same day |
-| D2 | X3 (Sentinel E5a and L2C) | **Decided 1 Nov (Tom: "Yes, run X3").** Run the same day; both checks hold |
+| D1 | Build X1 now | **Decided 1 Nov.** Built the same day |
+| D2 | X3 (Sentinel E5a and L2C) | **Decided 1 Nov.** Run the same day; both checks hold |
 | D3 | National networks (GEONET, Geoscience Australia, Norway) | Read terms first; register only where they allow republishing derived results |
 | D4 | Anything public | Later. A band-signature table per event, beside the existing station results, once X2 passes |
 

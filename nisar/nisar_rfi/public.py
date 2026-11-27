@@ -1,6 +1,6 @@
 """Public export: repeat emitter sites for the public map, from one or more area states.
 
-What goes out (Tom, 28 Oct 2026):
+What goes out (28 Oct 2026):
 - sites with at least MIN_PASSES MEDIUM or HIGH detections on different passes,
   leaving out frame-wide ("widespread") and ignored detections;
 - per site, its qualifying detections and the passes that covered it;

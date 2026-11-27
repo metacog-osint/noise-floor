@@ -32,7 +32,7 @@ rem Public repeat-site file for the site's map layer (public areas only), upload
 set EXPORT_RC=%ERRORLEVEL%
 if not %EXPORT_RC%==0 if %RC%==0 set RC=1
 rem After a good upload, start a site deploy so the map shows today's file now. GitHub's daily deploy runs before
-rem this upload, so without it the NISAR layer ran a day behind. Tom approved, 29 Oct 2026. Uses the gh sign-in.
+rem this upload, so without it the NISAR layer ran a day behind. Approved 29 Oct 2026. Uses the gh sign-in.
 if %EXPORT_RC%==0 (
   echo --- site deploy >> ..\data\logs\nisar.log
   gh workflow run deploy-site.yml -R metacog-osint/noise-floor >> ..\data\logs\nisar.log 2>&1

@@ -4,7 +4,7 @@ CLAUDE.local.md
 .env
 *.env
 
-# Written products stay out until Tom publishes them (then: git add -f products/<file>)
+# Written products stay out until the owner publishes them (then: git add -f products/<file>)
 products/
 
 # Python

@@ -167,7 +167,7 @@ fallback in `tools/sentinel_gnss.fetch_nav`; the method is otherwise as frozen i
 - It doesn't track the Gulf's spring change (above).
 - Eastern Europe dominates the jammed cells (348 of 407). Leaving it out still gives 0.918.
 - Myanmar is weaker (own AUC 0.80).
-- A map layer needs Tom's yes (plan step P, as for the other lanes).
+- A map layer needs approval (plan step P, as for the other lanes).
 
 ### 5.2 COSMIC-2 on the 21 held-out days (run 31 Oct 2026): all five checks hold
 
@@ -213,4 +213,4 @@ missing day; no day was refetched or replaced. The method is as frozen in sectio
   detection range.
 - Its agreement with CYGNSS is lower than Sentinel-6A's (0.265 against 0.504).
 - Only three to five of the six satellites delivered data.
-- A map layer needs Tom's yes.
+- A map layer needs approval.

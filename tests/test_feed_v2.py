@@ -132,7 +132,7 @@ def event_place_unit_time():
 
 
 def same_titles_and_swx_names():
-    """Tom's yes, 18 Nov 2026 evening CST: two items that read the same take their UTC hours; limb S4 cells take the
+    """Approved 18 Nov 2026 evening CST: two items that read the same take their UTC hours; limb S4 cells take the
     board's words ("in Brazil, 350 km S of Marabá"); a ROTI station named by its country alone reads "in Gabon
     (station NKLG)"."""
     ev = {"tier": "notable", "peak": 12.0, "excess": 11.0, "h0": 6, "h1": 8, "lat": 20.3, "lon": 85.8,

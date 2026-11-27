@@ -1,6 +1,6 @@
 # Satellite imagery for the site: options and terms (26 Oct 2026)
 
-**Status:** research for Tom's decision; nothing built. Checked 26 Oct 2026 by Claude: three research passes over the
+**Status:** research for a decision; nothing built. Checked 26 Oct 2026 by Claude: three research passes over the
 providers' own pricing, terms and documentation pages, then the deciding clauses re-read on the original pages
 (Google Geo Guidelines, Map Tiles policy and Embed billing; Esri Location Platform billing help and Agreement E204;
 the Copernicus Sentinel data legal notice; EOX's licence page). Terms and prices change: re-check before building.
@@ -145,7 +145,7 @@ goes to the provider, which applies its own rules.
 
 ## Options to decide
 
-| | What visitors get | Cost and terms | Tom's part |
+| | What visitors get | Cost and terms | Owner's part |
 |---|---|---|---|
 | **A. Link-outs** | "View on Google Maps (satellite)", "Esri Wayback (history)", "Copernicus Browser (this date)", "NASA Worldview (this date)" on ship details and map popups | Free; no keys; no licence question | None |
 | **B. Sentinel-2 time slider in our maps** | 10 m true-colour images for chosen places and dates, swapped by a slider; links out for sharper views | Free; Copernicus credit; about 150 MB for 30 places × 24 dates; no runtime dependency | Choose the places (private watch list stays private: only places shown publicly) |
@@ -155,15 +155,15 @@ goes to the provider, which applies its own rules.
 Recommendation: A now; B next; C and D only if sharp imagery inside the map is worth the export-control handling and a
 terms page.
 
-## Decision (Tom, 26 Oct 2026) and status
+## Decision (26 Oct 2026) and status
 
-Tom chose A, B and C.
+Options A, B and C were chosen.
 - **A, link-outs:** live on the Sea ship panel and the GNSS map's area history (36e9c30).
 - **B, Sentinel-2 by month:** live on the Sea map (36e9c30). Built on Planetary Computer's tile service rather than
   chips we host, so it works anywhere in the map without a list of places (a list would be watch configuration).
 - **C, Esri World Imagery:** live from 26 Oct 2026 (48baa95): the Sea map option, `functions/api/imagery.js` (a
   Cloudflare Pages Function that hands out the key only outside the barred countries and regions, tested on 16 cases),
-  the `/terms` page, and attribution. Tom created the key on 26 Oct with one privilege (Location services → Basemaps →
+  the `/terms` page, and attribution. The key was created on 26 Oct with one privilege (Location services → Basemaps →
   Static basemap tiles, as in Esri's Leaflet raster tutorial), the referrer `https://noisefloor.theintelligence.company`
   and an expiry of **26 Oct 2027 (renew before then)**, and stored it as the Pages secret `ESRI_API_KEY` with
   `npx wrangler pages secret put`. One key per app: the free allowance is per account anyway, and separate keys can be
@@ -172,7 +172,7 @@ Tom chose A, B and C.
   option loads tiles, and the credits show. **Not verifiable from outside:** Esri's tile server returned tiles for a
   wrong referrer and, the day before, for a made-up token, so neither the referrer restriction nor the usage count can
   be confirmed by request; the account's usage page is the check.
-- **Interference map (Tom, 26 Oct):** the same Esri option under Map options → Layers (7976ecf): no land fill, quiet
+- **Interference map (26 Oct):** the same Esri option under Map options → Layers (7976ecf): no land fill, quiet
   hexes faint and interference hexes strong, zoom to 10; not remembered between visits, so tiles load only on request.
 
 ## Not confirmed

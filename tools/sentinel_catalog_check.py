@@ -3,7 +3,7 @@
 
 The downloaded AUX_GNSSRD files (data/sentinel_gnss/raw/<year>/) stay out of the private archive because Copernicus
 holds them. Copernicus publishes no retention period for them and has removed superseded baselines of other products,
-so this check tests that assumption (Tom, 21 Nov 2026). It reads raw/index.jsonl, lists each unit's products from the
+so this check tests that assumption (21 Nov 2026). It reads raw/index.jsonl, lists each unit's products from the
 public catalogue (no account) and sorts every held catalogue id:
 
   present    in the catalogue and online

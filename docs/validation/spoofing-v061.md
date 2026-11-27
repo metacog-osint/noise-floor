@@ -66,8 +66,8 @@ test or confirmed; the same per day for 7–12 Nov.
 **Adoption rule:** a variant can be adopted only if H1–H8 all pass. If both pass, V2 is adopted: it keeps rule A where
 the physics holds (A2 jets at cruise). If only one passes, that one. If neither, v0.6 stays and the failures are
 reported. Adoption sets the default of `--slow-hi-a2-ft` (detector version "0.6.1"; `--slow-hi-a2-ft 25000` gives
-v0.6), through a pull request that Tom merges, and the affected published days (7 Nov to the last published day) are
-redone with backfill.yml `spoofing_only` only on Tom's say.
+v0.6), through a pull request that the owner merges, and the affected published days (7 Nov to the last published day) are
+redone with backfill.yml `spoofing_only` only on approval.
 
 **Runs:** each variant on the 12 held-out days and 7–12 Nov into `data/spoofing_v061a` (V1) and `data/spoofing_v061b`
 (V2), local.
@@ -144,4 +144,4 @@ check.
 **Adopted:** both variants pass H1–H8, so under the rule above V2 is adopted: `SLOW_HI_A2_FT` defaults to 36,000 ft
 (detector version "0.6.1"; `--slow-hi-a2-ft 25000` gives v0.6). It keeps rule A where the physics holds (A2 jets at
 cruise) and, unlike V1, keeps the active A2 jet episodes in the Jordan Valley, Poland and the western Black Sea. The
-published days from 7 Nov are redone with backfill.yml `spoofing_only` only on Tom's say.
+published days from 7 Nov are redone with backfill.yml `spoofing_only` only on approval.
